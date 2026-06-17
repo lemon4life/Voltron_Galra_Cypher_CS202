@@ -10,6 +10,12 @@ void PlayerIdleState::Enter(Player* player) {
 }
 
 void PlayerIdleState::Update(Player* player, float deltaTime) {
+    // Check for Dash Input (Spacebar and cooldown off)
+    if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
+        player->ChangeState(player->GetDashState());
+        return;
+    }
+
     // Check for input to transition to Run state
     if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_UP) || IsKeyDown(KEY_DOWN)) {
         player->ChangeState(player->GetRunState());
@@ -30,6 +36,12 @@ void PlayerRunState::Enter(Player* player) {
 }
 
 void PlayerRunState::Update(Player* player, float deltaTime) {
+    // Check for Dash Input (Spacebar and cooldown off)
+    if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
+        player->ChangeState(player->GetDashState());
+        return;
+    }
+
     Vector2 moveDir = { 0.0f, 0.0f };
 
     if (IsKeyDown(KEY_RIGHT)) moveDir.x += 1.0f;
@@ -47,9 +59,10 @@ void PlayerRunState::Update(Player* player, float deltaTime) {
     if (moveDir.x < 0.0f) player->SetFacingLeft(true);
     else if (moveDir.x > 0.0f) player->SetFacingLeft(false);
 
-    // Normalize diagonal movement
+    // Normalize diagonal movement and store last direction
     if (Vector2Length(moveDir) > 0.0f) {
         moveDir = Vector2Normalize(moveDir);
+        player->SetLastMoveDir(moveDir);
     }
 
     // Update position

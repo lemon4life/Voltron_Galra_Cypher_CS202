@@ -8,7 +8,11 @@ Player::Player(Vector2 pos, Texture2D tIdle, Texture2D tRun)
       frameTimer(0.0f),
       frameDuration(0.1f), // 10 fps animation speed
       facingLeft(false),
-      numFrames(12) 
+      numFrames(12),
+      dashCooldown(0.0f),
+      dashTimer(0.0f),
+      isInvincible(false),
+      lastMoveDir{1.0f, 0.0f} // Initialize pointing right
 {
     currentState = &idleState;
     currentState->Enter(this);
@@ -21,6 +25,14 @@ Player::~Player() {
 }
 
 void Player::Update(float deltaTime) {
+    // Decrement dash cooldown over time
+    if (dashCooldown > 0.0f) {
+        dashCooldown -= deltaTime;
+        if (dashCooldown < 0.0f) {
+            dashCooldown = 0.0f;
+        }
+    }
+
     if (currentState) {
         currentState->Update(this, deltaTime);
     }
@@ -68,5 +80,8 @@ void Player::Draw() {
     // Origin for rotation/scaling, set to center of the sprite
     Vector2 origin = { frameWidth / 2.0f, frameHeight / 2.0f };
 
-    DrawTexturePro(texture, sourceRec, destRec, origin, 0.0f, WHITE);
+    // Apply a gray tint to indicate invincibility during a dash
+    Color tint = isInvincible ? GRAY : WHITE;
+
+    DrawTexturePro(texture, sourceRec, destRec, origin, 0.0f, tint);
 }
