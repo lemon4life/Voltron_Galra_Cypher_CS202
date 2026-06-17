@@ -1,5 +1,7 @@
 #include "raylib.h"
 #include "Entities/Player.h"
+#include "Core/GameManager.h"
+#include "Core/AudioManager.h"
 
 int main() {
     // Window and Game Resolutions
@@ -11,6 +13,9 @@ int main() {
 
     // Initialize Window
     InitWindow(windowWidth, windowHeight, "Voltron: Mission Galra Cypher");
+
+    // Initialize AudioManager Singleton (Initializes Audio Device)
+    AudioManager::GetInstance();
 
     // Load Textures
     Texture2D texIdle = LoadTexture("assets/sprites/Lance_Idle.png");
@@ -33,8 +38,10 @@ int main() {
         // --- Update ---
         float deltaTime = GetFrameTime();
         
-        // Polymorphic Update
-        player->Update(deltaTime);
+        // Only update gameplay/entities when GameState is PLAYING
+        if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
+            player->Update(deltaTime);
+        }
 
         // --- Draw ---
         
@@ -42,8 +49,10 @@ int main() {
         BeginTextureMode(target);
             ClearBackground(DARKGRAY); // Clear internal texture to dark gray
             
-            // Polymorphic Draw
-            player->Draw();
+            // Only draw gameplay/entities when GameState is PLAYING
+            if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
+                player->Draw();
+            }
             
         EndTextureMode();
 
@@ -73,6 +82,8 @@ int main() {
     UnloadTexture(texRun);
     UnloadRenderTexture(target);
     CloseWindow();
+
+    // Note: AudioManager singleton's destructor will close the audio device automatically when main exits.
 
     return 0;
 }
