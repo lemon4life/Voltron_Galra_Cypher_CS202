@@ -10,6 +10,12 @@ void PlayerIdleState::Enter(Player* player) {
 }
 
 void PlayerIdleState::Update(Player* player, float deltaTime) {
+    // Check for Attack Input ('J' or Left Mouse Button)
+    if (IsKeyPressed(KEY_J) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        player->ChangeState(player->GetAttackState());
+        return;
+    }
+
     // Check for Dash Input (Spacebar and cooldown off)
     if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
         player->ChangeState(player->GetDashState());
@@ -36,6 +42,12 @@ void PlayerRunState::Enter(Player* player) {
 }
 
 void PlayerRunState::Update(Player* player, float deltaTime) {
+    // Check for Attack Input ('J' or Left Mouse Button)
+    if (IsKeyPressed(KEY_J) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        player->ChangeState(player->GetAttackState());
+        return;
+    }
+
     // Check for Dash Input (Spacebar and cooldown off)
     if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
         player->ChangeState(player->GetDashState());

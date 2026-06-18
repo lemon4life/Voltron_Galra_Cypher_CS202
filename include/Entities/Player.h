@@ -2,10 +2,13 @@
 #include "Character.h"
 #include "PlayerState.h"
 #include "Entities/PlayerDashState.h"
+#include "Entities/PlayerAttackState.h"
+#include "Combat/IAttackStrategy.h"
 
 class Player : public Character {
 private:
     IPlayerState* currentState;
+    IAttackStrategy* currentWeapon;
     
     Texture2D texIdle;
     Texture2D texRun;
@@ -21,6 +24,7 @@ private:
     PlayerIdleState idleState;
     PlayerRunState runState;
     PlayerDashState dashState; // Added dash state instance
+    PlayerAttackState attackState;
 
     // Dash mechanic properties
     float dashCooldown;
@@ -36,11 +40,14 @@ public:
     void Draw() override;
 
     void ChangeState(IPlayerState* newState);
+    void Attack();
+    void SetWeapon(IAttackStrategy* weapon) { currentWeapon = weapon; }
 
     // Getters for states and textures
     PlayerIdleState* GetIdleState() { return &idleState; }
     PlayerRunState* GetRunState() { return &runState; }
     PlayerDashState* GetDashState() { return &dashState; }
+    PlayerAttackState* GetAttackState() { return &attackState; }
     Texture2D GetIdleTexture() const { return texIdle; }
     Texture2D GetRunTexture() const { return texRun; }
 

@@ -4,6 +4,7 @@ Player::Player(Vector2 pos, Texture2D tIdle, Texture2D tRun)
     : Character(pos, 150.0f, 100, tIdle), // Default to idle texture, 150 speed, 100 HP
       texIdle(tIdle),
       texRun(tRun),
+      currentWeapon(nullptr),
       currentFrame(0),
       frameTimer(0.0f),
       frameDuration(0.1f), // 10 fps animation speed
@@ -22,6 +23,9 @@ Player::~Player() {
     if (currentState) {
         currentState->Exit(this);
     }
+    if (currentWeapon) {
+        delete currentWeapon;
+    }
 }
 
 void Player::Update(float deltaTime) {
@@ -35,6 +39,16 @@ void Player::Update(float deltaTime) {
 
     if (currentState) {
         currentState->Update(this, deltaTime);
+    }
+    
+    if (currentWeapon) {
+        currentWeapon->Update(deltaTime);
+    }
+}
+
+void Player::Attack() {
+    if (currentWeapon) {
+        currentWeapon->Attack(position, facingLeft);
     }
 }
 
@@ -84,4 +98,8 @@ void Player::Draw() {
     Color tint = isInvincible ? GRAY : WHITE;
 
     DrawTexturePro(texture, sourceRec, destRec, origin, 0.0f, tint);
+    
+    if (currentWeapon) {
+        currentWeapon->Draw();
+    }
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 
 enum class GameState {
     MENU,
@@ -7,9 +8,12 @@ enum class GameState {
     GAMEOVER
 };
 
+class Projectile; // Forward declaration
+
 class GameManager {
 private:
     GameState currentState;
+    std::vector<Projectile*> activeProjectiles;
 
     GameManager(); // Private constructor
     ~GameManager() = default;
@@ -25,4 +29,8 @@ public:
 
     GameState GetState() const { return currentState; }
     void SetState(GameState state) { currentState = state; }
+
+    void AddProjectile(Projectile* p);
+    void UpdateProjectiles(float deltaTime);
+    void DrawProjectiles();
 };

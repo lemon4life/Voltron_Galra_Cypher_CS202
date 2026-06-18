@@ -2,6 +2,8 @@
 #include "Entities/Player.h"
 #include "Core/GameManager.h"
 #include "Core/AudioManager.h"
+#include "Combat/MeleeAttackStrategy.h"
+#include "Combat/RangedAttackStrategy.h"
 
 int main() {
     // Window and Game Resolutions
@@ -23,7 +25,10 @@ int main() {
 
     // Instantiate Player as a GameObject pointer
     Vector2 startPos = { (float)gameWidth / 2.0f, (float)gameHeight / 2.0f };
-    GameObject* player = new Player(startPos, texIdle, texRun);
+    Player* player = new Player(startPos, texIdle, texRun);
+
+    // Equip the player with Lance's Ranged weapon to test the gun.
+    player->SetWeapon(new RangedAttackStrategy());
 
     // Create Render Texture for internal game resolution
     RenderTexture2D target = LoadRenderTexture(gameWidth, gameHeight);
@@ -41,6 +46,7 @@ int main() {
         // Only update gameplay/entities when GameState is PLAYING
         if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
             player->Update(deltaTime);
+            GameManager::GetInstance().UpdateProjectiles(deltaTime);
         }
 
         // --- Draw ---
@@ -52,6 +58,7 @@ int main() {
             // Only draw gameplay/entities when GameState is PLAYING
             if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
                 player->Draw();
+                GameManager::GetInstance().DrawProjectiles();
             }
             
         EndTextureMode();
