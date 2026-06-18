@@ -2,6 +2,7 @@
 #include "Entities/Player.h"
 #include "Core/GameManager.h"
 #include "Core/AudioManager.h"
+#include "Core/LevelManager.h"
 #include "Combat/MeleeAttackStrategy.h"
 #include "Combat/RangedAttackStrategy.h"
 
@@ -27,6 +28,11 @@ int main() {
     Vector2 startPos = { (float)gameWidth / 2.0f, (float)gameHeight / 2.0f };
     Player* player = new Player(startPos, texIdle, texRun);
 
+    // Initialize LevelManager and load the level
+    LevelManager levelManager;
+    levelManager.LoadLevel("assets/levels/level1.txt", player);
+    GameManager::GetInstance().SetLevelManager(&levelManager);
+
     // Equip the player with Lance's Ranged weapon to test the gun.
     player->SetWeapon(new RangedAttackStrategy());
 
@@ -45,6 +51,7 @@ int main() {
         
         // Only update gameplay/entities when GameState is PLAYING
         if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
+            levelManager.UpdateLevel(deltaTime);
             player->Update(deltaTime);
             GameManager::GetInstance().UpdateProjectiles(deltaTime);
         }
@@ -57,6 +64,7 @@ int main() {
             
             // Only draw gameplay/entities when GameState is PLAYING
             if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
+                levelManager.DrawLevel();
                 player->Draw();
                 GameManager::GetInstance().DrawProjectiles();
             }

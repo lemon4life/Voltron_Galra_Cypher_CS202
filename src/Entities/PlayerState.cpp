@@ -1,6 +1,7 @@
 #include "Entities/PlayerState.h"
 #include "Entities/Player.h"
 #include "raymath.h"
+#include "Core/GameManager.h"
 
 // --- PlayerIdleState ---
 void PlayerIdleState::Enter(Player* player) {
@@ -77,11 +78,25 @@ void PlayerRunState::Update(Player* player, float deltaTime) {
         player->SetLastMoveDir(moveDir);
     }
 
-    // Update position
+    // Update position with axis-separated collision logic
     Vector2 currentPos = player->GetPosition();
+    const auto& walls = GameManager::GetInstance().GetLevelEntities();
+
+    // Check X axis
     currentPos.x += moveDir.x * player->GetSpeed() * deltaTime;
+    player->SetPosition(currentPos);
+    if (player->CheckCollision(walls)) {
+        currentPos.x -= moveDir.x * player->GetSpeed() * deltaTime; // revert X
+        player->SetPosition(currentPos);
+    }
+
+    // Check Y axis
     currentPos.y += moveDir.y * player->GetSpeed() * deltaTime;
     player->SetPosition(currentPos);
+    if (player->CheckCollision(walls)) {
+        currentPos.y -= moveDir.y * player->GetSpeed() * deltaTime; // revert Y
+        player->SetPosition(currentPos);
+    }
 
     player->UpdateAnimation(deltaTime);
 }

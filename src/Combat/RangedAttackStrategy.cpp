@@ -13,7 +13,8 @@ void RangedAttackStrategy::Attack(Vector2 playerPos, bool facingLeft) {
         playerPos.y 
     };
 
-    Projectile* p = new Projectile(spawnPos, velocity, 2.0f);
+    // Lance deals 34 damage per projectile
+    Projectile* p = new Projectile(spawnPos, velocity, 2.0f, 34);
     GameManager::GetInstance().AddProjectile(p);
 }
 

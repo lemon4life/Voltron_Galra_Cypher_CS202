@@ -9,14 +9,17 @@ enum class GameState {
 };
 
 class Projectile; // Forward declaration
+class LevelManager; // Forward declaration
+class GameObject; // Forward declaration
 
 class GameManager {
 private:
     GameState currentState;
     std::vector<Projectile*> activeProjectiles;
+    LevelManager* levelManager;
 
     GameManager(); // Private constructor
-    ~GameManager() = default;
+    ~GameManager();
 
 public:
     static GameManager& GetInstance();
@@ -29,6 +32,9 @@ public:
 
     GameState GetState() const { return currentState; }
     void SetState(GameState state) { currentState = state; }
+
+    void SetLevelManager(LevelManager* lm) { levelManager = lm; }
+    const std::vector<GameObject*>& GetLevelEntities() const;
 
     void AddProjectile(Projectile* p);
     void UpdateProjectiles(float deltaTime);

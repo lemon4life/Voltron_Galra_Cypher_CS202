@@ -1,9 +1,11 @@
 #include "Entities/PlayerDashState.h"
 #include "Entities/Player.h"
+#include "Core/GameManager.h"
+#include "raymath.h"
 
 void PlayerDashState::Enter(Player* player) {
     player->SetInvincible(true);
-    player->SetDashTimer(0.3f); // Dash duration is 0.3s
+    player->SetDashTimer(0.3f); // 0.3s dash duration
     
     // Capture the dash direction.
     // If the player was moving, lastMoveDir will have their last input direction.
@@ -26,11 +28,25 @@ void PlayerDashState::Update(Player* player, float deltaTime) {
 
     // Movement speed should be 2.5x the normal walk speed during dash
     float dashSpeed = player->GetSpeed() * 2.5f;
+    const auto& walls = GameManager::GetInstance().GetLevelEntities();
 
     Vector2 currentPos = player->GetPosition();
+
+    // Check X axis
     currentPos.x += dashDirection.x * dashSpeed * deltaTime;
+    player->SetPosition(currentPos);
+    if (player->CheckCollision(walls)) {
+        currentPos.x -= dashDirection.x * dashSpeed * deltaTime; // revert X
+        player->SetPosition(currentPos);
+    }
+
+    // Check Y axis
     currentPos.y += dashDirection.y * dashSpeed * deltaTime;
     player->SetPosition(currentPos);
+    if (player->CheckCollision(walls)) {
+        currentPos.y -= dashDirection.y * dashSpeed * deltaTime; // revert Y
+        player->SetPosition(currentPos);
+    }
 
     player->UpdateAnimation(deltaTime);
 }

@@ -1,11 +1,15 @@
 #pragma once
 #include "IAttackStrategy.h"
+#include <vector>
+
+class Enemy;
 
 class MeleeAttackStrategy : public IAttackStrategy {
 private:
     Rectangle hitbox;
     float attackTimer;
     bool isActive;
+    std::vector<Enemy*> enemiesHit;
 
 public:
     MeleeAttackStrategy();
