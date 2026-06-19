@@ -164,6 +164,23 @@ void Player::ToggleCharacter() {
     NotifyObservers();
 }
 
+void Player::ResetStats() {
+    isPlayingAsLance = true;
+    maxHealth = 150;
+    health = maxHealth;
+    maxArmor = 50;
+    armor = maxArmor;
+    speed = 150.0f;
+    timeSinceLastDamage = 0.0f;
+    
+    if (currentWeapon) {
+        delete currentWeapon;
+    }
+    currentWeapon = new RangedAttackStrategy(texGun);
+    
+    NotifyObservers();
+}
+
 Rectangle Player::GetBoundingBox() const {
     // 24x36 bounding box centered on playerPos
     return { position.x - 12.0f, position.y - 18.0f, 24.0f, 36.0f };

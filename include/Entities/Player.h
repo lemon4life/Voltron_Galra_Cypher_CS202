@@ -64,6 +64,7 @@ public:
     Vector2 GetWeaponPivot() const;
     void SetWeapon(IAttackStrategy* weapon) { currentWeapon = weapon; }
     void TakeDamage(int amount);
+    void ResetStats();
 
     Rectangle GetBoundingBox() const override;
     bool CheckCollision(const std::vector<GameObject*>& entities) const;

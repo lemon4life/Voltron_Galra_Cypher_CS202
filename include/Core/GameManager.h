@@ -39,4 +39,5 @@ public:
     void AddProjectile(Projectile* p);
     void UpdateProjectiles(float deltaTime);
     void DrawProjectiles();
+    void ClearProjectiles();
 };
