@@ -17,6 +17,8 @@ public:
     void DrawLevel();
     void UpdateLevel(float deltaTime);
     void ClearLevel();
+    void AddEntity(GameObject* entity);
+    bool IsValidSpawnLocation(Vector2 position) const;
 
     const std::vector<GameObject*>& GetEntities() const { return levelEntities; }
 };

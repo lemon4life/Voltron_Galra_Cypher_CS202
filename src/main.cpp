@@ -6,12 +6,14 @@
 #include "Combat/MeleeAttackStrategy.h"
 #include "Combat/RangedAttackStrategy.h"
 #include "UI/UIManager.h"
+#include "Core/WaveManager.h"
 
-void ResetGame(Player* player, LevelManager* levelManager) {
+void ResetGame(Player* player, LevelManager* levelManager, WaveManager* waveManager) {
     player->SetPosition({ 256.0f, 256.0f });
     player->ResetStats();
     GameManager::GetInstance().ClearProjectiles();
     levelManager->LoadLevel("assets/levels/level1.txt", player);
+    waveManager->Reset();
     GameManager::GetInstance().SetState(GameState::PLAYING);
 }
 
@@ -54,6 +56,9 @@ int main() {
     // Equip the player with Lance's Ranged weapon to test the gun.
     player->SetWeapon(new RangedAttackStrategy(texGun));
 
+    // Initialize WaveManager
+    WaveManager waveManager;
+
     // Create Render Texture for internal game resolution
     RenderTexture2D target = LoadRenderTexture(gameWidth, gameHeight);
     
@@ -79,6 +84,7 @@ int main() {
                 levelManager.UpdateLevel(deltaTime);
                 player->Update(deltaTime);
                 GameManager::GetInstance().UpdateProjectiles(deltaTime);
+                waveManager.Update(deltaTime, player, &levelManager);
                 
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
                     GameManager::GetInstance().SetState(GameState::PAUSED);
@@ -94,7 +100,7 @@ int main() {
                 break;
             case GameState::GAMEOVER:
                 if (IsKeyPressed(KEY_R)) {
-                    ResetGame(player, &levelManager);
+                    ResetGame(player, &levelManager, &waveManager);
                 }
                 break;
         }
@@ -115,6 +121,7 @@ int main() {
                     player->Draw();
                     GameManager::GetInstance().DrawProjectiles();
                     uiManager.DrawHUD();
+                    waveManager.DrawHUD();
                     break;
                 case GameState::PAUSED:
                     ClearBackground(DARKGRAY);

@@ -65,3 +65,24 @@ void LevelManager::ClearLevel() {
     }
     levelEntities.clear();
 }
+
+#include "Entities/Wall.h"
+
+void LevelManager::AddEntity(GameObject* entity) {
+    if (entity) {
+        levelEntities.push_back(entity);
+    }
+}
+
+bool LevelManager::IsValidSpawnLocation(Vector2 position) const {
+    // An enemy's bounding box is roughly 24x36, centered.
+    Rectangle spawnBox = { position.x - 12.0f, position.y - 18.0f, 24.0f, 36.0f };
+    for (auto* entity : levelEntities) {
+        if (dynamic_cast<Wall*>(entity)) {
+            if (CheckCollisionRecs(spawnBox, entity->GetBoundingBox())) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
