@@ -7,11 +7,15 @@ RangedAttackStrategy::RangedAttackStrategy(Texture2D tex) : weaponTex(tex) {
     aimAngle = 0.0f;
 }
 
+#include "Core/AudioManager.h"
+
 void RangedAttackStrategy::Attack(Vector2 playerPos) {
     Vector2 projVelocity = { aimDir.x * 400.0f, aimDir.y * 400.0f };
     // Create projectile originating at player center
     Projectile* p = new Projectile(playerPos, projVelocity, 2.0f, 34);
     GameManager::GetInstance().AddProjectile(p);
+    
+    AudioManager::GetInstance().PlaySoundEffect("shoot");
 }
 
 void RangedAttackStrategy::Update(float deltaTime) {

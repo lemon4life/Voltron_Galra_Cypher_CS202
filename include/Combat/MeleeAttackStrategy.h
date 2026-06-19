@@ -11,8 +11,10 @@ private:
     Rectangle hitbox;
     std::vector<GameObject*> enemiesHit;
 
+    Texture2D weaponTex;
+
 public:
-    MeleeAttackStrategy();
+    MeleeAttackStrategy(Texture2D tex);
     
     void Attack(Vector2 playerPos) override;
     void Update(float deltaTime) override;

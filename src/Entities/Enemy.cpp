@@ -37,9 +37,12 @@ void Enemy::ChangeState(IEnemyState* newState) {
     }
 }
 
+#include "Core/AudioManager.h"
+
 void Enemy::TakeDamage(int amount) {
     health -= amount;
     if (health < 0) health = 0;
+    AudioManager::GetInstance().PlaySoundEffect("hit");
 }
 
 Rectangle Enemy::GetBoundingBox() const {

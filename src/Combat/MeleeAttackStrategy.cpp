@@ -3,10 +3,12 @@
 #include "Entities/Enemy.h"
 #include <algorithm>
 
-MeleeAttackStrategy::MeleeAttackStrategy() : isAttacking(false), attackTimer(0.0f) {
+MeleeAttackStrategy::MeleeAttackStrategy(Texture2D tex) : weaponTex(tex), isAttacking(false), attackTimer(0.0f) {
     aimDir = {1.0f, 0.0f};
     aimAngle = 0.0f;
 }
+
+#include "Core/AudioManager.h"
 
 void MeleeAttackStrategy::Attack(Vector2 playerPos) {
     isAttacking = true;
@@ -21,6 +23,8 @@ void MeleeAttackStrategy::Attack(Vector2 playerPos) {
     Vector2 hitCenter = { playerPos.x + aimDir.x * distanceOut, playerPos.y + aimDir.y * distanceOut };
     
     hitbox = { hitCenter.x - hitboxWidth/2.0f, hitCenter.y - hitboxHeight/2.0f, hitboxWidth, hitboxHeight };
+    
+    AudioManager::GetInstance().PlaySoundEffect("swing");
 }
 
 void MeleeAttackStrategy::Update(float deltaTime) {
@@ -48,9 +52,15 @@ void MeleeAttackStrategy::Update(float deltaTime) {
 }
 
 void MeleeAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
-    if (isAttacking) {
-        Rectangle dest = { playerPos.x, playerPos.y, 54.0f, 10.0f };
-        Vector2 origin = { 0.0f, 5.0f };
-        DrawRectanglePro(dest, origin, aimAngle, RED);
+    Rectangle source = { 0.0f, 0.0f, (float)weaponTex.width, (float)weaponTex.height };
+    if (facingLeft) {
+        source.height = -source.height; 
     }
+
+    Rectangle dest = { playerPos.x, playerPos.y, (float)weaponTex.width, (float)weaponTex.height };
+    Vector2 origin = { 0.0f, (float)weaponTex.height / 2.0f };
+
+    // If attacking, maybe add a visual sweep effect here later, 
+    // but for now, hold it exactly like Lance's gun.
+    DrawTexturePro(weaponTex, source, dest, origin, aimAngle, WHITE);
 }

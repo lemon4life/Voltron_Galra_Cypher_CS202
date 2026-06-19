@@ -1,11 +1,13 @@
 #include "Entities/Player.h"
 #include "Combat/RangedAttackStrategy.h"
 #include "Combat/MeleeAttackStrategy.h"
-Player::Player(Vector2 pos, Texture2D tIdle, Texture2D tRun, Texture2D tGun)
+Player::Player(Vector2 pos, Texture2D tIdle, Texture2D tRun, Texture2D tGun, Texture2D tKeith, Texture2D tSword)
     : Character(pos, 150.0f, 150, tIdle), // Lance's stats: 150 speed, 150 HP
       texIdle(tIdle),
       texRun(tRun),
       texGun(tGun),
+      texKeithRun(tKeith),
+      texSword(tSword),
       currentWeapon(nullptr),
       currentFrame(0),
       frameTimer(0.0f),
@@ -155,11 +157,13 @@ void Player::ToggleCharacter() {
         maxHealth = 150;
         health = (int)(maxHealth * hpPercent);
         currentWeapon = new RangedAttackStrategy(texGun);
+        texture = texIdle;
     } else {
         speed = 220.0f;
         maxHealth = 100;
         health = (int)(maxHealth * hpPercent);
-        currentWeapon = new MeleeAttackStrategy();
+        currentWeapon = new MeleeAttackStrategy(texSword);
+        texture = texKeithRun;
     }
     NotifyObservers();
 }
@@ -177,6 +181,7 @@ void Player::ResetStats() {
         delete currentWeapon;
     }
     currentWeapon = new RangedAttackStrategy(texGun);
+    texture = texIdle;
     
     NotifyObservers();
 }

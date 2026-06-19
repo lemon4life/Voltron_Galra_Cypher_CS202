@@ -15,6 +15,8 @@ private:
     Texture2D texIdle;
     Texture2D texRun;
     Texture2D texGun;
+    Texture2D texKeithRun;
+    Texture2D texSword;
 
     // Animation specific
     int currentFrame;
@@ -49,7 +51,7 @@ private:
     Vector2 lastMoveDir; // Store last movement vector for locking dash direction
 
 public:
-    Player(Vector2 pos, Texture2D tIdle, Texture2D tRun, Texture2D tGun);
+    Player(Vector2 pos, Texture2D tIdle, Texture2D tRun, Texture2D tGun, Texture2D tKeith, Texture2D tSword);
     ~Player() override;
 
     void Update(float deltaTime) override;
@@ -77,8 +79,8 @@ public:
     PlayerRunState* GetRunState() { return &runState; }
     PlayerDashState* GetDashState() { return &dashState; }
     PlayerAttackState* GetAttackState() { return &attackState; }
-    Texture2D GetIdleTexture() const { return texIdle; }
-    Texture2D GetRunTexture() const { return texRun; }
+    Texture2D GetIdleTexture() const { return isPlayingAsLance ? texIdle : texKeithRun; }
+    Texture2D GetRunTexture() const { return isPlayingAsLance ? texRun : texKeithRun; }
 
     // Animation helpers
     void UpdateAnimation(float deltaTime);

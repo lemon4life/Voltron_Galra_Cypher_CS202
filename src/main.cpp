@@ -31,14 +31,24 @@ int main() {
     // Initialize AudioManager Singleton (Initializes Audio Device)
     AudioManager::GetInstance();
 
-    // Load Textures
+    // Load Audio
+    AudioManager::GetInstance().LoadSound("shoot", "assets/audio/shoot.wav");
+    AudioManager::GetInstance().LoadSound("swing", "assets/audio/swing.wav");
+    AudioManager::GetInstance().LoadSound("hit", "assets/audio/hit.wav");
+    AudioManager::GetInstance().LoadMusic("bgm", "assets/audio/bgm.mp3");
+
+    // Start background music
+    AudioManager::GetInstance().PlayMusicTrack("bgm");
+
     Texture2D texIdle = LoadTexture("assets/sprites/Lance_Run_No_Arm.png"); // Use armless for idle too since we draw arm over it
     Texture2D texRun = LoadTexture("assets/sprites/Lance_Run_No_Arm.png");
     Texture2D texGun = LoadTexture("assets/sprites/Firearm-Arm.png");
+    Texture2D texKeith = LoadTexture("assets/sprites/Keith_Run_No_Arm.png");
+    Texture2D texSword = LoadTexture("assets/sprites/Sword.png");
 
     // Instantiate Player as a GameObject pointer
     Vector2 startPos = { (float)gameWidth / 2.0f, (float)gameHeight / 2.0f };
-    Player* player = new Player(startPos, texIdle, texRun, texGun);
+    Player* player = new Player(startPos, texIdle, texRun, texGun, texKeith, texSword);
 
     // Initialize UI Manager
     UIManager uiManager;
@@ -71,6 +81,9 @@ int main() {
     while (!WindowShouldClose()) {
         // --- Update ---
         float deltaTime = GetFrameTime();
+        
+        // Update music stream continuously regardless of game state
+        AudioManager::GetInstance().UpdateMusicStream();
         
         GameState state = GameManager::GetInstance().GetState();
         
@@ -167,6 +180,9 @@ int main() {
     delete player;
     UnloadTexture(texIdle);
     UnloadTexture(texRun);
+    UnloadTexture(texGun);
+    UnloadTexture(texKeith);
+    UnloadTexture(texSword);
     UnloadRenderTexture(target);
     CloseWindow();
 
