@@ -4,15 +4,17 @@
 #include "Entities/PlayerDashState.h"
 #include "Entities/PlayerAttackState.h"
 #include "Combat/IAttackStrategy.h"
+#include "Core/ISubject.h"
 #include <vector>
 
-class Player : public Character {
+class Player : public Character, public ISubject {
 private:
     IPlayerState* currentState;
     IAttackStrategy* currentWeapon;
     
     Texture2D texIdle;
     Texture2D texRun;
+    Texture2D texGun;
 
     // Animation specific
     int currentFrame;
@@ -47,16 +49,19 @@ private:
     Vector2 lastMoveDir; // Store last movement vector for locking dash direction
 
 public:
-    Player(Vector2 pos, Texture2D tIdle, Texture2D tRun);
+    Player(Vector2 pos, Texture2D tIdle, Texture2D tRun, Texture2D tGun);
     ~Player() override;
 
     void Update(float deltaTime) override;
     void Draw() override;
 
+    void NotifyObservers() override;
+
     void ToggleCharacter();
 
     void ChangeState(IPlayerState* newState);
     void Attack();
+    Vector2 GetWeaponPivot() const;
     void SetWeapon(IAttackStrategy* weapon) { currentWeapon = weapon; }
     void TakeDamage(int amount);
 

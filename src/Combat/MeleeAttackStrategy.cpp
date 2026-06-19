@@ -3,54 +3,54 @@
 #include "Entities/Enemy.h"
 #include <algorithm>
 
-MeleeAttackStrategy::MeleeAttackStrategy() : attackTimer(0.0f), isActive(false), hitbox{0, 0, 0, 0} {}
+MeleeAttackStrategy::MeleeAttackStrategy() : isAttacking(false), attackTimer(0.0f) {
+    aimDir = {1.0f, 0.0f};
+    aimAngle = 0.0f;
+}
 
-void MeleeAttackStrategy::Attack(Vector2 playerPos, bool facingLeft) {
-    isActive = true;
+void MeleeAttackStrategy::Attack(Vector2 playerPos) {
+    isAttacking = true;
     attackTimer = 0.2f; // Active for 0.2 seconds
     enemiesHit.clear(); // Reset hit enemies for new attack
 
-    // The melee attack should be a 36x48 hitbox exactly left or right of the player
-    float hitboxWidth = 36.0f;
+    float hitboxWidth = 54.0f; 
     float hitboxHeight = 48.0f; 
 
-    // playerPos is the CENTER of the player sprite.
-    // To align the hitbox, we calculate from the player's edge (18px from center)
-    // The hitbox's (x,y) in Raylib is its top-left corner. Top edge is playerPos.y - 24.
-    if (facingLeft) {
-        // Immediately to the left of the player
-        hitbox = { playerPos.x - 18.0f - hitboxWidth, playerPos.y - 24.0f, hitboxWidth, hitboxHeight };
-    } else {
-        // Immediately to the right of the player
-        hitbox = { playerPos.x + 18.0f, playerPos.y - 24.0f, hitboxWidth, hitboxHeight };
-    }
+    // Offset the center of the hitbox along the aimDir vector
+    float distanceOut = 20.0f;
+    Vector2 hitCenter = { playerPos.x + aimDir.x * distanceOut, playerPos.y + aimDir.y * distanceOut };
+    
+    hitbox = { hitCenter.x - hitboxWidth/2.0f, hitCenter.y - hitboxHeight/2.0f, hitboxWidth, hitboxHeight };
 }
 
 void MeleeAttackStrategy::Update(float deltaTime) {
-    if (isActive) {
-        // Check collision with enemies
-        for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
-            if (Enemy* e = dynamic_cast<Enemy*>(entity)) {
-                if (CheckCollisionRecs(hitbox, e->GetBoundingBox())) {
-                    // Make sure we only hit each enemy once per swing
-                    if (std::find(enemiesHit.begin(), enemiesHit.end(), e) == enemiesHit.end()) {
-                        e->TakeDamage(50); // Keith's melee deals 50 damage
-                        enemiesHit.push_back(e);
+    if (isAttacking) {
+        attackTimer -= deltaTime;
+        if (attackTimer <= 0.0f) {
+            isAttacking = false;
+        } else {
+            // Check collisions with all entities using GameManager
+            std::vector<GameObject*> entities = GameManager::GetInstance().GetLevelEntities();
+            for (auto* entity : entities) {
+                if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
+                    // If we haven't hit this enemy yet during this attack swing
+                    if (std::find(enemiesHit.begin(), enemiesHit.end(), enemy) == enemiesHit.end()) {
+                        if (CheckCollisionRecs(hitbox, enemy->GetBoundingBox())) {
+                            // Keith deals exactly 50 damage
+                            enemy->TakeDamage(50);
+                            enemiesHit.push_back(enemy);
+                        }
                     }
                 }
             }
         }
-
-        attackTimer -= deltaTime;
-        if (attackTimer <= 0.0f) {
-            isActive = false;
-        }
     }
 }
 
-void MeleeAttackStrategy::Draw() {
-    if (isActive) {
-        // Draw the temporary hitbox in RED for debugging
-        DrawRectangleRec(hitbox, RED);
+void MeleeAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
+    if (isAttacking) {
+        Rectangle dest = { playerPos.x, playerPos.y, 54.0f, 10.0f };
+        Vector2 origin = { 0.0f, 5.0f };
+        DrawRectanglePro(dest, origin, aimAngle, RED);
     }
 }

@@ -12,7 +12,7 @@ void PlayerIdleState::Enter(Player* player) {
 
 void PlayerIdleState::Update(Player* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
-    if (IsKeyPressed(KEY_J) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         player->ChangeState(player->GetAttackState());
         return;
     }
@@ -24,7 +24,7 @@ void PlayerIdleState::Update(Player* player, float deltaTime) {
     }
 
     // Check for input to transition to Run state
-    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_UP) || IsKeyDown(KEY_DOWN)) {
+    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_A) || IsKeyDown(KEY_W) || IsKeyDown(KEY_S)) {
         player->ChangeState(player->GetRunState());
         return;
     }
@@ -44,7 +44,7 @@ void PlayerRunState::Enter(Player* player) {
 
 void PlayerRunState::Update(Player* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
-    if (IsKeyPressed(KEY_J) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         player->ChangeState(player->GetAttackState());
         return;
     }
@@ -57,20 +57,16 @@ void PlayerRunState::Update(Player* player, float deltaTime) {
 
     Vector2 moveDir = { 0.0f, 0.0f };
 
-    if (IsKeyDown(KEY_RIGHT)) moveDir.x += 1.0f;
-    if (IsKeyDown(KEY_LEFT))  moveDir.x -= 1.0f;
-    if (IsKeyDown(KEY_UP))    moveDir.y -= 1.0f;
-    if (IsKeyDown(KEY_DOWN))  moveDir.y += 1.0f;
+    if (IsKeyDown(KEY_D)) moveDir.x += 1.0f;
+    if (IsKeyDown(KEY_A)) moveDir.x -= 1.0f;
+    if (IsKeyDown(KEY_W)) moveDir.y -= 1.0f;
+    if (IsKeyDown(KEY_S)) moveDir.y += 1.0f;
 
     // Check if we stopped moving
     if (moveDir.x == 0.0f && moveDir.y == 0.0f) {
         player->ChangeState(player->GetIdleState());
         return;
     }
-
-    // Determine facing direction for texture flipping
-    if (moveDir.x < 0.0f) player->SetFacingLeft(true);
-    else if (moveDir.x > 0.0f) player->SetFacingLeft(false);
 
     // Normalize diagonal movement and store last direction
     if (Vector2Length(moveDir) > 0.0f) {

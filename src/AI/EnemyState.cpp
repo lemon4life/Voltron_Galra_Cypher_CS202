@@ -74,12 +74,22 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
         enemy->SetAttackCooldown(cd - deltaTime);
     }
 
-    // Check collision with Player to deal damage
-    if (enemy->GetAttackCooldown() <= 0.0f) {
-        if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTarget()->GetBoundingBox())) {
+    // Check collision with Player for overlap resolution and damage
+    if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTarget()->GetBoundingBox())) {
+        // Attack if cooldown allows
+        if (enemy->GetAttackCooldown() <= 0.0f) {
             enemy->GetTarget()->TakeDamage(enemy->GetDamage());
-            enemy->SetAttackCooldown(1.0f); // 1 second cooldown between attacks
+            enemy->SetAttackCooldown(1.0f); // 1 second cooldown
         }
+        
+        // Separation knockback (push enemy away from player to prevent freeze/deadlock)
+        Vector2 pushDir = Vector2Subtract(ePos, pPos);
+        if (Vector2Length(pushDir) == 0.0f) pushDir = {1.0f, 0.0f}; // Fallback if exactly on top
+        pushDir = Vector2Normalize(pushDir);
+        
+        ePos.x += pushDir.x * 20.0f;
+        ePos.y += pushDir.y * 20.0f;
+        enemy->SetPosition(ePos);
     }
 }
 

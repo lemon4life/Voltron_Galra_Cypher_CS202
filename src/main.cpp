@@ -5,6 +5,7 @@
 #include "Core/LevelManager.h"
 #include "Combat/MeleeAttackStrategy.h"
 #include "Combat/RangedAttackStrategy.h"
+#include "UI/UIManager.h"
 
 int main() {
     // Window and Game Resolutions
@@ -21,12 +22,21 @@ int main() {
     AudioManager::GetInstance();
 
     // Load Textures
-    Texture2D texIdle = LoadTexture("assets/sprites/Lance_Idle.png");
-    Texture2D texRun = LoadTexture("assets/sprites/Lance_Fight_Run.png");
+    Texture2D texIdle = LoadTexture("assets/sprites/Lance_Run_No_Arm.png"); // Use armless for idle too since we draw arm over it
+    Texture2D texRun = LoadTexture("assets/sprites/Lance_Run_No_Arm.png");
+    Texture2D texGun = LoadTexture("assets/sprites/Firearm-Arm.png");
 
     // Instantiate Player as a GameObject pointer
     Vector2 startPos = { (float)gameWidth / 2.0f, (float)gameHeight / 2.0f };
-    Player* player = new Player(startPos, texIdle, texRun);
+    Player* player = new Player(startPos, texIdle, texRun, texGun);
+
+    // Initialize UI Manager
+    UIManager uiManager;
+    player->AddObserver(&uiManager);
+    
+    // player constructor notifies observers, but we just added the observer. 
+    // Let's manually trigger it once so the UI knows the starting state.
+    player->NotifyObservers();
 
     // Initialize LevelManager and load the level
     LevelManager levelManager;
@@ -34,7 +44,7 @@ int main() {
     GameManager::GetInstance().SetLevelManager(&levelManager);
 
     // Equip the player with Lance's Ranged weapon to test the gun.
-    player->SetWeapon(new RangedAttackStrategy());
+    player->SetWeapon(new RangedAttackStrategy(texGun));
 
     // Create Render Texture for internal game resolution
     RenderTexture2D target = LoadRenderTexture(gameWidth, gameHeight);
@@ -67,6 +77,7 @@ int main() {
                 levelManager.DrawLevel();
                 player->Draw();
                 GameManager::GetInstance().DrawProjectiles();
+                uiManager.DrawHUD();
             }
             
         EndTextureMode();

@@ -1,10 +1,11 @@
 #include "Entities/Player.h"
 #include "Combat/RangedAttackStrategy.h"
 #include "Combat/MeleeAttackStrategy.h"
-Player::Player(Vector2 pos, Texture2D tIdle, Texture2D tRun)
+Player::Player(Vector2 pos, Texture2D tIdle, Texture2D tRun, Texture2D tGun)
     : Character(pos, 150.0f, 150, tIdle), // Lance's stats: 150 speed, 150 HP
       texIdle(tIdle),
       texRun(tRun),
+      texGun(tGun),
       currentWeapon(nullptr),
       currentFrame(0),
       frameTimer(0.0f),
@@ -24,6 +25,13 @@ Player::Player(Vector2 pos, Texture2D tIdle, Texture2D tRun)
 {
     currentState = &idleState;
     currentState->Enter(this);
+    NotifyObservers();
+}
+
+void Player::NotifyObservers() {
+    for (auto* observer : observers) {
+        observer->OnPlayerStatsChanged(health, maxHealth, armor, maxArmor, isPlayingAsLance);
+    }
 }
 
 Player::~Player() {
@@ -37,9 +45,20 @@ Player::~Player() {
 
 
 
+Vector2 Player::GetWeaponPivot() const {
+    Vector2 pivot = position;
+    // Align to the back shoulder (left side when facing right, right side when facing left)
+    if (facingLeft) {
+        pivot.x += 12.0f;
+    } else {
+        pivot.x -= 12.0f;
+    }
+    return pivot;
+}
+
 void Player::Attack() {
     if (currentWeapon) {
-        currentWeapon->Attack(position, facingLeft);
+        currentWeapon->Attack(GetWeaponPivot());
     }
 }
 
@@ -66,9 +85,29 @@ void Player::TakeDamage(int amount) {
         health -= amount;
     }
     if (health < 0) health = 0;
+    NotifyObservers();
 }
 
 void Player::Update(float deltaTime) {
+    // 360-degree aiming math
+    Vector2 mouseScreen = GetMousePosition();
+    // Assuming 1024x1024 window and 512x512 internal render texture
+    Vector2 mouseWorld = { mouseScreen.x / 2.0f, mouseScreen.y / 2.0f }; 
+    Vector2 dir = Vector2Subtract(mouseWorld, position);
+    float distance = Vector2Length(dir);
+    if (distance > 0.0f) {
+        dir = Vector2Normalize(dir);
+    } else {
+        dir = {1.0f, 0.0f};
+    }
+    float angle = atan2f(dir.y, dir.x) * (180.0f / PI);
+    
+    facingLeft = (mouseWorld.x < position.x);
+
+    if (currentWeapon) {
+        currentWeapon->SetAim(dir, angle);
+    }
+
     // Decrement dash cooldown over time
     if (dashCooldown > 0.0f) {
         dashCooldown -= deltaTime;
@@ -91,6 +130,7 @@ void Player::Update(float deltaTime) {
             armor += 1;
             armorRegenTimer = 0.0f;
             if (armor > maxArmor) armor = maxArmor;
+            NotifyObservers();
         }
     }
 
@@ -114,13 +154,14 @@ void Player::ToggleCharacter() {
         speed = 150.0f;
         maxHealth = 150;
         health = (int)(maxHealth * hpPercent);
-        currentWeapon = new RangedAttackStrategy();
+        currentWeapon = new RangedAttackStrategy(texGun);
     } else {
         speed = 220.0f;
         maxHealth = 100;
         health = (int)(maxHealth * hpPercent);
         currentWeapon = new MeleeAttackStrategy();
     }
+    NotifyObservers();
 }
 
 Rectangle Player::GetBoundingBox() const {
@@ -178,6 +219,6 @@ void Player::Draw() {
     DrawTexturePro(texture, sourceRec, destRec, origin, 0.0f, tint);
     
     if (currentWeapon) {
-        currentWeapon->Draw();
+        currentWeapon->Draw(GetWeaponPivot(), facingLeft);
     }
 }

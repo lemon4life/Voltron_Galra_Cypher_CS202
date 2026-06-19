@@ -2,26 +2,32 @@
 #include "Entities/Projectile.h"
 #include "Core/GameManager.h"
 
-void RangedAttackStrategy::Attack(Vector2 playerPos, bool facingLeft) {
-    float speed = 400.0f;
-    Vector2 velocity = { facingLeft ? -speed : speed, 0.0f };
-    
-    // playerPos is the CENTER of the 36x48 sprite.
-    // 24px from the bottom is exactly the middle of the sprite, which is playerPos.y.
-    Vector2 spawnPos = {
-        facingLeft ? playerPos.x - 18.0f : playerPos.x + 18.0f, // 18px is the edge of the 36px wide player
-        playerPos.y 
-    };
+RangedAttackStrategy::RangedAttackStrategy(Texture2D tex) : weaponTex(tex) {
+    aimDir = {1.0f, 0.0f};
+    aimAngle = 0.0f;
+}
 
-    // Lance deals 34 damage per projectile
-    Projectile* p = new Projectile(spawnPos, velocity, 2.0f, 34);
+void RangedAttackStrategy::Attack(Vector2 playerPos) {
+    Vector2 projVelocity = { aimDir.x * 400.0f, aimDir.y * 400.0f };
+    // Create projectile originating at player center
+    Projectile* p = new Projectile(playerPos, projVelocity, 2.0f, 34);
     GameManager::GetInstance().AddProjectile(p);
 }
 
 void RangedAttackStrategy::Update(float deltaTime) {
-    // Projectiles are managed by GameManager
+    // Implementation not needed for basic projectiles (GameManager handles updates)
 }
 
-void RangedAttackStrategy::Draw() {
-    // Projectiles are managed by GameManager
+void RangedAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
+    Rectangle source = { 0.0f, 0.0f, (float)weaponTex.width, (float)weaponTex.height };
+    // If aiming left, flip the gun vertically so it isn't upside down
+    if (facingLeft) {
+        source.height = -source.height; 
+    }
+
+    Rectangle dest = { playerPos.x, playerPos.y, (float)weaponTex.width, (float)weaponTex.height };
+    // Origin at the base/hilt
+    Vector2 origin = { 0.0f, (float)weaponTex.height / 2.0f };
+
+    DrawTexturePro(weaponTex, source, dest, origin, aimAngle, WHITE);
 }
