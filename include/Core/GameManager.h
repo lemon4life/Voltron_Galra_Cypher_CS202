@@ -3,6 +3,7 @@
 
 enum class GameState {
     MENU,
+    HUB,
     PLAYING,
     PAUSED,
     GAMEOVER

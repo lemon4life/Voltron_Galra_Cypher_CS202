@@ -7,6 +7,9 @@
 #include "Combat/RangedAttackStrategy.h"
 #include "UI/UIManager.h"
 #include "Core/WaveManager.h"
+#include "Core/DialogueManager.h"
+#include "Entities/NPC.h"
+#include "raymath.h"
 
 void ResetGame(Player* player, LevelManager* levelManager, WaveManager* waveManager) {
     player->SetPosition({ 256.0f, 256.0f });
@@ -40,15 +43,23 @@ int main() {
     // Start background music
     AudioManager::GetInstance().PlayMusicTrack("bgm");
 
-    Texture2D texIdle = LoadTexture("assets/sprites/Lance_Run_No_Arm.png"); // Use armless for idle too since we draw arm over it
-    Texture2D texRun = LoadTexture("assets/sprites/Lance_Run_No_Arm.png");
-    Texture2D texGun = LoadTexture("assets/sprites/Firearm-Arm.png");
-    Texture2D texKeith = LoadTexture("assets/sprites/Keith_Run_No_Arm.png");
-    Texture2D texSword = LoadTexture("assets/sprites/Sword.png");
+    CharacterSprites lanceSprites;
+    lanceSprites.restIdle = LoadTexture("assets/sprites/Lance/Rest_Idle.png");
+    lanceSprites.restRun = LoadTexture("assets/sprites/Lance/Rest_Run.png");
+    lanceSprites.battleIdle = LoadTexture("assets/sprites/Lance/Battle_Idle.png");
+    lanceSprites.battleRun = LoadTexture("assets/sprites/Lance/Battle_Run.png");
+    lanceSprites.weapon = LoadTexture("assets/sprites/Lance/Weapon_Static.png");
+
+    CharacterSprites keithSprites;
+    keithSprites.restIdle = LoadTexture("assets/sprites/Keith/Rest_Idle.png");
+    keithSprites.restRun = LoadTexture("assets/sprites/Keith/Rest_Run.png");
+    keithSprites.battleIdle = LoadTexture("assets/sprites/Keith/Battle_Idle.png");
+    keithSprites.battleRun = LoadTexture("assets/sprites/Keith/Battle_Run.png");
+    keithSprites.weapon = LoadTexture("assets/sprites/Keith/Weapon_Static.png");
 
     // Instantiate Player as a GameObject pointer
     Vector2 startPos = { (float)gameWidth / 2.0f, (float)gameHeight / 2.0f };
-    Player* player = new Player(startPos, texIdle, texRun, texGun, texKeith, texSword);
+    Player* player = new Player(startPos, lanceSprites, keithSprites);
 
     // Initialize UI Manager
     UIManager uiManager;
@@ -58,13 +69,35 @@ int main() {
     // Let's manually trigger it once so the UI knows the starting state.
     player->NotifyObservers();
 
-    // Initialize LevelManager and load the level
+    // Setup Shiro Dialogue Tree
+    std::vector<DialogueNode> shiroDialogue = {
+        {
+            "Shiro",
+            "Paladins, the Galra forces are amassing.",
+            {"What are your orders?", "Let's go!"},
+            {1, 2}
+        },
+        {
+            "Shiro",
+            "Clear out the enemy strongholds immediately.",
+            {"Understood. (Start Mission)"},
+            {-1}
+        },
+        {
+            "Shiro",
+            "That's the spirit. Stay sharp out there.",
+            {"(Start Mission)"},
+            {-1}
+        }
+    };
+
+    // Initialize LevelManager and load the hub level first
     LevelManager levelManager;
-    levelManager.LoadLevel("assets/levels/level1.txt", player);
+    levelManager.LoadLevel("assets/levels/hub.txt", player);
     GameManager::GetInstance().SetLevelManager(&levelManager);
 
     // Equip the player with Lance's Ranged weapon to test the gun.
-    player->SetWeapon(new RangedAttackStrategy(texGun));
+    player->SetWeapon(new RangedAttackStrategy(lanceSprites.weapon));
 
     // Initialize WaveManager
     WaveManager waveManager;
@@ -90,7 +123,34 @@ int main() {
         switch (state) {
             case GameState::MENU:
                 if (IsKeyPressed(KEY_ENTER)) {
-                    GameManager::GetInstance().SetState(GameState::PLAYING);
+                    GameManager::GetInstance().SetState(GameState::HUB);
+                }
+                break;
+            case GameState::HUB:
+                if (DialogueManager::GetInstance().IsActive()) {
+                    DialogueManager::GetInstance().Update(deltaTime);
+                } else {
+                    if (DialogueManager::GetInstance().IsMissionRequested()) {
+                        DialogueManager::GetInstance().ClearMissionRequest();
+                        levelManager.LoadLevel("assets/levels/level1.txt", player);
+                        waveManager.Reset();
+                        GameManager::GetInstance().SetState(GameState::PLAYING);
+                        break;
+                    }
+                    
+                    levelManager.UpdateLevel(deltaTime);
+                    player->Update(deltaTime);
+                    
+                    if (IsKeyPressed(KEY_E)) {
+                        for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
+                            if (NPC* npc = dynamic_cast<NPC*>(entity)) {
+                                if (Vector2Distance(player->GetPosition(), npc->GetPosition()) < 50.0f) {
+                                    DialogueManager::GetInstance().StartDialogue(shiroDialogue);
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
                 break;
             case GameState::PLAYING:
@@ -127,6 +187,13 @@ int main() {
                     ClearBackground(DARKGRAY);
                     DrawText("Voltron: Mission Galra Cypher", 70, 200, 24, WHITE);
                     DrawText("Press ENTER to Start", 140, 300, 20, LIGHTGRAY);
+                    break;
+                case GameState::HUB:
+                    ClearBackground(DARKGREEN); // Peaceful color
+                    levelManager.DrawLevel();
+                    player->Draw();
+                    uiManager.DrawHUD(); // Show HUD even in HUB
+                    DialogueManager::GetInstance().Draw();
                     break;
                 case GameState::PLAYING:
                     ClearBackground(DARKGRAY);
@@ -178,11 +245,16 @@ int main() {
 
     // De-Initialization
     delete player;
-    UnloadTexture(texIdle);
-    UnloadTexture(texRun);
-    UnloadTexture(texGun);
-    UnloadTexture(texKeith);
-    UnloadTexture(texSword);
+    UnloadTexture(lanceSprites.restIdle);
+    UnloadTexture(lanceSprites.restRun);
+    UnloadTexture(lanceSprites.battleIdle);
+    UnloadTexture(lanceSprites.battleRun);
+    UnloadTexture(lanceSprites.weapon);
+    UnloadTexture(keithSprites.restIdle);
+    UnloadTexture(keithSprites.restRun);
+    UnloadTexture(keithSprites.battleIdle);
+    UnloadTexture(keithSprites.battleRun);
+    UnloadTexture(keithSprites.weapon);
     UnloadRenderTexture(target);
     CloseWindow();
 

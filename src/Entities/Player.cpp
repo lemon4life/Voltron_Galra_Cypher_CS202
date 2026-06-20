@@ -1,13 +1,12 @@
 #include "Entities/Player.h"
 #include "Combat/RangedAttackStrategy.h"
 #include "Combat/MeleeAttackStrategy.h"
-Player::Player(Vector2 pos, Texture2D tIdle, Texture2D tRun, Texture2D tGun, Texture2D tKeith, Texture2D tSword)
-    : Character(pos, 150.0f, 150, tIdle), // Lance's stats: 150 speed, 150 HP
-      texIdle(tIdle),
-      texRun(tRun),
-      texGun(tGun),
-      texKeithRun(tKeith),
-      texSword(tSword),
+#include "Core/GameManager.h"
+
+Player::Player(Vector2 pos, CharacterSprites lance, CharacterSprites keith)
+    : Character(pos, 150.0f, 150, lance.battleIdle), // Default texture will be overridden in Enter
+      lanceSprites(lance),
+      keithSprites(keith),
       currentWeapon(nullptr),
       currentFrame(0),
       frameTimer(0.0f),
@@ -156,14 +155,14 @@ void Player::ToggleCharacter() {
         speed = 150.0f;
         maxHealth = 150;
         health = (int)(maxHealth * hpPercent);
-        currentWeapon = new RangedAttackStrategy(texGun);
-        texture = texIdle;
+        currentWeapon = new RangedAttackStrategy(lanceSprites.weapon);
+        texture = GetIdleTexture();
     } else {
         speed = 220.0f;
         maxHealth = 100;
         health = (int)(maxHealth * hpPercent);
-        currentWeapon = new MeleeAttackStrategy(texSword);
-        texture = texKeithRun;
+        currentWeapon = new MeleeAttackStrategy(keithSprites.weapon);
+        texture = GetIdleTexture();
     }
     NotifyObservers();
 }
@@ -180,8 +179,8 @@ void Player::ResetStats() {
     if (currentWeapon) {
         delete currentWeapon;
     }
-    currentWeapon = new RangedAttackStrategy(texGun);
-    texture = texIdle;
+    currentWeapon = new RangedAttackStrategy(lanceSprites.weapon);
+    texture = GetIdleTexture();
     
     NotifyObservers();
 }
@@ -240,7 +239,21 @@ void Player::Draw() {
 
     DrawTexturePro(texture, sourceRec, destRec, origin, 0.0f, tint);
     
-    if (currentWeapon) {
+    if (currentWeapon && GameManager::GetInstance().GetState() != GameState::HUB) {
         currentWeapon->Draw(GetWeaponPivot(), facingLeft);
     }
+}
+
+Texture2D Player::GetIdleTexture() const {
+    if (GameManager::GetInstance().GetState() == GameState::HUB) {
+        return isPlayingAsLance ? lanceSprites.restIdle : keithSprites.restIdle;
+    }
+    return isPlayingAsLance ? lanceSprites.battleIdle : keithSprites.battleIdle;
+}
+
+Texture2D Player::GetRunTexture() const {
+    if (GameManager::GetInstance().GetState() == GameState::HUB) {
+        return isPlayingAsLance ? lanceSprites.restRun : keithSprites.restRun;
+    }
+    return isPlayingAsLance ? lanceSprites.battleRun : keithSprites.battleRun;
 }
