@@ -21,11 +21,11 @@ void ResetGame(Player* player, LevelManager* levelManager, WaveManager* waveMana
 }
 
 int main() {
-    // Window and Game Resolutions
-    const int windowWidth = 1024;
+    // Window and Game Resolutions (4:3 aspect ratio landscape approx)
+    const int windowWidth = 1366;
     const int windowHeight = 1024;
 
-    const int gameWidth = 512;
+    const int gameWidth = 683;
     const int gameHeight = 512;
 
     // Initialize Window
@@ -38,7 +38,12 @@ int main() {
     AudioManager::GetInstance().LoadSound("shoot", "assets/audio/shoot.wav");
     AudioManager::GetInstance().LoadSound("swing", "assets/audio/swing.wav");
     AudioManager::GetInstance().LoadSound("hit", "assets/audio/hit.wav");
+    AudioManager::GetInstance().LoadSound("blip", "assets/audio/blip.wav");
+    AudioManager::GetInstance().LoadSound("footstep", "assets/audio/footstep.wav");
     AudioManager::GetInstance().LoadMusic("bgm", "assets/audio/bgm.mp3");
+
+    // Initialize Dialogue Assets
+    DialogueManager::GetInstance().InitializeAssets();
 
     // Start background music
     AudioManager::GetInstance().PlayMusicTrack("bgm");
@@ -69,29 +74,7 @@ int main() {
     // Let's manually trigger it once so the UI knows the starting state.
     player->NotifyObservers();
 
-    // Setup Shiro Dialogue Tree
-    std::vector<DialogueNode> shiroDialogue = {
-        {
-            "Shiro",
-            "Paladins, the Galra forces are amassing.",
-            {"What are your orders?", "Let's go!"},
-            {1, 2}
-        },
-        {
-            "Shiro",
-            "Clear out the enemy strongholds immediately.",
-            {"Understood. (Start Mission)"},
-            {-1}
-        },
-        {
-            "Shiro",
-            "That's the spirit. Stay sharp out there.",
-            {"(Start Mission)"},
-            {-1}
-        }
-    };
-
-    // Initialize LevelManager and load the hub level first
+    // Setup LevelManager
     LevelManager levelManager;
     levelManager.LoadLevel("assets/levels/hub.txt", player);
     GameManager::GetInstance().SetLevelManager(&levelManager);
@@ -102,11 +85,16 @@ int main() {
     // Initialize WaveManager
     WaveManager waveManager;
 
-    // Create Render Texture for internal game resolution
+    // Initialize render texture for internal game resolution
     RenderTexture2D target = LoadRenderTexture(gameWidth, gameHeight);
-    
-    // Use Point filtering to keep pixel art crisp during scaling
-    SetTextureFilter(target.texture, TEXTURE_FILTER_POINT);
+    SetTextureFilter(target.texture, TEXTURE_FILTER_POINT); // keep pixel art crisp
+
+    // Initialize Camera
+    Camera2D camera = { 0 };
+    camera.target = { 0.0f, 0.0f };
+    camera.offset = { std::round(gameWidth / 2.0f), std::round(gameHeight / 2.0f) };
+    camera.rotation = 0.0f;
+    camera.zoom = 1.0f;
 
     SetTargetFPS(60);
 
@@ -118,6 +106,12 @@ int main() {
         // Update music stream continuously regardless of game state
         AudioManager::GetInstance().UpdateMusicStream();
         
+        // Pass mouse coordinates to player for aiming
+        Vector2 mouseScreen = GetMousePosition();
+        Vector2 mouseInternal = { mouseScreen.x * ((float)gameWidth / (float)windowWidth), mouseScreen.y * ((float)gameHeight / (float)windowHeight) };
+        Vector2 mouseWorld = GetScreenToWorld2D(mouseInternal, camera);
+        player->SetAimTarget(mouseWorld);
+
         GameState state = GameManager::GetInstance().GetState();
         
         switch (state) {
@@ -132,20 +126,20 @@ int main() {
                 } else {
                     if (DialogueManager::GetInstance().IsMissionRequested()) {
                         DialogueManager::GetInstance().ClearMissionRequest();
-                        levelManager.LoadLevel("assets/levels/level1.txt", player);
-                        waveManager.Reset();
-                        GameManager::GetInstance().SetState(GameState::PLAYING);
+                        ResetGame(player, &levelManager, &waveManager);
                         break;
                     }
                     
                     levelManager.UpdateLevel(deltaTime);
                     player->Update(deltaTime);
+                    camera.target = { std::round(player->GetPosition().x), std::round(player->GetPosition().y) };
                     
                     if (IsKeyPressed(KEY_E)) {
                         for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
                             if (NPC* npc = dynamic_cast<NPC*>(entity)) {
                                 if (Vector2Distance(player->GetPosition(), npc->GetPosition()) < 50.0f) {
-                                    DialogueManager::GetInstance().StartDialogue(shiroDialogue);
+                                    DialogueManager::GetInstance().LoadDialogueTree("assets/story/intro.txt");
+                                    DialogueManager::GetInstance().StartDialogue();
                                     break;
                                 }
                             }
@@ -158,6 +152,7 @@ int main() {
                 player->Update(deltaTime);
                 GameManager::GetInstance().UpdateProjectiles(deltaTime);
                 waveManager.Update(deltaTime, player, &levelManager);
+                camera.target = { std::round(player->GetPosition().x), std::round(player->GetPosition().y) };
                 
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
                     GameManager::GetInstance().SetState(GameState::PAUSED);
@@ -180,46 +175,48 @@ int main() {
 
         // --- Draw ---
         
-        // 1. Draw to the internal render texture (512x512)
+        // 1. Draw to the internal render texture
         BeginTextureMode(target);
-            switch (state) {
-                case GameState::MENU:
-                    ClearBackground(DARKGRAY);
-                    DrawText("Voltron: Mission Galra Cypher", 70, 200, 24, WHITE);
-                    DrawText("Press ENTER to Start", 140, 300, 20, LIGHTGRAY);
-                    break;
-                case GameState::HUB:
-                    ClearBackground(DARKGREEN); // Peaceful color
+            if (state == GameState::MENU) {
+                ClearBackground(DARKGRAY);
+                DrawText("Voltron: Mission Galra Cypher", 70, 200, 24, WHITE);
+                DrawText("Press ENTER to Start", 140, 300, 20, LIGHTGRAY);
+            } else if (state == GameState::GAMEOVER) {
+                ClearBackground(BLACK);
+                DrawText("GAME OVER", 180, 220, 30, RED);
+                DrawText("Press R to Restart", 160, 280, 20, LIGHTGRAY);
+            } else {
+                BeginMode2D(camera);
+                
+                if (state == GameState::HUB) {
+                    ClearBackground(DARKGREEN);
                     levelManager.DrawLevel();
                     player->Draw();
-                    uiManager.DrawHUD(); // Show HUD even in HUB
-                    DialogueManager::GetInstance().Draw();
-                    break;
-                case GameState::PLAYING:
+                } else if (state == GameState::PLAYING) {
                     ClearBackground(DARKGRAY);
                     levelManager.DrawLevel();
                     player->Draw();
                     GameManager::GetInstance().DrawProjectiles();
-                    uiManager.DrawHUD();
+                } else if (state == GameState::PAUSED) {
+                    ClearBackground(DARKGRAY);
+                    levelManager.DrawLevel();
+                    player->Draw();
+                    GameManager::GetInstance().DrawProjectiles();
+                }
+                
+                EndMode2D();
+                
+                // Draw HUD outside of camera
+                if (state == GameState::HUB) {
+                    uiManager.DrawHUD(gameWidth, gameHeight);
+                } else if (state == GameState::PLAYING) {
+                    uiManager.DrawHUD(gameWidth, gameHeight);
                     waveManager.DrawHUD();
-                    break;
-                case GameState::PAUSED:
-                    ClearBackground(DARKGRAY);
-                    levelManager.DrawLevel();
-                    player->Draw();
-                    GameManager::GetInstance().DrawProjectiles();
-                    uiManager.DrawHUD();
-                    
-                    // Dim overlay
+                } else if (state == GameState::PAUSED) {
+                    uiManager.DrawHUD(gameWidth, gameHeight);
                     DrawRectangle(0, 0, gameWidth, gameHeight, {0, 0, 0, 150});
-                    DrawText("PAUSED", 200, 220, 30, WHITE);
-                    DrawText("Press P to Resume", 160, 280, 20, LIGHTGRAY);
-                    break;
-                case GameState::GAMEOVER:
-                    ClearBackground(BLACK);
-                    DrawText("GAME OVER", 180, 220, 30, RED);
-                    DrawText("Press R to Restart", 160, 280, 20, LIGHTGRAY);
-                    break;
+                    DrawText("PAUSED", gameWidth / 2 - MeasureText("PAUSED", 40) / 2, gameHeight / 2 - 20, 40, RAYWHITE);
+                }
             }
         EndTextureMode();
 
@@ -239,6 +236,11 @@ int main() {
             Vector2 origin = { 0.0f, 0.0f };
             
             DrawTexturePro(target.texture, sourceRec, destRec, origin, 0.0f, WHITE);
+            
+            // Draw high-res UI elements on top of the scaled game
+            if (state == GameState::HUB) {
+                DialogueManager::GetInstance().Draw();
+            }
             
         EndDrawing();
     }

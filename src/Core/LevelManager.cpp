@@ -1,5 +1,6 @@
 #include "Core/LevelManager.h"
 #include "Core/EntityFactory.h"
+#include "Core/GameManager.h"
 #include <fstream>
 #include <iostream>
 
@@ -22,7 +23,12 @@ void LevelManager::LoadLevel(const std::string& filepath, Player* player) {
 
     std::string line;
     int row = 0;
+    levelWidth = 0.0f;
+    levelHeight = 0.0f;
     while (std::getline(file, line)) {
+        float currentRowWidth = line.length() * 32.0f;
+        if (currentRowWidth > levelWidth) levelWidth = currentRowWidth;
+        
         for (int col = 0; col < line.length(); ++col) {
             char type = line[col];
             // Calculate screen position (32x32 tiles)
@@ -35,7 +41,11 @@ void LevelManager::LoadLevel(const std::string& filepath, Player* player) {
         }
         row++;
     }
+    levelHeight = row * 32.0f;
     file.close();
+    
+    // Store in GameManager for global access
+    GameManager::GetInstance().SetLevelBounds(levelWidth, levelHeight);
 }
 
 void LevelManager::UpdateLevel(float deltaTime) {

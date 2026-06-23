@@ -11,7 +11,7 @@ void UIManager::OnPlayerStatsChanged(int hp, int maxHp, int armor, int maxArmor,
     this->isLance = isLance;
 }
 
-void UIManager::DrawHUD() {
+void UIManager::DrawHUD(int screenWidth, int screenHeight) {
     // Top-left offset
     int startX = 10;
     int startY = 10;
@@ -29,8 +29,9 @@ void UIManager::DrawHUD() {
     DrawRectangle(startX + 10, startY + 30, 128, 16, DARKGRAY);
     DrawRectangle(startX + 10, startY + 30, (int)(128 * hpPercent), 16, GREEN);
 
-    // Character Name
+    // Character Name (Right aligned)
     std::string nameText = isLance ? "LANCE" : "KEITH";
     Color nameColor = isLance ? SKYBLUE : RED;
-    DrawText(nameText.c_str(), startX + 148 + 10, startY + 10, 20, nameColor);
+    int textWidth = MeasureText(nameText.c_str(), 20);
+    DrawText(nameText.c_str(), screenWidth - textWidth - 10, startY + 10, 20, nameColor);
 }

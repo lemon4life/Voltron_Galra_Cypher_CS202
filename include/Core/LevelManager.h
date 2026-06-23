@@ -19,6 +19,13 @@ public:
     void ClearLevel();
     void AddEntity(GameObject* entity);
     bool IsValidSpawnLocation(Vector2 position) const;
+    
+    float GetLevelWidth() const { return levelWidth; }
+    float GetLevelHeight() const { return levelHeight; }
 
     const std::vector<GameObject*>& GetEntities() const { return levelEntities; }
+
+private:
+    float levelWidth;
+    float levelHeight;
 };

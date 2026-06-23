@@ -54,6 +54,9 @@ private:
 
     bool isInvincible;
     Vector2 lastMoveDir; // Store last movement vector for locking dash direction
+    
+    float footstepTimer;
+    Vector2 aimTarget;
 
 public:
     Player(Vector2 pos, CharacterSprites lance, CharacterSprites keith);
@@ -61,6 +64,8 @@ public:
 
     void Update(float deltaTime) override;
     void Draw() override;
+    
+    void SetAimTarget(Vector2 target) { aimTarget = target; }
 
     void NotifyObservers() override;
 
@@ -72,6 +77,7 @@ public:
     void SetWeapon(IAttackStrategy* weapon) { currentWeapon = weapon; }
     void TakeDamage(int amount);
     void ResetStats();
+    void UpdateFootsteps(float dt);
 
     Rectangle GetBoundingBox() const override;
     bool CheckCollision(const std::vector<GameObject*>& entities) const;
@@ -103,4 +109,5 @@ public:
     void SetInvincible(bool invincible) { isInvincible = invincible; }
     Vector2 GetLastMoveDir() const { return lastMoveDir; }
     void SetLastMoveDir(Vector2 dir) { lastMoveDir = dir; }
+    bool IsPlayingAsLance() const { return isPlayingAsLance; }
 };

@@ -33,6 +33,14 @@ void AudioManager::LoadSound(const std::string& name, const std::string& filepat
 
 void AudioManager::PlaySoundEffect(const std::string& name) {
     if (sounds.find(name) != sounds.end()) {
+        SetSoundPitch(sounds[name], 1.0f); // Reset pitch in case it was altered
+        ::PlaySound(sounds[name]);
+    }
+}
+
+void AudioManager::PlaySoundEffectPitch(const std::string& name, float pitch) {
+    if (sounds.find(name) != sounds.end()) {
+        SetSoundPitch(sounds[name], pitch);
         ::PlaySound(sounds[name]);
     }
 }

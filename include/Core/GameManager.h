@@ -16,7 +16,12 @@ class GameObject; // Forward declaration
 class GameManager {
 private:
     GameState currentState;
+    std::vector<GameObject*> levelEntities;
     std::vector<Projectile*> activeProjectiles;
+    
+    float levelWidth = 0.0f;
+    float levelHeight = 0.0f;
+
     LevelManager* levelManager;
 
     GameManager(); // Private constructor
@@ -31,11 +36,18 @@ public:
     GameManager(GameManager&&) = delete;
     GameManager& operator=(GameManager&&) = delete;
 
+    // --- Accessors ---
     GameState GetState() const { return currentState; }
-    void SetState(GameState state) { currentState = state; }
+    void SetState(GameState newState) { currentState = newState; }
+
+    void SetLevelBounds(float w, float h) { levelWidth = w; levelHeight = h; }
+    float GetLevelWidth() const { return levelWidth; }
+    float GetLevelHeight() const { return levelHeight; }
+
+    const std::vector<GameObject*>& GetLevelEntities() const;
+    void SetLevelEntities(const std::vector<GameObject*>& entities) { levelEntities = entities; }
 
     void SetLevelManager(LevelManager* lm) { levelManager = lm; }
-    const std::vector<GameObject*>& GetLevelEntities() const;
 
     void AddProjectile(Projectile* p);
     void UpdateProjectiles(float deltaTime);

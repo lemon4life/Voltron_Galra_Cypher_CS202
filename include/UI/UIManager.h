@@ -16,5 +16,5 @@ public:
 
     void OnPlayerStatsChanged(int hp, int maxHp, int armor, int maxArmor, bool isLance) override;
     
-    void DrawHUD();
+    void DrawHUD(int screenWidth, int screenHeight);
 };

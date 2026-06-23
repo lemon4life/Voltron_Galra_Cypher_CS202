@@ -14,7 +14,7 @@ void EnemyIdleState::Update(Enemy* enemy, float deltaTime) {
     Vector2 ePos = enemy->GetPosition();
     Vector2 pPos = enemy->GetTarget()->GetPosition();
     
-    if (Vector2Distance(ePos, pPos) < 200.0f) {
+    if (Vector2Distance(ePos, pPos) < 1000.0f) {
         enemy->ChangeState(enemy->GetChaseState());
     }
 }
@@ -30,7 +30,7 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
     Vector2 ePos = enemy->GetPosition();
     Vector2 pPos = enemy->GetTarget()->GetPosition();
     
-    if (Vector2Distance(ePos, pPos) > 300.0f) {
+    if (Vector2Distance(ePos, pPos) > 1200.0f) {
         enemy->ChangeState(enemy->GetIdleState());
         return;
     }

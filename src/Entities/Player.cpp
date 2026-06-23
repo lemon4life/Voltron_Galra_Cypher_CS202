@@ -2,6 +2,7 @@
 #include "Combat/RangedAttackStrategy.h"
 #include "Combat/MeleeAttackStrategy.h"
 #include "Core/GameManager.h"
+#include "Core/AudioManager.h"
 
 Player::Player(Vector2 pos, CharacterSprites lance, CharacterSprites keith)
     : Character(pos, 150.0f, 150, lance.battleIdle), // Default texture will be overridden in Enter
@@ -22,7 +23,8 @@ Player::Player(Vector2 pos, CharacterSprites lance, CharacterSprites keith)
       dashCooldown(0.0f),
       dashTimer(0.0f),
       isInvincible(false),
-      lastMoveDir{1.0f, 0.0f} // Initialize pointing right
+      lastMoveDir{1.0f, 0.0f}, // Initialize pointing right
+      footstepTimer(0.0f)
 {
     currentState = &idleState;
     currentState->Enter(this);
@@ -90,11 +92,7 @@ void Player::TakeDamage(int amount) {
 }
 
 void Player::Update(float deltaTime) {
-    // 360-degree aiming math
-    Vector2 mouseScreen = GetMousePosition();
-    // Assuming 1024x1024 window and 512x512 internal render texture
-    Vector2 mouseWorld = { mouseScreen.x / 2.0f, mouseScreen.y / 2.0f }; 
-    Vector2 dir = Vector2Subtract(mouseWorld, position);
+    Vector2 dir = Vector2Subtract(aimTarget, position);
     float distance = Vector2Length(dir);
     if (distance > 0.0f) {
         dir = Vector2Normalize(dir);
@@ -103,7 +101,12 @@ void Player::Update(float deltaTime) {
     }
     float angle = atan2f(dir.y, dir.x) * (180.0f / PI);
     
-    facingLeft = (mouseWorld.x < position.x);
+    if (GameManager::GetInstance().GetState() == GameState::HUB || GameManager::GetInstance().GetState() == GameState::MENU) {
+        if (lastMoveDir.x < 0.0f) facingLeft = true;
+        else if (lastMoveDir.x > 0.0f) facingLeft = false;
+    } else {
+        facingLeft = (aimTarget.x < position.x);
+    }
 
     if (currentWeapon) {
         currentWeapon->SetAim(dir, angle);
@@ -210,14 +213,20 @@ void Player::UpdateAnimation(float deltaTime) {
 
 void Player::Draw() {
     // Calculate the frame width dynamically based on the active texture
-    // and the number of frames (both sprite sheets have 12 frames, but idle is 32px wide and run is 36px wide per frame)
+    // and the number of frames (both sprite sheets have 12 frames)
     const float frameWidth = (float)texture.width / numFrames;
-    const float frameHeight = 48.0f;
+    const float frameHeight = (float)texture.height;
 
     // Source rectangle based on current frame and facing direction
-    // A negative width in DrawTexturePro flips the texture horizontally natively in Raylib
+    // A negative width in DrawTexturePro flips the texture horizontally natively in Raylib.
+    // However, if width is negative, sourceRec.x must be shifted to the right edge of the frame.
+    float sourceX = (float)currentFrame * frameWidth;
+    if (facingLeft) {
+        sourceX += frameWidth;
+    }
+
     Rectangle sourceRec = {
-        (float)currentFrame * frameWidth,
+        sourceX,
         0.0f,
         facingLeft ? -frameWidth : frameWidth,
         frameHeight
@@ -225,8 +234,8 @@ void Player::Draw() {
 
     // Destination rectangle centered exactly on the player's position
     Rectangle destRec = {
-        position.x,
-        position.y,
+        std::round(position.x),
+        std::round(position.y),
         frameWidth,
         frameHeight
     };
@@ -245,15 +254,26 @@ void Player::Draw() {
 }
 
 Texture2D Player::GetIdleTexture() const {
-    if (GameManager::GetInstance().GetState() == GameState::HUB) {
+    GameState state = GameManager::GetInstance().GetState();
+    if (state == GameState::HUB || state == GameState::MENU) {
         return isPlayingAsLance ? lanceSprites.restIdle : keithSprites.restIdle;
     }
     return isPlayingAsLance ? lanceSprites.battleIdle : keithSprites.battleIdle;
 }
 
 Texture2D Player::GetRunTexture() const {
-    if (GameManager::GetInstance().GetState() == GameState::HUB) {
+    GameState state = GameManager::GetInstance().GetState();
+    if (state == GameState::HUB || state == GameState::MENU) {
         return isPlayingAsLance ? lanceSprites.restRun : keithSprites.restRun;
     }
     return isPlayingAsLance ? lanceSprites.battleRun : keithSprites.battleRun;
+}
+
+void Player::UpdateFootsteps(float dt) {
+    footstepTimer += dt;
+    if (footstepTimer >= 0.3f) {
+        footstepTimer = 0.0f;
+        // Include audio manager specifically here or make sure it's included at top
+        AudioManager::GetInstance().PlaySoundEffect("footstep");
+    }
 }

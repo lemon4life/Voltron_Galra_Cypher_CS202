@@ -22,6 +22,7 @@ public:
 
     void LoadSound(const std::string& name, const std::string& filepath);
     void PlaySoundEffect(const std::string& name);
+    void PlaySoundEffectPitch(const std::string& name, float pitch);
     
     void LoadMusic(const std::string& name, const std::string& filepath);
     void PlayMusicTrack(const std::string& name);

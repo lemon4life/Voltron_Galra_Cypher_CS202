@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <map>
 #include "raylib.h"
 
 struct DialogueNode {
@@ -13,13 +14,21 @@ struct DialogueNode {
 class DialogueManager {
 private:
     DialogueManager();
-    ~DialogueManager() = default;
+    ~DialogueManager();
 
     std::vector<DialogueNode> currentTree;
     bool isDialogueActive;
     int currentNode;
     int selectedOption;
     bool missionRequested;
+
+    // Typewriter effect
+    float typewriterTimer;
+    int visibleCharCount;
+
+    // Visual Assets
+    Font dialogFont;
+    std::map<std::string, Texture2D> portraits;
 
 public:
     static DialogueManager& GetInstance();
@@ -28,7 +37,10 @@ public:
     DialogueManager(const DialogueManager&) = delete;
     DialogueManager& operator=(const DialogueManager&) = delete;
 
-    void StartDialogue(const std::vector<DialogueNode>& tree);
+    void InitializeAssets();
+    void LoadDialogueTree(const std::string& filepath);
+    
+    void StartDialogue();
     void Update(float deltaTime);
     void Draw();
     

@@ -12,15 +12,17 @@ void PlayerIdleState::Enter(Player* player) {
 
 void PlayerIdleState::Update(Player* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        player->ChangeState(player->GetAttackState());
-        return;
-    }
+    if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            player->ChangeState(player->GetAttackState());
+            return;
+        }
 
-    // Check for Dash Input (Spacebar and cooldown off)
-    if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
-        player->ChangeState(player->GetDashState());
-        return;
+        // Check for Dash Input (Spacebar and cooldown off)
+        if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
+            player->ChangeState(player->GetDashState());
+            return;
+        }
     }
 
     // Check for input to transition to Run state
@@ -44,15 +46,17 @@ void PlayerRunState::Enter(Player* player) {
 
 void PlayerRunState::Update(Player* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        player->ChangeState(player->GetAttackState());
-        return;
-    }
+    if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            player->ChangeState(player->GetAttackState());
+            return;
+        }
 
-    // Check for Dash Input (Spacebar and cooldown off)
-    if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
-        player->ChangeState(player->GetDashState());
-        return;
+        // Check for Dash Input (Spacebar and cooldown off)
+        if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
+            player->ChangeState(player->GetDashState());
+            return;
+        }
     }
 
     Vector2 moveDir = { 0.0f, 0.0f };
@@ -72,14 +76,25 @@ void PlayerRunState::Update(Player* player, float deltaTime) {
     if (Vector2Length(moveDir) > 0.0f) {
         moveDir = Vector2Normalize(moveDir);
         player->SetLastMoveDir(moveDir);
+        player->UpdateFootsteps(deltaTime);
     }
 
     // Update position with axis-separated collision logic
     Vector2 currentPos = player->GetPosition();
     const auto& walls = GameManager::GetInstance().GetLevelEntities();
+    
+    // Get level bounds
+    float levelWidth = GameManager::GetInstance().GetLevelWidth();
+    float levelHeight = GameManager::GetInstance().GetLevelHeight();
 
     // Check X axis
     currentPos.x += moveDir.x * player->GetSpeed() * deltaTime;
+    // Bound X
+    if (levelWidth > 0.0f) {
+        if (currentPos.x < 16.0f) currentPos.x = 16.0f;
+        if (currentPos.x > levelWidth - 16.0f) currentPos.x = levelWidth - 16.0f;
+    }
+    
     player->SetPosition(currentPos);
     if (player->CheckCollision(walls)) {
         currentPos.x -= moveDir.x * player->GetSpeed() * deltaTime; // revert X
@@ -88,6 +103,12 @@ void PlayerRunState::Update(Player* player, float deltaTime) {
 
     // Check Y axis
     currentPos.y += moveDir.y * player->GetSpeed() * deltaTime;
+    // Bound Y
+    if (levelHeight > 0.0f) {
+        if (currentPos.y < 16.0f) currentPos.y = 16.0f;
+        if (currentPos.y > levelHeight - 16.0f) currentPos.y = levelHeight - 16.0f;
+    }
+    
     player->SetPosition(currentPos);
     if (player->CheckCollision(walls)) {
         currentPos.y -= moveDir.y * player->GetSpeed() * deltaTime; // revert Y

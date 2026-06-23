@@ -7,4 +7,10 @@ public:
     void Update(float deltaTime) override;
     void Draw() override;
     Rectangle GetBoundingBox() const override;
+
+private:
+    int currentFrame;
+    float frameTimer;
+    float frameDuration;
+    int numFrames;
 };
