@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include "raylib.h"
 #include "Entities/GameObject.h"
 
 class Player;
@@ -19,6 +20,7 @@ public:
     void ClearLevel();
     void AddEntity(GameObject* entity);
     bool IsValidSpawnLocation(Vector2 position) const;
+    bool IsSolidCollision(Rectangle box) const;
     
     float GetLevelWidth() const { return levelWidth; }
     float GetLevelHeight() const { return levelHeight; }
@@ -28,4 +30,9 @@ public:
 private:
     float levelWidth;
     float levelHeight;
+    int gridRows;
+    int gridCols;
+    std::vector<std::vector<int>> mapGridLayer1;
+    std::vector<std::vector<int>> mapGridLayer2;
+    Texture2D tileset;
 };

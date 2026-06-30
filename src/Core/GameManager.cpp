@@ -33,26 +33,41 @@ void GameManager::AddProjectile(Projectile* p) {
 }
 
 #include "Entities/Enemy.h"
-#include "Entities/Wall.h"
+#include "Entities/Player.h"
 
-void GameManager::UpdateProjectiles(float deltaTime) {
+void GameManager::UpdateProjectiles(float deltaTime, Player* player) {
     const auto& entities = GetLevelEntities();
 
     for (auto it = activeProjectiles.begin(); it != activeProjectiles.end();) {
         (*it)->Update(deltaTime);
         
-        // Check for collision with entities
         bool hitSomething = false;
         Rectangle pBox = (*it)->GetBoundingBox();
-        for (auto* entity : entities) {
-            if (CheckCollisionRecs(pBox, entity->GetBoundingBox())) {
-                if (Enemy* e = dynamic_cast<Enemy*>(entity)) {
-                    e->TakeDamage((*it)->GetDamage());
-                    hitSomething = true;
-                    break;
-                } else if (dynamic_cast<Wall*>(entity)) {
-                    hitSomething = true;
-                    break;
+
+        // If it's an enemy projectile, check collision with Player
+        if ((*it)->IsEnemyProjectile() && player) {
+            if (CheckCollisionRecs(pBox, player->GetBoundingBox())) {
+                player->TakeDamage((*it)->GetDamage());
+                hitSomething = true;
+            }
+        }
+
+        // Check collision with environment and enemies (if it's a player projectile)
+        if (!hitSomething) {
+            // First check level manager for static walls
+            if (levelManager && levelManager->IsSolidCollision(pBox)) {
+                hitSomething = true;
+            } else {
+                for (auto* entity : entities) {
+                    if (CheckCollisionRecs(pBox, entity->GetBoundingBox())) {
+                        if (Enemy* e = dynamic_cast<Enemy*>(entity)) {
+                            if (!(*it)->IsEnemyProjectile()) {
+                                e->TakeDamage((*it)->GetDamage());
+                                hitSomething = true;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }

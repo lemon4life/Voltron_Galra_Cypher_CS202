@@ -274,6 +274,6 @@ void Player::UpdateFootsteps(float dt) {
     if (footstepTimer >= 0.3f) {
         footstepTimer = 0.0f;
         // Include audio manager specifically here or make sure it's included at top
-        AudioManager::GetInstance().PlaySoundEffect("footstep");
+        AudioManager::GetInstance().PlaySequentialFootstep();
     }
 }
