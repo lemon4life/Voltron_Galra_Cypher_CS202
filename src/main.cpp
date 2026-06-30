@@ -15,7 +15,7 @@ void ResetGame(Player* player, LevelManager* levelManager, WaveManager* waveMana
     player->SetPosition({ 256.0f, 256.0f });
     player->ResetStats();
     GameManager::GetInstance().ClearProjectiles();
-    levelManager->LoadLevel("assets/levels/level1.txt", player);
+    levelManager->LoadLevel("assets/map/level1_Tile Layer 1.csv", player);
     waveManager->Reset();
     GameManager::GetInstance().SetState(GameState::PLAYING);
 }
@@ -35,12 +35,7 @@ int main() {
     AudioManager::GetInstance();
 
     // Load Audio
-    AudioManager::GetInstance().LoadSound("shoot", "assets/audio/shoot.wav");
-    AudioManager::GetInstance().LoadSound("swing", "assets/audio/swing.wav");
-    AudioManager::GetInstance().LoadSound("hit", "assets/audio/hit.wav");
-    AudioManager::GetInstance().LoadSound("blip", "assets/audio/blip.wav");
-    AudioManager::GetInstance().LoadSound("footstep", "assets/audio/footstep.wav");
-    AudioManager::GetInstance().LoadMusic("bgm", "assets/audio/bgm.mp3");
+    AudioManager::GetInstance().Initialize();
 
     // Initialize Dialogue Assets
     DialogueManager::GetInstance().InitializeAssets();
@@ -117,6 +112,7 @@ int main() {
         switch (state) {
             case GameState::MENU:
                 if (IsKeyPressed(KEY_ENTER)) {
+                    AudioManager::GetInstance().PlayRandomClick();
                     GameManager::GetInstance().SetState(GameState::HUB);
                 }
                 break;
@@ -150,7 +146,7 @@ int main() {
             case GameState::PLAYING:
                 levelManager.UpdateLevel(deltaTime);
                 player->Update(deltaTime);
-                GameManager::GetInstance().UpdateProjectiles(deltaTime);
+                GameManager::GetInstance().UpdateProjectiles(deltaTime, player);
                 waveManager.Update(deltaTime, player, &levelManager);
                 camera.target = { std::round(player->GetPosition().x), std::round(player->GetPosition().y) };
                 
@@ -171,6 +167,12 @@ int main() {
                     ResetGame(player, &levelManager, &waveManager);
                 }
                 break;
+            case GameState::VICTORY:
+                if (IsKeyPressed(KEY_R)) {
+                    GameManager::GetInstance().SetState(GameState::MENU);
+                    ResetGame(player, &levelManager, &waveManager);
+                }
+                break;
         }
 
         // --- Draw ---
@@ -185,6 +187,10 @@ int main() {
                 ClearBackground(BLACK);
                 DrawText("GAME OVER", 180, 220, 30, RED);
                 DrawText("Press R to Restart", 160, 280, 20, LIGHTGRAY);
+            } else if (state == GameState::VICTORY) {
+                ClearBackground(RAYWHITE);
+                DrawText("MISSION ACCOMPLISHED", 90, 200, 40, GOLD);
+                DrawText("Press R to return to Main Menu", 150, 300, 20, DARKGRAY);
             } else {
                 BeginMode2D(camera);
                 
