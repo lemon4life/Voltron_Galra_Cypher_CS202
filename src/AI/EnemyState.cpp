@@ -2,7 +2,8 @@
 #include "Entities/Enemy.h"
 #include "Entities/Player.h"
 #include "Core/GameManager.h"
-#include "Entities/Wall.h"
+#include "Core/LevelManager.h"
+#include "Entities/Projectile.h"
 #include "raymath.h"
 
 // --- EnemyIdleState ---
@@ -42,36 +43,46 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
     }
     
     float speed = enemy->GetSpeed();
-    const auto& entities = GameManager::GetInstance().GetLevelEntities();
-
-    // Filter walls only for collision to prevent enemies blocking each other completely
-    std::vector<GameObject*> walls;
-    for (auto* e : entities) {
-        if (dynamic_cast<Wall*>(e)) {
-            walls.push_back(e);
-        }
-    }
+    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+    float levelWidth = GameManager::GetInstance().GetLevelWidth();
+    float levelHeight = GameManager::GetInstance().GetLevelHeight();
 
     // X Axis Wall Sliding
     ePos.x += dir.x * speed * deltaTime;
+    // Bounds check
+    if (ePos.x < 0.0f) ePos.x = 0.0f;
+    if (ePos.x > levelWidth) ePos.x = levelWidth;
+    
     enemy->SetPosition(ePos);
-    if (enemy->CheckCollision(walls)) {
+    if (levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox())) {
         ePos.x -= dir.x * speed * deltaTime; // Revert X
         enemy->SetPosition(ePos);
     }
 
     // Y Axis Wall Sliding
     ePos.y += dir.y * speed * deltaTime;
+    // Bounds check
+    if (ePos.y < 0.0f) ePos.y = 0.0f;
+    if (ePos.y > levelHeight) ePos.y = levelHeight;
+    
     enemy->SetPosition(ePos);
-    if (enemy->CheckCollision(walls)) {
+    if (levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox())) {
         ePos.y -= dir.y * speed * deltaTime; // Revert Y
         enemy->SetPosition(ePos);
     }
 
     // Handle Attack Cooldown
-    float cd = enemy->GetAttackCooldown();
-    if (cd > 0.0f) {
-        enemy->SetAttackCooldown(cd - deltaTime);
+    if (enemy->GetAttackCooldown() > 0.0f) {
+        enemy->SetAttackCooldown(enemy->GetAttackCooldown() - deltaTime);
+    }
+    
+    if (enemy->GetType() == EnemyType::BOSS) {
+        float skillCd = enemy->GetBossSkillCooldown() - deltaTime;
+        enemy->SetBossSkillCooldown(skillCd);
+        if (skillCd <= 0.0f) {
+            enemy->ChangeState(enemy->GetBossRangedAttackState());
+            return;
+        }
     }
 
     // Check collision with Player for overlap resolution and damage
@@ -94,3 +105,51 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
 }
 
 void EnemyChaseState::Exit(Enemy* enemy) {}
+
+void BossRangedAttackState::Enter(Enemy* enemy) {
+    enemy->SetBurstCount(3);
+    enemy->SetBurstTimer(0.0f);
+}
+
+void BossRangedAttackState::Update(Enemy* enemy, float deltaTime) {
+    if (!enemy->GetTarget()) {
+        enemy->ChangeState(enemy->GetIdleState());
+        return;
+    }
+
+    float timer = enemy->GetBurstTimer() + deltaTime;
+    
+    // Fire every 0.15 seconds
+    if (timer >= 0.15f) {
+        timer = 0.0f;
+        int count = enemy->GetBurstCount();
+        
+        // Fire projectile
+        Vector2 pos = enemy->GetPosition();
+        Vector2 tPos = enemy->GetTarget()->GetPosition();
+        Vector2 dir = Vector2Subtract(tPos, pos);
+        if (Vector2Length(dir) > 0.0f) {
+            dir = Vector2Normalize(dir);
+        } else {
+            dir = {1.0f, 0.0f};
+        }
+        
+        Vector2 vel = { dir.x * 300.0f, dir.y * 300.0f };
+        Projectile* p = new Projectile(pos, vel, 2.0f, enemy->GetDamage(), true);
+        GameManager::GetInstance().AddProjectile(p);
+        
+        count--;
+        enemy->SetBurstCount(count);
+        
+        if (count <= 0) {
+            enemy->SetBossSkillCooldown(2.0f);
+            enemy->ChangeState(enemy->GetChaseState());
+            return;
+        }
+    }
+    enemy->SetBurstTimer(timer);
+}
+
+void BossRangedAttackState::Exit(Enemy* enemy) {
+    // Reset any state if needed
+}
