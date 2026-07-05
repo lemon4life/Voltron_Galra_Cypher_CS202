@@ -1,12 +1,20 @@
 #include "Entities/Enemy.h"
 #include "Entities/Player.h"
 #include "Core/GameManager.h"
+#include <algorithm>
+#include <iostream>
 
 Enemy::Enemy(Vector2 pos, Player* t)
-    : GameObject(pos), health(100), maxHealth(100), speed(100.0f), damage(15), target(t), currentState(nullptr), attackCooldown(0.0f)
+    : GameObject(pos), health(100), maxHealth(100), speed(100.f), damage(15), target(t), currentState(nullptr), attackCooldown(0.1f)
 {
-    currentState = &idleState;
-    currentState->Enter(this);
+
+}
+
+
+Enemy::Enemy(Vector2 pos, Player* t, int imaxHealth, float ispeed, int idamage, float iattackCooldown)
+    : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed), damage(idamage), target(t), currentState(nullptr), attackCooldown(iattackCooldown)
+{
+
 }
 
 Enemy::~Enemy() {
@@ -39,10 +47,52 @@ void Enemy::ChangeState(IEnemyState* newState) {
 
 #include "Core/AudioManager.h"
 
+void Enemy::AddObserver(IEnemyObserver* observer) {
+    if (!observer) return;
+
+    if (std::find(observers.begin(), observers.end(), observer) == observers.end()) {
+        observers.push_back(observer);
+    }
+}
+
+void Enemy::RemoveObserver(IEnemyObserver* observer) {
+    observers.erase(
+        std::remove(observers.begin(), observers.end(), observer),
+        observers.end()
+    );
+}
+
+void Enemy::NotifyEnemyPathFind() {
+    for (IEnemyObserver* observer : observers) {
+        observer->OnEnemyPathFind(this);
+    }
+}
+
+void Enemy::NotifyEnemyPathFindEnded() {
+    for (IEnemyObserver* observer : observers) {
+        observer->OnEnemyPathFindEnded(this);
+    }
+}
+
+void Enemy::NotifyEnemyDied() {
+    for (IEnemyObserver* observer : observers) {
+        observer->OnEnemyDied(this);
+    }
+}
+
 void Enemy::TakeDamage(int amount) {
+    if (health <= 0) return;
+
+    std::cout << "Take Dam: " << amount << std::endl;
+
     health -= amount;
     if (health < 0) health = 0;
     AudioManager::GetInstance().PlaySoundEffect("hit");
+
+    if (health <= 0 && !deathNotified) {
+        deathNotified = true;
+        NotifyEnemyDied();
+    }
 }
 
 Rectangle Enemy::GetBoundingBox() const {

@@ -3,6 +3,8 @@
 #include "Core/GameManager.h"
 #include <fstream>
 #include <iostream>
+#include <cmath>
+#include <algorithm>
 
 #include "Entities/Enemy.h"
 
@@ -26,6 +28,15 @@ void LevelManager::LoadLevel(const std::string& filepath, Player* player) {
     levelWidth = 0.0f;
     levelHeight = 0.0f;
     while (std::getline(file, line)) {
+
+        // Read level from external file and store it 
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+
+        levelGrid.push_back(line);
+
+
         float currentRowWidth = line.length() * 32.0f;
         if (currentRowWidth > levelWidth) levelWidth = currentRowWidth;
         
@@ -36,7 +47,7 @@ void LevelManager::LoadLevel(const std::string& filepath, Player* player) {
             
             GameObject* entity = EntityFactory::CreateEntity(type, position, player);
             if (entity != nullptr) {
-                levelEntities.push_back(entity);
+                AddEntity(entity);
             }
         }
         row++;
@@ -49,18 +60,35 @@ void LevelManager::LoadLevel(const std::string& filepath, Player* player) {
 }
 
 void LevelManager::UpdateLevel(float deltaTime) {
-    for (auto it = levelEntities.begin(); it != levelEntities.end();) {
-        (*it)->Update(deltaTime);
-        
-        if (Enemy* e = dynamic_cast<Enemy*>(*it)) {
-            if (e->IsDead()) {
-                delete *it;
-                it = levelEntities.erase(it);
+    ProcessPendingRemovals();
+
+    enemyPathManager.Update(this, deltaTime);
+    
+    for (auto* entity : levelEntities) {
+        if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
+            //std::cout << "Update " << enemy->IsDead() << std::endl;
+            if (enemy->IsDead()) {
                 continue;
             }
         }
-        ++it;
+        entity->Update(deltaTime);
     }
+
+    ProcessPendingRemovals();
+}
+
+void LevelManager::ProcessPendingRemovals() {
+    for (Enemy* enemy : pendingRemoval) {
+        enemyPathManager.RemoveEnemy(enemy);
+
+        auto it = std::find(levelEntities.begin(), levelEntities.end(), enemy);
+        if (it != levelEntities.end()) {
+            enemy->RemoveObserver(this);
+            delete *it;
+            levelEntities.erase(it);
+        }
+    }
+    pendingRemoval.clear();
 }
 
 void LevelManager::DrawLevel() {
@@ -71,15 +99,24 @@ void LevelManager::DrawLevel() {
 
 void LevelManager::ClearLevel() {
     for (auto* entity : levelEntities) {
+        if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
+            enemyPathManager.RemoveEnemy(enemy);
+            enemy->RemoveObserver(this);
+        }
         delete entity;
     }
     levelEntities.clear();
+    levelGrid.clear();
+    pendingRemoval.clear();
 }
 
 #include "Entities/Wall.h"
 
 void LevelManager::AddEntity(GameObject* entity) {
     if (entity) {
+        if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
+            enemy->AddObserver(this);
+        }
         levelEntities.push_back(entity);
     }
 }
@@ -95,4 +132,47 @@ bool LevelManager::IsValidSpawnLocation(Vector2 position) const {
         }
     }
     return true;
+}
+
+char LevelManager::GetTile(int x, int y) const {
+    if (y < 0 || y >= (int)levelGrid.size()) return '\0';
+    if (x < 0 || x >= (int)levelGrid[y].size()) return '\0';
+
+    return levelGrid[y][x];
+}
+
+bool LevelManager::IsWalkableTile(int x, int y) const {
+    char tile = GetTile(x, y);
+
+    return tile != '\0' && tile != 'W';
+}
+
+Vector2 LevelManager::WorldToTile(Vector2 worldPos) const {
+    return {
+        std::floor(worldPos.x / 32.0f),
+        std::floor(worldPos.y / 32.0f)
+    };
+}
+
+Vector2 LevelManager::TileToWorld(int tileX, int tileY) const {
+    return {
+        tileX * 32.0f + 16.0f,
+        tileY * 32.0f + 16.0f
+    };
+}
+
+void LevelManager::OnEnemyPathFind(Enemy* enemy) {
+    enemyPathManager.AddEnemy(enemy);
+}
+
+void LevelManager::OnEnemyPathFindEnded(Enemy* enemy) {
+    enemyPathManager.RemoveEnemy(enemy);
+}
+
+void LevelManager::OnEnemyDied(Enemy* enemy) {
+    if (!enemy) return;
+
+    if (std::find(pendingRemoval.begin(), pendingRemoval.end(), enemy) == pendingRemoval.end()) {
+        pendingRemoval.push_back(enemy);
+    }
 }

@@ -12,7 +12,7 @@ WaveManager::WaveManager() {
 
 void WaveManager::Reset() {
     currentWave = 1;
-    enemiesToSpawn = 3;
+    enemiesToSpawn = 1;
     spawnTimer = 0.0f;
     timeBetweenWaves = 3.0f;
     showWaveTextTimer = 2.0f;
@@ -49,7 +49,7 @@ void WaveManager::Update(float deltaTime, Player* player, LevelManager* levelMan
 
                     if (Vector2Distance(spawnPos, player->GetPosition()) > 150.0f) {
                         if (levelManager->IsValidSpawnLocation(spawnPos)) {
-                            GameObject* newEnemy = EntityFactory::CreateEntity('E', spawnPos, player);
+                            GameObject* newEnemy = EntityFactory::CreateEntity('C', spawnPos, player);
                             if (newEnemy) {
                                 levelManager->AddEntity(newEnemy);
                                 enemiesToSpawn--;

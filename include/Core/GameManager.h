@@ -1,4 +1,5 @@
 #pragma once
+#include "raylib.h"
 #include <vector>
 
 enum class GameState {
@@ -18,6 +19,8 @@ private:
     GameState currentState;
     std::vector<GameObject*> levelEntities;
     std::vector<Projectile*> activeProjectiles;
+
+    int targetFPS;
     
     float levelWidth = 0.0f;
     float levelHeight = 0.0f;
@@ -48,6 +51,10 @@ public:
     void SetLevelEntities(const std::vector<GameObject*>& entities) { levelEntities = entities; }
 
     void SetLevelManager(LevelManager* lm) { levelManager = lm; }
+    LevelManager* GetLevelManager() { return levelManager; }
+
+    void UpdateTargetFPS(int fps) { targetFPS = fps; SetTargetFPS(fps); }
+    int GetTargetFPS() const { return targetFPS; }
 
     void AddProjectile(Projectile* p);
     void UpdateProjectiles(float deltaTime);

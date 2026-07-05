@@ -11,6 +11,15 @@
 #include "Entities/NPC.h"
 #include "raymath.h"
 
+// Init Window config
+// Window and Game Resolutions (4:3 aspect ratio landscape approx)
+const int WINDOW_WIDTH = 1366;
+const int WINDOW_HEIGHT = 1024;
+
+const int GAME_WIDTH = 683;
+const int GAME_HEIGHT = 512;
+const int BASE_FPS = 60;
+
 void ResetGame(Player* player, LevelManager* levelManager, WaveManager* waveManager) {
     player->SetPosition({ 256.0f, 256.0f });
     player->ResetStats();
@@ -21,15 +30,8 @@ void ResetGame(Player* player, LevelManager* levelManager, WaveManager* waveMana
 }
 
 int main() {
-    // Window and Game Resolutions (4:3 aspect ratio landscape approx)
-    const int windowWidth = 1366;
-    const int windowHeight = 1024;
-
-    const int gameWidth = 683;
-    const int gameHeight = 512;
-
     // Initialize Window
-    InitWindow(windowWidth, windowHeight, "Voltron: Mission Galra Cypher");
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Voltron: Mission Galra Cypher");
 
     // Initialize AudioManager Singleton (Initializes Audio Device)
     AudioManager::GetInstance();
@@ -63,7 +65,7 @@ int main() {
     keithSprites.weapon = LoadTexture("assets/sprites/Keith/Weapon_Static.png");
 
     // Instantiate Player as a GameObject pointer
-    Vector2 startPos = { (float)gameWidth / 2.0f, (float)gameHeight / 2.0f };
+    Vector2 startPos = { (float)GAME_WIDTH / 2.0f, (float)GAME_HEIGHT / 2.0f };
     Player* player = new Player(startPos, lanceSprites, keithSprites);
 
     // Initialize UI Manager
@@ -86,17 +88,17 @@ int main() {
     WaveManager waveManager;
 
     // Initialize render texture for internal game resolution
-    RenderTexture2D target = LoadRenderTexture(gameWidth, gameHeight);
+    RenderTexture2D target = LoadRenderTexture(GAME_WIDTH, GAME_HEIGHT);
     SetTextureFilter(target.texture, TEXTURE_FILTER_POINT); // keep pixel art crisp
 
     // Initialize Camera
     Camera2D camera = { 0 };
     camera.target = { 0.0f, 0.0f };
-    camera.offset = { std::round(gameWidth / 2.0f), std::round(gameHeight / 2.0f) };
+    camera.offset = { std::round(GAME_WIDTH / 2.0f), std::round(GAME_HEIGHT / 2.0f) };
     camera.rotation = 0.0f;
     camera.zoom = 1.0f;
 
-    SetTargetFPS(60);
+    GameManager::GetInstance().UpdateTargetFPS(BASE_FPS);
 
     // Main Game Loop
     while (!WindowShouldClose()) {
@@ -108,7 +110,7 @@ int main() {
         
         // Pass mouse coordinates to player for aiming
         Vector2 mouseScreen = GetMousePosition();
-        Vector2 mouseInternal = { mouseScreen.x * ((float)gameWidth / (float)windowWidth), mouseScreen.y * ((float)gameHeight / (float)windowHeight) };
+        Vector2 mouseInternal = { mouseScreen.x * ((float)GAME_WIDTH / (float)WINDOW_WIDTH), mouseScreen.y * ((float)GAME_HEIGHT / (float)WINDOW_HEIGHT) };
         Vector2 mouseWorld = GetScreenToWorld2D(mouseInternal, camera);
         player->SetAimTarget(mouseWorld);
 
@@ -208,14 +210,14 @@ int main() {
                 
                 // Draw HUD outside of camera
                 if (state == GameState::HUB) {
-                    uiManager.DrawHUD(gameWidth, gameHeight);
+                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT);
                 } else if (state == GameState::PLAYING) {
-                    uiManager.DrawHUD(gameWidth, gameHeight);
+                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT);
                     waveManager.DrawHUD();
                 } else if (state == GameState::PAUSED) {
-                    uiManager.DrawHUD(gameWidth, gameHeight);
-                    DrawRectangle(0, 0, gameWidth, gameHeight, {0, 0, 0, 150});
-                    DrawText("PAUSED", gameWidth / 2 - MeasureText("PAUSED", 40) / 2, gameHeight / 2 - 20, 40, RAYWHITE);
+                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT);
+                    DrawRectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, {0, 0, 0, 150});
+                    DrawText("PAUSED", GAME_WIDTH / 2 - MeasureText("PAUSED", 40) / 2, GAME_HEIGHT / 2 - 20, 40, RAYWHITE);
                 }
             }
         EndTextureMode();
@@ -230,7 +232,7 @@ int main() {
             
             // Destination rectangle on the main window.
             // The size is 1024x1024, which is exactly 2.0f times the 512x512 internal resolution.
-            Rectangle destRec = { 0.0f, 0.0f, (float)windowWidth, (float)windowHeight };
+            Rectangle destRec = { 0.0f, 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT };
             
             // Origin of the destination rectangle (top-left)
             Vector2 origin = { 0.0f, 0.0f };
