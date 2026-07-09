@@ -1,7 +1,7 @@
-#include "Core/WaveManager.h"
-#include "Core/LevelManager.h"
+#include "Core/Manager/WaveManager.h"
+#include "Core/Manager/LevelManager.h"
 #include "Core/EntityFactory.h"
-#include "Entities/Player.h"
+#include "Entities/Player/Player.h"
 #include "Entities/Enemy.h"
 #include "raymath.h"
 #include <cstdlib>
@@ -10,9 +10,9 @@ WaveManager::WaveManager() {
     Reset();
 }
 
-void WaveManager::Reset() {
+void WaveManager::Reset(int startingEnemies) {
     currentWave = 1;
-    enemiesToSpawn = 1;
+    enemiesToSpawn = startingEnemies;
     spawnTimer = 0.0f;
     timeBetweenWaves = 3.0f;
     showWaveTextTimer = 2.0f;
@@ -53,7 +53,7 @@ void WaveManager::Update(float deltaTime, Player* player, LevelManager* levelMan
                             if (newEnemy) {
                                 levelManager->AddEntity(newEnemy);
                                 enemiesToSpawn--;
-                                spawnTimer = 0.5f;
+                                spawnTimer = 0.07f;
                                 spawned = true;
                             }
                         }

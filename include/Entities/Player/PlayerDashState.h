@@ -1,12 +1,12 @@
 #pragma once
-#include "Entities/PlayerState.h"
+#include "Entities/Player/PlayerState.h"
 #include "raylib.h"
 
-class Player;
+class Player; // Forward declaration
 
-class PlayerAttackState : public IPlayerState {
+class PlayerDashState : public IPlayerState {
 private:
-    float attackTimer;
+    Vector2 dashDirection;
 
 public:
     void Enter(Player* player) override;

@@ -19,7 +19,7 @@ public:
     void Update(Enemy* enemy, float deltaTime) override;
     void Exit(Enemy* enemy) override;
 
-    void updateSpotDistance(float nsd) { spotDistance = nsd; };
+    void UpdateDistance(float nsd) override { spotDistance = nsd; };
 };
 
 class EnemyChaseState : public IEnemyState {
@@ -30,7 +30,7 @@ public:
     void Update(Enemy* enemy, float deltaTime) override;
     void Exit(Enemy* enemy) override;
 
-    void updateSightDistance(float nsd) { offSightDistance = nsd; };
+    void UpdateDistance(float nsd) override { offSightDistance = nsd; };
 };
 
 /* 
@@ -47,5 +47,5 @@ public:
     void Update(Enemy* enemy, float deltaTime) override;
     void Exit(Enemy* enemy) override;
 
-    void updateSightDistance(float nsd) { offSightDistance = nsd; };
+    void UpdateDistance(float nsd) override { offSightDistance = nsd; };
 };

@@ -1,9 +1,57 @@
 #include "AI/EnemyState.h"
 #include "Entities/EnemyEntities/Chaser.h"
-#include "Entities/Player.h"
-#include "Core/GameManager.h"
+#include "Entities/Player/Player.h"
+#include "Core/Manager/GameManager.h"
 #include "Entities/Wall.h"
 #include "raymath.h"
+
+#include <vector>
+
+namespace {
+    bool TryMoveToClearPosition(Enemy* enemy, const std::vector<GameObject*>& walls, Vector2 position) {
+        Vector2 oldPosition = enemy->GetPosition();
+        enemy->SetPosition(position);
+
+        if (enemy->CheckCollision(walls)) {
+            enemy->SetPosition(oldPosition);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool ResolveWallOverlap(Enemy* enemy, const std::vector<GameObject*>& walls) {
+        if (!enemy->CheckCollision(walls)) {
+            return true;
+        }
+
+        Vector2 origin = enemy->GetPosition();
+        const float step = 2.0f;
+        const float maxDistance = 64.0f;
+
+        for (float distance = step; distance <= maxDistance; distance += step) {
+            const Vector2 candidates[8] = {
+                { origin.x + distance, origin.y },
+                { origin.x - distance, origin.y },
+                { origin.x, origin.y + distance },
+                { origin.x, origin.y - distance },
+                { origin.x + distance, origin.y + distance },
+                { origin.x + distance, origin.y - distance },
+                { origin.x - distance, origin.y + distance },
+                { origin.x - distance, origin.y - distance }
+            };
+
+            for (Vector2 candidate : candidates) {
+                if (TryMoveToClearPosition(enemy, walls, candidate)) {
+                    return true;
+                }
+            }
+        }
+
+        enemy->SetPosition(origin);
+        return false;
+    }
+}
 
 void EnemyChaserChaseState::Enter(Enemy* enemy) { }
 
@@ -21,7 +69,7 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     // Change back to idleState if player is too far away
     if (Vector2Distance(ePos, pPos) > offSightDistance) {
         chaser->EndPathFinding();
-        enemy->ChangeState(chaser->GetChaserIdleState());
+        enemy->ToIdleState();
         return;
     }
     
@@ -30,8 +78,13 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     if (distanceToP > 20.f) {
         chaser->StartPathFinding();
         if (chaser->HasTargetPosition()) {
-            Vector2 pathTarget = chaser->GetTargetPosition();
-            if (Vector2Distance(pathTarget, ePos) > 4.0f) {
+            while (chaser->HasTargetPosition() &&
+                   Vector2Distance(chaser->FirstTargetPosition(), ePos) <= 4.0f) {
+                chaser->PopTarget();
+            }
+
+            if (chaser->HasTargetPosition()) {
+                Vector2 pathTarget = chaser->FirstTargetPosition();
                 dir = Vector2Subtract(pathTarget, ePos);
             } else {
                 dir = Vector2Subtract(pPos, ePos);
@@ -58,6 +111,9 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             }
         }
 
+        ResolveWallOverlap(enemy, walls);
+        ePos = enemy->GetPosition();
+
         // X Axis Wall Sliding
         ePos.x += dir.x * speed * deltaTime;
         enemy->SetPosition(ePos);
@@ -65,6 +121,8 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             ePos.x -= dir.x * speed * deltaTime;
             enemy->SetPosition(ePos);
         }
+        ResolveWallOverlap(enemy, walls);
+        ePos = enemy->GetPosition();
 
         // Y Axis Wall Sliding
         ePos.y += dir.y * speed * deltaTime;
@@ -73,6 +131,8 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             ePos.y -= dir.y * speed * deltaTime;
             enemy->SetPosition(ePos);
         }
+        ResolveWallOverlap(enemy, walls);
+        ePos = enemy->GetPosition();
 
         // Handle Attack Cooldown
         float cd = enemy->GetAttackCooldown();
@@ -93,9 +153,23 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             if (Vector2Length(pushDir) == 0.0f) pushDir = {1.0f, 0.0f}; // Fallback if exactly on top
             pushDir = Vector2Normalize(pushDir);
             
+            Vector2 beforePush = ePos;
             ePos.x += pushDir.x * 20.0f;
+            enemy->SetPosition(ePos);
+            if (enemy->CheckCollision(walls)) {
+                ePos.x = beforePush.x;
+                enemy->SetPosition(ePos);
+            }
+
+            beforePush = ePos;
             ePos.y += pushDir.y * 20.0f;
             enemy->SetPosition(ePos);
+            if (enemy->CheckCollision(walls)) {
+                ePos.y = beforePush.y;
+                enemy->SetPosition(ePos);
+            }
+
+            ResolveWallOverlap(enemy, walls);
         }
     }
 }

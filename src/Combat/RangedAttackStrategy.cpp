@@ -1,13 +1,13 @@
 #include "Combat/RangedAttackStrategy.h"
 #include "Entities/Projectile.h"
-#include "Core/GameManager.h"
+#include "Core/Manager/GameManager.h"
 
 RangedAttackStrategy::RangedAttackStrategy(Texture2D tex) : weaponTex(tex) {
     aimDir = {1.0f, 0.0f};
     aimAngle = 0.0f;
 }
 
-#include "Core/AudioManager.h"
+#include "Core/Manager/AudioManager.h"
 
 void RangedAttackStrategy::Attack(Vector2 playerPos) {
     Vector2 projVelocity = { aimDir.x * 400.0f, aimDir.y * 400.0f };

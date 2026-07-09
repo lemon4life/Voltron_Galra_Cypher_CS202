@@ -1,7 +1,7 @@
-#include "Core/DialogueManager.h"
-#include "Core/GameManager.h"
-#include "Core/AudioManager.h"
-#include "Entities/Player.h"
+#include "Core/Manager/DialogueManager.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/AudioManager.h"
+#include "Entities/Player/Player.h"
 #include <fstream>
 #include <iostream>
 

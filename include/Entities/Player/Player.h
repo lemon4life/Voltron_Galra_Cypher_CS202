@@ -1,8 +1,8 @@
 #pragma once
-#include "Character.h"
-#include "PlayerState.h"
-#include "Entities/PlayerDashState.h"
-#include "Entities/PlayerAttackState.h"
+#include "Entities/Character.h"
+#include "Entities/Player/PlayerState.h"
+#include "Entities/Player/PlayerDashState.h"
+#include "Entities/Player/PlayerAttackState.h"
 #include "Combat/IAttackStrategy.h"
 #include "Core/ISubject.h"
 #include <vector>

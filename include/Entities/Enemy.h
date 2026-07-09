@@ -2,9 +2,16 @@
 #include "Entities/GameObject.h"
 #include "AI/EnemyState.h"
 #include "Core/IEnemyObserver.h"
+#include "raylib.h"
+
+#include <memory>
 #include <vector>
 
 class Player;
+
+enum class EnemyType {
+    Chaser
+};
 
 class Enemy : public GameObject {
 protected:
@@ -14,30 +21,30 @@ protected:
     int damage = 15;
     float attackCooldown = 0.1f;
 
+    Vector2 size;
+
+    EnemyType enemyType;
+
     Player* target;
     IEnemyState* currentState;
 
-    EnemyIdleState idleState;
-    EnemyChaseState chaseState;
+    std::unique_ptr<IEnemyState> idleState;
+    std::unique_ptr<IEnemyState> chaseState;
 
     bool deathNotified = false;
     std::vector<IEnemyObserver*> observers;
 
 protected:
-    void NotifyEnemyPathFind();
-    void NotifyEnemyPathFindEnded();
     void NotifyEnemyDied();
 
 public:
     Enemy(Vector2 pos, Player* t);
     Enemy(Vector2 pos, Player* t, int maxHealth, float speed, int damage, float attackCooldown);
-    ~Enemy() override;
-
-    void Update(float deltaTime) override;
-    void Draw() override;
+    virtual ~Enemy();
 
     IEnemyState* GetCurrentState() { return currentState; }
-    void ChangeState(IEnemyState* newState);
+    void ToIdleState();
+    void ToChaseState();
 
     void AddObserver(IEnemyObserver* observer);
     void RemoveObserver(IEnemyObserver* observer);
@@ -52,14 +59,8 @@ public:
     int GetMaxHealth() const { return maxHealth; }
     float GetSpeed() const { return speed; }
     int GetDamage() const { return damage; }
-    Player* GetTarget() const { return target; }
-    virtual void SetTargetPosition(Vector2 target) {}
-    virtual Vector2 GetTargetPosition() const { return position; }
-    virtual bool HasTargetPosition() const { return false; }
-    
     float GetAttackCooldown() const { return attackCooldown; }
     void SetAttackCooldown(float cd) { attackCooldown = cd; }
-    
-    virtual IEnemyState* GetIdleState() { return &idleState; }
-    virtual IEnemyState* GetChaseState() { return &chaseState; }
+
+    Player* GetTarget() const { return target; }
 };

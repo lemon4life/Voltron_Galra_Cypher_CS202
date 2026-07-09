@@ -1,6 +1,6 @@
-#include "Core/GameManager.h"
+#include "Core/Manager/GameManager.h"
 #include "Entities/Projectile.h"
-#include "Core/LevelManager.h"
+#include "Core/Manager/LevelManager.h"
 
 GameManager::GameManager() : currentState(GameState::MENU), levelManager(nullptr) {
     // Starts in MENU state by default

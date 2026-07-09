@@ -15,6 +15,6 @@ private:
 public:
     WaveManager();
     void Update(float deltaTime, Player* player, LevelManager* levelManager);
-    void Reset();
+    void Reset(int startingEnemies = 1);
     void DrawHUD();
 };

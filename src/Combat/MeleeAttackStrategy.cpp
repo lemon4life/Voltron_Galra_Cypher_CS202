@@ -1,5 +1,5 @@
 #include "Combat/MeleeAttackStrategy.h"
-#include "Core/GameManager.h"
+#include "Core/Manager/GameManager.h"
 #include "Entities/Enemy.h"
 #include <algorithm>
 
@@ -8,7 +8,7 @@ MeleeAttackStrategy::MeleeAttackStrategy(Texture2D tex) : weaponTex(tex), isAtta
     aimAngle = 0.0f;
 }
 
-#include "Core/AudioManager.h"
+#include "Core/Manager/AudioManager.h"
 
 void MeleeAttackStrategy::Attack(Vector2 playerPos) {
     isAttacking = true;

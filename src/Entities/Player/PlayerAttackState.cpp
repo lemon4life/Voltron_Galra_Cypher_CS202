@@ -1,5 +1,5 @@
-#include "Entities/PlayerAttackState.h"
-#include "Entities/Player.h"
+#include "Entities/Player/PlayerAttackState.h"
+#include "Entities/Player/Player.h"
 
 void PlayerAttackState::Enter(Player* player) {
     // Lock movement for 0.2s

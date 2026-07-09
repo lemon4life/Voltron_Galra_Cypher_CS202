@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <vector>
 
+const float TARGET_LOOP_ALL_INTERVAL = 0.3;
+
 class LevelManager;
 
 class EnemyPathManager {

@@ -1,6 +1,6 @@
-#include "Core/LevelManager.h"
+#include "Core/Manager/LevelManager.h"
 #include "Core/EntityFactory.h"
-#include "Core/GameManager.h"
+#include "Core/Manager/GameManager.h"
 #include <fstream>
 #include <iostream>
 #include <cmath>
@@ -66,7 +66,6 @@ void LevelManager::UpdateLevel(float deltaTime) {
     
     for (auto* entity : levelEntities) {
         if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
-            //std::cout << "Update " << enemy->IsDead() << std::endl;
             if (enemy->IsDead()) {
                 continue;
             }

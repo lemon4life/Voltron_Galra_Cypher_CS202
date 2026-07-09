@@ -1,8 +1,8 @@
-#include "Core/EnemyPathManager.h"
-#include "Core/GameManager.h"
-#include "Core/LevelManager.h"
+#include "Core/Manager/EnemyPathManager.h"
+#include "Core/EnemyPath.h"
+#include "Core/Manager/LevelManager.h"
 #include "Entities/Enemy.h"
-#include "Entities/Player.h"
+#include "Entities/Player/Player.h"
 
 #include <queue>
 #include <unordered_map>
@@ -12,6 +12,9 @@
 namespace {
     constexpr float TILE_SIZE = 32.0f;
     constexpr float DIAGONAL_COST = 1.41421356f;
+    constexpr int MAX_SEARCH_STEPS = 500;
+    constexpr int MIN_TARGET_POSITIONS = 2;
+    constexpr int MAX_TARGET_POSITIONS = 5;
 
     struct Tile {
         int x;
@@ -127,6 +130,52 @@ namespace {
         return (dx * dx + dy * dy) <= reachDistance * reachDistance;
     }
 
+    bool SameTileDirection(Tile a, Tile b, Tile c) {
+        int dx1 = b.x - a.x;
+        int dy1 = b.y - a.y;
+        int dx2 = c.x - b.x;
+        int dy2 = c.y - b.y;
+
+        return dx1 == dx2 && dy1 == dy2;
+    }
+
+    bool AlmostSamePosition(Vector2 a, Vector2 b) {
+        float dx = a.x - b.x;
+        float dy = a.y - b.y;
+        return (dx * dx + dy * dy) < 4.0f;
+    }
+
+    void PushTarget(std::vector<Vector2>& targets, Vector2 position) {
+        if ((int)targets.size() >= MAX_TARGET_POSITIONS) return;
+        if (!targets.empty() && AlmostSamePosition(targets.back(), position)) return;
+
+        targets.push_back(position);
+    }
+
+    std::vector<Vector2> BuildTargetPositions(LevelManager* levelManager, Enemy* enemy, const std::vector<Tile>& path) {
+        std::vector<Vector2> targets;
+        if (!levelManager || !enemy || path.size() < 2) {
+            return targets;
+        }
+
+        int finalSlotReserve = 1;
+        int turnLimit = MAX_TARGET_POSITIONS - finalSlotReserve;
+
+        for (int i = 1; i + 1 < (int)path.size() && (int)targets.size() < turnLimit; ++i) {
+            if (!SameTileDirection(path[i - 1], path[i], path[i + 1])) {
+                PushTarget(targets, levelManager->TileToWorld(path[i].x, path[i].y));
+            }
+        }
+
+        if ((int)targets.size() < MIN_TARGET_POSITIONS - 1 && path.size() > 2) {
+            Tile nearPlayerTile = path[path.size() - 2];
+            PushTarget(targets, levelManager->TileToWorld(nearPlayerTile.x, nearPlayerTile.y));
+        }
+
+        PushTarget(targets, enemy->GetTarget()->GetPosition());
+        return targets;
+    }
+
     std::vector<Tile> FindPath(LevelManager* levelManager, Enemy* enemy, Tile start, Tile goal) {
         if (!levelManager) return {};
         if (!enemy) return {};
@@ -136,6 +185,8 @@ namespace {
         std::priority_queue<AStarNode, std::vector<AStarNode>, CompareAStarNode> openSet;
         std::unordered_map<Tile, Tile, TileHash> cameFrom;
         std::unordered_map<Tile, float, TileHash> gScore;
+        cameFrom.reserve(MAX_SEARCH_STEPS);
+        gScore.reserve(MAX_SEARCH_STEPS);
 
         openSet.push({ start, 0.0f, Heuristic(start, goal) });
         gScore[start] = 0.0f;
@@ -151,9 +202,16 @@ namespace {
             { -1, -1 }
         };
 
-        while (!openSet.empty()) {
+        int searchSteps = 0;
+        while (!openSet.empty() && searchSteps < MAX_SEARCH_STEPS) {
             AStarNode current = openSet.top();
             openSet.pop();
+            searchSteps++;
+
+            auto currentScore = gScore.find(current.tile);
+            if (currentScore != gScore.end() && current.gCost > currentScore->second) {
+                continue;
+            }
 
             if (current.tile == goal) {
                 std::vector<Tile> path;
@@ -216,17 +274,10 @@ void EnemyPathManager::AddEnemy(Enemy* enemy) {
 }
 
 void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
-    // Currently deltaTime is not being used yet
-    (void)deltaTime;
-
     if (!levelManager || enemies.empty()) return;
+    if (TARGET_LOOP_ALL_INTERVAL <= 0.0f) return;
 
-    int targetFPS = GameManager::GetInstance().GetTargetFPS();
-    if (targetFPS <= 0) {
-        targetFPS = 60;
-    }
-
-    int enemiesPerFrame = (int)std::ceil((float)enemies.size() / (float)targetFPS) * 2;
+    int enemiesPerFrame = (int)std::ceil((float)enemies.size() * ((float)deltaTime /TARGET_LOOP_ALL_INTERVAL));
     if (enemiesPerFrame < 1) {
         enemiesPerFrame = 1;
     }
@@ -247,10 +298,19 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
             continue;
         }
 
-        if (enemy->HasTargetPosition()) {
-            Vector2 currentTargetPosition = enemy->GetTargetPosition();
-            if (!HasReachedWaypoint(enemy, currentTargetPosition) &&
-                IsBodyClearAtWorldPosition(levelManager, enemy, currentTargetPosition)) {
+        EnemyPathFinding* pathAgent = dynamic_cast<EnemyPathFinding*>(enemy);
+        if (!pathAgent) {
+            continue;
+        }
+
+        while (pathAgent->HasTargetPosition() &&
+               HasReachedWaypoint(enemy, pathAgent->FirstTargetPosition())) {
+            pathAgent->PopTarget();
+        }
+
+        if (pathAgent->HasTargetPosition()) {
+            Vector2 currentTargetPosition = pathAgent->FirstTargetPosition();
+            if (IsBodyClearAtWorldPosition(levelManager, enemy, currentTargetPosition)) {
                 continue;
             }
         }
@@ -270,12 +330,25 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
 
         std::vector<Tile> path = FindPath(levelManager, enemy, enemyTile, playerTile);
         if (path.size() < 2) {
-            enemy->SetTargetPosition(enemy->GetTarget()->GetPosition());
+            pathAgent->ClearTargetPosition();
             continue;
         }
 
-        Tile nextTile = path[1];
-        Vector2 nextWorldPosition = levelManager->TileToWorld(nextTile.x, nextTile.y);
-        enemy->SetTargetPosition(nextWorldPosition);
+        std::vector<Vector2> targets = BuildTargetPositions(levelManager, enemy, path);
+        if ((int)targets.size() < MIN_TARGET_POSITIONS && path.size() >= 2) {
+            Vector2 firstMove = levelManager->TileToWorld(path[1].x, path[1].y);
+            if (targets.empty() || !AlmostSamePosition(firstMove, targets.front())) {
+                targets.insert(targets.begin(), firstMove);
+            }
+        }
+
+        if ((int)targets.size() > MAX_TARGET_POSITIONS) {
+            targets.resize(MAX_TARGET_POSITIONS);
+        }
+
+        pathAgent->ClearTargetPosition();
+        for (Vector2 targetPosition : targets) {
+            pathAgent->AddTargetPosition(targetPosition);
+        }
     }
 }

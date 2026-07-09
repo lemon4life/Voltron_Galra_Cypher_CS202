@@ -1,8 +1,8 @@
-#include "Entities/Player.h"
+#include "Entities/Player/Player.h"
 #include "Combat/RangedAttackStrategy.h"
 #include "Combat/MeleeAttackStrategy.h"
-#include "Core/GameManager.h"
-#include "Core/AudioManager.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/AudioManager.h"
 
 Player::Player(Vector2 pos, CharacterSprites lance, CharacterSprites keith)
     : Character(pos, 150.0f, 150, lance.battleIdle), // Default texture will be overridden in Enter

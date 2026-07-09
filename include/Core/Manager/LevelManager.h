@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 #include "Entities/GameObject.h"
-#include "Core/EnemyPathManager.h"
+#include "Core/Manager/EnemyPathManager.h"
 class Player;
 
 class LevelManager : public IEnemyObserver {
@@ -29,9 +29,7 @@ public:
     
     float GetLevelWidth() const { return levelWidth; }
     float GetLevelHeight() const { return levelHeight; }
-
-    EnemyPathManager* GetPathManager() { return &enemyPathManager; }
-
+    
     // Helper function for levelGrid usage
     char GetTile(int x, int y) const;
     bool IsWalkableTile(int x, int y) const;

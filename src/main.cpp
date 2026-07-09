@@ -1,13 +1,13 @@
 #include "raylib.h"
-#include "Entities/Player.h"
-#include "Core/GameManager.h"
-#include "Core/AudioManager.h"
-#include "Core/LevelManager.h"
+#include "Entities/Player/Player.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/AudioManager.h"
+#include "Core/Manager/LevelManager.h"
 #include "Combat/MeleeAttackStrategy.h"
 #include "Combat/RangedAttackStrategy.h"
 #include "UI/UIManager.h"
-#include "Core/WaveManager.h"
-#include "Core/DialogueManager.h"
+#include "Core/Manager/WaveManager.h"
+#include "Core/Manager/DialogueManager.h"
 #include "Entities/NPC.h"
 #include "raymath.h"
 
@@ -18,7 +18,7 @@ const int WINDOW_HEIGHT = 1024;
 
 const int GAME_WIDTH = 683;
 const int GAME_HEIGHT = 512;
-const int BASE_FPS = 60;
+const int BASE_FPS = 120;
 
 void ResetGame(Player* player, LevelManager* levelManager, WaveManager* waveManager) {
     player->SetPosition({ 256.0f, 256.0f });
@@ -26,6 +26,15 @@ void ResetGame(Player* player, LevelManager* levelManager, WaveManager* waveMana
     GameManager::GetInstance().ClearProjectiles();
     levelManager->LoadLevel("assets/levels/level1.txt", player);
     waveManager->Reset();
+    GameManager::GetInstance().SetState(GameState::PLAYING);
+}
+
+void ResetDemoGame(Player* player, LevelManager* levelManager, WaveManager* waveManager) {
+    player->SetPosition({ 256.0f, 256.0f });
+    player->ResetStats();
+    GameManager::GetInstance().ClearProjectiles();
+    levelManager->LoadLevel("assets/levels/demo-big.txt", player);
+    waveManager->Reset(150);
     GameManager::GetInstance().SetState(GameState::PLAYING);
 }
 
@@ -104,7 +113,7 @@ int main() {
     while (!WindowShouldClose()) {
         // --- Update ---
         float deltaTime = GetFrameTime();
-        
+
         // Update music stream continuously regardless of game state
         AudioManager::GetInstance().UpdateMusicStream();
         
@@ -120,6 +129,9 @@ int main() {
             case GameState::MENU:
                 if (IsKeyPressed(KEY_ENTER)) {
                     GameManager::GetInstance().SetState(GameState::HUB);
+                }
+                if (IsKeyPressed(KEY_R)) {
+                    ResetDemoGame(player, &levelManager, &waveManager);
                 }
                 break;
             case GameState::HUB:
@@ -183,6 +195,7 @@ int main() {
                 ClearBackground(DARKGRAY);
                 DrawText("Voltron: Mission Galra Cypher", 70, 200, 24, WHITE);
                 DrawText("Press ENTER to Start", 140, 300, 20, LIGHTGRAY);
+                DrawText("Press R to Enter Demo Map", 120, 335, 20, LIGHTGRAY);
             } else if (state == GameState::GAMEOVER) {
                 ClearBackground(BLACK);
                 DrawText("GAME OVER", 180, 220, 30, RED);

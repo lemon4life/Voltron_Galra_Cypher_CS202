@@ -1,6 +1,6 @@
-#include "Entities/PlayerDashState.h"
-#include "Entities/Player.h"
-#include "Core/GameManager.h"
+#include "Entities/Player/PlayerDashState.h"
+#include "Entities/Player/Player.h"
+#include "Core/Manager/GameManager.h"
 #include "raymath.h"
 
 void PlayerDashState::Enter(Player* player) {

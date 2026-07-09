@@ -1,7 +1,7 @@
-#include "Entities/PlayerState.h"
-#include "Entities/Player.h"
+#include "Entities/Player/PlayerState.h"
+#include "Entities/Player/Player.h"
 #include "raymath.h"
-#include "Core/GameManager.h"
+#include "Core/Manager/GameManager.h"
 
 // --- PlayerIdleState ---
 void PlayerIdleState::Enter(Player* player) {

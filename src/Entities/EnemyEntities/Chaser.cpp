@@ -1,21 +1,29 @@
 #include "Entities/EnemyEntities/Chaser.h"
-#include "Core/AudioManager.h"
-#include "Core/EnemyPathManager.h"
-#include "Core/GameManager.h"
-
-#include <iostream>
+#include "Core/Manager/AudioManager.h"
+#include "Core/Manager/EnemyPathManager.h"
+#include "Core/Manager/GameManager.h"
 
 EnemyChaser::EnemyChaser(Vector2 pos, Player* target)
     : Enemy(pos, target, MAX_HEALTH, BASE_SPEED, BASE_DAMAGE, BASE_ATTACK_COOLDOWN)
 {
-    idleState.updateSpotDistance(500.f);
-    chaseState.updateSightDistance(500.f);
-    currentState = &idleState;
+    idleState = std::make_unique<EnemyIdleState>();
+    chaseState = std::make_unique<EnemyChaserChaseState>();
+    enemyType = EnemyType::Chaser;
+
+    size = (Vector2){ WIDTH, HEIGHT };;
+
+    idleState->UpdateDistance(SIGHT);
+    chaseState->UpdateDistance(SIGHT);
+    currentState = idleState.get();
     currentState->Enter(this);
 }
 
 EnemyChaser::~EnemyChaser() {
     EndPathFinding();
+
+    if (currentState) {
+        currentState->Exit(this);
+    }
     currentState = nullptr;
 }
 
@@ -23,16 +31,12 @@ void EnemyChaser::Update(float deltaTime) {
     if (currentState) {
         currentState->Update(this, deltaTime);
     }
-
-    std::cout << "TargetPos: " <<
-        targetPosition.x << " " << targetPosition.y <<
-        " In Path: " << usePathFinding << std::endl;
 }
 
 void EnemyChaser::Draw() {
 
     // Different state gives different color
-    if (currentState == &chaseState) {
+    if (currentState == chaseState.get()) {
         DrawRectangleRec(GetBoundingBox(), MAROON);
     }
     else {
@@ -40,26 +44,24 @@ void EnemyChaser::Draw() {
     }
 
     float hpPercent = (float) health / (float) maxHealth;
-    DrawRectangle(position.x - width / 2.f, position.y - 20, width * hpPercent, 4, RED);
-}
-
-Rectangle EnemyChaser::GetBoundingBox() const {
-    // bounding box centered on position
-    return { position.x - width / 2.f, position.y - height / 2.f, width, height };
+    DrawRectangle(position.x - size.x / 2.f, position.y - 20, size.x * hpPercent, 4, RED);
 }
 
 void EnemyChaser::StartPathFinding() {
-    if (usePathFinding) return;
-    usePathFinding = true;
+    if (IsPathFinding()) return;
+    SetPathFinding(true);
 
-    NotifyEnemyPathFind();
+    for (IEnemyObserver* observer : observers) {
+        observer->OnEnemyPathFind(this);
+    }
 }
 
-
 void EnemyChaser::EndPathFinding() {
-    if (!usePathFinding) return;
-    usePathFinding = false;
-    targetPosition = { -1.0f, -1.0f };
+    if (!IsPathFinding()) return;
+    SetPathFinding(false);
+    ClearTargetPosition();
 
-    NotifyEnemyPathFindEnded();
+    for (IEnemyObserver* observer : observers) {
+        observer->OnEnemyPathFindEnded(this);
+    }
 }

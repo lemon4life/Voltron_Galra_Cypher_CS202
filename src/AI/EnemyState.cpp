@@ -1,7 +1,7 @@
 #include "AI/EnemyState.h"
 #include "Entities/Enemy.h"
-#include "Entities/Player.h"
-#include "Core/GameManager.h"
+#include "Entities/Player/Player.h"
+#include "Core/Manager/GameManager.h"
 #include "Entities/Wall.h"
 #include "raymath.h"
 
@@ -15,7 +15,7 @@ void EnemyIdleState::Update(Enemy* enemy, float deltaTime) {
     Vector2 pPos = enemy->GetTarget()->GetPosition();
     
     if (Vector2Distance(ePos, pPos) < spotDistance) {
-        enemy->ChangeState(enemy->GetChaseState());
+        enemy->ToChaseState();
     }
 }
 
@@ -31,7 +31,7 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
     Vector2 pPos = enemy->GetTarget()->GetPosition();
     
     if (Vector2Distance(ePos, pPos) > offSightDistance) {
-        enemy->ChangeState(enemy->GetIdleState());
+        enemy->ToIdleState();
         return;
     }
 

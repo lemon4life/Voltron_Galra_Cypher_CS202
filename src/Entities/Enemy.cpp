@@ -1,51 +1,53 @@
 #include "Entities/Enemy.h"
-#include "Entities/Player.h"
-#include "Core/GameManager.h"
+#include "Entities/Player/Player.h"
+#include "Core/Manager/GameManager.h"
 #include <algorithm>
 #include <iostream>
 
 Enemy::Enemy(Vector2 pos, Player* t)
     : GameObject(pos), health(100), maxHealth(100), speed(100.f), damage(15), target(t), currentState(nullptr), attackCooldown(0.1f)
-{
-
-}
+{}
 
 
 Enemy::Enemy(Vector2 pos, Player* t, int imaxHealth, float ispeed, int idamage, float iattackCooldown)
     : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed), damage(idamage), target(t), currentState(nullptr), attackCooldown(iattackCooldown)
-{
-
-}
+{}
 
 Enemy::~Enemy() {
-    if (currentState) {
-        currentState->Exit(this);
-    }
+
 }
 
-void Enemy::Update(float deltaTime) {
-    if (currentState) {
-        currentState->Update(this, deltaTime);
-    }
-}
+// void Enemy::Update(float deltaTime) {
+//     if (currentState) {
+//         currentState->Update(this, deltaTime);
+//     }
+// }
 
-void Enemy::Draw() {
-    DrawRectangleRec(GetBoundingBox(), PURPLE);
+// void Enemy::Draw() {
+//     DrawRectangleRec(GetBoundingBox(), PURPLE);
     
-    // Draw Health Bar
-    float hpPercent = (float)health / maxHealth;
-    DrawRectangle(position.x - 16, position.y - 20, 32 * hpPercent, 4, RED);
+//     // Draw Health Bar
+//     float hpPercent = (float)health / maxHealth;
+//     DrawRectangle(position.x - 16, position.y - 20, 32 * hpPercent, 4, RED);
+// }
+
+void Enemy::ToIdleState() {
+    if (currentState == idleState.get()) return;
+
+    currentState->Exit(this);
+    currentState = idleState.get();
+    currentState->Enter(this);
 }
 
-void Enemy::ChangeState(IEnemyState* newState) {
-    if (currentState != newState) {
-        if (currentState) currentState->Exit(this);
-        currentState = newState;
-        if (currentState) currentState->Enter(this);
-    }
+void Enemy::ToChaseState() {
+    if (currentState == chaseState.get()) return;
+
+    currentState->Exit(this);
+    currentState = chaseState.get();
+    currentState->Enter(this);
 }
 
-#include "Core/AudioManager.h"
+#include "Core/Manager/AudioManager.h"
 
 void Enemy::AddObserver(IEnemyObserver* observer) {
     if (!observer) return;
@@ -62,17 +64,7 @@ void Enemy::RemoveObserver(IEnemyObserver* observer) {
     );
 }
 
-void Enemy::NotifyEnemyPathFind() {
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFind(this);
-    }
-}
 
-void Enemy::NotifyEnemyPathFindEnded() {
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFindEnded(this);
-    }
-}
 
 void Enemy::NotifyEnemyDied() {
     for (IEnemyObserver* observer : observers) {
@@ -82,8 +74,6 @@ void Enemy::NotifyEnemyDied() {
 
 void Enemy::TakeDamage(int amount) {
     if (health <= 0) return;
-
-    std::cout << "Take Dam: " << amount << std::endl;
 
     health -= amount;
     if (health < 0) health = 0;
@@ -96,8 +86,8 @@ void Enemy::TakeDamage(int amount) {
 }
 
 Rectangle Enemy::GetBoundingBox() const {
-    // 32x32 bounding box centered on position
-    return { position.x - 16.0f, position.y - 16.0f, 32.0f, 32.0f };
+    // Bounding box centered on position and size
+    return { position.x - size.x/2.f, position.y - size.y/2.f, size.x, size.y };
 }
 
 bool Enemy::CheckCollision(const std::vector<GameObject*>& entities) const {
