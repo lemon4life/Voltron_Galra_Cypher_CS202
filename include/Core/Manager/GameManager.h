@@ -7,7 +7,8 @@ enum class GameState {
     HUB,
     PLAYING,
     PAUSED,
-    GAMEOVER
+    GAMEOVER,
+    VICTORY
 };
 
 class Projectile; // Forward declaration
@@ -51,13 +52,13 @@ public:
     void SetLevelEntities(const std::vector<GameObject*>& entities) { levelEntities = entities; }
 
     void SetLevelManager(LevelManager* lm) { levelManager = lm; }
-    LevelManager* GetLevelManager() { return levelManager; }
-
+    LevelManager* GetLevelManager() const { return levelManager; }
+    
     void UpdateTargetFPS(int fps) { targetFPS = fps; SetTargetFPS(fps); }
     int GetTargetFPS() const { return targetFPS; }
 
     void AddProjectile(Projectile* p);
-    void UpdateProjectiles(float deltaTime);
+    void UpdateProjectiles(float deltaTime, class Player* player = nullptr);
     void DrawProjectiles();
     void ClearProjectiles();
 };

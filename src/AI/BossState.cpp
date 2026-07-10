@@ -1,31 +1,19 @@
 #include "AI/EnemyState.h"
-#include "Entities/Enemy.h"
-#include "Entities/Player/Player.h"
+
 #include "Core/Manager/GameManager.h"
-#include "Entities/Wall.h"
 #include "Core/Manager/LevelManager.h"
+
+#include "Entities/EnemyEntities/Boss.h"
+#include "Entities/Projectile.h"
+#include "Entities/Player/Player.h"
+
 #include "raymath.h"
 
-// --- EnemyIdleState ---
-void EnemyIdleState::Enter(Enemy* enemy) {}
+// Boss Chase State
 
-void EnemyIdleState::Update(Enemy* enemy, float deltaTime) {
-    if (!enemy->GetTarget()) return;
+void BossChaseState::Enter(Enemy* enemy) {}
 
-    Vector2 ePos = enemy->GetPosition();
-    Vector2 pPos = enemy->GetTarget()->GetPosition();
-    
-    if (Vector2Distance(ePos, pPos) < spotDistance) {
-        enemy->ChangeState(enemy->GetChaseState());
-    }
-}
-
-void EnemyIdleState::Exit(Enemy* enemy) {}
-
-// --- EnemyChaseState ---
-void EnemyChaseState::Enter(Enemy* enemy) {}
-
-void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
+void BossChaseState::Update(Enemy* enemy, float deltaTime) {
     if (!enemy->GetTarget()) return;
 
     Vector2 ePos = enemy->GetPosition();
@@ -76,6 +64,15 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
         enemy->SetAttackCooldown(enemy->GetAttackCooldown() - deltaTime);
     }
     
+    if (Boss* boss = dynamic_cast<Boss*>(enemy)) {
+        float skillCd = boss->GetBossSkillCooldown() - deltaTime;
+        boss->SetBossSkillCooldown(skillCd);
+        if (skillCd <= 0.0f) {
+            boss->ChangeState(boss->GetBossRangedAttackState());
+            return;
+        }
+    }
+
     // Check collision with Player for overlap resolution and damage
     if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTarget()->GetBoundingBox())) {
         // Attack if cooldown allows
@@ -95,4 +92,59 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
     }
 }
 
-void EnemyChaseState::Exit(Enemy* enemy) {}
+void BossChaseState::Exit(Enemy* enemy) {}
+
+// Boss Ranged Attack State
+void BossRangedAttackState::Enter(Enemy* enemy) {
+    Boss* boss = dynamic_cast<Boss*>(enemy);
+    if (!boss) return;
+
+    boss->SetBurstCount(3);
+    boss->SetBurstTimer(0.0f);
+}
+
+void BossRangedAttackState::Update(Enemy* enemy, float deltaTime) {
+    Boss* boss = dynamic_cast<Boss*>(enemy);
+    if (!boss) return;
+
+    if (!enemy->GetTarget()) {
+        enemy->ChangeState(enemy->GetIdleState());
+        return;
+    }
+
+    float timer = boss->GetBurstTimer() + deltaTime;
+    
+    // Fire every 0.15 seconds
+    if (timer >= 0.15f) {
+        timer = 0.0f;
+        int count = boss->GetBurstCount();
+        
+        // Fire projectile
+        Vector2 pos = enemy->GetPosition();
+        Vector2 tPos = enemy->GetTarget()->GetPosition();
+        Vector2 dir = Vector2Subtract(tPos, pos);
+        if (Vector2Length(dir) > 0.0f) {
+            dir = Vector2Normalize(dir);
+        } else {
+            dir = {1.0f, 0.0f};
+        }
+        
+        Vector2 vel = { dir.x * 300.0f, dir.y * 300.0f };
+        Projectile* p = new Projectile(pos, vel, 2.0f, enemy->GetDamage(), true);
+        GameManager::GetInstance().AddProjectile(p);
+        
+        count--;
+        boss->SetBurstCount(count);
+        
+        if (count <= 0) {
+            boss->SetBossSkillCooldown(2.0f);
+            enemy->ChangeState(enemy->GetChaseState());
+            return;
+        }
+    }
+    boss->SetBurstTimer(timer);
+}
+
+void BossRangedAttackState::Exit(Enemy* enemy) {
+    // Reset any state if needed
+}

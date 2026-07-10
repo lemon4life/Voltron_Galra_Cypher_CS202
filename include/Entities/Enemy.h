@@ -10,17 +10,18 @@
 class Player;
 
 enum class EnemyType {
+    GRUNT,
+    BOSS,
     Chaser
 };
 
 class Enemy : public GameObject {
 protected:
-    int health  = 100;
-    int maxHealth = 100;
-    float speed = 100.f;
-    int damage = 15;
-    float attackCooldown = 0.1f;
-
+    int health;
+    int maxHealth;
+    float speed;
+    int damage;
+    float attackCooldown;
     Vector2 size;
 
     EnemyType enemyType;
@@ -34,7 +35,6 @@ protected:
     bool deathNotified = false;
     std::vector<IEnemyObserver*> observers;
 
-protected:
     void NotifyEnemyDied();
 
 public:
@@ -42,9 +42,13 @@ public:
     Enemy(Vector2 pos, Player* t, int maxHealth, float speed, int damage, float attackCooldown);
     virtual ~Enemy();
 
+    virtual void Update(float deltaTime) override = 0;
+    void Draw() override {};
+
     IEnemyState* GetCurrentState() { return currentState; }
-    void ToIdleState();
-    void ToChaseState();
+    IEnemyState* GetIdleState() { return idleState.get(); }
+    IEnemyState* GetChaseState() { return chaseState.get(); }
+    void ChangeState(IEnemyState* newState);
 
     void AddObserver(IEnemyObserver* observer);
     void RemoveObserver(IEnemyObserver* observer);
@@ -55,9 +59,16 @@ public:
 
     Rectangle GetBoundingBox() const override;
 
+    EnemyType GetType() const { return enemyType; }
+    void SetType(EnemyType t) { enemyType = t; }
+    EnemyType GetEnemyType() const { return enemyType; }
+    void SetEnemyType(EnemyType t) { enemyType = t; }
+
     int GetHealth() const { return health; }
+    void SetMaxHealth(int h) { maxHealth = h; health = h; }
     int GetMaxHealth() const { return maxHealth; }
     float GetSpeed() const { return speed; }
+    void SetSpeed(float s) { speed = s; }
     int GetDamage() const { return damage; }
     float GetAttackCooldown() const { return attackCooldown; }
     void SetAttackCooldown(float cd) { attackCooldown = cd; }

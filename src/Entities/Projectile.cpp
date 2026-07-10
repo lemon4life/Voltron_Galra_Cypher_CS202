@@ -1,7 +1,7 @@
 #include "Entities/Projectile.h"
 
-Projectile::Projectile(Vector2 pos, Vector2 vel, float life, int dmg)
-    : GameObject(pos), velocity(vel), lifetime(life), active(true), damage(dmg) {
+Projectile::Projectile(Vector2 pos, Vector2 vel, float life, int dmg, bool isEnemy)
+    : GameObject(pos), velocity(vel), lifetime(life), active(true), damage(dmg), isEnemyProj(isEnemy) {
     // Small bounding box for the projectile
     boundingBox = { pos.x, pos.y, 10.0f, 10.0f };
 }

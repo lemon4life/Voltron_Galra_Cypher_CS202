@@ -1,16 +1,21 @@
 #include "Entities/Enemy.h"
 #include "Entities/Player/Player.h"
 #include "Core/Manager/GameManager.h"
+#include "Core/Manager/AudioManager.h"
 #include <algorithm>
 #include <iostream>
 
 Enemy::Enemy(Vector2 pos, Player* t)
-    : GameObject(pos), health(100), maxHealth(100), speed(100.f), damage(15), target(t), currentState(nullptr), attackCooldown(0.1f)
+    : GameObject(pos), health(100), maxHealth(100), speed(100.f), damage(15),
+      attackCooldown(0.1f), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
+      target(t), currentState(nullptr)
 {}
 
 
 Enemy::Enemy(Vector2 pos, Player* t, int imaxHealth, float ispeed, int idamage, float iattackCooldown)
-    : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed), damage(idamage), target(t), currentState(nullptr), attackCooldown(iattackCooldown)
+    : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed), damage(idamage),
+      attackCooldown(iattackCooldown), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
+      target(t), currentState(nullptr)
 {}
 
 Enemy::~Enemy() {
@@ -24,30 +29,27 @@ Enemy::~Enemy() {
 // }
 
 // void Enemy::Draw() {
-//     DrawRectangleRec(GetBoundingBox(), PURPLE);
+//     Color col = (enemyType== EnemyType::BOSS) ? ORANGE : PURPLE;
+//     DrawRectangleRec(GetBoundingBox(), col);
     
 //     // Draw Health Bar
 //     float hpPercent = (float)health / maxHealth;
-//     DrawRectangle(position.x - 16, position.y - 20, 32 * hpPercent, 4, RED);
+//     float barWidth = (enemyType == EnemyType::BOSS) ? 64.0f : 32.0f;
+//     float xOffset = (enemyType == EnemyType::BOSS) ? 32.0f : 16.0f;
+//     float yOffset = (enemyType == EnemyType::BOSS) ? 36.0f : 20.0f;
+//     DrawRectangle(position.x - xOffset, position.y - yOffset, barWidth * hpPercent, 4, RED);
 // }
 
-void Enemy::ToIdleState() {
-    if (currentState == idleState.get()) return;
+void Enemy::ChangeState(IEnemyState* newState) {
+    if (!newState || currentState == newState) return;
 
-    currentState->Exit(this);
-    currentState = idleState.get();
+    if (currentState) {
+        currentState->Exit(this);
+    }
+
+    currentState = newState;
     currentState->Enter(this);
 }
-
-void Enemy::ToChaseState() {
-    if (currentState == chaseState.get()) return;
-
-    currentState->Exit(this);
-    currentState = chaseState.get();
-    currentState->Enter(this);
-}
-
-#include "Core/Manager/AudioManager.h"
 
 void Enemy::AddObserver(IEnemyObserver* observer) {
     if (!observer) return;
@@ -86,7 +88,6 @@ void Enemy::TakeDamage(int amount) {
 }
 
 Rectangle Enemy::GetBoundingBox() const {
-    // Bounding box centered on position and size
     return { position.x - size.x/2.f, position.y - size.y/2.f, size.x, size.y };
 }
 

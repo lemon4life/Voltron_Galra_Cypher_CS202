@@ -10,7 +10,6 @@
 #include <algorithm>
 
 namespace {
-    constexpr float TILE_SIZE = 32.0f;
     constexpr float DIAGONAL_COST = 1.41421356f;
     constexpr int MAX_SEARCH_STEPS = 500;
     constexpr int MIN_TARGET_POSITIONS = 2;
@@ -69,27 +68,11 @@ namespace {
     bool IsBodyClearAtWorldPosition(LevelManager* levelManager, Enemy* enemy, Vector2 worldPosition) {
         if (!levelManager || !enemy) return false;
 
-        Rectangle body = GetBodyAtWorldPosition(enemy, worldPosition);
-        const float edgePadding = 0.001f;
-
-        int leftTile = (int)std::floor((body.x + edgePadding) / TILE_SIZE);
-        int rightTile = (int)std::floor((body.x + body.width - edgePadding) / TILE_SIZE);
-        int topTile = (int)std::floor((body.y + edgePadding) / TILE_SIZE);
-        int bottomTile = (int)std::floor((body.y + body.height - edgePadding) / TILE_SIZE);
-
-        for (int y = topTile; y <= bottomTile; ++y) {
-            for (int x = leftTile; x <= rightTile; ++x) {
-                if (!levelManager->IsWalkableTile(x, y)) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        return !levelManager->IsSolidCollision(GetBodyAtWorldPosition(enemy, worldPosition));
     }
 
     bool IsBodyClearAtTile(LevelManager* levelManager, Enemy* enemy, Tile tile) {
-        if (!levelManager->IsWalkableTile(tile.x, tile.y)) return false;
+        if (!levelManager || !enemy) return false;
 
         Vector2 worldPosition = levelManager->TileToWorld(tile.x, tile.y);
         return IsBodyClearAtWorldPosition(levelManager, enemy, worldPosition);

@@ -1,6 +1,7 @@
 #include "Entities/Player/PlayerDashState.h"
 #include "Entities/Player/Player.h"
 #include "Core/Manager/GameManager.h"
+#include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 
 void PlayerDashState::Enter(Player* player) {
@@ -28,22 +29,32 @@ void PlayerDashState::Update(Player* player, float deltaTime) {
 
     // Movement speed should be 2.5x the normal walk speed during dash
     float dashSpeed = player->GetSpeed() * 2.5f;
-    const auto& walls = GameManager::GetInstance().GetLevelEntities();
+    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
 
     Vector2 currentPos = player->GetPosition();
+    float levelWidth = GameManager::GetInstance().GetLevelWidth();
+    float levelHeight = GameManager::GetInstance().GetLevelHeight();
 
     // Check X axis
     currentPos.x += dashDirection.x * dashSpeed * deltaTime;
+    // Keep within level bounds
+    if (currentPos.x < 0.0f) currentPos.x = 0.0f;
+    if (currentPos.x > levelWidth) currentPos.x = levelWidth;
+    
     player->SetPosition(currentPos);
-    if (player->CheckCollision(walls)) {
+    if (levelManager && levelManager->IsSolidCollision(player->GetBoundingBox())) {
         currentPos.x -= dashDirection.x * dashSpeed * deltaTime; // revert X
         player->SetPosition(currentPos);
     }
 
     // Check Y axis
     currentPos.y += dashDirection.y * dashSpeed * deltaTime;
+    // Keep within level bounds
+    if (currentPos.y < 0.0f) currentPos.y = 0.0f;
+    if (currentPos.y > levelHeight) currentPos.y = levelHeight;
+    
     player->SetPosition(currentPos);
-    if (player->CheckCollision(walls)) {
+    if (levelManager && levelManager->IsSolidCollision(player->GetBoundingBox())) {
         currentPos.y -= dashDirection.y * dashSpeed * deltaTime; // revert Y
         player->SetPosition(currentPos);
     }

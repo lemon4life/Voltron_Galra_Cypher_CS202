@@ -108,8 +108,7 @@ void DialogueManager::Update(float deltaTime) {
             visibleCharCount++;
             char c = node.text[visibleCharCount - 1];
             if (c != ' ') {
-                float pitch = GetRandomValue(80, 120) / 100.0f;
-                AudioManager::GetInstance().PlaySoundEffectPitch("blip", pitch);
+                // Typewriter effect sound removed per user request
             }
         }
 
@@ -122,13 +121,16 @@ void DialogueManager::Update(float deltaTime) {
         if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP)) {
             selectedOption--;
             if (selectedOption < 0) selectedOption = node.options.size() - 1;
+            AudioManager::GetInstance().PlayRandomClick();
         }
         if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN)) {
             selectedOption++;
             if (selectedOption >= (int)node.options.size()) selectedOption = 0;
+            AudioManager::GetInstance().PlayRandomClick();
         }
 
         if (IsKeyPressed(KEY_ENTER)) {
+            AudioManager::GetInstance().PlayRandomClick();
             if (node.options.empty()) {
                 // End dialogue if no options
                 int next = -1;

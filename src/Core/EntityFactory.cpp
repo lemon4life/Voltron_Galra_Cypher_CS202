@@ -1,7 +1,9 @@
 #include "Core/EntityFactory.h"
+#include "Entities/Enemy.h"
 #include "Entities/Wall.h"
 #include "Entities/NPC.h"
 #include "Entities/EnemyEntities/Chaser.h"
+#include "Entities/EnemyEntities/Boss.h"
 
 GameObject* EntityFactory::CreateEntity(char type, Vector2 position, Player* player) {
     switch (type) {
@@ -9,8 +11,10 @@ GameObject* EntityFactory::CreateEntity(char type, Vector2 position, Player* pla
             return new Wall(position);
         case 'N':
             return new NPC(position);
-        case 'C':
+        case 'E':
             return new EnemyChaser(position, player);
+        case 'B':
+            return new Boss(position, player);
         // We will add 'c' for Chest later
         default:
             return nullptr;

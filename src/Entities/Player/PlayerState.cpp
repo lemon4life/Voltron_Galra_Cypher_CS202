@@ -1,5 +1,6 @@
 #include "Entities/Player/PlayerState.h"
 #include "Entities/Player/Player.h"
+#include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 #include "Core/Manager/GameManager.h"
 
@@ -81,37 +82,34 @@ void PlayerRunState::Update(Player* player, float deltaTime) {
 
     // Update position with axis-separated collision logic
     Vector2 currentPos = player->GetPosition();
-    const auto& walls = GameManager::GetInstance().GetLevelEntities();
+    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+    float speed = player->GetSpeed();
     
     // Get level bounds
     float levelWidth = GameManager::GetInstance().GetLevelWidth();
     float levelHeight = GameManager::GetInstance().GetLevelHeight();
 
     // Check X axis
-    currentPos.x += moveDir.x * player->GetSpeed() * deltaTime;
-    // Bound X
-    if (levelWidth > 0.0f) {
-        if (currentPos.x < 16.0f) currentPos.x = 16.0f;
-        if (currentPos.x > levelWidth - 16.0f) currentPos.x = levelWidth - 16.0f;
-    }
+    currentPos.x += moveDir.x * speed * deltaTime;
+    // Keep within level bounds
+    if (currentPos.x < 0.0f) currentPos.x = 0.0f;
+    if (currentPos.x > levelWidth) currentPos.x = levelWidth;
     
     player->SetPosition(currentPos);
-    if (player->CheckCollision(walls)) {
-        currentPos.x -= moveDir.x * player->GetSpeed() * deltaTime; // revert X
+    if (levelManager && levelManager->IsSolidCollision(player->GetBoundingBox())) {
+        currentPos.x -= moveDir.x * speed * deltaTime;
         player->SetPosition(currentPos);
     }
 
     // Check Y axis
-    currentPos.y += moveDir.y * player->GetSpeed() * deltaTime;
-    // Bound Y
-    if (levelHeight > 0.0f) {
-        if (currentPos.y < 16.0f) currentPos.y = 16.0f;
-        if (currentPos.y > levelHeight - 16.0f) currentPos.y = levelHeight - 16.0f;
-    }
-    
+    currentPos.y += moveDir.y * speed * deltaTime;
+    // Keep within level bounds
+    if (currentPos.y < 0.0f) currentPos.y = 0.0f;
+    if (currentPos.y > levelHeight) currentPos.y = levelHeight;
+
     player->SetPosition(currentPos);
-    if (player->CheckCollision(walls)) {
-        currentPos.y -= moveDir.y * player->GetSpeed() * deltaTime; // revert Y
+    if (levelManager && levelManager->IsSolidCollision(player->GetBoundingBox())) {
+        currentPos.y -= moveDir.y * speed * deltaTime;
         player->SetPosition(currentPos);
     }
 

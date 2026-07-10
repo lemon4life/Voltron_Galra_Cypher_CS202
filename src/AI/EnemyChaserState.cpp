@@ -2,17 +2,19 @@
 #include "Entities/EnemyEntities/Chaser.h"
 #include "Entities/Player/Player.h"
 #include "Core/Manager/GameManager.h"
-#include "Entities/Wall.h"
+#include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 
-#include <vector>
-
 namespace {
-    bool TryMoveToClearPosition(Enemy* enemy, const std::vector<GameObject*>& walls, Vector2 position) {
+    bool IsBlocked(LevelManager* levelManager, Enemy* enemy) {
+        return levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox());
+    }
+
+    bool TryMoveToClearPosition(LevelManager* levelManager, Enemy* enemy, Vector2 position) {
         Vector2 oldPosition = enemy->GetPosition();
         enemy->SetPosition(position);
 
-        if (enemy->CheckCollision(walls)) {
+        if (IsBlocked(levelManager, enemy)) {
             enemy->SetPosition(oldPosition);
             return false;
         }
@@ -20,8 +22,8 @@ namespace {
         return true;
     }
 
-    bool ResolveWallOverlap(Enemy* enemy, const std::vector<GameObject*>& walls) {
-        if (!enemy->CheckCollision(walls)) {
+    bool ResolveWallOverlap(LevelManager* levelManager, Enemy* enemy) {
+        if (!IsBlocked(levelManager, enemy)) {
             return true;
         }
 
@@ -42,7 +44,7 @@ namespace {
             };
 
             for (Vector2 candidate : candidates) {
-                if (TryMoveToClearPosition(enemy, walls, candidate)) {
+                if (TryMoveToClearPosition(levelManager, enemy, candidate)) {
                     return true;
                 }
             }
@@ -69,7 +71,7 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     // Change back to idleState if player is too far away
     if (Vector2Distance(ePos, pPos) > offSightDistance) {
         chaser->EndPathFinding();
-        enemy->ToIdleState();
+        enemy->ChangeState(enemy->GetIdleState());
         return;
     }
     
@@ -102,36 +104,29 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     }
 
     {   
-        const auto& entities = GameManager::GetInstance().GetLevelEntities();
+        LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
 
-        std::vector<GameObject*> walls;
-        for (auto* e : entities) {
-            if (dynamic_cast<Wall*>(e)) {
-                walls.push_back(e);
-            }
-        }
-
-        ResolveWallOverlap(enemy, walls);
+        ResolveWallOverlap(levelManager, enemy);
         ePos = enemy->GetPosition();
 
         // X Axis Wall Sliding
         ePos.x += dir.x * speed * deltaTime;
         enemy->SetPosition(ePos);
-        if (enemy->CheckCollision(walls)) {
+        if (IsBlocked(levelManager, enemy)) {
             ePos.x -= dir.x * speed * deltaTime;
             enemy->SetPosition(ePos);
         }
-        ResolveWallOverlap(enemy, walls);
+        ResolveWallOverlap(levelManager, enemy);
         ePos = enemy->GetPosition();
 
         // Y Axis Wall Sliding
         ePos.y += dir.y * speed * deltaTime;
         enemy->SetPosition(ePos);
-        if (enemy->CheckCollision(walls)) {
+        if (IsBlocked(levelManager, enemy)) {
             ePos.y -= dir.y * speed * deltaTime;
             enemy->SetPosition(ePos);
         }
-        ResolveWallOverlap(enemy, walls);
+        ResolveWallOverlap(levelManager, enemy);
         ePos = enemy->GetPosition();
 
         // Handle Attack Cooldown
@@ -156,7 +151,7 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             Vector2 beforePush = ePos;
             ePos.x += pushDir.x * 20.0f;
             enemy->SetPosition(ePos);
-            if (enemy->CheckCollision(walls)) {
+            if (IsBlocked(levelManager, enemy)) {
                 ePos.x = beforePush.x;
                 enemy->SetPosition(ePos);
             }
@@ -164,12 +159,12 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             beforePush = ePos;
             ePos.y += pushDir.y * 20.0f;
             enemy->SetPosition(ePos);
-            if (enemy->CheckCollision(walls)) {
+            if (IsBlocked(levelManager, enemy)) {
                 ePos.y = beforePush.y;
                 enemy->SetPosition(ePos);
             }
 
-            ResolveWallOverlap(enemy, walls);
+            ResolveWallOverlap(levelManager, enemy);
         }
     }
 }

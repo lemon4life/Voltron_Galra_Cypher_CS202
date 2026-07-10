@@ -3,6 +3,7 @@
 #include "Core/EntityFactory.h"
 #include "Entities/Player/Player.h"
 #include "Entities/Enemy.h"
+#include "Core/Manager/GameManager.h"
 #include "raymath.h"
 #include <cstdlib>
 
@@ -48,13 +49,16 @@ void WaveManager::Update(float deltaTime, Player* player, LevelManager* levelMan
                     Vector2 spawnPos = { randX, randY };
 
                     if (Vector2Distance(spawnPos, player->GetPosition()) > 150.0f) {
-                        if (levelManager->IsValidSpawnLocation(spawnPos)) {
-                            GameObject* newEnemy = EntityFactory::CreateEntity('C', spawnPos, player);
-                            if (newEnemy) {
+                        char spawnType = (currentWave == 5) ? 'B' : 'E';
+                        GameObject* newEnemy = EntityFactory::CreateEntity(spawnType, spawnPos, player);
+                        if (newEnemy) {
+                            if (levelManager->IsValidSpawnLocation(newEnemy)) {
                                 levelManager->AddEntity(newEnemy);
                                 enemiesToSpawn--;
                                 spawnTimer = 0.07f;
                                 spawned = true;
+                            } else {
+                                delete newEnemy;
                             }
                         }
                     }
@@ -62,19 +66,30 @@ void WaveManager::Update(float deltaTime, Player* player, LevelManager* levelMan
                 }
             }
         } else if (activeEnemies == 0) {
-            // Wave cleared! Setup next wave.
-            currentWave++;
-            enemiesToSpawn = currentWave * 3;
-            timeBetweenWaves = 3.0f;
-            showWaveTextTimer = 2.0f;
+            if (currentWave == 5) {
+                // Boss defeated!
+                GameManager::GetInstance().SetState(GameState::VICTORY);
+            } else {
+                // Wave cleared! Setup next wave.
+                currentWave++;
+                if (currentWave == 5) {
+                    enemiesToSpawn = 1; // Only 1 Boss
+                } else {
+                    enemiesToSpawn = currentWave;
+                }
+                timeBetweenWaves = 3.0f;
+                showWaveTextTimer = 3.0f; // Give 3s warning for next wave
+            }
         }
     }
 }
 
 void WaveManager::DrawHUD() {
-    DrawText(TextFormat("WAVE: %d", currentWave), 390, 10, 20, WHITE);
+    DrawText(TextFormat("WAVE: %d / 5", currentWave), 360, 10, 20, WHITE);
     if (showWaveTextTimer > 0.0f) {
-        if (currentWave == 1) {
+        if (currentWave == 5) {
+            DrawText("BOSS WARNING!", 150, 240, 30, RED);
+        } else if (currentWave == 1) {
             DrawText("WAVE 1 START!", 180, 240, 20, GREEN);
         } else {
             DrawText("WAVE CLEARED!", 180, 240, 20, GREEN);

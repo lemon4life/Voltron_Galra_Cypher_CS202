@@ -14,8 +14,7 @@ EnemyChaser::EnemyChaser(Vector2 pos, Player* target)
 
     idleState->UpdateDistance(SIGHT);
     chaseState->UpdateDistance(SIGHT);
-    currentState = idleState.get();
-    currentState->Enter(this);
+    ChangeState(GetIdleState());
 }
 
 EnemyChaser::~EnemyChaser() {

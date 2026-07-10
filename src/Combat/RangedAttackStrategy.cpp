@@ -15,7 +15,7 @@ void RangedAttackStrategy::Attack(Vector2 playerPos) {
     Projectile* p = new Projectile(playerPos, projVelocity, 2.0f, 34);
     GameManager::GetInstance().AddProjectile(p);
     
-    AudioManager::GetInstance().PlaySoundEffect("shoot");
+    AudioManager::GetInstance().PlayRandomLaser();
 }
 
 void RangedAttackStrategy::Update(float deltaTime) {
