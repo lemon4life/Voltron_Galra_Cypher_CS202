@@ -10,7 +10,7 @@ private:
 
     std::unique_ptr<BossRangedAttackState> rangeState;
 public:
-    Boss(Vector2 pos, Player* target);
+    Boss(Vector2 pos, TeamManager* targetTeam);
     ~Boss() override;
 
     void Update(float deltaTime) override;

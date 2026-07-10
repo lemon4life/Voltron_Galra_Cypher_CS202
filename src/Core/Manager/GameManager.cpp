@@ -33,9 +33,10 @@ void GameManager::AddProjectile(Projectile* p) {
 }
 
 #include "Entities/Enemy.h"
-#include "Entities/Player/Player.h"
+#include "Core/Manager/TeamManager.h"
+#include "Entities/Player/Paladin.h"
 
-void GameManager::UpdateProjectiles(float deltaTime, Player* player) {
+void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
     const auto& entities = GetLevelEntities();
 
     for (auto it = activeProjectiles.begin(); it != activeProjectiles.end();) {
@@ -45,9 +46,9 @@ void GameManager::UpdateProjectiles(float deltaTime, Player* player) {
         Rectangle pBox = (*it)->GetBoundingBox();
 
         // If it's an enemy projectile, check collision with Player
-        if ((*it)->IsEnemyProjectile() && player) {
-            if (CheckCollisionRecs(pBox, player->GetBoundingBox())) {
-                player->TakeDamage((*it)->GetDamage());
+        if ((*it)->IsEnemyProjectile() && teamManager && teamManager->GetActivePaladin()) {
+            if (CheckCollisionRecs(pBox, teamManager->GetActivePaladin()->GetBoundingBox())) {
+                teamManager->GetActivePaladin()->TakeDamage((*it)->GetDamage());
                 hitSomething = true;
             }
         }

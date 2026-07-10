@@ -1,5 +1,8 @@
 #include "raylib.h"
-#include "Entities/Player/Player.h"
+#include "Core/Manager/TeamManager.h"
+#include "Entities/Player/Lance.h"
+#include "Entities/Player/Keith.h"
+#include "Entities/Player/PlaceholderPaladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/LevelManager.h"
@@ -20,20 +23,20 @@ const int GAME_WIDTH = 683;
 const int GAME_HEIGHT = 512;
 const int BASE_FPS = 120;
 
-void ResetGame(Player* player, LevelManager* levelManager, WaveManager* waveManager) {
-    player->SetPosition({ 256.0f, 256.0f });
-    player->ResetStats();
+void ResetGame(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager) {
+    teamManager->GetActivePaladin()->SetPosition({ 256.0f, 256.0f });
+    for(auto p : teamManager->GetTeam()) p->ResetStats();
     GameManager::GetInstance().ClearProjectiles();
-    levelManager->LoadLevel("assets/map/level1_Tile Layer 1.csv", player);
+    levelManager->LoadLevel("assets/map/level1_Tile Layer 1.csv", teamManager);
     waveManager->Reset();
     GameManager::GetInstance().SetState(GameState::PLAYING);
 }
 
-void ResetDemoGame(Player* player, LevelManager* levelManager, WaveManager* waveManager) {
-    player->SetPosition({ 256.0f, 256.0f });
-    player->ResetStats();
+void ResetDemoGame(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager) {
+    teamManager->GetActivePaladin()->SetPosition({ 256.0f, 256.0f });
+    for(auto p : teamManager->GetTeam()) p->ResetStats();
     GameManager::GetInstance().ClearProjectiles();
-    levelManager->LoadLevel("assets/levels/demo-big.txt", player);
+    levelManager->LoadLevel("assets/levels/demo-big.txt", teamManager);
     waveManager->Reset(150);
     GameManager::GetInstance().SetState(GameState::PLAYING);
 }
@@ -68,25 +71,26 @@ int main() {
     keithSprites.battleRun = LoadTexture("assets/sprites/Keith/Battle_Run.png");
     keithSprites.weapon = LoadTexture("assets/sprites/Keith/Weapon_Static.png");
 
-    // Instantiate Player as a GameObject pointer
+    // Initialize TeamManager and Paladins
     Vector2 startPos = { (float)GAME_WIDTH / 2.0f, (float)GAME_HEIGHT / 2.0f };
-    Player* player = new Player(startPos, lanceSprites, keithSprites);
+    TeamManager* teamManager = new TeamManager();
+    Lance* lance = new Lance(startPos, lanceSprites);
+    Keith* keith = new Keith(startPos, keithSprites);
+    PlaceholderPaladin* placeholder = new PlaceholderPaladin(startPos, lanceSprites);
+    
+    teamManager->AddMember(lance);
+    teamManager->AddMember(keith);
+    teamManager->AddMember(placeholder);
 
     // Initialize UI Manager
     UIManager uiManager;
-    player->AddObserver(&uiManager);
-    
-    // player constructor notifies observers, but we just added the observer. 
-    // Let's manually trigger it once so the UI knows the starting state.
-    player->NotifyObservers();
+    uiManager.SetTeamManager(teamManager);
 
     // Setup LevelManager
     LevelManager levelManager;
-    levelManager.LoadLevel("assets/levels/hub.txt", player);
+    levelManager.LoadLevel("assets/levels/hub.txt", teamManager);
     GameManager::GetInstance().SetLevelManager(&levelManager);
 
-    // Equip the player with Lance's Ranged weapon to test the gun.
-    player->SetWeapon(new RangedAttackStrategy(lanceSprites.weapon));
 
     // Initialize WaveManager
     WaveManager waveManager;
@@ -116,7 +120,7 @@ int main() {
         Vector2 mouseScreen = GetMousePosition();
         Vector2 mouseInternal = { mouseScreen.x * ((float)GAME_WIDTH / (float)WINDOW_WIDTH), mouseScreen.y * ((float)GAME_HEIGHT / (float)WINDOW_HEIGHT) };
         Vector2 mouseWorld = GetScreenToWorld2D(mouseInternal, camera);
-        player->SetAimTarget(mouseWorld);
+        teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
 
         GameState state = GameManager::GetInstance().GetState();
         
@@ -127,7 +131,7 @@ int main() {
                     GameManager::GetInstance().SetState(GameState::HUB);
                 }
                 if (IsKeyPressed(KEY_R)) {
-                    ResetDemoGame(player, &levelManager, &waveManager);
+                    ResetDemoGame(teamManager, &levelManager, &waveManager);
                 }
                 break;
             case GameState::HUB:
@@ -136,18 +140,18 @@ int main() {
                 } else {
                     if (DialogueManager::GetInstance().IsMissionRequested()) {
                         DialogueManager::GetInstance().ClearMissionRequest();
-                        ResetGame(player, &levelManager, &waveManager);
+                        ResetGame(teamManager, &levelManager, &waveManager);
                         break;
                     }
                     
                     levelManager.UpdateLevel(deltaTime);
-                    player->Update(deltaTime);
-                    camera.target = { std::round(player->GetPosition().x), std::round(player->GetPosition().y) };
+                    teamManager->Update(deltaTime);
+                    camera.target = { std::round(teamManager->GetActivePaladin()->GetPosition().x), std::round(teamManager->GetActivePaladin()->GetPosition().y) };
                     
                     if (IsKeyPressed(KEY_E)) {
                         for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
                             if (NPC* npc = dynamic_cast<NPC*>(entity)) {
-                                if (Vector2Distance(player->GetPosition(), npc->GetPosition()) < 50.0f) {
+                                if (Vector2Distance(teamManager->GetActivePaladin()->GetPosition(), npc->GetPosition()) < 50.0f) {
                                     DialogueManager::GetInstance().LoadDialogueTree("assets/story/intro.txt");
                                     DialogueManager::GetInstance().StartDialogue();
                                     break;
@@ -159,15 +163,15 @@ int main() {
                 break;
             case GameState::PLAYING:
                 levelManager.UpdateLevel(deltaTime);
-                player->Update(deltaTime);
-                GameManager::GetInstance().UpdateProjectiles(deltaTime, player);
-                waveManager.Update(deltaTime, player, &levelManager);
-                camera.target = { std::round(player->GetPosition().x), std::round(player->GetPosition().y) };
+                teamManager->Update(deltaTime);
+                GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
+                waveManager.Update(deltaTime, teamManager, &levelManager);
+                camera.target = { std::round(teamManager->GetActivePaladin()->GetPosition().x), std::round(teamManager->GetActivePaladin()->GetPosition().y) };
                 
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
                     GameManager::GetInstance().SetState(GameState::PAUSED);
                 }
-                if (player->GetHealth() <= 0) {
+                if (teamManager->GetActivePaladin()->GetHealth() <= 0) {
                     GameManager::GetInstance().SetState(GameState::GAMEOVER);
                 }
                 break;
@@ -178,13 +182,13 @@ int main() {
                 break;
             case GameState::GAMEOVER:
                 if (IsKeyPressed(KEY_R)) {
-                    ResetGame(player, &levelManager, &waveManager);
+                    ResetGame(teamManager, &levelManager, &waveManager);
                 }
                 break;
             case GameState::VICTORY:
                 if (IsKeyPressed(KEY_R)) {
                     GameManager::GetInstance().SetState(GameState::MENU);
-                    ResetGame(player, &levelManager, &waveManager);
+                    ResetGame(teamManager, &levelManager, &waveManager);
                 }
                 break;
         }
@@ -212,16 +216,16 @@ int main() {
                 if (state == GameState::HUB) {
                     ClearBackground(DARKGREEN);
                     levelManager.DrawLevel();
-                    player->Draw();
+                    teamManager->Draw();
                 } else if (state == GameState::PLAYING) {
                     ClearBackground(DARKGRAY);
                     levelManager.DrawLevel();
-                    player->Draw();
+                    teamManager->Draw();
                     GameManager::GetInstance().DrawProjectiles();
                 } else if (state == GameState::PAUSED) {
                     ClearBackground(DARKGRAY);
                     levelManager.DrawLevel();
-                    player->Draw();
+                    teamManager->Draw();
                     GameManager::GetInstance().DrawProjectiles();
                 }
                 
@@ -267,7 +271,7 @@ int main() {
     }
 
     // De-Initialization
-    delete player;
+    delete teamManager;
     UnloadTexture(lanceSprites.restIdle);
     UnloadTexture(lanceSprites.restRun);
     UnloadTexture(lanceSprites.battleIdle);

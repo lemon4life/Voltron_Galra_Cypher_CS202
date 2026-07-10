@@ -4,7 +4,7 @@
 #include "raylib.h"
 #include "Entities/GameObject.h"
 #include "Core/Manager/EnemyPathManager.h"
-class Player;
+class TeamManager;
 
 class LevelManager : public IEnemyObserver {
 private:
@@ -26,7 +26,7 @@ public:
     LevelManager();
     ~LevelManager();
 
-    void LoadLevel(const std::string& filepath, Player* player);
+    void LoadLevel(const std::string& filepath, TeamManager* teamManager);
     void DrawLevel();
     void UpdateLevel(float deltaTime);
     void ClearLevel();

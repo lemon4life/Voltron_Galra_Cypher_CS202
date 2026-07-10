@@ -2,14 +2,14 @@
 #include "Entities/Player/PlayerState.h"
 #include "raylib.h"
 
-class Player; // Forward declaration
+class Paladin; // Forward declaration
 
 class PlayerDashState : public IPlayerState {
 private:
     Vector2 dashDirection;
 
 public:
-    void Enter(Player* player) override;
-    void Update(Player* player, float deltaTime) override;
-    void Exit(Player* player) override;
+    void Enter(Paladin* player) override;
+    void Update(Paladin* player, float deltaTime) override;
+    void Exit(Paladin* player) override;
 };

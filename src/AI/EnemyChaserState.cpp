@@ -1,6 +1,7 @@
 #include "AI/EnemyState.h"
 #include "Entities/EnemyEntities/Chaser.h"
-#include "Entities/Player/Player.h"
+#include "Entities/Player/Paladin.h"
+#include "Core/Manager/TeamManager.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "raymath.h"
@@ -59,11 +60,11 @@ void EnemyChaserChaseState::Enter(Enemy* enemy) { }
 
 void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     EnemyChaser* chaser = dynamic_cast<EnemyChaser*>(enemy);
-    if (!chaser || !enemy->GetTarget()) return;
+    if (!chaser || !enemy->GetTargetTeam()) return;
 
     
     Vector2 ePos = enemy->GetPosition();
-    Vector2 pPos = enemy->GetTarget()->GetPosition();
+    Vector2 pPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
     Vector2 dir;
     float speed = enemy->GetSpeed();
     float distanceToP = Vector2Length(Vector2Subtract(pPos, ePos));
@@ -136,10 +137,10 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
         }
 
         // Check collision with Player for overlap resolution and damage
-        if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTarget()->GetBoundingBox())) {
+        if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTargetTeam()->GetActivePaladin()->GetBoundingBox())) {
             // Attack if cooldown allows
             if (enemy->GetAttackCooldown() <= 0.0f) {
-                enemy->GetTarget()->TakeDamage(enemy->GetDamage());
+                enemy->GetTargetTeam()->GetActivePaladin()->TakeDamage(enemy->GetDamage());
                 enemy->SetAttackCooldown(1.0f); // 1 second cooldown
             }
             

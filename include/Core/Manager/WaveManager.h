@@ -1,7 +1,7 @@
 #pragma once
 #include "raylib.h"
 
-class Player;
+class TeamManager;
 class LevelManager;
 
 class WaveManager {
@@ -14,7 +14,7 @@ private:
 
 public:
     WaveManager();
-    void Update(float deltaTime, Player* player, LevelManager* levelManager);
+    void Update(float deltaTime, TeamManager* teamManager, LevelManager* levelManager);
     void Reset(int startingEnemies = 1);
     void DrawHUD();
 };

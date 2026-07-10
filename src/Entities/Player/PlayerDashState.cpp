@@ -1,10 +1,10 @@
 #include "Entities/Player/PlayerDashState.h"
-#include "Entities/Player/Player.h"
+#include "Entities/Player/Paladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 
-void PlayerDashState::Enter(Player* player) {
+void PlayerDashState::Enter(Paladin* player) {
     player->SetInvincible(true);
     player->SetDashTimer(0.3f); // 0.3s dash duration
     
@@ -17,7 +17,7 @@ void PlayerDashState::Enter(Player* player) {
     }
 }
 
-void PlayerDashState::Update(Player* player, float deltaTime) {
+void PlayerDashState::Update(Paladin* player, float deltaTime) {
     float timer = player->GetDashTimer() - deltaTime;
     player->SetDashTimer(timer);
 
@@ -62,7 +62,7 @@ void PlayerDashState::Update(Player* player, float deltaTime) {
     player->UpdateAnimation(deltaTime);
 }
 
-void PlayerDashState::Exit(Player* player) {
+void PlayerDashState::Exit(Paladin* player) {
     player->SetInvincible(false);
     player->SetDashCooldown(1.0f); // 1.0s cooldown
 }

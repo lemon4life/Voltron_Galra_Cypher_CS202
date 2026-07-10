@@ -46,7 +46,7 @@ LevelManager::~LevelManager() {
     UnloadTexture(tileset);
 }
 
-void LevelManager::LoadLevel(const std::string& filepath, Player* player) {
+void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManager) {
     ClearLevel();
 
     std::ifstream file(filepath);
@@ -93,12 +93,12 @@ void LevelManager::LoadLevel(const std::string& filepath, Player* player) {
                         (float)mapGridLayer1.size() * TILE_SIZE + TILE_SIZE / 2.0f
                     };
 
-                    GameObject* entity = EntityFactory::CreateEntity(type, tileCenter, player);
+                    GameObject* entity = EntityFactory::CreateEntity(type, tileCenter, teamManager);
                     if (entity != nullptr) {
                         levelEntities.push_back(entity);
                     }
 
-                    // GameObject* entity = EntityFactory::CreateEntity(type, tileCenter, player);
+                    // GameObject* entity = EntityFactory::CreateEntity(type, tileCenter, teamManager);
                     // if (entity != nullptr) {
                     //     CenterEntityOnPoint(entity, tileCenter);
                     //     if (IsValidSpawnLocation(entity)) {

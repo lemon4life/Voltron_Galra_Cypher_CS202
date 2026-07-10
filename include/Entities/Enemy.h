@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-class Player;
+class TeamManager;
 
 enum class EnemyType {
     GRUNT,
@@ -26,7 +26,7 @@ protected:
 
     EnemyType enemyType;
 
-    Player* target;
+    TeamManager* targetTeam;
     IEnemyState* currentState;
 
     std::unique_ptr<IEnemyState> idleState;
@@ -38,8 +38,8 @@ protected:
     void NotifyEnemyDied();
 
 public:
-    Enemy(Vector2 pos, Player* t);
-    Enemy(Vector2 pos, Player* t, int maxHealth, float speed, int damage, float attackCooldown);
+    Enemy(Vector2 pos, TeamManager* t);
+    Enemy(Vector2 pos, TeamManager* t, int maxHealth, float speed, int damage, float attackCooldown);
     virtual ~Enemy();
 
     virtual void Update(float deltaTime) override = 0;
@@ -73,5 +73,5 @@ public:
     float GetAttackCooldown() const { return attackCooldown; }
     void SetAttackCooldown(float cd) { attackCooldown = cd; }
 
-    Player* GetTarget() const { return target; }
+    TeamManager* GetTargetTeam() const { return targetTeam; }
 };
