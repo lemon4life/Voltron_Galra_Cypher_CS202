@@ -5,6 +5,8 @@
 #include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 
+#include <iostream>
+
 namespace {
     bool IsBlocked(LevelManager* levelManager, Enemy* enemy) {
         return levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox());
@@ -20,38 +22,6 @@ namespace {
         }
 
         return true;
-    }
-
-    bool ResolveWallOverlap(LevelManager* levelManager, Enemy* enemy) {
-        if (!IsBlocked(levelManager, enemy)) {
-            return true;
-        }
-
-        Vector2 origin = enemy->GetPosition();
-        const float step = 2.0f;
-        const float maxDistance = 64.0f;
-
-        for (float distance = step; distance <= maxDistance; distance += step) {
-            const Vector2 candidates[8] = {
-                { origin.x + distance, origin.y },
-                { origin.x - distance, origin.y },
-                { origin.x, origin.y + distance },
-                { origin.x, origin.y - distance },
-                { origin.x + distance, origin.y + distance },
-                { origin.x + distance, origin.y - distance },
-                { origin.x - distance, origin.y + distance },
-                { origin.x - distance, origin.y - distance }
-            };
-
-            for (Vector2 candidate : candidates) {
-                if (TryMoveToClearPosition(levelManager, enemy, candidate)) {
-                    return true;
-                }
-            }
-        }
-
-        enemy->SetPosition(origin);
-        return false;
     }
 }
 
@@ -80,18 +50,10 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     if (distanceToP > 20.f) {
         chaser->StartPathFinding();
         if (chaser->HasTargetPosition()) {
-            while (chaser->HasTargetPosition() &&
-                   Vector2Distance(chaser->FirstTargetPosition(), ePos) <= 4.0f) {
-                chaser->PopTarget();
-            }
-
-            if (chaser->HasTargetPosition()) {
-                Vector2 pathTarget = chaser->FirstTargetPosition();
-                dir = Vector2Subtract(pathTarget, ePos);
-            } else {
-                dir = Vector2Subtract(pPos, ePos);
-            }
-        } else {
+            Vector2 pathTarget = chaser->FirstTargetPosition();
+            dir = Vector2Subtract(pathTarget, ePos);
+        }
+        else {
             dir = Vector2Subtract(pPos, ePos);
         }
     } else {
@@ -103,10 +65,10 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
         dir = Vector2Normalize(dir);
     }
 
+    // Collision calculation
     {   
         LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
 
-        ResolveWallOverlap(levelManager, enemy);
         ePos = enemy->GetPosition();
 
         // X Axis Wall Sliding
@@ -116,7 +78,6 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             ePos.x -= dir.x * speed * deltaTime;
             enemy->SetPosition(ePos);
         }
-        ResolveWallOverlap(levelManager, enemy);
         ePos = enemy->GetPosition();
 
         // Y Axis Wall Sliding
@@ -126,7 +87,6 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             ePos.y -= dir.y * speed * deltaTime;
             enemy->SetPosition(ePos);
         }
-        ResolveWallOverlap(levelManager, enemy);
         ePos = enemy->GetPosition();
 
         // Handle Attack Cooldown
@@ -140,7 +100,7 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             // Attack if cooldown allows
             if (enemy->GetAttackCooldown() <= 0.0f) {
                 enemy->GetTarget()->TakeDamage(enemy->GetDamage());
-                enemy->SetAttackCooldown(1.0f); // 1 second cooldown
+                enemy->SetAttackCooldown(enemy->GetAttackCooldown());
             }
             
             // Separation knockback (push enemy away from player to prevent freeze/deadlock)
@@ -163,8 +123,6 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
                 ePos.y = beforePush.y;
                 enemy->SetPosition(ePos);
             }
-
-            ResolveWallOverlap(levelManager, enemy);
         }
     }
 }
