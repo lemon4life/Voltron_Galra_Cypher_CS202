@@ -5,23 +5,9 @@
 #include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 
-#include <iostream>
-
 namespace {
     bool IsBlocked(LevelManager* levelManager, Enemy* enemy) {
         return levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox());
-    }
-
-    bool TryMoveToClearPosition(LevelManager* levelManager, Enemy* enemy, Vector2 position) {
-        Vector2 oldPosition = enemy->GetPosition();
-        enemy->SetPosition(position);
-
-        if (IsBlocked(levelManager, enemy)) {
-            enemy->SetPosition(oldPosition);
-            return false;
-        }
-
-        return true;
     }
 }
 
@@ -34,7 +20,8 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     
     Vector2 ePos = enemy->GetPosition();
     Vector2 pPos = enemy->GetTarget()->GetPosition();
-    Vector2 dir;
+    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+    Vector2 dir = { 0.0f, 0.0f };
     float speed = enemy->GetSpeed();
     float distanceToP = Vector2Length(Vector2Subtract(pPos, ePos));
     
@@ -47,15 +34,13 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     
     // Apply Path finding if far from player
     // If near player use head to player direction directly
-    if (distanceToP > 20.f) {
+    if (distanceToP > 10.f) {
         chaser->StartPathFinding();
-        if (chaser->HasTargetPosition()) {
-            Vector2 pathTarget = chaser->FirstTargetPosition();
-            dir = Vector2Subtract(pathTarget, ePos);
+        Vector2 moveTarget = pPos;
+        if (levelManager) {
+            moveTarget = levelManager->GetEnemyPathManager().GetNextMoveTarget(levelManager, enemy, pPos);
         }
-        else {
-            dir = Vector2Subtract(pPos, ePos);
-        }
+        dir = Vector2Subtract(moveTarget, ePos);
     } else {
         chaser->EndPathFinding();
         dir = Vector2Subtract(pPos, ePos);
@@ -65,10 +50,12 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
         dir = Vector2Normalize(dir);
     }
 
-    // Collision calculation
-    {   
-        LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+    if (levelManager) {
+        dir = levelManager->GetEnemyPathManager().GetLocalAvoidanceDirection(levelManager, enemy, dir);
+    }
 
+    // Collision calculation
+    {
         ePos = enemy->GetPosition();
 
         // X Axis Wall Sliding
