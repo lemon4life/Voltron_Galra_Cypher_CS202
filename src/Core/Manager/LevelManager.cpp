@@ -331,7 +331,7 @@ Vector2 LevelManager::TileToWorld(int tileX, int tileY) const {
 }
 
 //////////////////////////////////////////////
-// Level Manager funcion for Enemy interaction
+// Level Manager funcion for Enemy Observer
 //////////////////////////////////////////////
 
 void LevelManager::ProcessPendingRemovals() {

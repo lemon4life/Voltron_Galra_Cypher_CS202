@@ -41,6 +41,9 @@ public:
 
     float GetLevelWidth() const { return levelWidth; }
     float GetLevelHeight() const { return levelHeight; }
+    EnemyPathManager& GetEnemyPathManager() { return enemyPathManager; }
+    int GetGridRows() const { return gridRows; }
+    int GetGridCols() const { return gridCols; }
 
     // Override functions of Enemy Observer
     void OnEnemyPathFind(Enemy* enemy) override;

@@ -10,50 +10,6 @@ namespace {
     bool IsBlocked(LevelManager* levelManager, Enemy* enemy) {
         return levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox());
     }
-
-    bool TryMoveToClearPosition(LevelManager* levelManager, Enemy* enemy, Vector2 position) {
-        Vector2 oldPosition = enemy->GetPosition();
-        enemy->SetPosition(position);
-
-        if (IsBlocked(levelManager, enemy)) {
-            enemy->SetPosition(oldPosition);
-            return false;
-        }
-
-        return true;
-    }
-
-    bool ResolveWallOverlap(LevelManager* levelManager, Enemy* enemy) {
-        if (!IsBlocked(levelManager, enemy)) {
-            return true;
-        }
-
-        Vector2 origin = enemy->GetPosition();
-        const float step = 2.0f;
-        const float maxDistance = 64.0f;
-
-        for (float distance = step; distance <= maxDistance; distance += step) {
-            const Vector2 candidates[8] = {
-                { origin.x + distance, origin.y },
-                { origin.x - distance, origin.y },
-                { origin.x, origin.y + distance },
-                { origin.x, origin.y - distance },
-                { origin.x + distance, origin.y + distance },
-                { origin.x + distance, origin.y - distance },
-                { origin.x - distance, origin.y + distance },
-                { origin.x - distance, origin.y - distance }
-            };
-
-            for (Vector2 candidate : candidates) {
-                if (TryMoveToClearPosition(levelManager, enemy, candidate)) {
-                    return true;
-                }
-            }
-        }
-
-        enemy->SetPosition(origin);
-        return false;
-    }
 }
 
 void EnemyChaserChaseState::Enter(Enemy* enemy) { }
@@ -64,8 +20,9 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
 
     
     Vector2 ePos = enemy->GetPosition();
-    Vector2 pPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
-    Vector2 dir;
+    Vector2 pPos = enemy->GetTarget()->GetPosition();
+    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+    Vector2 dir = { 0.0f, 0.0f };
     float speed = enemy->GetSpeed();
     float distanceToP = Vector2Length(Vector2Subtract(pPos, ePos));
     
@@ -78,23 +35,13 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     
     // Apply Path finding if far from player
     // If near player use head to player direction directly
-    if (distanceToP > 20.f) {
+    if (distanceToP > 10.f) {
         chaser->StartPathFinding();
-        if (chaser->HasTargetPosition()) {
-            while (chaser->HasTargetPosition() &&
-                   Vector2Distance(chaser->FirstTargetPosition(), ePos) <= 4.0f) {
-                chaser->PopTarget();
-            }
-
-            if (chaser->HasTargetPosition()) {
-                Vector2 pathTarget = chaser->FirstTargetPosition();
-                dir = Vector2Subtract(pathTarget, ePos);
-            } else {
-                dir = Vector2Subtract(pPos, ePos);
-            }
-        } else {
-            dir = Vector2Subtract(pPos, ePos);
+        Vector2 moveTarget = pPos;
+        if (levelManager) {
+            moveTarget = levelManager->GetEnemyPathManager().GetNextMoveTarget(levelManager, enemy, pPos);
         }
+        dir = Vector2Subtract(moveTarget, ePos);
     } else {
         chaser->EndPathFinding();
         dir = Vector2Subtract(pPos, ePos);
@@ -104,10 +51,12 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
         dir = Vector2Normalize(dir);
     }
 
-    {   
-        LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+    if (levelManager) {
+        dir = levelManager->GetEnemyPathManager().GetLocalAvoidanceDirection(levelManager, enemy, dir);
+    }
 
-        ResolveWallOverlap(levelManager, enemy);
+    // Collision calculation
+    {
         ePos = enemy->GetPosition();
 
         // X Axis Wall Sliding
@@ -117,7 +66,6 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             ePos.x -= dir.x * speed * deltaTime;
             enemy->SetPosition(ePos);
         }
-        ResolveWallOverlap(levelManager, enemy);
         ePos = enemy->GetPosition();
 
         // Y Axis Wall Sliding
@@ -127,7 +75,6 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
             ePos.y -= dir.y * speed * deltaTime;
             enemy->SetPosition(ePos);
         }
-        ResolveWallOverlap(levelManager, enemy);
         ePos = enemy->GetPosition();
 
         // Handle Attack Cooldown
@@ -140,8 +87,8 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
         if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTargetTeam()->GetActivePaladin()->GetBoundingBox())) {
             // Attack if cooldown allows
             if (enemy->GetAttackCooldown() <= 0.0f) {
-                enemy->GetTargetTeam()->GetActivePaladin()->TakeDamage(enemy->GetDamage());
-                enemy->SetAttackCooldown(1.0f); // 1 second cooldown
+                enemy->GetTarget()->TakeDamage(enemy->GetDamage());
+                enemy->SetAttackCooldown(enemy->GetAttackCooldown());
             }
             
             // Separation knockback (push enemy away from player to prevent freeze/deadlock)
@@ -164,8 +111,6 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
                 ePos.y = beforePush.y;
                 enemy->SetPosition(ePos);
             }
-
-            ResolveWallOverlap(levelManager, enemy);
         }
     }
 }

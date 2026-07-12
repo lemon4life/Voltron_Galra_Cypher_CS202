@@ -70,3 +70,6 @@ Desktop.ini
 .DS_Store
 
 cmake-build-debug/
+
+# Local tmp folder
+/tmp/

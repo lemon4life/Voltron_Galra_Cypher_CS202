@@ -14,7 +14,7 @@ namespace {
     constexpr float DIAGONAL_COST = 1.41421356f;
     constexpr int MAX_SEARCH_STEPS = 500;
     constexpr int MIN_TARGET_POSITIONS = 2;
-    constexpr int MAX_TARGET_POSITIONS = 5;
+    constexpr int MAX_TARGET_POSITIONS = 10;
 
     struct Tile {
         int x;
@@ -257,11 +257,95 @@ void EnemyPathManager::AddEnemy(Enemy* enemy) {
     }
 }
 
+Vector2 EnemyPathManager::GetNextMoveTarget(LevelManager* levelManager, Enemy* enemy, Vector2 fallbackTarget) {
+    if (!levelManager || !enemy) {
+        return fallbackTarget;
+    }
+
+    EnemyPathFinding* pathAgent = dynamic_cast<EnemyPathFinding*>(enemy);
+    if (!pathAgent) {
+        return fallbackTarget;
+    }
+
+    while (pathAgent->HasTargetPosition() &&
+           HasReachedWaypoint(enemy, pathAgent->FirstTargetPosition())) {
+        pathAgent->PopTarget();
+    }
+
+    if (pathAgent->HasTargetPosition()) {
+        Vector2 targetPosition = pathAgent->FirstTargetPosition();
+        if (IsBodyClearAtWorldPosition(levelManager, enemy, targetPosition)) {
+            return targetPosition;
+        }
+
+        pathAgent->ClearTargetPosition();
+    }
+
+    return fallbackTarget;
+}
+
+Vector2 EnemyPathManager::GetLocalAvoidanceDirection(LevelManager* levelManager, Enemy* enemy, Vector2 desiredDirection) {
+    if (!levelManager || !enemy) {
+        return desiredDirection;
+    }
+
+    Vector2 finalDirection = desiredDirection;
+    Vector2 enemyPosition = enemy->GetPosition();
+    const float separationRadius = 42.0f;
+    const float separationWeight = 0.85f;
+
+    for (GameObject* entity : levelManager->GetEntities()) {
+        Enemy* otherEnemy = dynamic_cast<Enemy*>(entity);
+        if (!otherEnemy || otherEnemy == enemy || otherEnemy->IsDead()) {
+            continue;
+        }
+
+        Vector2 away = Vector2Subtract(enemyPosition, otherEnemy->GetPosition());
+        float distance = Vector2Length(away);
+        if (distance > 0.001f && distance < separationRadius) {
+            float strength = (separationRadius - distance) / separationRadius;
+            finalDirection = Vector2Add(
+                finalDirection,
+                Vector2Scale(Vector2Normalize(away), strength * separationWeight)
+            );
+        }
+    }
+
+    if (Vector2Length(desiredDirection) > 0.001f) {
+        const float probeDistance = 18.0f;
+        Vector2 forwardProbe = Vector2Add(enemyPosition, Vector2Scale(desiredDirection, probeDistance));
+
+        if (!IsBodyClearAtWorldPosition(levelManager, enemy, forwardProbe)) {
+            Vector2 left = { -desiredDirection.y, desiredDirection.x };
+            Vector2 right = { desiredDirection.y, -desiredDirection.x };
+            Vector2 leftProbe = Vector2Add(enemyPosition, Vector2Scale(left, probeDistance));
+            Vector2 rightProbe = Vector2Add(enemyPosition, Vector2Scale(right, probeDistance));
+
+            bool leftClear = IsBodyClearAtWorldPosition(levelManager, enemy, leftProbe);
+            bool rightClear = IsBodyClearAtWorldPosition(levelManager, enemy, rightProbe);
+
+            if (leftClear && !rightClear) {
+                finalDirection = Vector2Add(finalDirection, Vector2Scale(left, 0.75f));
+            } else if (rightClear && !leftClear) {
+                finalDirection = Vector2Add(finalDirection, Vector2Scale(right, 0.75f));
+            } else if (leftClear && rightClear) {
+                finalDirection = Vector2Add(finalDirection, Vector2Scale(left, 0.35f));
+            }
+        }
+    }
+
+    if (Vector2Length(finalDirection) > 0.001f) {
+        return Vector2Normalize(finalDirection);
+    }
+
+    return desiredDirection;
+}
+
 void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
     if (!levelManager || enemies.empty()) return;
     if (TARGET_LOOP_ALL_INTERVAL <= 0.0f) return;
 
-    int enemiesPerFrame = (int)std::ceil((float)enemies.size() * ((float)deltaTime /TARGET_LOOP_ALL_INTERVAL));
+    int enemiesPerFrame = (int)std::ceil((float)enemies.size() * std::min(1.f, (float)deltaTime /TARGET_LOOP_ALL_INTERVAL));
     if (enemiesPerFrame < 1) {
         enemiesPerFrame = 1;
     }
@@ -290,13 +374,6 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
         while (pathAgent->HasTargetPosition() &&
                HasReachedWaypoint(enemy, pathAgent->FirstTargetPosition())) {
             pathAgent->PopTarget();
-        }
-
-        if (pathAgent->HasTargetPosition()) {
-            Vector2 currentTargetPosition = pathAgent->FirstTargetPosition();
-            if (IsBodyClearAtWorldPosition(levelManager, enemy, currentTargetPosition)) {
-                continue;
-            }
         }
 
         Vector2 enemyTilePosition = levelManager->WorldToTile(enemy->GetPosition());
