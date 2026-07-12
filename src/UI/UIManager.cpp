@@ -108,6 +108,8 @@ void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight
     }
 
     // --- Layer 1: Portraits ---
+    // (Portraits currently disabled as per requirements)
+    /*
     Texture2D actPortrait = active->GetIdleTexture();
     DrawTextureCropped(actPortrait, {startX + 4, startY + 4, 90, 42}, WHITE);
 
@@ -117,6 +119,7 @@ void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight
     if (offField2) {
         DrawTextureCropped(offField2->GetIdleTexture(), {startX + 354, startY + 4, 60, 28}, WHITE);
     }
+    */
 
     // Helper lambda for HP
     auto DrawHP = [&](Paladin* p, float x, float y, float maxW, float h) {
@@ -155,4 +158,15 @@ void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight
         Rectangle sourceRec = {0, 0, shellWidth, 50.0f};
         DrawTextureRec(statsShell, sourceRec, {startX, startY}, WHITE);
     }
+
+    // --- Active HP Text ---
+    char hpText[32];
+    snprintf(hpText, sizeof(hpText), "%d/%d", active->GetHealth(), active->GetMaxHealth());
+    
+    int fontSize = 10;
+    int textWidth = MeasureText(hpText, fontSize);
+    int textX = startX + 98 + (44 - textWidth) / 2;
+    int textY = startY + 34 + (12 - fontSize) / 2;
+    DrawText(hpText, textX, textY, fontSize, WHITE);
+
 }

@@ -123,6 +123,11 @@ int main() {
         Vector2 mouseWorld = GetScreenToWorld2D(mouseInternal, camera);
         teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
 
+        // Mock EX Generation Input
+        if (IsKeyPressed(KEY_SPACE)) {
+            teamManager->GetActivePaladin()->OnHitEnemy(50);
+        }
+
         GameState state = GameManager::GetInstance().GetState();
         
         switch (state) {

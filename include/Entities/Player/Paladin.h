@@ -70,6 +70,7 @@ public:
     void SetWeapon(IAttackStrategy* weapon) { currentWeapon = weapon; }
     
     virtual void TakeDamage(int amount);
+    void OnHitEnemy(int damage);
     void ResetStats();
     void UpdateFootsteps(float dt);
 

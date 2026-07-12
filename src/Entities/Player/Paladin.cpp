@@ -203,3 +203,10 @@ void Paladin::UpdateFootsteps(float dt) {
         AudioManager::GetInstance().PlaySequentialFootstep();
     }
 }
+
+void Paladin::OnHitEnemy(int damage) {
+    exEnergy += (float)damage * 0.5f; // 50% of damage converts to EX
+    if (exEnergy > maxExEnergy) {
+        exEnergy = maxExEnergy;
+    }
+}
