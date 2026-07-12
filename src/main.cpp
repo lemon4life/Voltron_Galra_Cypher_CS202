@@ -84,6 +84,7 @@ int main() {
 
     // Initialize UI Manager
     UIManager uiManager;
+    uiManager.Initialize();
     uiManager.SetTeamManager(teamManager);
 
     // Setup LevelManager

@@ -7,15 +7,19 @@ class TeamManager;
 class UIManager : public IObserver {
 private:
     TeamManager* teamManager;
+    Texture2D statsShell;
+    Texture2D statsShellBack;
 
 public:
     UIManager();
-    ~UIManager() override = default;
+    ~UIManager() override;
 
+    void Initialize();
     void SetTeamManager(TeamManager* tm) { teamManager = tm; }
 
     // Obsolete but kept to fulfill IObserver interface
     void OnPlayerStatsChanged(int hp, int maxHp, int armor, int maxArmor, bool isLance) override {}
     
+    void DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight);
     void DrawHUD(int screenWidth, int screenHeight);
 };

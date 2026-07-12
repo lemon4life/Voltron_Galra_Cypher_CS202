@@ -20,7 +20,7 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
 
     
     Vector2 ePos = enemy->GetPosition();
-    Vector2 pPos = enemy->GetTarget()->GetPosition();
+    Vector2 pPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
     Vector2 dir = { 0.0f, 0.0f };
     float speed = enemy->GetSpeed();
@@ -87,7 +87,7 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
         if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTargetTeam()->GetActivePaladin()->GetBoundingBox())) {
             // Attack if cooldown allows
             if (enemy->GetAttackCooldown() <= 0.0f) {
-                enemy->GetTarget()->TakeDamage(enemy->GetDamage());
+                enemy->GetTargetTeam()->GetActivePaladin()->TakeDamage(enemy->GetDamage());
                 enemy->SetAttackCooldown(enemy->GetAttackCooldown());
             }
             
