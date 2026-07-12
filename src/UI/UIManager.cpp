@@ -108,18 +108,18 @@ void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight
     }
 
     // --- Layer 1: Portraits ---
-    // (Portraits currently disabled as per requirements)
-    /*
+    Color actTint = active->GetHealth() <= 0 ? DARKGRAY : WHITE;
     Texture2D actPortrait = active->GetIdleTexture();
-    DrawTextureCropped(actPortrait, {startX + 4, startY + 4, 90, 42}, WHITE);
+    DrawTextureCropped(actPortrait, {startX + 4, startY + 4, 90, 42}, actTint);
 
     if (offField1) {
-        DrawTextureCropped(offField1->GetIdleTexture(), {startX + 226, startY + 4, 60, 28}, WHITE);
+        Color tint1 = offField1->GetHealth() <= 0 ? DARKGRAY : WHITE;
+        DrawTextureCropped(offField1->GetIdleTexture(), {startX + 226, startY + 4, 60, 28}, tint1);
     }
     if (offField2) {
-        DrawTextureCropped(offField2->GetIdleTexture(), {startX + 354, startY + 4, 60, 28}, WHITE);
+        Color tint2 = offField2->GetHealth() <= 0 ? DARKGRAY : WHITE;
+        DrawTextureCropped(offField2->GetIdleTexture(), {startX + 354, startY + 4, 60, 28}, tint2);
     }
-    */
 
     // Helper lambda for HP
     auto DrawHP = [&](Paladin* p, float x, float y, float maxW, float h) {

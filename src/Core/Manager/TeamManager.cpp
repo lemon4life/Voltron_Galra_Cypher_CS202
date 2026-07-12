@@ -1,6 +1,7 @@
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 #include "raylib.h"
+#include "Core/Manager/GameManager.h"
 
 TeamManager::TeamManager()
     : activeIndex(0),
@@ -35,20 +36,63 @@ void TeamManager::SwapCharacter() {
     if (team.size() <= 1) return;
     
     Paladin* oldActive = GetActivePaladin();
-    activeIndex = (activeIndex + 1) % team.size();
+    if (!oldActive) return;
+
+    int attempts = 0;
+    int nextIndex = activeIndex;
+    do {
+        nextIndex = (nextIndex + 1) % team.size();
+        attempts++;
+    } while (team[nextIndex]->GetHealth() <= 0 && attempts < team.size());
+
+    if (attempts >= team.size()) return; // Everyone is dead
+
+    activeIndex = nextIndex;
     Paladin* newActive = GetActivePaladin();
     
     // Transfer position and aim target
     newActive->SetPosition(oldActive->GetPosition());
     newActive->SetAimTarget(oldActive->GetAimTarget());
     
-    // Optional: play swap effect, brief invincibility, etc.
-    
     NotifyObservers();
 }
 
 void TeamManager::Update(float deltaTime) {
     if (team.empty()) return;
+
+    // Check if current active paladin is dead
+    Paladin* active = GetActivePaladin();
+    if (active && active->GetHealth() <= 0) {
+        Paladin* deadPaladin = active;
+        
+        // Move to the back of the team queue
+        team.erase(team.begin() + activeIndex);
+        team.push_back(deadPaladin);
+        
+        // Find the next available living Paladin
+        int attempts = 0;
+        bool foundAlive = false;
+        while (attempts < team.size()) {
+            if (activeIndex >= team.size()) activeIndex = 0;
+            if (team[activeIndex]->GetHealth() > 0) {
+                foundAlive = true;
+                break;
+            }
+            activeIndex++;
+            attempts++;
+        }
+
+        if (!foundAlive) {
+            GameManager::GetInstance().SetState(GameState::GAMEOVER);
+            return;
+        }
+
+        Paladin* newActive = GetActivePaladin();
+        newActive->SetPosition(deadPaladin->GetPosition());
+        newActive->SetAimTarget(deadPaladin->GetAimTarget());
+        
+        NotifyObservers();
+    }
 
     if (IsKeyPressed(KEY_TAB)) {
         SwapCharacter();
