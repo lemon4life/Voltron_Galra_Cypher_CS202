@@ -39,6 +39,7 @@ protected:
 
     // Individual Stats
     int maxHealth;
+    float ghostHp;
     float exEnergy;
     float maxExEnergy;
 
@@ -80,6 +81,7 @@ public:
     // Getters
     int GetHealth() const { return health; }
     int GetMaxHealth() const { return maxHealth; }
+    float GetGhostHp() const { return ghostHp; }
     float GetExEnergy() const { return exEnergy; }
     float GetMaxExEnergy() const { return maxExEnergy; }
     

@@ -72,21 +72,24 @@ void TeamManager::Update(float deltaTime) {
         // Find the next available living Paladin
         int attempts = 0;
         bool foundAlive = false;
+        int nextIndex = activeIndex;
         while (attempts < team.size()) {
-            if (activeIndex >= team.size()) activeIndex = 0;
-            if (team[activeIndex]->GetHealth() > 0) {
+            if (nextIndex >= team.size()) nextIndex = 0;
+            if (team[nextIndex]->GetHealth() > 0) {
                 foundAlive = true;
                 break;
             }
-            activeIndex++;
+            nextIndex++;
             attempts++;
         }
 
         if (!foundAlive) {
+            activeIndex = 0; // Prevent out of bounds
             GameManager::GetInstance().SetState(GameState::GAMEOVER);
             return;
         }
 
+        activeIndex = nextIndex;
         Paladin* newActive = GetActivePaladin();
         newActive->SetPosition(deadPaladin->GetPosition());
         newActive->SetAimTarget(deadPaladin->GetAimTarget());

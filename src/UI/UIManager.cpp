@@ -108,6 +108,8 @@ void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight
     }
 
     // --- Layer 1: Portraits ---
+    // (Portraits currently disabled as per requirements)
+    /*
     Color actTint = active->GetHealth() <= 0 ? DARKGRAY : WHITE;
     Texture2D actPortrait = active->GetIdleTexture();
     DrawTextureCropped(actPortrait, {startX + 4, startY + 4, 90, 42}, actTint);
@@ -120,14 +122,23 @@ void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight
         Color tint2 = offField2->GetHealth() <= 0 ? DARKGRAY : WHITE;
         DrawTextureCropped(offField2->GetIdleTexture(), {startX + 354, startY + 4, 60, 28}, tint2);
     }
+    */
 
     // Helper lambda for HP
     auto DrawHP = [&](Paladin* p, float x, float y, float maxW, float h) {
-        if (!p) return;
+        if (!p || p->GetHealth() <= 0) return; // Don't draw bars if downed
         float hp = p->GetHealth();
+        float ghost = p->GetGhostHp();
         float maxHp = p->GetMaxHealth();
-        float pct = maxHp > 0 ? (hp / maxHp) : 0;
-        DrawRectangle(startX + x, startY + y, (int)(maxW * pct), h, GREEN);
+        
+        float pctGhost = maxHp > 0 ? (ghost / maxHp) : 0.0f;
+        float pctReal = maxHp > 0 ? (hp / maxHp) : 0.0f;
+        
+        // Draw Ghost HP (Red Base)
+        DrawRectangle(startX + x, startY + y, (int)(maxW * pctGhost), h, RED);
+        
+        // Draw Real HP (Green Overlay)
+        DrawRectangle(startX + x, startY + y, (int)(maxW * pctReal), h, GREEN);
     };
 
     // --- Layer 2: HP Bars (Doubled) ---
@@ -137,7 +148,7 @@ void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight
 
     // --- Layer 3: Mask Rectangle ---
     Color maskColor = { 91, 91, 103, 255 }; // #5b5b67
-    DrawRectangle(startX + 147, startY + 20, 76, 12, maskColor);
+    DrawRectangle(startX + 146, startY + 20, 76, 12, maskColor);
 
     // Helper lambda for EX Energy
     auto DrawEX = [&](Paladin* p, float x, float y, float maxW, float h) {

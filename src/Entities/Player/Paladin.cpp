@@ -16,6 +16,7 @@ Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
       facingLeft(false),
       numFrames(12),
       maxHealth(maxHp),
+      ghostHp(maxHp),
       exEnergy(0.0f),
       maxExEnergy(maxEx),
       dashCooldown(0.0f),
@@ -32,7 +33,7 @@ Paladin::~Paladin() {
     if (currentState) {
         currentState->Exit(this);
     }
-    if (currentWeapon) {
+        if (currentWeapon) {
         delete currentWeapon;
     }
 }
@@ -49,7 +50,7 @@ Vector2 Paladin::GetWeaponPivot() const {
 }
 
 void Paladin::Attack() {
-    if (currentWeapon) {
+        if (currentWeapon) {
         currentWeapon->Attack(GetWeaponPivot());
     }
 }
@@ -80,6 +81,14 @@ void Paladin::TakeDamage(int amount) {
 }
 
 void Paladin::Update(float deltaTime) {
+    // Update Ghost HP
+    if (ghostHp > health) {
+        ghostHp -= maxHealth * deltaTime * 0.5f; // Drain at 50% max HP per second
+        if (ghostHp < health) ghostHp = health;
+    } else if (ghostHp < health) {
+        ghostHp = health; // Instant catch up on heal
+    }
+
     Vector2 dir = Vector2Subtract(aimTarget, position);
     float distance = Vector2Length(dir);
     if (distance > 0.0f) {
@@ -96,7 +105,7 @@ void Paladin::Update(float deltaTime) {
         facingLeft = (aimTarget.x < position.x);
     }
 
-    if (currentWeapon) {
+        if (currentWeapon) {
         currentWeapon->SetAim(dir, angle);
     }
 
@@ -111,13 +120,14 @@ void Paladin::Update(float deltaTime) {
     if (currentState) {
         currentState->Update(this, deltaTime);
     }
-    if (currentWeapon) {
+        if (currentWeapon) {
         currentWeapon->Update(deltaTime);
     }
 }
 
 void Paladin::ResetStats() {
     health = maxHealth;
+    ghostHp = maxHealth;
     exEnergy = 0.0f;
     dashCooldown = 0.0f;
     texture = GetIdleTexture();
