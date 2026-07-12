@@ -3,8 +3,8 @@
 #include "Core/Manager/EnemyPathManager.h"
 #include "Core/Manager/GameManager.h"
 
-EnemyChaser::EnemyChaser(Vector2 pos, Player* target)
-    : Enemy(pos, target, MAX_HEALTH, BASE_SPEED, BASE_DAMAGE, BASE_ATTACK_COOLDOWN)
+EnemyChaser::EnemyChaser(Vector2 pos, TeamManager* targetTeam)
+    : Enemy(pos, targetTeam, MAX_HEALTH, BASE_SPEED, BASE_DAMAGE, BASE_ATTACK_COOLDOWN)
 {
     idleState = std::make_unique<EnemyIdleState>();
     chaseState = std::make_unique<EnemyChaserChaseState>();

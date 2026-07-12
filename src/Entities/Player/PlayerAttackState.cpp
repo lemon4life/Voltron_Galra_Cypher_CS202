@@ -1,7 +1,7 @@
 #include "Entities/Player/PlayerAttackState.h"
-#include "Entities/Player/Player.h"
+#include "Entities/Player/Paladin.h"
 
-void PlayerAttackState::Enter(Player* player) {
+void PlayerAttackState::Enter(Paladin* player) {
     // Lock movement for 0.2s
     attackTimer = 0.2f;
 
@@ -9,7 +9,7 @@ void PlayerAttackState::Enter(Player* player) {
     player->Attack();
 }
 
-void PlayerAttackState::Update(Player* player, float deltaTime) {
+void PlayerAttackState::Update(Paladin* player, float deltaTime) {
     attackTimer -= deltaTime;
     
     // Animate during attack if needed
@@ -20,6 +20,6 @@ void PlayerAttackState::Update(Player* player, float deltaTime) {
     }
 }
 
-void PlayerAttackState::Exit(Player* player) {
+void PlayerAttackState::Exit(Paladin* player) {
     // Attack finished
 }

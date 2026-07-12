@@ -1,17 +1,17 @@
 #include "Entities/Player/PlayerState.h"
-#include "Entities/Player/Player.h"
+#include "Entities/Player/Paladin.h"
 #include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 #include "Core/Manager/GameManager.h"
 
 // --- PlayerIdleState ---
-void PlayerIdleState::Enter(Player* player) {
+void PlayerIdleState::Enter(Paladin* player) {
     player->SetTexture(player->GetIdleTexture());
     player->SetNumFrames(12); // Sprite sheet has 12 frames
     player->ResetAnimation();
 }
 
-void PlayerIdleState::Update(Player* player, float deltaTime) {
+void PlayerIdleState::Update(Paladin* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
     if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
@@ -34,18 +34,18 @@ void PlayerIdleState::Update(Player* player, float deltaTime) {
     player->UpdateAnimation(deltaTime);
 }
 
-void PlayerIdleState::Exit(Player* player) {
+void PlayerIdleState::Exit(Paladin* player) {
     // Nothing specific needed
 }
 
 // --- PlayerRunState ---
-void PlayerRunState::Enter(Player* player) {
+void PlayerRunState::Enter(Paladin* player) {
     player->SetTexture(player->GetRunTexture());
     player->SetNumFrames(12); // Sprite sheet has 12 frames
     player->ResetAnimation();
 }
 
-void PlayerRunState::Update(Player* player, float deltaTime) {
+void PlayerRunState::Update(Paladin* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
     if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
@@ -116,6 +116,6 @@ void PlayerRunState::Update(Player* player, float deltaTime) {
     player->UpdateAnimation(deltaTime);
 }
 
-void PlayerRunState::Exit(Player* player) {
+void PlayerRunState::Exit(Paladin* player) {
     // Nothing specific needed
 }

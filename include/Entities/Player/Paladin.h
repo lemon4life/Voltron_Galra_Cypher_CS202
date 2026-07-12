@@ -4,7 +4,6 @@
 #include "Entities/Player/PlayerDashState.h"
 #include "Entities/Player/PlayerAttackState.h"
 #include "Combat/IAttackStrategy.h"
-#include "Core/ISubject.h"
 #include <vector>
 
 struct CharacterSprites {
@@ -15,13 +14,15 @@ struct CharacterSprites {
     Texture2D weapon;
 };
 
-class Player : public Character, public ISubject {
-private:
+class TeamManager;
+
+class Paladin : public Character {
+protected:
     IPlayerState* currentState;
     IAttackStrategy* currentWeapon;
     
-    CharacterSprites lanceSprites;
-    CharacterSprites keithSprites;
+    CharacterSprites sprites;
+    TeamManager* teamManager;
 
     // Animation specific
     int currentFrame;
@@ -30,66 +31,65 @@ private:
     bool facingLeft;
     int numFrames; // Default 12
 
-    // State instances to avoid allocating memory frequently
+    // State instances
     PlayerIdleState idleState;
     PlayerRunState runState;
-    PlayerDashState dashState; // Added dash state instance
+    PlayerDashState dashState;
     PlayerAttackState attackState;
 
-    // Stats
+    // Individual Stats
     int maxHealth;
-    int armor;
-    int maxArmor;
-
-    // Regeneration timers
-    float timeSinceLastDamage;
-    float armorRegenTimer;
-
-    // Character Switching
-    bool isPlayingAsLance;
+    float ghostHp;
+    float exEnergy;
+    float maxExEnergy;
 
     // Dash mechanic properties
     float dashCooldown;
     float dashTimer;
 
     bool isInvincible;
-    Vector2 lastMoveDir; // Store last movement vector for locking dash direction
-    
+    Vector2 lastMoveDir;
     float footstepTimer;
     Vector2 aimTarget;
 
 public:
-    Player(Vector2 pos, CharacterSprites lance, CharacterSprites keith);
-    ~Player() override;
+    Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx);
+    virtual ~Paladin();
 
     void Update(float deltaTime) override;
     void Draw() override;
     
     void SetAimTarget(Vector2 target) { aimTarget = target; }
-
-    void NotifyObservers() override;
-
-    void ToggleCharacter();
+    Vector2 GetAimTarget() const { return aimTarget; }
+    
+    void SetTeamManager(TeamManager* manager) { teamManager = manager; }
+    TeamManager* GetTeamManager() const { return teamManager; }
 
     void ChangeState(IPlayerState* newState);
     void Attack();
     Vector2 GetWeaponPivot() const;
     void SetWeapon(IAttackStrategy* weapon) { currentWeapon = weapon; }
-    void TakeDamage(int amount);
+    
+    virtual void TakeDamage(int amount);
+    void OnHitEnemy(int damage);
     void ResetStats();
     void UpdateFootsteps(float dt);
 
     Rectangle GetBoundingBox() const override;
     bool CheckCollision(const std::vector<GameObject*>& entities) const;
 
-    // Getters for states, stats, and textures
+    // Getters
     int GetHealth() const { return health; }
-    int GetArmor() const { return armor; }
-    int GetMaxArmor() const { return maxArmor; }
+    int GetMaxHealth() const { return maxHealth; }
+    float GetGhostHp() const { return ghostHp; }
+    float GetExEnergy() const { return exEnergy; }
+    float GetMaxExEnergy() const { return maxExEnergy; }
+    
     PlayerIdleState* GetIdleState() { return &idleState; }
     PlayerRunState* GetRunState() { return &runState; }
     PlayerDashState* GetDashState() { return &dashState; }
     PlayerAttackState* GetAttackState() { return &attackState; }
+    
     Texture2D GetIdleTexture() const;
     Texture2D GetRunTexture() const;
 
@@ -109,5 +109,4 @@ public:
     void SetInvincible(bool invincible) { isInvincible = invincible; }
     Vector2 GetLastMoveDir() const { return lastMoveDir; }
     void SetLastMoveDir(Vector2 dir) { lastMoveDir = dir; }
-    bool IsPlayingAsLance() const { return isPlayingAsLance; }
 };

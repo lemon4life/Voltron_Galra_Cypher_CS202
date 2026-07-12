@@ -1,7 +1,8 @@
 #include "Core/Manager/DialogueManager.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
-#include "Entities/Player/Player.h"
+#include "Entities/Player/Paladin.h"
+#include "Core/Manager/TeamManager.h"
 #include <fstream>
 #include <iostream>
 
@@ -151,8 +152,8 @@ void DialogueManager::Update(float deltaTime) {
                 // Determine player name dynamically
                 std::string playerName = "Lance";
                 for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
-                    if (Player* p = dynamic_cast<Player*>(entity)) {
-                        if (!p->IsPlayingAsLance()) {
+                    if (Paladin* p = dynamic_cast<Paladin*>(entity)) {
+                        if (p->GetTeamManager()->GetActiveIndex() != 0) {
                             playerName = "Keith";
                         }
                         break;

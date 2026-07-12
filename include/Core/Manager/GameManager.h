@@ -58,7 +58,7 @@ public:
     int GetTargetFPS() const { return targetFPS; }
 
     void AddProjectile(Projectile* p);
-    void UpdateProjectiles(float deltaTime, class Player* player = nullptr);
+    void UpdateProjectiles(float deltaTime, class TeamManager* teamManager = nullptr);
     void DrawProjectiles();
     void ClearProjectiles();
 };

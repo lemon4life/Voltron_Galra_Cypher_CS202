@@ -2,8 +2,8 @@
 #include "Core/EnemyPath.h"
 #include "Core/Manager/LevelManager.h"
 #include "Entities/Enemy.h"
-#include "Entities/Player/Player.h"
-#include "raymath.h"
+#include "Entities/Player/Paladin.h"
+#include "Core/Manager/TeamManager.h"
 
 #include <queue>
 #include <unordered_map>
@@ -156,7 +156,7 @@ namespace {
             PushTarget(targets, levelManager->TileToWorld(nearPlayerTile.x, nearPlayerTile.y));
         }
 
-        PushTarget(targets, enemy->GetTarget()->GetPosition());
+        PushTarget(targets, enemy->GetTargetTeam()->GetActivePaladin()->GetPosition());
         return targets;
     }
 
@@ -362,7 +362,7 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
         Enemy* enemy = enemies[nextEnemyIndex];
         nextEnemyIndex++;
 
-        if (!enemy || enemy->IsDead() || !enemy->GetTarget()) {
+        if (!enemy || enemy->IsDead() || !enemy->GetTargetTeam()) {
             continue;
         }
 
@@ -377,7 +377,7 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
         }
 
         Vector2 enemyTilePosition = levelManager->WorldToTile(enemy->GetPosition());
-        Vector2 playerTilePosition = levelManager->WorldToTile(enemy->GetTarget()->GetPosition());
+        Vector2 playerTilePosition = levelManager->WorldToTile(enemy->GetTargetTeam()->GetActivePaladin()->GetPosition());
 
         Tile enemyTile = {
             (int)enemyTilePosition.x,
