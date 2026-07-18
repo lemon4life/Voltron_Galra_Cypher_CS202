@@ -7,7 +7,7 @@
 // --- PlayerIdleState ---
 void PlayerIdleState::Enter(Paladin* player) {
     player->SetTexture(player->GetIdleTexture());
-    player->SetNumFrames(12); // Sprite sheet has 12 frames
+    player->SetNumFrames(4); // Sprite sheet has 4 frames
     player->ResetAnimation();
 }
 
@@ -41,7 +41,7 @@ void PlayerIdleState::Exit(Paladin* player) {
 // --- PlayerRunState ---
 void PlayerRunState::Enter(Paladin* player) {
     player->SetTexture(player->GetRunTexture());
-    player->SetNumFrames(12); // Sprite sheet has 12 frames
+    player->SetNumFrames(4); // Sprite sheet has 4 frames
     player->ResetAnimation();
 }
 

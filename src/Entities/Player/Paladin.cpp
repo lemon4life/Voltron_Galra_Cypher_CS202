@@ -6,7 +6,7 @@
 #include <iostream>
 
 Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
-    : Character(pos, 150.0f, maxHp, sprites.battleIdle),
+    : Character(pos, 150.0f, maxHp, sprites.idle),
       sprites(sprites),
       teamManager(nullptr),
       currentWeapon(nullptr),
@@ -14,12 +14,13 @@ Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
       frameTimer(0.0f),
       frameDuration(0.1f), // 10 fps animation speed
       facingLeft(false),
-      numFrames(12),
+      numFrames(4),
       maxHealth(maxHp),
       ghostHp(maxHp),
       exEnergy(0.0f),
       maxExEnergy(maxEx),
       dashCooldown(0.0f),
+      attackCooldown(0.2f),
       dashTimer(0.0f),
       isInvincible(false),
       lastMoveDir{1.0f, 0.0f}, // Initialize pointing right
@@ -39,13 +40,20 @@ Paladin::~Paladin() {
 }
 
 Vector2 Paladin::GetWeaponPivot() const {
-    Vector2 pivot = position;
-    // Align to the back shoulder (left side when facing right, right side when facing left)
+    Vector2 pivot = position; // Position is the center of the 32x32 sprite
+    
+    // Top-left is (position.x - 16, position.y - 16)
+    // Desired right-facing X is top-left.x + 12 -> position.x - 4
+    // Desired mirrored left-facing X is top-right.x - 12 -> position.x + 4
     if (facingLeft) {
-        pivot.x += 12.0f;
+        pivot.x += 4.0f;
     } else {
-        pivot.x -= 12.0f;
+        pivot.x -= 4.0f;
     }
+    
+    // Desired Y is top-left.y + 22 -> position.y + 6
+    pivot.y += 6.0f;
+    
     return pivot;
 }
 
@@ -134,8 +142,8 @@ void Paladin::ResetStats() {
 }
 
 Rectangle Paladin::GetBoundingBox() const {
-    // 24x36 bounding box centered on position
-    return { position.x - 12.0f, position.y - 18.0f, 24.0f, 36.0f };
+    // 16x24 bounding box centered on position for 32x32 sprite
+    return { position.x - 8.0f, position.y - 12.0f, 16.0f, 24.0f };
 }
 
 bool Paladin::CheckCollision(const std::vector<GameObject*>& entities) const {
@@ -191,19 +199,11 @@ void Paladin::Draw() {
 }
 
 Texture2D Paladin::GetIdleTexture() const {
-    GameState state = GameManager::GetInstance().GetState();
-    if (state == GameState::HUB || state == GameState::MENU) {
-        return sprites.restIdle;
-    }
-    return sprites.battleIdle;
+    return sprites.idle;
 }
 
 Texture2D Paladin::GetRunTexture() const {
-    GameState state = GameManager::GetInstance().GetState();
-    if (state == GameState::HUB || state == GameState::MENU) {
-        return sprites.restRun;
-    }
-    return sprites.battleRun;
+    return sprites.run;
 }
 
 void Paladin::UpdateFootsteps(float dt) {

@@ -3,11 +3,13 @@
 
 void PlayerAttackState::Enter(Paladin* player) {
     // Lock movement for 0.2s
-    attackTimer = 0.2f;
+    attackTimer = player->GetAttackCooldown();
 
     // Trigger the attack
     player->Attack();
 }
+
+#include "Combat/MeleeAttackStrategy.h"
 
 void PlayerAttackState::Update(Paladin* player, float deltaTime) {
     attackTimer -= deltaTime;
@@ -15,10 +17,24 @@ void PlayerAttackState::Update(Paladin* player, float deltaTime) {
     // Animate during attack if needed
     player->UpdateAnimation(deltaTime);
 
-    if (attackTimer <= 0.0f) {
+    // If player has a MeleeAttackStrategy, we only transition back to idle when comboStep == 0.
+    // For other strategies (ranged), we fall back to the timer.
+    bool canExit = false;
+    if (MeleeAttackStrategy* melee = dynamic_cast<MeleeAttackStrategy*>(player->GetCurrentWeapon())) {
+        if (melee->GetComboStep() == 0) {
+            canExit = true;
+        }
+    } else {
+        if (attackTimer <= 0.0f) {
+            canExit = true;
+        }
+    }
+
+    if (canExit) {
         player->ChangeState(player->GetIdleState());
     }
 }
+
 
 void PlayerAttackState::Exit(Paladin* player) {
     // Attack finished
