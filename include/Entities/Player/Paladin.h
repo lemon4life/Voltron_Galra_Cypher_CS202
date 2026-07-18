@@ -7,11 +7,14 @@
 #include <vector>
 
 struct CharacterSprites {
-    Texture2D restIdle;
-    Texture2D restRun;
-    Texture2D battleIdle;
-    Texture2D battleRun;
+    Texture2D idle;
+    Texture2D run;
     Texture2D weapon;
+    Texture2D muzzleFlash;
+    Texture2D attack1;
+    Texture2D attack2;
+    Texture2D bullet;
+    Texture2D impact;
 };
 
 class TeamManager;
@@ -29,7 +32,7 @@ protected:
     float frameTimer;
     float frameDuration;
     bool facingLeft;
-    int numFrames; // Default 12
+    int numFrames; // Default 4
 
     // State instances
     PlayerIdleState idleState;
@@ -45,6 +48,7 @@ protected:
 
     // Dash mechanic properties
     float dashCooldown;
+    float attackCooldown;
     float dashTimer;
 
     bool isInvincible;
@@ -69,6 +73,7 @@ public:
     void Attack();
     Vector2 GetWeaponPivot() const;
     void SetWeapon(IAttackStrategy* weapon) { currentWeapon = weapon; }
+    IAttackStrategy* GetCurrentWeapon() const { return currentWeapon; }
     
     virtual void TakeDamage(int amount);
     void OnHitEnemy(int damage);
@@ -102,6 +107,8 @@ public:
 
     // Dash Getters and Setters
     float GetDashCooldown() const { return dashCooldown; }
+    float GetAttackCooldown() const { return attackCooldown; }
+    void SetAttackCooldown(float val) { attackCooldown = val; }
     void SetDashCooldown(float cooldown) { dashCooldown = cooldown; }
     float GetDashTimer() const { return dashTimer; }
     void SetDashTimer(float timer) { dashTimer = timer; }
