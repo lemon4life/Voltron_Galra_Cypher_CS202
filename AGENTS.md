@@ -23,3 +23,7 @@ There is no formal unit test framework currently configured. Treat a clean CMake
 
 ## Commit & Pull Request Guidelines
 Recent history uses short imperative messages with optional prefixes, for example `feat:`, `fix:`, `chore:`, `config:`, and `clean:`. Keep commits focused on one change. Pull requests should summarize the gameplay/code change, mention affected systems, list manual test steps, and include screenshots or recordings for visible gameplay or UI changes.
+
+
+## Implementation Plans & AI Usage Notes
+Whenever an implementation plan is created, automatically add it to the `implementation_plan/` folder in numbered order (e.g., `plan_9_...`). Do not modify old plans. Additionally, automatically update the AI Usage Note for the corresponding week in the `AI Usage Note/` folder with the prompts used, purpose, and content generated for that feature.

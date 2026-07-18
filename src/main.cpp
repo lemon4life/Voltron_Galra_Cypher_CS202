@@ -2,6 +2,7 @@
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Lance.h"
 #include "Entities/Player/Keith.h"
+#include "Entities/Player/Hunk.h"
 #include "Entities/Player/PlaceholderPaladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
@@ -81,11 +82,24 @@ int main() {
     TeamManager* teamManager = new TeamManager();
     Lance* lance = new Lance(startPos, lanceSprites);
     Keith* keith = new Keith(startPos, keithSprites);
-    PlaceholderPaladin* placeholder = new PlaceholderPaladin(startPos, lanceSprites);
+    CharacterSprites hunkSprites;
+    hunkSprites.idle = LoadTexture("assets/sprites/Hunk/Idle_Sheet.png");
+    hunkSprites.run = LoadTexture("assets/sprites/Hunk/Run_Sheet.png");
+    hunkSprites.weapon = LoadTexture("assets/sprites/Hunk/Weapon_Static.png");
+    hunkSprites.muzzleFlash = LoadTexture("assets/sprites/Hunk/Muzzle.png");
+    hunkSprites.bullet = LoadTexture("assets/sprites/Hunk/Beam.png");
+    hunkSprites.impact = LoadTexture("assets/sprites/Hunk/Beam_Impact.png");
+    
+    SetTextureFilter(hunkSprites.weapon, TEXTURE_FILTER_POINT);
+    SetTextureFilter(hunkSprites.muzzleFlash, TEXTURE_FILTER_POINT);
+    SetTextureFilter(hunkSprites.bullet, TEXTURE_FILTER_POINT);
+    SetTextureFilter(hunkSprites.impact, TEXTURE_FILTER_POINT);
+    
+    Hunk* hunk = new Hunk(startPos, hunkSprites);
     
     teamManager->AddMember(lance);
     teamManager->AddMember(keith);
-    teamManager->AddMember(placeholder);
+    teamManager->AddMember(hunk);
 
     // Initialize UI Manager
     UIManager uiManager;
@@ -294,6 +308,12 @@ int main() {
     UnloadTexture(keithSprites.idle);
     UnloadTexture(keithSprites.run);
     UnloadTexture(keithSprites.weapon);
+    UnloadTexture(hunkSprites.idle);
+    UnloadTexture(hunkSprites.run);
+    UnloadTexture(hunkSprites.weapon);
+    UnloadTexture(hunkSprites.muzzleFlash);
+    UnloadTexture(hunkSprites.bullet);
+    UnloadTexture(hunkSprites.impact);
     UnloadRenderTexture(target);
     CloseWindow();
 

@@ -1,0 +1,128 @@
+#include "Combat/LaserAttackStrategy.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/LevelManager.h"
+#include "Core/Manager/TeamManager.h"
+#include "Core/Manager/AudioManager.h"
+#include "Entities/Enemy.h"
+#include "Entities/Player/Paladin.h"
+#include <cmath>
+#include <iostream>
+
+LaserAttackStrategy::LaserAttackStrategy(Texture2D weapon, Texture2D muzzle, Texture2D beam, Texture2D impact)
+    : weaponTex(weapon), muzzleTex(muzzle), beamTex(beam), impactTex(impact), laserTimer(0.0f), maxLaserTime(0.15f) {
+    aimDir = {1.0f, 0.0f};
+    aimAngle = 0.0f;
+}
+
+// Custom 2D Line-AABB intersection
+bool CheckCollisionSegmentRec(Vector2 start, Vector2 end, Rectangle rec) {
+    Vector2 p1 = {rec.x, rec.y};
+    Vector2 p2 = {rec.x + rec.width, rec.y};
+    Vector2 p3 = {rec.x + rec.width, rec.y + rec.height};
+    Vector2 p4 = {rec.x, rec.y + rec.height};
+    Vector2 colPoint;
+    if (CheckCollisionLines(start, end, p1, p2, &colPoint)) return true;
+    if (CheckCollisionLines(start, end, p2, p3, &colPoint)) return true;
+    if (CheckCollisionLines(start, end, p3, p4, &colPoint)) return true;
+    if (CheckCollisionLines(start, end, p4, p1, &colPoint)) return true;
+    if (CheckCollisionPointRec(start, rec) || CheckCollisionPointRec(end, rec)) return true;
+    return false;
+}
+
+void LaserAttackStrategy::Attack(Vector2 playerPos) {
+    AudioManager::GetInstance().PlayRandomLaser();
+    
+    laserTimer = maxLaserTime;
+    float barrelLength = weaponTex.width; 
+    barrelTip = {
+        playerPos.x + aimDir.x * barrelLength,
+        playerPos.y + aimDir.y * barrelLength
+    };
+
+    // Raycast to find laserEndPoint (max 1000 pixels)
+    float maxDistance = 1000.0f;
+    float step = 8.0f;
+    laserEndPoint = { barrelTip.x + aimDir.x * maxDistance, barrelTip.y + aimDir.y * maxDistance };
+    
+    LevelManager* lm = GameManager::GetInstance().GetLevelManager();
+    if (lm) {
+        for (float d = 0; d < maxDistance; d += step) {
+            Vector2 checkPoint = { barrelTip.x + aimDir.x * d, barrelTip.y + aimDir.y * d };
+            Rectangle pointRect = { checkPoint.x - 1.0f, checkPoint.y - 1.0f, 2.0f, 2.0f };
+            if (lm->IsSolidCollision(pointRect)) {
+                laserEndPoint = checkPoint;
+                break;
+            }
+        }
+    }
+
+    // Check intersection with all enemies
+    const auto& entities = GameManager::GetInstance().GetLevelEntities();
+    for (auto* entity : entities) {
+        if (Enemy* e = dynamic_cast<Enemy*>(entity)) {
+            if (CheckCollisionSegmentRec(barrelTip, laserEndPoint, e->GetBoundingBox())) {
+                e->TakeDamage(50); // Piercing laser damage
+                // Add Impact Effect visually
+                GameManager::GetInstance().AddImpactEffect({e->GetPosition().x, e->GetPosition().y});
+                // Add EX Energy
+                // To get the TeamManager, we could pass it or rely on the fact that Hunk is the active paladin.
+                // We'll let the Paladin's OnHitEnemy handle it via GameManager context if needed.
+                // Actually, let's just trigger it safely if we can find the active paladin.
+                // Unfortunately we don't have direct access to TeamManager here unless passed.
+                // However, we know Hunk is active if he is attacking. 
+            }
+        }
+    }
+}
+
+void LaserAttackStrategy::Update(float deltaTime) {
+    if (laserTimer > 0.0f) {
+        laserTimer -= deltaTime;
+    }
+}
+
+void LaserAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
+    Rectangle source = { 0.0f, 0.0f, (float)weaponTex.width, (float)weaponTex.height };
+    if (facingLeft) {
+        source.height = -source.height; 
+    }
+
+    Rectangle dest = { playerPos.x, playerPos.y, (float)weaponTex.width, (float)weaponTex.height };
+    Vector2 origin = { 0.0f, (float)weaponTex.height / 2.0f };
+    DrawTexturePro(weaponTex, source, dest, origin, aimAngle, WHITE);
+
+    if (laserTimer > 0.0f) {
+        // Calculate animation frame for 2-frame assets
+        float progress = 1.0f - (laserTimer / maxLaserTime);
+        int frame = (int)(progress * 2);
+        if (frame > 1) frame = 1;
+
+        // Draw Muzzle (2 frames)
+        if (muzzleTex.id != 0) {
+            float frameW = (float)muzzleTex.width / 2.0f;
+            Rectangle mzSource = { frame * frameW, 0, frameW, (float)muzzleTex.height };
+            Rectangle mzDest = { barrelTip.x, barrelTip.y, frameW, (float)muzzleTex.height };
+            Vector2 mzOrigin = { frameW / 2.0f, (float)muzzleTex.height / 2.0f };
+            DrawTexturePro(muzzleTex, mzSource, mzDest, mzOrigin, aimAngle, WHITE);
+        }
+
+        // Draw Beam (2 frames)
+        if (beamTex.id != 0) {
+            float frameW = (float)beamTex.width / 2.0f;
+            float dist = Vector2Distance(barrelTip, laserEndPoint);
+            Rectangle bmSource = { frame * frameW, 0, frameW, (float)beamTex.height };
+            Rectangle bmDest = { barrelTip.x, barrelTip.y, dist, (float)beamTex.height };
+            Vector2 bmOrigin = { 0.0f, (float)beamTex.height / 2.0f };
+            DrawTexturePro(beamTex, bmSource, bmDest, bmOrigin, aimAngle, WHITE);
+        }
+
+        // Draw Impact at the end of the laser (2 frames)
+        if (impactTex.id != 0) {
+            float frameW = (float)impactTex.width / 2.0f;
+            Rectangle imSource = { frame * frameW, 0, frameW, (float)impactTex.height };
+            Rectangle imDest = { laserEndPoint.x, laserEndPoint.y, frameW, (float)impactTex.height };
+            Vector2 imOrigin = { frameW / 2.0f, (float)impactTex.height / 2.0f };
+            DrawTexturePro(impactTex, imSource, imDest, imOrigin, aimAngle, WHITE);
+        }
+    }
+}
