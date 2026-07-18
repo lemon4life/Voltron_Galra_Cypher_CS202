@@ -20,6 +20,7 @@ Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
       exEnergy(0.0f),
       maxExEnergy(maxEx),
       dashCooldown(0.0f),
+      attackCooldown(0.2f),
       dashTimer(0.0f),
       isInvincible(false),
       lastMoveDir{1.0f, 0.0f}, // Initialize pointing right

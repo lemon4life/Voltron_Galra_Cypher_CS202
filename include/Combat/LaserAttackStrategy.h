@@ -14,6 +14,8 @@ private:
     
     Vector2 barrelTip;
     Vector2 laserEndPoint;
+    Vector2 recoilOffset;
+    float recoilStrength;
 
 public:
     LaserAttackStrategy(Texture2D weapon, Texture2D muzzle, Texture2D beam, Texture2D impact);

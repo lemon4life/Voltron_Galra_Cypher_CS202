@@ -76,6 +76,11 @@ int main() {
     keithSprites.idle = LoadTexture("assets/sprites/Keith/Idle_Sheet.png");
     keithSprites.run = LoadTexture("assets/sprites/Keith/Run_Sheet.png");
     keithSprites.weapon = LoadTexture("assets/sprites/Keith/Weapon_Static.png");
+    keithSprites.attack1 = LoadTexture("assets/sprites/Keith/Attack_1.png");
+    keithSprites.attack2 = LoadTexture("assets/sprites/Keith/Attack_2.png");
+    
+    SetTextureFilter(keithSprites.attack1, TEXTURE_FILTER_POINT);
+    SetTextureFilter(keithSprites.attack2, TEXTURE_FILTER_POINT);
 
     // Initialize TeamManager and Paladins
     Vector2 startPos = { (float)GAME_WIDTH / 2.0f, (float)GAME_HEIGHT / 2.0f };
@@ -308,6 +313,8 @@ int main() {
     UnloadTexture(keithSprites.idle);
     UnloadTexture(keithSprites.run);
     UnloadTexture(keithSprites.weapon);
+    UnloadTexture(keithSprites.attack1);
+    UnloadTexture(keithSprites.attack2);
     UnloadTexture(hunkSprites.idle);
     UnloadTexture(hunkSprites.run);
     UnloadTexture(hunkSprites.weapon);

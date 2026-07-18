@@ -10,6 +10,8 @@
 
 LaserAttackStrategy::LaserAttackStrategy(Texture2D weapon, Texture2D muzzle, Texture2D beam, Texture2D impact)
     : weaponTex(weapon), muzzleTex(muzzle), beamTex(beam), impactTex(impact), laserTimer(0.0f), maxLaserTime(0.15f) {
+    recoilOffset = {0.0f, 0.0f};
+    recoilStrength = 30.0f; // Heavy impulse recoil
     aimDir = {1.0f, 0.0f};
     aimAngle = 0.0f;
 }
@@ -43,6 +45,7 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
     float maxDistance = 1000.0f;
     float step = 8.0f;
     laserEndPoint = { barrelTip.x + aimDir.x * maxDistance, barrelTip.y + aimDir.y * maxDistance };
+    recoilOffset = { -aimDir.x * recoilStrength, -aimDir.y * recoilStrength };
     
     LevelManager* lm = GameManager::GetInstance().GetLevelManager();
     if (lm) {
@@ -76,6 +79,9 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
 }
 
 void LaserAttackStrategy::Update(float deltaTime) {
+    recoilOffset.x += (0.0f - recoilOffset.x) * 10.0f * deltaTime;
+    recoilOffset.y += (0.0f - recoilOffset.y) * 10.0f * deltaTime;
+    
     if (laserTimer > 0.0f) {
         laserTimer -= deltaTime;
     }
@@ -87,11 +93,19 @@ void LaserAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
         source.height = -source.height; 
     }
 
-    Rectangle dest = { playerPos.x, playerPos.y, (float)weaponTex.width, (float)weaponTex.height };
+    Vector2 weaponPos = { playerPos.x + recoilOffset.x, playerPos.y + recoilOffset.y };
+    Rectangle dest = { weaponPos.x, weaponPos.y, (float)weaponTex.width, (float)weaponTex.height };
     Vector2 origin = { 0.0f, (float)weaponTex.height / 2.0f };
     DrawTexturePro(weaponTex, source, dest, origin, aimAngle, WHITE);
 
     if (laserTimer > 0.0f) {
+        // Calculate dynamic barrel tip based on recoil
+        float barrelLength = weaponTex.width;
+        Vector2 dynamicBarrelTip = {
+            weaponPos.x + aimDir.x * barrelLength,
+            weaponPos.y + aimDir.y * barrelLength
+        };
+
         // Calculate animation frame for 2-frame assets
         float progress = 1.0f - (laserTimer / maxLaserTime);
         int frame = (int)(progress * 2);
@@ -101,7 +115,7 @@ void LaserAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
         if (muzzleTex.id != 0) {
             float frameW = (float)muzzleTex.width / 2.0f;
             Rectangle mzSource = { frame * frameW, 0, frameW, (float)muzzleTex.height };
-            Rectangle mzDest = { barrelTip.x, barrelTip.y, frameW, (float)muzzleTex.height };
+            Rectangle mzDest = { dynamicBarrelTip.x, dynamicBarrelTip.y, frameW, (float)muzzleTex.height };
             Vector2 mzOrigin = { frameW / 2.0f, (float)muzzleTex.height / 2.0f };
             DrawTexturePro(muzzleTex, mzSource, mzDest, mzOrigin, aimAngle, WHITE);
         }
@@ -109,9 +123,9 @@ void LaserAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
         // Draw Beam (2 frames)
         if (beamTex.id != 0) {
             float frameW = (float)beamTex.width / 2.0f;
-            float dist = Vector2Distance(barrelTip, laserEndPoint);
+            float dist = Vector2Distance(dynamicBarrelTip, laserEndPoint);
             Rectangle bmSource = { frame * frameW, 0, frameW, (float)beamTex.height };
-            Rectangle bmDest = { barrelTip.x, barrelTip.y, dist, (float)beamTex.height };
+            Rectangle bmDest = { dynamicBarrelTip.x, dynamicBarrelTip.y, dist, (float)beamTex.height };
             Vector2 bmOrigin = { 0.0f, (float)beamTex.height / 2.0f };
             DrawTexturePro(beamTex, bmSource, bmDest, bmOrigin, aimAngle, WHITE);
         }

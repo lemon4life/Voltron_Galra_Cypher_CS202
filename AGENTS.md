@@ -26,4 +26,4 @@ Recent history uses short imperative messages with optional prefixes, for exampl
 
 
 ## Implementation Plans & AI Usage Notes
-Whenever an implementation plan is created, automatically add it to the `implementation_plan/` folder in numbered order (e.g., `plan_9_...`). Do not modify old plans. Additionally, automatically update the AI Usage Note for the corresponding week in the `AI Usage Note/` folder with the prompts used, purpose, and content generated for that feature.
+Whenever an implementation plan is created, you MUST automatically copy it to the project's physical `implementation_plan/` directory in numbered order (e.g., `plan_9_...`) so it is tracked in Git, in addition to creating the standard artifact. Do not modify old plans. Additionally, automatically update the AI Usage Note for the corresponding week in the `AI Usage Note/` folder with the prompts used, purpose, and content generated for that feature.
