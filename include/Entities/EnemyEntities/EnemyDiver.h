@@ -25,10 +25,12 @@ public:
     EnemyDiverLungingState* GetLungingState();
 
     bool CanEnterReadyState(LevelManager* levelManager) const;
+    bool IsWithinClearDiveRange(LevelManager* levelManager) const;
 
     float GetReadyDuration() const;
     float GetReadySpeed() const;
     float GetDiveDuration() const;
+    float GetDiveStopDistance() const;
     float GetDiveSpeed() const;
     float GetDiveRecoveryDuration() const;
     float GetCollisionClearanceRadius() const;

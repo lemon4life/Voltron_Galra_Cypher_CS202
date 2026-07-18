@@ -12,10 +12,19 @@ WaveManager::WaveManager() {
     Reset();
 }
 
-void WaveManager::Reset(int startingEnemies, int startingRangeEnemies) {
+void WaveManager::Reset(
+    int startingEnemies,
+    int startingRangeEnemies,
+    int startingDiverEnemies
+) {
     currentWave = 1;
     enemiesToSpawn = startingEnemies;
     rangeEnemiesToSpawn = std::clamp(startingRangeEnemies, 0, startingEnemies);
+    diverEnemiesToSpawn = std::clamp(
+        startingDiverEnemies,
+        0,
+        startingEnemies - rangeEnemiesToSpawn
+    );
     spawnTimer = 0.0f;
     timeBetweenWaves = 3.0f;
     showWaveTextTimer = 2.0f;
@@ -56,6 +65,8 @@ void WaveManager::Update(float deltaTime, Player* player, LevelManager* levelMan
                             spawnType = 'B';
                         } else if (rangeEnemiesToSpawn > 0) {
                             spawnType = 'R';
+                        } else if (diverEnemiesToSpawn > 0) {
+                            spawnType = 'D';
                         } else if (currentWave >= 2 && currentWave <= 4 &&
                                    enemiesToSpawn == currentWave) {
                             // Add one ranged enemy at the start of waves 2-4.
@@ -71,6 +82,9 @@ void WaveManager::Update(float deltaTime, Player* player, LevelManager* levelMan
                                 levelManager->AddEntity(newEnemy);
                                 if (spawnType == 'R' && rangeEnemiesToSpawn > 0) {
                                     rangeEnemiesToSpawn--;
+                                }
+                                if (spawnType == 'D' && diverEnemiesToSpawn > 0) {
+                                    diverEnemiesToSpawn--;
                                 }
                                 enemiesToSpawn--;
                                 spawnTimer = 0.07f;

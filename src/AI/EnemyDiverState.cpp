@@ -67,6 +67,11 @@ void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
         return;
     }
 
+    if (enemy->IsWithinClearDiveRange(levelManager)) {
+        enemy->EndPathFinding();
+        return;
+    }
+
     enemy->StartPathFinding();
 
     Vector2 moveTarget = playerPosition;

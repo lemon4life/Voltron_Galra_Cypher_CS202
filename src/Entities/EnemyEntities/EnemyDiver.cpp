@@ -15,13 +15,14 @@ namespace {
     constexpr float DIVER_ATTACK_COOLDOWN = 2.5f;
     constexpr float DIVER_SIGHT_DISTANCE = 40000.0f;
     constexpr float DIVER_OFF_SIGHT_DISTANCE = 40000.0f;
-    constexpr float DIVE_TRIGGER_DISTANCE = 130.0f;
+    constexpr float DIVE_TRIGGER_DISTANCE = 200.0f;
+    constexpr float DIVE_STOP_DISTANCE = 100.f;
 
-    constexpr float READY_DURATION = 0.2f;
+    constexpr float READY_DURATION = 0.5f;
     constexpr float READY_SPEED = 125.0f;
     constexpr float DIVE_SPEED = 700.0f;
     constexpr float DIVE_DURATION = 0.35f;
-    constexpr float DIVE_RECOVERY_DURATION = 0.5f;
+    constexpr float DIVE_RECOVERY_DURATION = 0.2f;
 
     constexpr Vector2 DIVER_SIZE = { 24.0f, 24.0f };
 }
@@ -63,7 +64,7 @@ void EnemyDiver::Update(float deltaTime) {
 void EnemyDiver::Draw() {
     Color stateColor = LIME;
     if (currentState == chaseState.get()) {
-        stateColor = MAROON;
+        stateColor = DARKBLUE;
     } else if (currentState == readyState.get()) {
         stateColor = ORANGE;
     } else if (currentState == lungingState.get()) {
@@ -91,11 +92,13 @@ EnemyDiverLungingState* EnemyDiver::GetLungingState() {
 }
 
 bool EnemyDiver::CanEnterReadyState(LevelManager* levelManager) const {
-    if (!target || !levelManager || attackCooldown > 0.0f) {
-        return false;
-    }
+    return attackCooldown <= 0.0f && IsWithinClearDiveRange(levelManager);
+}
 
-    if (Vector2Distance(position, target->GetPosition()) > DIVE_TRIGGER_DISTANCE) {
+bool EnemyDiver::IsWithinClearDiveRange(LevelManager* levelManager) const {
+    if (!target || !levelManager) return false;
+
+    if (Vector2Distance(position, target->GetPosition()) > DIVE_STOP_DISTANCE) {
         return false;
     }
 
@@ -120,6 +123,10 @@ float EnemyDiver::GetDiveDuration() const {
 
 float EnemyDiver::GetDiveSpeed() const {
     return DIVE_SPEED;
+}
+
+float EnemyDiver::GetDiveStopDistance() const {
+    return DIVE_STOP_DISTANCE;
 }
 
 float EnemyDiver::GetDiveRecoveryDuration() const {
