@@ -7,6 +7,9 @@
 #include "raymath.h"
 
 // --- EnemyIdleState ---
+EnemyIdleState::EnemyIdleState(float spotDistance)
+    : spotDistance(spotDistance) {}
+
 void EnemyIdleState::Enter(Enemy* enemy) {}
 
 void EnemyIdleState::Update(Enemy* enemy, float deltaTime) {
@@ -23,6 +26,9 @@ void EnemyIdleState::Update(Enemy* enemy, float deltaTime) {
 void EnemyIdleState::Exit(Enemy* enemy) {}
 
 // --- EnemyChaseState ---
+EnemyChaseState::EnemyChaseState(float offSightDistance)
+    : offSightDistance(offSightDistance) {}
+
 void EnemyChaseState::Enter(Enemy* enemy) {}
 
 void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
@@ -73,7 +79,8 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
 
     // Handle Attack Cooldown
     if (enemy->GetAttackCooldown() > 0.0f) {
-        enemy->SetAttackCooldown(enemy->GetAttackCooldown() - deltaTime);
+        float remainingCooldown = enemy->GetAttackCooldown() - deltaTime;
+        enemy->SetAttackCooldown(remainingCooldown > 0.0f ? remainingCooldown : 0.0f);
     }
     
     // Check collision with Player for overlap resolution and damage
@@ -81,7 +88,7 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
         // Attack if cooldown allows
         if (enemy->GetAttackCooldown() <= 0.0f) {
             enemy->GetTarget()->TakeDamage(enemy->GetDamage());
-            enemy->SetAttackCooldown(1.0f); // 1 second cooldown
+            enemy->ResetAttackCooldown();
         }
         
         // Separation knockback (push enemy away from player to prevent freeze/deadlock)

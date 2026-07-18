@@ -20,14 +20,9 @@ Boss::Boss(Vector2 pos, Player* target)
     enemyType = EnemyType::BOSS;
     size = BOSS_SIZE;
 
-    idleState = std::make_unique<EnemyIdleState>();
-    chaseState = std::make_unique<BossChaseState>();
+    idleState = std::make_unique<EnemyIdleState>(BOSS_SIGHT_DISTANCE);
+    chaseState = std::make_unique<BossChaseState>(BOSS_OFF_SIGHT_DISTANCE);
     rangeState = std::make_unique<BossRangedAttackState>();
-
-
-    idleState->UpdateDistance(BOSS_SIGHT_DISTANCE);
-    chaseState->UpdateDistance(BOSS_OFF_SIGHT_DISTANCE);
-    rangeState->UpdateDistance(BOSS_SIGHT_DISTANCE);
 
     ChangeState(GetIdleState());
 }

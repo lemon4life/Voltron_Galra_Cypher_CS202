@@ -86,7 +86,8 @@ void LevelManager::LoadLevel(const std::string& filepath, Player* player) {
 
                 if (type == 'W') tileID = 5; // Map to Wall Face ID
                 else if (type == '.') tileID = 20; // Map to Floor ID
-                else if (type == 'N' || type == 'E') {
+                else if (type == 'N' || type == 'E' || type == 'R' ||
+                         type == 'D' || type == 'B') {
                     tileID = 20; // Map to Floor ID
                     Vector2 tileCenter = {
                         (float)c * TILE_SIZE + TILE_SIZE / 2.0f,
@@ -95,7 +96,7 @@ void LevelManager::LoadLevel(const std::string& filepath, Player* player) {
 
                     GameObject* entity = EntityFactory::CreateEntity(type, tileCenter, player);
                     if (entity != nullptr) {
-                        levelEntities.push_back(entity);
+                        AddEntity(entity);
                     }
 
                     // GameObject* entity = EntityFactory::CreateEntity(type, tileCenter, player);
@@ -285,6 +286,48 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
         }
     }
     return false;
+}
+
+bool LevelManager::HasClearLineOfSight(
+    Vector2 start,
+    Vector2 end,
+    float projectileRadius
+) const {
+    constexpr float MAX_PROBE_SPACING = 8.0f;
+
+    Vector2 segment = {
+        end.x - start.x,
+        end.y - start.y
+    };
+    float distance = std::sqrt(segment.x * segment.x + segment.y * segment.y);
+    if (distance <= COLLISION_EDGE_PADDING) {
+        return true;
+    }
+
+    float radius = std::max(projectileRadius, COLLISION_EDGE_PADDING);
+    int probeCount = std::max(1, (int)std::ceil(distance / MAX_PROBE_SPACING));
+
+    // Skip both endpoints: the first can overlap the shooter and the last is
+    // expected to overlap the target. Intermediate probes test the shot path.
+    for (int probeIndex = 1; probeIndex < probeCount; ++probeIndex) {
+        float amount = (float)probeIndex / (float)probeCount;
+        Vector2 point = {
+            start.x + segment.x * amount,
+            start.y + segment.y * amount
+        };
+        Rectangle probe = {
+            point.x - radius,
+            point.y - radius,
+            radius * 2.0f,
+            radius * 2.0f
+        };
+
+        if (IsSolidCollision(probe)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool LevelManager::IsValidSpawnLocation(Vector2 position) const {

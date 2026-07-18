@@ -9,7 +9,7 @@
 static const int MAX_HEALTH = 80;
 static const float BASE_SPEED = 170.f;
 static const int BASE_DAMAGE = 15;
-static const float BASE_ATTACK_COOLDOWN = 0.1f;
+static const float BASE_ATTACK_COOLDOWN = 0.5f;
 static const float SIGHT = 40000.f;
 
 static const float WIDTH = 20.f;

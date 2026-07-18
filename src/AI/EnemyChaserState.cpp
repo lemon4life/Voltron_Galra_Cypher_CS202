@@ -11,11 +11,13 @@ namespace {
     }
 }
 
-void EnemyChaserChaseState::Enter(Enemy* enemy) { }
+EnemyChaserChaseState::EnemyChaserChaseState(float offSightDistance)
+    : offSightDistance(offSightDistance) {}
 
-void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
-    EnemyChaser* chaser = dynamic_cast<EnemyChaser*>(enemy);
-    if (!chaser || !enemy->GetTarget()) return;
+void EnemyChaserChaseState::Enter(EnemyChaser* enemy) { }
+
+void EnemyChaserChaseState::Update(EnemyChaser* enemy, float deltaTime) {
+    if (!enemy->GetTarget()) return;
 
     
     Vector2 ePos = enemy->GetPosition();
@@ -27,7 +29,7 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     
     // Change back to idleState if player is too far away
     if (Vector2Distance(ePos, pPos) > offSightDistance) {
-        chaser->EndPathFinding();
+        enemy->EndPathFinding();
         enemy->ChangeState(enemy->GetIdleState());
         return;
     }
@@ -35,14 +37,14 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     // Apply Path finding if far from player
     // If near player use head to player direction directly
     if (distanceToP > 10.f) {
-        chaser->StartPathFinding();
+        enemy->StartPathFinding();
         Vector2 moveTarget = pPos;
         if (levelManager) {
             moveTarget = levelManager->GetEnemyPathManager().GetNextMoveTarget(levelManager, enemy, pPos);
         }
         dir = Vector2Subtract(moveTarget, ePos);
     } else {
-        chaser->EndPathFinding();
+        enemy->EndPathFinding();
         dir = Vector2Subtract(pPos, ePos);
     }
 
@@ -52,6 +54,13 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
 
     if (levelManager) {
         dir = levelManager->GetEnemyPathManager().GetLocalAvoidanceDirection(levelManager, enemy, dir);
+    }
+
+    // Handle Attack Cooldown
+    float cd = enemy->GetAttackCooldown();
+    if (cd > 0.0f) {
+        float remainingCooldown = cd - deltaTime;
+        enemy->SetAttackCooldown(remainingCooldown > 0.0f ? remainingCooldown : 0.0f);
     }
 
     // Collision calculation
@@ -76,18 +85,12 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
         }
         ePos = enemy->GetPosition();
 
-        // Handle Attack Cooldown
-        float cd = enemy->GetAttackCooldown();
-        if (cd > 0.0f) {
-            enemy->SetAttackCooldown(cd - deltaTime);
-        }
-
         // Check collision with Player for overlap resolution and damage
         if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTarget()->GetBoundingBox())) {
             // Attack if cooldown allows
             if (enemy->GetAttackCooldown() <= 0.0f) {
                 enemy->GetTarget()->TakeDamage(enemy->GetDamage());
-                enemy->SetAttackCooldown(enemy->GetAttackCooldown());
+                enemy->ResetAttackCooldown();
             }
             
             // Separation knockback (push enemy away from player to prevent freeze/deadlock)
@@ -114,9 +117,7 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
     }
 }
 
-void EnemyChaserChaseState::Exit(Enemy* enemy) {
+void EnemyChaserChaseState::Exit(EnemyChaser* enemy) {
     // Exit from path finding manager if it is still on
-    if (EnemyChaser* chaser = dynamic_cast<EnemyChaser*>(enemy)) {
-        chaser->EndPathFinding();
-    }
+    enemy->EndPathFinding();
 }

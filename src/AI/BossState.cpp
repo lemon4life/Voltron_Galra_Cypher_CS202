@@ -11,6 +11,9 @@
 
 // Boss Chase State
 
+BossChaseState::BossChaseState(float offSightDistance)
+    : offSightDistance(offSightDistance) {}
+
 void BossChaseState::Enter(Enemy* enemy) {}
 
 void BossChaseState::Update(Enemy* enemy, float deltaTime) {
@@ -61,7 +64,8 @@ void BossChaseState::Update(Enemy* enemy, float deltaTime) {
 
     // Handle Attack Cooldown
     if (enemy->GetAttackCooldown() > 0.0f) {
-        enemy->SetAttackCooldown(enemy->GetAttackCooldown() - deltaTime);
+        float remainingCooldown = enemy->GetAttackCooldown() - deltaTime;
+        enemy->SetAttackCooldown(remainingCooldown > 0.0f ? remainingCooldown : 0.0f);
     }
     
     if (Boss* boss = dynamic_cast<Boss*>(enemy)) {
@@ -78,7 +82,7 @@ void BossChaseState::Update(Enemy* enemy, float deltaTime) {
         // Attack if cooldown allows
         if (enemy->GetAttackCooldown() <= 0.0f) {
             enemy->GetTarget()->TakeDamage(enemy->GetDamage());
-            enemy->SetAttackCooldown(1.0f); // 1 second cooldown
+            enemy->ResetAttackCooldown();
         }
         
         // Separation knockback (push enemy away from player to prevent freeze/deadlock)

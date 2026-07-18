@@ -12,7 +12,9 @@ class Player;
 enum class EnemyType {
     GRUNT,
     BOSS,
-    Chaser
+    Chaser,
+    RANGE,
+    DIVER
 };
 
 class Enemy : public GameObject {
@@ -22,6 +24,7 @@ protected:
     float speed;
     int damage;
     float attackCooldown;
+    const float baseAttackCooldown;
     Vector2 size;
 
     EnemyType enemyType;
@@ -72,6 +75,7 @@ public:
     int GetDamage() const { return damage; }
     float GetAttackCooldown() const { return attackCooldown; }
     void SetAttackCooldown(float cd) { attackCooldown = cd; }
+    void ResetAttackCooldown();
 
     Player* GetTarget() const { return target; }
 };

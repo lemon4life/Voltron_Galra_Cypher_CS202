@@ -34,6 +34,7 @@ public:
     bool IsValidSpawnLocation(Vector2 position) const;
     bool IsValidSpawnLocation(const GameObject* entity) const;
     bool IsSolidCollision(Rectangle box) const;
+    bool HasClearLineOfSight(Vector2 start, Vector2 end, float projectileRadius = 5.0f) const;
 
     bool IsWalkableTile(int x, int y) const;
     Vector2 WorldToTile(Vector2 worldPos) const;

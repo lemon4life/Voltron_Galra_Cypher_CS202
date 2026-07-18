@@ -7,14 +7,14 @@
 
 Enemy::Enemy(Vector2 pos, Player* t)
     : GameObject(pos), health(100), maxHealth(100), speed(100.f), damage(15),
-      attackCooldown(0.1f), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
+      attackCooldown(0.1f), baseAttackCooldown(0.1f), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
       target(t), currentState(nullptr)
 {}
 
 
 Enemy::Enemy(Vector2 pos, Player* t, int imaxHealth, float ispeed, int idamage, float iattackCooldown)
     : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed), damage(idamage),
-      attackCooldown(iattackCooldown), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
+      attackCooldown(iattackCooldown), baseAttackCooldown(iattackCooldown), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
       target(t), currentState(nullptr)
 {}
 
@@ -49,6 +49,10 @@ void Enemy::ChangeState(IEnemyState* newState) {
 
     currentState = newState;
     currentState->Enter(this);
+}
+
+void Enemy::ResetAttackCooldown() {
+    attackCooldown = baseAttackCooldown;
 }
 
 void Enemy::AddObserver(IEnemyObserver* observer) {

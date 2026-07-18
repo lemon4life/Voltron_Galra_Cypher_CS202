@@ -23,3 +23,6 @@ There is no formal unit test framework currently configured. Treat a clean CMake
 
 ## Commit & Pull Request Guidelines
 Recent history uses short imperative messages with optional prefixes, for example `feat:`, `fix:`, `chore:`, `config:`, and `clean:`. Keep commits focused on one change. Pull requests should summarize the gameplay/code change, mention affected systems, list manual test steps, and include screenshots or recordings for visible gameplay or UI changes.
+
+## Fallback
+If any of the build run failed, stop and return the answer, do need to force build success
