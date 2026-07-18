@@ -7,10 +7,8 @@
 #include <vector>
 
 struct CharacterSprites {
-    Texture2D restIdle;
-    Texture2D restRun;
-    Texture2D battleIdle;
-    Texture2D battleRun;
+    Texture2D idle;
+    Texture2D run;
     Texture2D weapon;
 };
 
@@ -29,7 +27,7 @@ protected:
     float frameTimer;
     float frameDuration;
     bool facingLeft;
-    int numFrames; // Default 12
+    int numFrames; // Default 4
 
     // State instances
     PlayerIdleState idleState;

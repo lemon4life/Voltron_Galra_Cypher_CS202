@@ -3,9 +3,9 @@
 
 static Texture2D alluraSprite = { 0 };
 
-NPC::NPC(Vector2 pos) : GameObject(pos), currentFrame(0), frameTimer(0.0f), frameDuration(0.1f), numFrames(12) {
+NPC::NPC(Vector2 pos) : GameObject(pos), currentFrame(0), frameTimer(0.0f), frameDuration(0.1f), numFrames(4) {
     if (alluraSprite.id == 0) {
-        alluraSprite = LoadTexture("assets/sprites/NPC/Allura.png");
+        alluraSprite = LoadTexture("assets/sprites/Allura/Idle_Sheet.png");
     }
 }
 

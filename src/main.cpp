@@ -58,17 +58,13 @@ int main() {
     AudioManager::GetInstance().PlayMusicTrack("bgm");
 
     CharacterSprites lanceSprites;
-    lanceSprites.restIdle = LoadTexture("assets/sprites/Lance/Rest_Idle.png");
-    lanceSprites.restRun = LoadTexture("assets/sprites/Lance/Rest_Run.png");
-    lanceSprites.battleIdle = LoadTexture("assets/sprites/Lance/Battle_Idle.png");
-    lanceSprites.battleRun = LoadTexture("assets/sprites/Lance/Battle_Run.png");
+    lanceSprites.idle = LoadTexture("assets/sprites/Lance/Idle_Sheet.png");
+    lanceSprites.run = LoadTexture("assets/sprites/Lance/Run_Sheet.png");
     lanceSprites.weapon = LoadTexture("assets/sprites/Lance/Weapon_Static.png");
 
     CharacterSprites keithSprites;
-    keithSprites.restIdle = LoadTexture("assets/sprites/Keith/Rest_Idle.png");
-    keithSprites.restRun = LoadTexture("assets/sprites/Keith/Rest_Run.png");
-    keithSprites.battleIdle = LoadTexture("assets/sprites/Keith/Battle_Idle.png");
-    keithSprites.battleRun = LoadTexture("assets/sprites/Keith/Battle_Run.png");
+    keithSprites.idle = LoadTexture("assets/sprites/Keith/Idle_Sheet.png");
+    keithSprites.run = LoadTexture("assets/sprites/Keith/Run_Sheet.png");
     keithSprites.weapon = LoadTexture("assets/sprites/Keith/Weapon_Static.png");
 
     // Initialize TeamManager and Paladins
@@ -278,15 +274,11 @@ int main() {
 
     // De-Initialization
     delete teamManager;
-    UnloadTexture(lanceSprites.restIdle);
-    UnloadTexture(lanceSprites.restRun);
-    UnloadTexture(lanceSprites.battleIdle);
-    UnloadTexture(lanceSprites.battleRun);
+    UnloadTexture(lanceSprites.idle);
+    UnloadTexture(lanceSprites.run);
     UnloadTexture(lanceSprites.weapon);
-    UnloadTexture(keithSprites.restIdle);
-    UnloadTexture(keithSprites.restRun);
-    UnloadTexture(keithSprites.battleIdle);
-    UnloadTexture(keithSprites.battleRun);
+    UnloadTexture(keithSprites.idle);
+    UnloadTexture(keithSprites.run);
     UnloadTexture(keithSprites.weapon);
     UnloadRenderTexture(target);
     CloseWindow();
