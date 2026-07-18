@@ -4,10 +4,10 @@
 
 #include "raymath.h"
 
-EnemyRange::EnemyRange(Vector2 position, Player* target)
+EnemyRange::EnemyRange(Vector2 position, TeamManager* targetTeam)
     : Enemy(
           position,
-          target,
+          targetTeam,
           RANGE_MAX_HEALTH,
           RANGE_SPEED,
           RANGE_DAMAGE,

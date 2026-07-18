@@ -5,7 +5,7 @@
 class EnemyChaser;
 class EnemyDiver;
 class EnemyRange;
-class Player;
+class Paladin;
 
 /* 
     A Default Behaviour for Enemies
@@ -107,7 +107,7 @@ private:
     Vector2 estimatedPlayerVelocity = { 0.0f, 0.0f };
     bool hasPreviousPlayerPosition = false;
 
-    Vector2 PredictTargetPosition(EnemyRange* enemy, Player* player, float deltaTime);
+    Vector2 PredictTargetPosition(EnemyRange* enemy, Paladin* player, float deltaTime);
     void FireProjectile(EnemyRange* enemy, Vector2 targetPosition);
 
 public:

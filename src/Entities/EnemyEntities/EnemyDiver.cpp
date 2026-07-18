@@ -2,7 +2,8 @@
 
 #include "AI/EnemyState.h"
 #include "Core/Manager/LevelManager.h"
-#include "Entities/Player/Player.h"
+#include "Core/Manager/TeamManager.h"
+#include "Entities/Player/Paladin.h"
 
 #include "raymath.h"
 
@@ -27,10 +28,10 @@ namespace {
     constexpr Vector2 DIVER_SIZE = { 24.0f, 24.0f };
 }
 
-EnemyDiver::EnemyDiver(Vector2 position, Player* target)
+EnemyDiver::EnemyDiver(Vector2 position, TeamManager* targetTeam)
     : Enemy(
           position,
-          target,
+          targetTeam,
           DIVER_MAX_HEALTH,
           DIVER_BASE_SPEED,
           DIVER_DAMAGE,
@@ -96,6 +97,7 @@ bool EnemyDiver::CanEnterReadyState(LevelManager* levelManager) const {
 }
 
 bool EnemyDiver::IsWithinClearDiveRange(LevelManager* levelManager) const {
+    Paladin* target = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     if (!target || !levelManager) return false;
 
     if (Vector2Distance(position, target->GetPosition()) > DIVE_STOP_DISTANCE) {

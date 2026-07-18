@@ -16,7 +16,7 @@ private:
 
 public:
     WaveManager();
-    void Update(float deltaTime, Player* player, LevelManager* levelManager);
+    void Update(float deltaTime, TeamManager* teamManager, LevelManager* levelManager);
     void Reset(
         int startingEnemies = 1,
         int startingRangeEnemies = 0,

@@ -2,8 +2,9 @@
 
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
+#include "Core/Manager/TeamManager.h"
 #include "Entities/EnemyEntities/EnemyRange.h"
-#include "Entities/Player/Player.h"
+#include "Entities/Player/Paladin.h"
 #include "Entities/Projectile.h"
 
 #include "raymath.h"
@@ -80,7 +81,8 @@ void EnemyRangeChaseState::Enter(EnemyRange* enemy) {
 void EnemyRangeChaseState::Update(EnemyRange* enemy, float deltaTime) {
     UpdateAttackCooldown(enemy, deltaTime);
 
-    Player* player = enemy->GetTarget();
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     if (!player) {
         enemy->EndPathFinding();
         enemy->ChangeState(enemy->GetIdleState());
@@ -156,7 +158,8 @@ void EnemyRangeShootingState::Enter(EnemyRange* enemy) {
     enemy->EndPathFinding();
     estimatedPlayerVelocity = { 0.0f, 0.0f };
 
-    Player* player = enemy->GetTarget();
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     hasPreviousPlayerPosition = player != nullptr;
     if (player) {
         previousPlayerPosition = player->GetPosition();
@@ -166,7 +169,8 @@ void EnemyRangeShootingState::Enter(EnemyRange* enemy) {
 void EnemyRangeShootingState::Update(EnemyRange* enemy, float deltaTime) {
     UpdateAttackCooldown(enemy, deltaTime);
 
-    Player* player = enemy->GetTarget();
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     if (!player) {
         enemy->ChangeState(enemy->GetIdleState());
         return;
@@ -194,7 +198,7 @@ void EnemyRangeShootingState::Exit(EnemyRange* enemy) {
 
 Vector2 EnemyRangeShootingState::PredictTargetPosition(
     EnemyRange* enemy,
-    Player* player,
+    Paladin* player,
     float deltaTime
 ) {
     Vector2 playerPosition = player->GetPosition();

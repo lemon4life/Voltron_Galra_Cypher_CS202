@@ -15,7 +15,7 @@ private:
     std::unique_ptr<EnemyDiverLungingState> lungingState;
 
 public:
-    EnemyDiver(Vector2 position, Player* target);
+    EnemyDiver(Vector2 position, TeamManager* targetTeam);
     ~EnemyDiver() override;
 
     void Update(float deltaTime) override;

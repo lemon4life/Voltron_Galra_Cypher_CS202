@@ -25,7 +25,7 @@ private:
     std::unique_ptr<EnemyRangeShootingState> shootingState;
 
 public:
-    EnemyRange(Vector2 position, Player* target);
+    EnemyRange(Vector2 position, TeamManager* targetTeam);
     ~EnemyRange() override;
 
     void Update(float deltaTime) override;

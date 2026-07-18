@@ -2,8 +2,9 @@
 
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
+#include "Core/Manager/TeamManager.h"
 #include "Entities/EnemyEntities/EnemyDiver.h"
-#include "Entities/Player/Player.h"
+#include "Entities/Player/Paladin.h"
 
 #include "raymath.h"
 
@@ -45,7 +46,8 @@ void EnemyDiverChaseState::Enter(EnemyDiver* enemy) {
 void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
     UpdateAttackCooldown(enemy, deltaTime);
 
-    Player* player = enemy->GetTarget();
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     if (!player) {
         enemy->EndPathFinding();
         enemy->ChangeState(enemy->GetIdleState());
@@ -153,7 +155,8 @@ void EnemyDiverReadyState::Update(EnemyDiver* enemy, float deltaTime) {
     float activeTime = std::min(std::max(deltaTime, 0.0f), dTimer);
     dTimer = std::max(0.0f, dTimer - deltaTime);
 
-    Player* player = enemy->GetTarget();
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     if (!player) {
         enemy->ChangeState(enemy->GetIdleState());
         return;
@@ -187,7 +190,8 @@ void EnemyDiverReadyState::Exit(EnemyDiver* enemy) {
 void EnemyDiverLungingState::Enter(EnemyDiver* enemy) {
     enemy->EndPathFinding();
 
-    Player* player = enemy->GetTarget();
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     Vector2 targetPosition = player ? player->GetPosition() : enemy->GetPosition();
     lockedDirection = NormalizeOrFallback(
         Vector2Subtract(targetPosition, enemy->GetPosition()),
@@ -217,7 +221,8 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
     int substepCount = std::max(1, (int)std::ceil(frameDistance / maximumSubstep));
     float substepDistance = frameDistance / (float)substepCount;
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-    Player* player = enemy->GetTarget();
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
 
     for (int step = 0; step < substepCount; ++step) {
         Vector2 previousPosition = enemy->GetPosition();
