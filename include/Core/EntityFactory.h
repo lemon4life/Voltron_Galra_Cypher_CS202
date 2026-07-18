@@ -1,9 +1,9 @@
 #pragma once
 #include "Entities/GameObject.h"
 
-class Player;
+class TeamManager;
 
 class EntityFactory {
 public:
-    static GameObject* CreateEntity(char type, Vector2 position, Player* player);
+    static GameObject* CreateEntity(char type, Vector2 position, TeamManager* teamManager);
 };

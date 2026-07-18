@@ -7,20 +7,20 @@
 #include "Entities/EnemyEntities/EnemyDiver.h"
 #include "Entities/EnemyEntities/EnemyRange.h"
 
-GameObject* EntityFactory::CreateEntity(char type, Vector2 position, Player* player) {
+GameObject* EntityFactory::CreateEntity(char type, Vector2 position, TeamManager* teamManager) {
     switch (type) {
         case 'W':
             return new Wall(position);
         case 'N':
             return new NPC(position);
         case 'E':
-            return new EnemyChaser(position, player);
+            return new EnemyChaser(position, teamManager);
         case 'B':
-            return new Boss(position, player);
+            return new Boss(position, teamManager);
         case 'R':
-            return new EnemyRange(position, player);
+            return new EnemyRange(position, teamManager);
         case 'D':
-            return new EnemyDiver(position, player);
+            return new EnemyDiver(position, teamManager);
         // We will add 'c' for Chest later
         default:
             return nullptr;

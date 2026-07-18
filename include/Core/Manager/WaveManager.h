@@ -1,7 +1,7 @@
 #pragma once
 #include "raylib.h"
 
-class Player;
+class TeamManager;
 class LevelManager;
 
 class WaveManager {

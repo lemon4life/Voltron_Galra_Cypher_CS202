@@ -1,21 +1,22 @@
 #include "Entities/Enemy.h"
-#include "Entities/Player/Player.h"
+#include "Core/Manager/TeamManager.h"
+#include "Entities/Player/Paladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
 #include <algorithm>
 #include <iostream>
 
-Enemy::Enemy(Vector2 pos, Player* t)
+Enemy::Enemy(Vector2 pos, TeamManager* t)
     : GameObject(pos), health(100), maxHealth(100), speed(100.f), damage(15),
       attackCooldown(0.1f), baseAttackCooldown(0.1f), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
-      target(t), currentState(nullptr)
+      targetTeam(t), currentState(nullptr)
 {}
 
 
-Enemy::Enemy(Vector2 pos, Player* t, int imaxHealth, float ispeed, int idamage, float iattackCooldown)
+Enemy::Enemy(Vector2 pos, TeamManager* t, int imaxHealth, float ispeed, int idamage, float iattackCooldown)
     : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed), damage(idamage),
       attackCooldown(iattackCooldown), baseAttackCooldown(iattackCooldown), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
-      target(t), currentState(nullptr)
+      targetTeam(t), currentState(nullptr)
 {}
 
 Enemy::~Enemy() {

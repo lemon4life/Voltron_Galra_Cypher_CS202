@@ -1,25 +1,25 @@
 #pragma once
 
-class Player; // Forward declaration
+class Paladin; // Forward declaration
 
 class IPlayerState {
 public:
     virtual ~IPlayerState() = default;
-    virtual void Enter(Player* player) = 0;
-    virtual void Update(Player* player, float deltaTime) = 0;
-    virtual void Exit(Player* player) = 0;
+    virtual void Enter(Paladin* player) = 0;
+    virtual void Update(Paladin* player, float deltaTime) = 0;
+    virtual void Exit(Paladin* player) = 0;
 };
 
 class PlayerIdleState : public IPlayerState {
 public:
-    void Enter(Player* player) override;
-    void Update(Player* player, float deltaTime) override;
-    void Exit(Player* player) override;
+    void Enter(Paladin* player) override;
+    void Update(Paladin* player, float deltaTime) override;
+    void Exit(Paladin* player) override;
 };
 
 class PlayerRunState : public IPlayerState {
 public:
-    void Enter(Player* player) override;
-    void Update(Player* player, float deltaTime) override;
-    void Exit(Player* player) override;
+    void Enter(Paladin* player) override;
+    void Update(Paladin* player, float deltaTime) override;
+    void Exit(Paladin* player) override;
 };

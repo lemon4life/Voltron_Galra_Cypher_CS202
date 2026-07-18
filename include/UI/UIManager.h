@@ -2,19 +2,24 @@
 #include "Core/IObserver.h"
 #include "raylib.h"
 
+class TeamManager;
+
 class UIManager : public IObserver {
 private:
-    int currentHp;
-    int maxHp;
-    int currentArmor;
-    int maxArmor;
-    bool isLance;
+    TeamManager* teamManager;
+    Texture2D statsShell;
+    Texture2D statsShellBack;
 
 public:
     UIManager();
-    ~UIManager() override = default;
+    ~UIManager() override;
 
-    void OnPlayerStatsChanged(int hp, int maxHp, int armor, int maxArmor, bool isLance) override;
+    void Initialize();
+    void SetTeamManager(TeamManager* tm) { teamManager = tm; }
+
+    // Obsolete but kept to fulfill IObserver interface
+    void OnPlayerStatsChanged(int hp, int maxHp, int armor, int maxArmor, bool isLance) override {}
     
+    void DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight);
     void DrawHUD(int screenWidth, int screenHeight);
 };

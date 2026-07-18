@@ -5,7 +5,8 @@
 
 #include "Entities/EnemyEntities/Boss.h"
 #include "Entities/Projectile.h"
-#include "Entities/Player/Player.h"
+#include "Entities/Player/Paladin.h"
+#include "Core/Manager/TeamManager.h"
 
 #include "raymath.h"
 
@@ -17,10 +18,10 @@ BossChaseState::BossChaseState(float offSightDistance)
 void BossChaseState::Enter(Enemy* enemy) {}
 
 void BossChaseState::Update(Enemy* enemy, float deltaTime) {
-    if (!enemy->GetTarget()) return;
+    if (!enemy->GetTargetTeam()) return;
 
     Vector2 ePos = enemy->GetPosition();
-    Vector2 pPos = enemy->GetTarget()->GetPosition();
+    Vector2 pPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
     
     if (Vector2Distance(ePos, pPos) > offSightDistance) {
         enemy->ChangeState(enemy->GetIdleState());
@@ -78,10 +79,10 @@ void BossChaseState::Update(Enemy* enemy, float deltaTime) {
     }
 
     // Check collision with Player for overlap resolution and damage
-    if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTarget()->GetBoundingBox())) {
+    if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTargetTeam()->GetActivePaladin()->GetBoundingBox())) {
         // Attack if cooldown allows
         if (enemy->GetAttackCooldown() <= 0.0f) {
-            enemy->GetTarget()->TakeDamage(enemy->GetDamage());
+            enemy->GetTargetTeam()->GetActivePaladin()->TakeDamage(enemy->GetDamage());
             enemy->ResetAttackCooldown();
         }
         
@@ -111,7 +112,7 @@ void BossRangedAttackState::Update(Enemy* enemy, float deltaTime) {
     Boss* boss = dynamic_cast<Boss*>(enemy);
     if (!boss) return;
 
-    if (!enemy->GetTarget()) {
+    if (!enemy->GetTargetTeam()) {
         enemy->ChangeState(enemy->GetIdleState());
         return;
     }
@@ -125,7 +126,7 @@ void BossRangedAttackState::Update(Enemy* enemy, float deltaTime) {
         
         // Fire projectile
         Vector2 pos = enemy->GetPosition();
-        Vector2 tPos = enemy->GetTarget()->GetPosition();
+        Vector2 tPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
         Vector2 dir = Vector2Subtract(tPos, pos);
         if (Vector2Length(dir) > 0.0f) {
             dir = Vector2Normalize(dir);

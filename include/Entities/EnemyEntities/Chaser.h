@@ -18,7 +18,7 @@ static const float HEIGHT = 20.f;
 class EnemyChaser : public Enemy, public EnemyPathFinding {
 private:
 public:
-    EnemyChaser(Vector2 pos, Player* target);
+    EnemyChaser(Vector2 pos, TeamManager* targetTeam);
     ~EnemyChaser() override;
 
     void Update(float deltaTime) override;

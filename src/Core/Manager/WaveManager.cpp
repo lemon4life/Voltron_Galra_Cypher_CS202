@@ -1,7 +1,8 @@
 #include "Core/Manager/WaveManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/EntityFactory.h"
-#include "Entities/Player/Player.h"
+#include "Core/Manager/TeamManager.h"
+#include "Entities/Player/Paladin.h"
 #include "Entities/Enemy.h"
 #include "Core/Manager/GameManager.h"
 #include "raymath.h"
@@ -30,7 +31,7 @@ void WaveManager::Reset(
     showWaveTextTimer = 2.0f;
 }
 
-void WaveManager::Update(float deltaTime, Player* player, LevelManager* levelManager) {
+void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager* levelManager) {
     // Determine active enemies dynamically
     int activeEnemies = 0;
     for (auto* entity : levelManager->GetEntities()) {
@@ -59,7 +60,7 @@ void WaveManager::Update(float deltaTime, Player* player, LevelManager* levelMan
                     float randY = 32.0f + (float)(rand() % 448);
                     Vector2 spawnPos = { randX, randY };
 
-                    if (Vector2Distance(spawnPos, player->GetPosition()) > 150.0f) {
+                    if (Vector2Distance(spawnPos, teamManager->GetActivePaladin()->GetPosition()) > 150.0f) {
                         char spawnType = 'E';
                         if (currentWave == 5) {
                             spawnType = 'B';
@@ -76,7 +77,7 @@ void WaveManager::Update(float deltaTime, Player* player, LevelManager* levelMan
                             // Add one Diver after the ranged enemy in waves 3-4.
                             spawnType = 'D';
                         }
-                        GameObject* newEnemy = EntityFactory::CreateEntity(spawnType, spawnPos, player);
+                        GameObject* newEnemy = EntityFactory::CreateEntity(spawnType, spawnPos, teamManager);
                         if (newEnemy) {
                             if (levelManager->IsValidSpawnLocation(newEnemy)) {
                                 levelManager->AddEntity(newEnemy);
