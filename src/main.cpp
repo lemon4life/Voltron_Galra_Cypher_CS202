@@ -61,6 +61,15 @@ int main() {
     lanceSprites.idle = LoadTexture("assets/sprites/Lance/Idle_Sheet.png");
     lanceSprites.run = LoadTexture("assets/sprites/Lance/Run_Sheet.png");
     lanceSprites.weapon = LoadTexture("assets/sprites/Lance/Weapon_Static.png");
+    lanceSprites.muzzleFlash = LoadTexture("assets/sprites/Lance/Muzzle_Flash.png");
+    lanceSprites.bullet = LoadTexture("assets/sprites/Lance/Bullet.png");
+    lanceSprites.impact = LoadTexture("assets/sprites/Lance/Bullet_Impact.png");
+    
+    SetTextureFilter(lanceSprites.weapon, TEXTURE_FILTER_POINT);
+    SetTextureFilter(lanceSprites.muzzleFlash, TEXTURE_FILTER_POINT);
+    SetTextureFilter(lanceSprites.bullet, TEXTURE_FILTER_POINT);
+    SetTextureFilter(lanceSprites.impact, TEXTURE_FILTER_POINT);
+    GameManager::GetInstance().SetBulletImpactTexture(lanceSprites.impact);
 
     CharacterSprites keithSprites;
     keithSprites.idle = LoadTexture("assets/sprites/Keith/Idle_Sheet.png");
@@ -224,11 +233,13 @@ int main() {
                     levelManager.DrawLevel();
                     teamManager->Draw();
                     GameManager::GetInstance().DrawProjectiles();
+            GameManager::GetInstance().UpdateAndDrawEffects(deltaTime);
                 } else if (state == GameState::PAUSED) {
                     ClearBackground(DARKGRAY);
                     levelManager.DrawLevel();
                     teamManager->Draw();
                     GameManager::GetInstance().DrawProjectiles();
+            GameManager::GetInstance().UpdateAndDrawEffects(deltaTime);
                 }
                 
                 EndMode2D();
@@ -277,6 +288,9 @@ int main() {
     UnloadTexture(lanceSprites.idle);
     UnloadTexture(lanceSprites.run);
     UnloadTexture(lanceSprites.weapon);
+    UnloadTexture(lanceSprites.muzzleFlash);
+    UnloadTexture(lanceSprites.bullet);
+    UnloadTexture(lanceSprites.impact);
     UnloadTexture(keithSprites.idle);
     UnloadTexture(keithSprites.run);
     UnloadTexture(keithSprites.weapon);

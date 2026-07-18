@@ -11,6 +11,14 @@ enum class GameState {
     VICTORY
 };
 
+struct ImpactEffect {
+    Vector2 position;
+    float lifetime;
+    float maxLifetime;
+    int currentFrame;
+    int numFrames;
+};
+
 class Projectile; // Forward declaration
 class LevelManager; // Forward declaration
 class GameObject; // Forward declaration
@@ -20,6 +28,8 @@ private:
     GameState currentState;
     std::vector<GameObject*> levelEntities;
     std::vector<Projectile*> activeProjectiles;
+    std::vector<ImpactEffect> activeEffects;
+    Texture2D bulletImpactTex;
 
     int targetFPS;
     
@@ -59,6 +69,9 @@ public:
 
     void AddProjectile(Projectile* p);
     void UpdateProjectiles(float deltaTime, class TeamManager* teamManager = nullptr);
+    void UpdateAndDrawEffects(float deltaTime);
+    void SetBulletImpactTexture(Texture2D tex) { bulletImpactTex = tex; }
+    void AddImpactEffect(Vector2 pos);
     void DrawProjectiles();
     void ClearProjectiles();
 };

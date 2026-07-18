@@ -10,6 +10,9 @@ struct CharacterSprites {
     Texture2D idle;
     Texture2D run;
     Texture2D weapon;
+    Texture2D muzzleFlash;
+    Texture2D bullet;
+    Texture2D impact;
 };
 
 class TeamManager;
