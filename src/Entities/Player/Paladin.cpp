@@ -39,7 +39,21 @@ Paladin::~Paladin() {
 }
 
 Vector2 Paladin::GetWeaponPivot() const {
-    return position;
+    Vector2 pivot = position; // Position is the center of the 32x32 sprite
+    
+    // Top-left is (position.x - 16, position.y - 16)
+    // Desired right-facing X is top-left.x + 12 -> position.x - 4
+    // Desired mirrored left-facing X is top-right.x - 12 -> position.x + 4
+    if (facingLeft) {
+        pivot.x += 4.0f;
+    } else {
+        pivot.x -= 4.0f;
+    }
+    
+    // Desired Y is top-left.y + 22 -> position.y + 6
+    pivot.y += 6.0f;
+    
+    return pivot;
 }
 
 void Paladin::Attack() {
