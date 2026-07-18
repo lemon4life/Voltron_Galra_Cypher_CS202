@@ -62,10 +62,7 @@ public:
 
     Rectangle GetBoundingBox() const override;
 
-    EnemyType GetType() const { return enemyType; }
-    void SetType(EnemyType t) { enemyType = t; }
     EnemyType GetEnemyType() const { return enemyType; }
-    void SetEnemyType(EnemyType t) { enemyType = t; }
 
     int GetHealth() const { return health; }
     void SetMaxHealth(int h) { maxHealth = h; health = h; }
