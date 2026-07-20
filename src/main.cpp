@@ -42,6 +42,7 @@ void ResetDemoGame(TeamManager* teamManager, LevelManager* levelManager, WaveMan
     GameManager::GetInstance().SetState(GameState::PLAYING);
 }
 
+
 int main() {
     // Initialize Window
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Voltron: Mission Galra Cypher");
@@ -65,6 +66,8 @@ int main() {
     lanceSprites.muzzleFlash = LoadTexture("assets/sprites/Lance/Muzzle_Flash.png");
     lanceSprites.bullet = LoadTexture("assets/sprites/Lance/Bullet.png");
     lanceSprites.impact = LoadTexture("assets/sprites/Lance/Bullet_Impact.png");
+    lanceSprites.dashFront = LoadTexture("assets/sprites/Lance/Dash_front.png");
+    lanceSprites.dashBack = LoadTexture("assets/sprites/Lance/Dash_back.png");
     
     SetTextureFilter(lanceSprites.weapon, TEXTURE_FILTER_POINT);
     SetTextureFilter(lanceSprites.muzzleFlash, TEXTURE_FILTER_POINT);
@@ -76,6 +79,7 @@ int main() {
     keithSprites.idle = LoadTexture("assets/sprites/Keith/Idle_Sheet.png");
     keithSprites.run = LoadTexture("assets/sprites/Keith/Run_Sheet.png");
     keithSprites.weapon = LoadTexture("assets/sprites/Keith/Weapon_Static.png");
+    SetTextureFilter(keithSprites.weapon, TEXTURE_FILTER_POINT);
     keithSprites.attack1 = LoadTexture("assets/sprites/Keith/Attack_1.png");
     keithSprites.attack2 = LoadTexture("assets/sprites/Keith/Attack_2.png");
     
@@ -120,16 +124,15 @@ int main() {
     // Initialize WaveManager
     WaveManager waveManager;
 
-    // Initialize render texture for internal game resolution
-    RenderTexture2D target = LoadRenderTexture(GAME_WIDTH, GAME_HEIGHT);
-    SetTextureFilter(target.texture, TEXTURE_FILTER_POINT); // keep pixel art crisp
-
     // Initialize Camera
     Camera2D camera = { 0 };
     camera.target = { 0.0f, 0.0f };
-    camera.offset = { std::round(GAME_WIDTH / 2.0f), std::round(GAME_HEIGHT / 2.0f) };
+    camera.offset = { std::round(WINDOW_WIDTH / 2.0f), std::round(WINDOW_HEIGHT / 2.0f) };
     camera.rotation = 0.0f;
-    camera.zoom = 1.0f;
+    camera.zoom = 2.0f;
+    
+    Camera2D uiCamera = { 0 };
+    uiCamera.zoom = 2.0f;
 
     GameManager::GetInstance().UpdateTargetFPS(BASE_FPS);
 
@@ -143,8 +146,7 @@ int main() {
         
         // Pass mouse coordinates to player for aiming
         Vector2 mouseScreen = GetMousePosition();
-        Vector2 mouseInternal = { mouseScreen.x * ((float)GAME_WIDTH / (float)WINDOW_WIDTH), mouseScreen.y * ((float)GAME_HEIGHT / (float)WINDOW_HEIGHT) };
-        Vector2 mouseWorld = GetScreenToWorld2D(mouseInternal, camera);
+        Vector2 mouseWorld = GetScreenToWorld2D(mouseScreen, camera);
         teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
 
         // Mock EX Generation Input
@@ -224,22 +226,26 @@ int main() {
         }
 
         // --- Draw ---
-        
-        // 1. Draw to the internal render texture
-        BeginTextureMode(target);
+        BeginDrawing();
             if (state == GameState::MENU) {
                 ClearBackground(DARKGRAY);
+                BeginMode2D(uiCamera);
                 DrawText("Voltron: Mission Galra Cypher", 70, 200, 24, WHITE);
                 DrawText("Press ENTER to Start", 140, 300, 20, LIGHTGRAY);
                 DrawText("Press R to Enter Demo Map", 120, 335, 20, LIGHTGRAY);
+                EndMode2D();
             } else if (state == GameState::GAMEOVER) {
                 ClearBackground(BLACK);
+                BeginMode2D(uiCamera);
                 DrawText("GAME OVER", 180, 220, 30, RED);
                 DrawText("Press R to Restart", 160, 280, 20, LIGHTGRAY);
+                EndMode2D();
             } else if (state == GameState::VICTORY) {
                 ClearBackground(RAYWHITE);
+                BeginMode2D(uiCamera);
                 DrawText("MISSION ACCOMPLISHED", 90, 200, 40, GOLD);
                 DrawText("Press R to return to Main Menu", 150, 300, 20, DARKGRAY);
+                EndMode2D();
             } else {
                 BeginMode2D(camera);
                 
@@ -252,18 +258,19 @@ int main() {
                     levelManager.DrawLevel();
                     teamManager->Draw();
                     GameManager::GetInstance().DrawProjectiles();
-            GameManager::GetInstance().UpdateAndDrawEffects(deltaTime);
+                    GameManager::GetInstance().UpdateAndDrawEffects(deltaTime);
                 } else if (state == GameState::PAUSED) {
                     ClearBackground(DARKGRAY);
                     levelManager.DrawLevel();
                     teamManager->Draw();
                     GameManager::GetInstance().DrawProjectiles();
-            GameManager::GetInstance().UpdateAndDrawEffects(deltaTime);
+                    GameManager::GetInstance().UpdateAndDrawEffects(deltaTime);
                 }
                 
                 EndMode2D();
                 
-                // Draw HUD outside of camera
+                // Draw HUD outside of camera but with uiCamera scale
+                BeginMode2D(uiCamera);
                 if (state == GameState::HUB) {
                     uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT);
                 } else if (state == GameState::PLAYING) {
@@ -274,31 +281,13 @@ int main() {
                     DrawRectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, {0, 0, 0, 150});
                     DrawText("PAUSED", GAME_WIDTH / 2 - MeasureText("PAUSED", 40) / 2, GAME_HEIGHT / 2 - 20, 40, RAYWHITE);
                 }
+                EndMode2D();
+                
+                // Draw high-res UI elements on top of the scaled game
+                if (state == GameState::HUB) {
+                    DialogueManager::GetInstance().Draw();
+                }
             }
-        EndTextureMode();
-
-        // 2. Draw the internal texture to the main physical window (1024x1024)
-        BeginDrawing();
-            ClearBackground(BLACK); // Clear main window
-            
-            // Source rectangle from the render texture.
-            // Note: OpenGL framebuffers are inverted vertically, so we invert the source height.
-            Rectangle sourceRec = { 0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height };
-            
-            // Destination rectangle on the main window.
-            // The size is 1024x1024, which is exactly 2.0f times the 512x512 internal resolution.
-            Rectangle destRec = { 0.0f, 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT };
-            
-            // Origin of the destination rectangle (top-left)
-            Vector2 origin = { 0.0f, 0.0f };
-            
-            DrawTexturePro(target.texture, sourceRec, destRec, origin, 0.0f, WHITE);
-            
-            // Draw high-res UI elements on top of the scaled game
-            if (state == GameState::HUB) {
-                DialogueManager::GetInstance().Draw();
-            }
-            
         EndDrawing();
     }
 
@@ -310,6 +299,8 @@ int main() {
     UnloadTexture(lanceSprites.muzzleFlash);
     UnloadTexture(lanceSprites.bullet);
     UnloadTexture(lanceSprites.impact);
+    UnloadTexture(lanceSprites.dashFront);
+    UnloadTexture(lanceSprites.dashBack);
     UnloadTexture(keithSprites.idle);
     UnloadTexture(keithSprites.run);
     UnloadTexture(keithSprites.weapon);
@@ -321,7 +312,7 @@ int main() {
     UnloadTexture(hunkSprites.muzzleFlash);
     UnloadTexture(hunkSprites.bullet);
     UnloadTexture(hunkSprites.impact);
-    UnloadRenderTexture(target);
+    
     CloseWindow();
 
     // Note: AudioManager singleton's destructor will close the audio device automatically when main exits.

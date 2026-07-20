@@ -189,7 +189,7 @@ void Paladin::Draw() {
 
     Vector2 origin = { frameWidth / 2.0f, frameHeight / 2.0f };
 
-    Color tint = isInvincible ? GRAY : WHITE;
+    Color tint = WHITE; // No grayscale tint during dash
 
     DrawTexturePro(texture, sourceRec, destRec, origin, 0.0f, tint);
     
@@ -205,6 +205,14 @@ Texture2D Paladin::GetIdleTexture() const {
 Texture2D Paladin::GetRunTexture() const {
     return sprites.run;
 }
+Texture2D Paladin::GetDashFrontTexture() const {
+    return sprites.dashFront;
+}
+
+Texture2D Paladin::GetDashBackTexture() const {
+    return sprites.dashBack;
+}
+
 
 void Paladin::UpdateFootsteps(float dt) {
     footstepTimer += dt;

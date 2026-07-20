@@ -9,12 +9,32 @@ void PlayerDashState::Enter(Paladin* player) {
     player->SetDashTimer(0.3f); // 0.3s dash duration
     
     // Capture the dash direction.
-    // If the player was moving, lastMoveDir will have their last input direction.
-    // If it's zero, default to the direction they are facing.
     dashDirection = player->GetLastMoveDir();
     if (dashDirection.x == 0.0f && dashDirection.y == 0.0f) {
         dashDirection = player->IsFacingLeft() ? Vector2{ -1.0f, 0.0f } : Vector2{ 1.0f, 0.0f };
     }
+    
+    // Determine which dash texture to use (front vs back)
+    bool cursorLeft = player->IsFacingLeft();
+    bool dashFront = true;
+    
+    if (dashDirection.x > 0.0f) {
+        dashFront = cursorLeft ? false : true; // Dashing right, if cursor is left, it's dashBack
+    } else if (dashDirection.x < 0.0f) {
+        dashFront = cursorLeft ? true : false; // Dashing left, if cursor is left, it's dashFront
+    }
+    
+    Texture2D targetTex = dashFront ? player->GetDashFrontTexture() : player->GetDashBackTexture();
+    
+    // Fallback if texture not loaded
+    if (targetTex.id == 0) {
+        player->SetTexture(player->GetRunTexture());
+        player->SetNumFrames(4);
+    } else {
+        player->SetTexture(targetTex);
+        player->SetNumFrames(1);
+    }
+    player->ResetAnimation();
 }
 
 void PlayerDashState::Update(Paladin* player, float deltaTime) {
@@ -27,8 +47,13 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
         return;
     }
 
-    // Movement speed should be 2.5x the normal walk speed during dash
-    float dashSpeed = player->GetSpeed() * 2.5f;
+    // Inertia-based gliding motion (slow-fast-slow)
+    float dashDuration = 0.3f;
+    float t = 1.0f - (timer / dashDuration);
+    
+    // Peak speed scaled by PI/2 to maintain the same total dash distance as linear 2.5x speed
+    float peakSpeedMultiplier = 2.5f * (PI / 2.0f); 
+    float dashSpeed = player->GetSpeed() * peakSpeedMultiplier * sinf(t * PI);
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
 
     Vector2 currentPos = player->GetPosition();
