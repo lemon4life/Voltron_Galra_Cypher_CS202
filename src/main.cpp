@@ -68,11 +68,13 @@ int main() {
     lanceSprites.impact = LoadTexture("assets/sprites/Lance/Bullet_Impact.png");
     lanceSprites.dashFront = LoadTexture("assets/sprites/Lance/Dash_front.png");
     lanceSprites.dashBack = LoadTexture("assets/sprites/Lance/Dash_back.png");
+    lanceSprites.parry = LoadTexture("assets/sprites/Lance/Parry.png");
     
     SetTextureFilter(lanceSprites.weapon, TEXTURE_FILTER_POINT);
     SetTextureFilter(lanceSprites.muzzleFlash, TEXTURE_FILTER_POINT);
     SetTextureFilter(lanceSprites.bullet, TEXTURE_FILTER_POINT);
     SetTextureFilter(lanceSprites.impact, TEXTURE_FILTER_POINT);
+    SetTextureFilter(lanceSprites.parry, TEXTURE_FILTER_POINT);
     GameManager::GetInstance().SetBulletImpactTexture(lanceSprites.impact);
 
     CharacterSprites keithSprites;
@@ -194,11 +196,16 @@ int main() {
                 }
                 break;
             case GameState::PLAYING:
-                levelManager.UpdateLevel(deltaTime);
-                teamManager->Update(deltaTime);
-                GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
-                waveManager.Update(deltaTime, teamManager, &levelManager);
+                if (GameManager::GetInstance().GetHitstopTimer() > 0.0f) {
+                    GameManager::GetInstance().UpdateHitstop(deltaTime);
+                } else {
+                    levelManager.UpdateLevel(deltaTime);
+                    teamManager->Update(deltaTime);
+                    GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
+                    waveManager.Update(deltaTime, teamManager, &levelManager);
+                }
                 camera.target = { teamManager->GetActivePaladin()->GetPosition().x, teamManager->GetActivePaladin()->GetPosition().y };
+                camera.zoom = (GameManager::GetInstance().GetHitstopTimer() > 0.0f) ? 2.2f : 2.0f;
                 
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
                     GameManager::GetInstance().SetState(GameState::PAUSED);
@@ -301,6 +308,7 @@ int main() {
     UnloadTexture(lanceSprites.impact);
     UnloadTexture(lanceSprites.dashFront);
     UnloadTexture(lanceSprites.dashBack);
+    UnloadTexture(lanceSprites.parry);
     UnloadTexture(keithSprites.idle);
     UnloadTexture(keithSprites.run);
     UnloadTexture(keithSprites.weapon);

@@ -2,6 +2,7 @@
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
+#include "Core/Manager/LevelManager.h"
 #include <cmath>
 #include <iostream>
 
@@ -23,7 +24,12 @@ Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
       attackCooldown(0.2f),
       dashTimer(0.0f),
       isInvincible(false),
-      lastMoveDir{1.0f, 0.0f}, // Initialize pointing right
+      isParrying(false),
+      parrySuccess(false),
+      consecutiveParries(0),
+      parryAngle(0.0f),
+      lastMoveDir{1.0f, 0.0f},
+      knockbackVelocity{0.0f, 0.0f}, // Initialize pointing right
       footstepTimer(0.0f)
 {
     currentState = &idleState;
@@ -31,6 +37,10 @@ Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
 }
 
 Paladin::~Paladin() {
+    if (IsKeyPressed(KEY_F) && dashCooldown <= 0.0f && !isParrying) {
+        ChangeState(&parryState);
+    }
+    
     if (currentState) {
         currentState->Exit(this);
     }
@@ -106,15 +116,21 @@ void Paladin::Update(float deltaTime) {
     }
     float angle = atan2f(dir.y, dir.x) * (180.0f / PI);
     
-    if (GameManager::GetInstance().GetState() == GameState::HUB || GameManager::GetInstance().GetState() == GameState::MENU) {
-        if (lastMoveDir.x < 0.0f) facingLeft = true;
-        else if (lastMoveDir.x > 0.0f) facingLeft = false;
-    } else {
-        facingLeft = (aimTarget.x < position.x);
+    if (!isParrying) {
+        if (GameManager::GetInstance().GetState() == GameState::HUB || GameManager::GetInstance().GetState() == GameState::MENU) {
+            if (lastMoveDir.x < 0.0f) facingLeft = true;
+            else if (lastMoveDir.x > 0.0f) facingLeft = false;
+        } else {
+            facingLeft = (aimTarget.x < position.x);
+        }
     }
 
-        if (currentWeapon) {
-        currentWeapon->SetAim(dir, angle);
+    if (currentWeapon) {
+        if (isParrying) {
+            currentWeapon->SetAim(dir, angle - 90.0f); // 90-degree orthogonal block angle
+        } else {
+            currentWeapon->SetAim(dir, angle);
+        }
     }
 
     // Decrement dash cooldown over time
@@ -123,6 +139,46 @@ void Paladin::Update(float deltaTime) {
         if (dashCooldown < 0.0f) {
             dashCooldown = 0.0f;
         }
+    }
+
+    if (IsKeyPressed(KEY_F) && dashCooldown <= 0.0f && !isParrying) {
+        ChangeState(&parryState);
+    }
+    
+    // Apply knockback physics
+    if (Vector2Length(knockbackVelocity) > 5.0f) {
+        // Smooth exponential decay (similar to weapon recoil lerping)
+        knockbackVelocity.x -= knockbackVelocity.x * 15.0f * deltaTime;
+        knockbackVelocity.y -= knockbackVelocity.y * 15.0f * deltaTime;
+        
+        Vector2 currentPos = GetPosition();
+        LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+        float levelWidth = GameManager::GetInstance().GetLevelWidth();
+        float levelHeight = GameManager::GetInstance().GetLevelHeight();
+        
+        // X Movement
+        currentPos.x += knockbackVelocity.x * deltaTime;
+        if (currentPos.x < 0.0f) currentPos.x = 0.0f;
+        if (currentPos.x > levelWidth) currentPos.x = levelWidth;
+        SetPosition(currentPos);
+        if (levelManager && levelManager->IsSolidCollision(GetBoundingBox())) {
+            currentPos.x -= knockbackVelocity.x * deltaTime;
+            SetPosition(currentPos);
+            knockbackVelocity.x = 0.0f;
+        }
+        
+        // Y Movement
+        currentPos.y += knockbackVelocity.y * deltaTime;
+        if (currentPos.y < 0.0f) currentPos.y = 0.0f;
+        if (currentPos.y > levelHeight) currentPos.y = levelHeight;
+        SetPosition(currentPos);
+        if (levelManager && levelManager->IsSolidCollision(GetBoundingBox())) {
+            currentPos.y -= knockbackVelocity.y * deltaTime;
+            SetPosition(currentPos);
+            knockbackVelocity.y = 0.0f;
+        }
+    } else {
+        knockbackVelocity = {0.0f, 0.0f};
     }
 
     if (currentState) {
@@ -227,4 +283,54 @@ void Paladin::OnHitEnemy(int damage) {
     if (exEnergy > maxExEnergy) {
         exEnergy = maxExEnergy;
     }
+}
+
+void Paladin::SetParrying(bool parry) {
+    isParrying = parry;
+    if (!parry) parrySuccess = false;
+}
+
+void Paladin::TriggerParrySuccess(GameObject* attacker) {
+    parrySuccess = true;
+    Vector2 pPos = GetPosition();
+    Vector2 aPos = attacker->GetPosition();
+    float angleToAttacker = atan2f(aPos.y - pPos.y, aPos.x - pPos.x) * (180.0f / PI);
+    parryAngle = angleToAttacker + 90.0f; // Orthogonal
+    
+    // Apply knockback
+    Vector2 dir = Vector2Subtract(pPos, aPos);
+    if (Vector2Length(dir) > 0.0f) {
+        dir = Vector2Normalize(dir);
+    } else {
+        dir = {1.0f, 0.0f};
+    }
+    ApplyKnockback(dir, 800.0f); // Fast initial impulse
+}
+
+void Paladin::ApplyKnockback(Vector2 dir, float force) {
+    knockbackVelocity.x += dir.x * force;
+    knockbackVelocity.y += dir.y * force;
+}
+
+Texture2D Paladin::GetParryTexture() const {
+    return sprites.parry;
+}
+
+bool Paladin::CanParryAttack(Vector2 attackerPos) const {
+    if (!isParrying) return false;
+    if (consecutiveParries >= 3) return false;
+    
+    Vector2 dirToAttacker = Vector2Subtract(attackerPos, position);
+    if (Vector2Length(dirToAttacker) == 0.0f) return true;
+    dirToAttacker = Vector2Normalize(dirToAttacker);
+    
+    Vector2 aimDir = Vector2Subtract(aimTarget, position);
+    if (Vector2Length(aimDir) > 0.0f) {
+        aimDir = Vector2Normalize(aimDir);
+    } else {
+        aimDir = { facingLeft ? -1.0f : 1.0f, 0.0f };
+    }
+    
+    float dot = (aimDir.x * dirToAttacker.x) + (aimDir.y * dirToAttacker.y);
+    return dot > 0.0f; // 180-degree frontal block cone
 }

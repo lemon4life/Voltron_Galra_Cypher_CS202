@@ -47,8 +47,19 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
 
         // If it's an enemy projectile, check collision with Player
         if ((*it)->IsEnemyProjectile() && teamManager && teamManager->GetActivePaladin()) {
-            if (CheckCollisionRecs(pBox, teamManager->GetActivePaladin()->GetBoundingBox())) {
-                teamManager->GetActivePaladin()->TakeDamage((*it)->GetDamage());
+            Paladin* activePaladin = teamManager->GetActivePaladin();
+            if (CheckCollisionRecs(pBox, activePaladin->GetBoundingBox())) {
+                if (activePaladin->CanParryAttack((*it)->GetPosition())) {
+                    activePaladin->TriggerParrySuccess(*it);
+                    activePaladin->IncrementParryCount();
+                    TriggerHitstop(0.1f);
+                    AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});
+                } else {
+                    activePaladin->TakeDamage((*it)->GetDamage());
+                    if (activePaladin->IsParrying()) {
+                        activePaladin->ChangeState(activePaladin->GetIdleState()); // Break parry on failed block
+                    }
+                }
                 hitSomething = true;
             }
         }

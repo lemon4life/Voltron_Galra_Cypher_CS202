@@ -32,6 +32,7 @@ private:
     Texture2D bulletImpactTex;
 
     int targetFPS;
+    float hitstopTimer;
     
     float levelWidth = 0.0f;
     float levelHeight = 0.0f;
@@ -51,6 +52,10 @@ public:
     GameManager& operator=(GameManager&&) = delete;
 
     // --- Accessors ---
+    void TriggerHitstop(float duration) { hitstopTimer = duration; }
+    float GetHitstopTimer() const { return hitstopTimer; }
+    void UpdateHitstop(float dt) { if (hitstopTimer > 0.0f) hitstopTimer -= dt; }
+
     GameState GetState() const { return currentState; }
     void SetState(GameState newState) { currentState = newState; }
 

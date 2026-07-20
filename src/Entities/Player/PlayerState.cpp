@@ -40,6 +40,7 @@ void PlayerIdleState::Exit(Paladin* player) {
 
 // --- PlayerRunState ---
 void PlayerRunState::Enter(Paladin* player) {
+    player->ResetParryCount();
     player->SetTexture(player->GetRunTexture());
     player->SetNumFrames(4); // Sprite sheet has 4 frames
     player->ResetAnimation();
@@ -118,4 +119,22 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
 
 void PlayerRunState::Exit(Paladin* player) {
     // Nothing specific needed
+}
+
+// --- PlayerParryState ---
+void PlayerParryState::Enter(Paladin* player) {
+    player->SetTexture(player->GetParryTexture());
+    player->SetNumFrames(1);
+    player->ResetAnimation();
+    player->SetParrying(true);
+}
+
+void PlayerParryState::Update(Paladin* player, float deltaTime) {
+    if (!IsKeyDown(KEY_F)) {
+        player->ChangeState(player->GetIdleState());
+    }
+}
+
+void PlayerParryState::Exit(Paladin* player) {
+    player->SetParrying(false);
 }

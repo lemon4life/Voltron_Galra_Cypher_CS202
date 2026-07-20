@@ -17,6 +17,7 @@ struct CharacterSprites {
     Texture2D impact;
     Texture2D dashFront;
     Texture2D dashBack;
+    Texture2D parry;
 };
 
 class TeamManager;
@@ -39,6 +40,7 @@ protected:
     // State instances
     PlayerIdleState idleState;
     PlayerRunState runState;
+    PlayerParryState parryState;
     PlayerDashState dashState;
     PlayerAttackState attackState;
 
@@ -54,7 +56,12 @@ protected:
     float dashTimer;
 
     bool isInvincible;
+    bool isParrying;
+    bool parrySuccess;
+    int consecutiveParries;
+    float parryAngle;
     Vector2 lastMoveDir;
+    Vector2 knockbackVelocity;
     float footstepTimer;
     Vector2 aimTarget;
 
@@ -64,8 +71,16 @@ public:
 
     void Update(float deltaTime) override;
     void Draw() override;
+    void SetParrying(bool parry);
+    int GetConsecutiveParries() const { return consecutiveParries; }
+    void IncrementParryCount() { consecutiveParries++; }
+    void ResetParryCount() { consecutiveParries = 0; }
+    bool IsParrying() const { return isParrying; }
+    bool CanParryAttack(Vector2 attackerPos) const;
+    void TriggerParrySuccess(GameObject* attacker);
+    void ApplyKnockback(Vector2 dir, float force);
     
-    void SetAimTarget(Vector2 target) { aimTarget = target; }
+    void SetAimTarget(Vector2 target) { if (!isParrying) aimTarget = target; }
     Vector2 GetAimTarget() const { return aimTarget; }
     
     void SetTeamManager(TeamManager* manager) { teamManager = manager; }
@@ -94,6 +109,7 @@ public:
     
     PlayerIdleState* GetIdleState() { return &idleState; }
     PlayerRunState* GetRunState() { return &runState; }
+    PlayerParryState* GetParryState() { return &parryState; }
     PlayerDashState* GetDashState() { return &dashState; }
     PlayerAttackState* GetAttackState() { return &attackState; }
     
@@ -101,6 +117,7 @@ public:
     Texture2D GetRunTexture() const;
     Texture2D GetDashFrontTexture() const;
     Texture2D GetDashBackTexture() const;
+    Texture2D GetParryTexture() const;
 
     // Animation helpers
     void UpdateAnimation(float deltaTime);

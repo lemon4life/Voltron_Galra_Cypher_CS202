@@ -77,3 +77,39 @@ Please implement the following technical architecture:
 **Prompt:** `that's nice, but there is a little bug with the sprite of Keith's attack isn't rendered properly, instead of alternating, make them random, can be 1 or 2 when the player attack`
 - **Purpose:** Make Keith's combo attack sprites trigger randomly instead of strictly alternating between 1 and 2.
 - **Generated Content:** Modified `MeleeAttackStrategy::Attack` and `Update` to use `(rand() % 2) + 1` instead of alternating the `comboStep` state.
+
+
+## Parry and Hitstop Mechanic
+**Prompt:** `I have added a 1-frame Parry.png sprite to Lance/. Please implement a Parry mechanic and hitstop effect with the following requirements: Add a PARRY state. When the player presses 'F' to parry an attack, lock their movement and set their state to PARRY for exactly 0.2 seconds. During this state, render the Parry sprite...`
+- **Purpose:** Introduce a skill-based parry mechanic with visual hitstop effects and orthogonal weapon blocking.
+- **Generated Content:** Modified GameManager to support logic bypassing for `hitstopTimer`. Added `PlayerParryState` for 0.2s block window on key `F`. Modified `EnemyChaseState` to trigger Hitstop, calculate orthogonal parry angle, and knockback the enemy instead of dealing damage if colliding during the parry window.
+
+
+## Parry Stance Mechanics Refinement
+**Prompt:** `Let's refine the Parry state mechanics and fix a sprite rotation bug. Please implement the following rules for when the player holds 'F' (Parry) and has not taken damage yet: State & Input Freeze... Weapon 90-Degree Block Angle... Bug Fix - Character Rotation...`
+- **Purpose:** Refine the Parry stance to be a held action that locks movement and aiming, while correctly displaying the `parry.png` texture as a character state instead of a rotated weapon sprite.
+- **Generated Content:** Updated `PlayerParryState` to last as long as `KEY_F` is held. Updated `Paladin` logic to lock `aimTarget` and `facingLeft` while parrying. Fixed `Paladin::Draw()` so `parry.png` acts as the character texture (flipping horizontally only) while the weapon is drawn at a locked 90-degree block angle.
+
+
+## Player Knockback on Parry
+**Prompt:** `Let's implement the core mechanics for a successful Parry. When the player is in the Parry state (pressing 'F') and successfully blocks an incoming hit, I want the character to be physically pushed back slightly...`
+- **Purpose:** Give physical weight to parrying by pushing the player back using smooth velocity decay when they block an attack.
+- **Generated Content:** Added `knockbackVelocity` to `Paladin` class. Implemented smooth lerp-style decay on knockback velocity applied directly to the character's movement in `Paladin::Update`. Called `ApplyKnockback` during `TriggerParrySuccess` in the opposite direction of the attacker.
+
+
+## Damage Immunity and Parry Limit
+**Prompt:** `Let's expand on the Parry mechanics. In addition to the directional knockback on a successful block we discussed, please implement a damage mitigation and parry limit system...`
+- **Purpose:** Balance the parry mechanic by enforcing damage immunity strictly on success, and limiting consecutive parries to 3 before punishing the player.
+- **Generated Content:** Added `consecutiveParries` counter to the Paladin. Updated `EnemyChaseState` to enforce a max limit of 3 parries, beyond which the player takes damage normally and their parry stance is broken. Implemented reset conditions in `PlayerRunState` and `PlayerAttackState`. Added visual spark effect on block.
+
+
+## Parry Bug Fix: Projectiles and Directional Checks
+**Prompt:** `I've encountered a critical bug with the Parry system we just implemented. The Bug: When I press and hold 'F' to parry, the character still takes full damage from enemy attacks...`
+- **Purpose:** Fix a bug where enemy projectiles completely bypassed the parry state, and implement a skill-based directional blocking cone.
+- **Generated Content:** Updated `GameManager::UpdateProjectiles` to intercept projectile collision with a parry check, triggering success and destroying the projectile. Added `Paladin::CanParryAttack(Vector2)` to enforce a 180-degree frontal cone directional check using dot product math—meaning you must face the attacker to successfully parry!
+
+
+## Parry Bug Fix: EnemyChaserState override
+**Prompt:** `the bug is still there.`
+- **Purpose:** Fix a bug where physical enemies were still bypassing the parry check.
+- **Generated Content:** Discovered that `EnemyChaserState.cpp` and `BossState.cpp` were completely overriding the base `EnemyState.cpp` collision logic. Patched both files to correctly integrate the `activePaladin->CanParryAttack(ePos)` checks into their respective `CheckCollisionRecs` logic blocks so all enemies respect the parry.
