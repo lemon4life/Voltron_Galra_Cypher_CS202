@@ -65,11 +65,15 @@ int main() {
     lanceSprites.muzzleFlash = LoadTexture("assets/sprites/Lance/Muzzle_Flash.png");
     lanceSprites.bullet = LoadTexture("assets/sprites/Lance/Bullet.png");
     lanceSprites.impact = LoadTexture("assets/sprites/Lance/Bullet_Impact.png");
+    lanceSprites.dashFront = LoadTexture("assets/sprites/Lance/Dash_front.png");
+    lanceSprites.dashBack = LoadTexture("assets/sprites/Lance/Dash_back.png");
     
     SetTextureFilter(lanceSprites.weapon, TEXTURE_FILTER_POINT);
     SetTextureFilter(lanceSprites.muzzleFlash, TEXTURE_FILTER_POINT);
     SetTextureFilter(lanceSprites.bullet, TEXTURE_FILTER_POINT);
     SetTextureFilter(lanceSprites.impact, TEXTURE_FILTER_POINT);
+    SetTextureFilter(lanceSprites.dashFront, TEXTURE_FILTER_POINT);
+    SetTextureFilter(lanceSprites.dashBack, TEXTURE_FILTER_POINT);
     GameManager::GetInstance().SetBulletImpactTexture(lanceSprites.impact);
 
     CharacterSprites keithSprites;
@@ -78,6 +82,8 @@ int main() {
     keithSprites.weapon = LoadTexture("assets/sprites/Keith/Weapon_Static.png");
     keithSprites.attack1 = LoadTexture("assets/sprites/Keith/Attack_1.png");
     keithSprites.attack2 = LoadTexture("assets/sprites/Keith/Attack_2.png");
+    keithSprites.dashFront.id = 0;
+    keithSprites.dashBack.id = 0;
     
     SetTextureFilter(keithSprites.attack1, TEXTURE_FILTER_POINT);
     SetTextureFilter(keithSprites.attack2, TEXTURE_FILTER_POINT);
@@ -94,6 +100,8 @@ int main() {
     hunkSprites.muzzleFlash = LoadTexture("assets/sprites/Hunk/Muzzle.png");
     hunkSprites.bullet = LoadTexture("assets/sprites/Hunk/Beam.png");
     hunkSprites.impact = LoadTexture("assets/sprites/Hunk/Beam_Impact.png");
+    hunkSprites.dashFront.id = 0;
+    hunkSprites.dashBack.id = 0;
     
     SetTextureFilter(hunkSprites.weapon, TEXTURE_FILTER_POINT);
     SetTextureFilter(hunkSprites.muzzleFlash, TEXTURE_FILTER_POINT);
@@ -310,6 +318,8 @@ int main() {
     UnloadTexture(lanceSprites.muzzleFlash);
     UnloadTexture(lanceSprites.bullet);
     UnloadTexture(lanceSprites.impact);
+    UnloadTexture(lanceSprites.dashFront);
+    UnloadTexture(lanceSprites.dashBack);
     UnloadTexture(keithSprites.idle);
     UnloadTexture(keithSprites.run);
     UnloadTexture(keithSprites.weapon);
