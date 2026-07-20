@@ -1,7 +1,6 @@
 #include "Entities/EnemyEntities/EnemyDiver.h"
 
 #include "AI/EnemyState.h"
-#include "Core/LevelAccess.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 
@@ -35,16 +34,16 @@ EnemyDiver::EnemyDiver(
     IEnemyPathAccess* pathAccess,
     ILevelLineOfSightQuery* lineOfSightQuery
 )
-    : Enemy(
+    : PathfindingEnemy(
           position,
           targetTeam,
           DIVER_MAX_HEALTH,
           DIVER_BASE_SPEED,
           DIVER_DAMAGE,
           DIVER_ATTACK_COOLDOWN,
-          removalAccess
+          removalAccess,
+          pathAccess
       ),
-      EnemyPathFinding(pathAccess),
       lineOfSightQuery(lineOfSightQuery) {
     idleState = std::make_unique<EnemyIdleState>(DIVER_SIGHT_DISTANCE);
     chaseState = std::make_unique<EnemyDiverChaseState>(DIVER_OFF_SIGHT_DISTANCE);
@@ -57,8 +56,6 @@ EnemyDiver::EnemyDiver(
 }
 
 EnemyDiver::~EnemyDiver() {
-    EndPathFinding();
-
     if (currentState) {
         currentState->Exit(this);
     }
@@ -146,23 +143,4 @@ float EnemyDiver::GetDiveRecoveryDuration() const {
 
 float EnemyDiver::GetCollisionClearanceRadius() const {
     return std::max(size.x, size.y) / 2.0f;
-}
-
-void EnemyDiver::StartPathFinding() {
-    if (IsPathFinding()) return;
-    SetPathFinding(true);
-
-    if (IEnemyPathAccess* pathAccess = GetPathAccess()) {
-        pathAccess->BeginPathFinding(this);
-    }
-}
-
-void EnemyDiver::EndPathFinding() {
-    if (!IsPathFinding()) return;
-    SetPathFinding(false);
-    ClearTargetPosition();
-
-    if (IEnemyPathAccess* pathAccess = GetPathAccess()) {
-        pathAccess->EndPathFinding(this);
-    }
 }

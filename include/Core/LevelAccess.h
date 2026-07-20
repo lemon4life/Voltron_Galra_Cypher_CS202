@@ -2,8 +2,8 @@
 
 #include "raylib.h"
 
-class Enemy;
 class GameObject;
+class PathfindingEnemy;
 
 class ILevelLineOfSightQuery {
 public:
@@ -27,8 +27,8 @@ class IEnemyPathAccess {
 public:
     virtual ~IEnemyPathAccess() = default;
 
-    virtual void BeginPathFinding(Enemy* enemy) = 0;
-    virtual void EndPathFinding(Enemy* enemy) = 0;
+    virtual void BeginPathFinding(PathfindingEnemy* enemy) = 0;
+    virtual void EndPathFinding(PathfindingEnemy* enemy) = 0;
 };
 
 struct LevelAccessBundle {

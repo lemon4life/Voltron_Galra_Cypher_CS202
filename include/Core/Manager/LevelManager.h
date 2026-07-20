@@ -5,6 +5,7 @@
 #include "Core/LevelAccess.h"
 #include "Entities/GameObject.h"
 #include "Core/Manager/EnemyPathManager.h"
+
 class TeamManager;
 
 class LevelManager
@@ -21,7 +22,7 @@ private:
     std::vector<std::vector<int>> mapGridLayer2;
     Texture2D tileset;
 
-    // Data for Enemy Path Manger
+    // Enemy pathfinding and deferred entity removal.
     void ProcessPendingRemovals();
     std::vector<GameObject*> pendingRemoval;
     EnemyPathManager enemyPathManager;
@@ -35,31 +36,27 @@ public:
     void UpdateLevel(float deltaTime);
     void ClearLevel();
     void AddEntity(GameObject* entity);
-    bool IsValidSpawnLocation(Vector2 position) const;
     bool IsValidSpawnLocation(const GameObject* entity) const;
     bool IsSolidCollision(Rectangle box) const;
-    
-    bool IsWalkableTile(int x, int y) const;
+
     Vector2 WorldToTile(Vector2 worldPos) const;
     Vector2 TileToWorld(int tileX, int tileY) const;
-    
+
     float GetLevelWidth() const { return levelWidth; }
     float GetLevelHeight() const { return levelHeight; }
     EnemyPathManager& GetEnemyPathManager() { return enemyPathManager; }
     LevelAccessBundle GetLevelAccessBundle() {
         return { this, this, this };
     }
-    int GetGridRows() const { return gridRows; }
-    int GetGridCols() const { return gridCols; }
-    
+
     bool HasClearLineOfSight(
         Vector2 start,
         Vector2 end,
         float projectileRadius = 5.0f
     ) const override;
     void QueueRemoval(GameObject* entity) override;
-    void BeginPathFinding(Enemy* enemy) override;
-    void EndPathFinding(Enemy* enemy) override;
+    void BeginPathFinding(PathfindingEnemy* enemy) override;
+    void EndPathFinding(PathfindingEnemy* enemy) override;
 
     const std::vector<GameObject*>& GetEntities() const { return levelEntities; }
 };

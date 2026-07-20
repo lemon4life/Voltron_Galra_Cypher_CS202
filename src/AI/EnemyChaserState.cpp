@@ -1,5 +1,5 @@
 #include "AI/EnemyState.h"
-#include "Entities/EnemyEntities/Chaser.h"
+#include "Entities/EnemyEntities/EnemyChaser.h"
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/GameManager.h"

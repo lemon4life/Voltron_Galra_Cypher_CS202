@@ -1,14 +1,13 @@
 #pragma once
 
-#include "Core/EnemyPath.h"
-#include "Entities/Enemy.h"
+#include "Entities/PathfindingEnemy.h"
 
 #include <memory>
 
 class EnemyDiverReadyState;
 class EnemyDiverLungingState;
 
-class EnemyDiver : public Enemy, public EnemyPathFinding {
+class EnemyDiver : public PathfindingEnemy {
 private:
     std::unique_ptr<EnemyDiverReadyState> readyState;
     std::unique_ptr<EnemyDiverLungingState> lungingState;
@@ -42,6 +41,4 @@ public:
     float GetCollisionClearanceRadius() const;
     ILevelLineOfSightQuery* GetLineOfSightQuery() const { return lineOfSightQuery; }
 
-    void StartPathFinding();
-    void EndPathFinding();
 };

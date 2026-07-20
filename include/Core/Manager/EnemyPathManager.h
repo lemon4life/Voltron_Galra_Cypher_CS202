@@ -1,25 +1,32 @@
 #pragma once
 #include "raylib.h"
-#include <algorithm>
+
 #include <vector>
 
-const float TARGET_LOOP_ALL_INTERVAL = 0.2;
-
 class LevelManager;
-class Enemy;
+class PathfindingEnemy;
 
 class EnemyPathManager {
 private:
-    std::vector<Enemy*> enemies;
+    std::vector<PathfindingEnemy*> enemies;
     int nextEnemyIndex = 0;
 public:
-    void AddEnemy(Enemy* enemy);
+    void AddEnemy(PathfindingEnemy* enemy);
 
-    void RemoveEnemy(Enemy* enemy);
+    void RemoveEnemy(PathfindingEnemy* enemy);
+    void Clear();
 
-    Vector2 GetNextMoveTarget(LevelManager* levelManager, Enemy* enemy, Vector2 fallbackTarget);
+    Vector2 GetNextMoveTarget(
+        LevelManager* levelManager,
+        PathfindingEnemy* enemy,
+        Vector2 fallbackTarget
+    );
 
-    Vector2 GetLocalAvoidanceDirection(LevelManager* levelManager, Enemy* enemy, Vector2 desiredDirection);
+    Vector2 GetLocalAvoidanceDirection(
+        LevelManager* levelManager,
+        PathfindingEnemy* enemy,
+        Vector2 desiredDirection
+    );
 
     void Update(LevelManager* levelManager, float deltaTime);
 };
