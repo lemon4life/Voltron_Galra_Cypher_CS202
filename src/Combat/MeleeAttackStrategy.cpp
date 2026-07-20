@@ -119,7 +119,7 @@ void MeleeAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
     if (activeTex.id == 0) return;
 
     // Sprite sheet has 4 frames
-    float frameWidth = (float)activeTex.width;
+    float frameWidth = (float)activeTex.width / 4.0f;
     
     Rectangle source = { currentFrame * frameWidth, 0.0f, frameWidth, (float)activeTex.height };
     if (facingLeft) {

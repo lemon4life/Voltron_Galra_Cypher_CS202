@@ -178,7 +178,7 @@ int main() {
                     
                     levelManager.UpdateLevel(deltaTime);
                     teamManager->Update(deltaTime);
-                    camera.target = { std::round(teamManager->GetActivePaladin()->GetPosition().x), std::round(teamManager->GetActivePaladin()->GetPosition().y) };
+                    camera.target = { teamManager->GetActivePaladin()->GetPosition().x, teamManager->GetActivePaladin()->GetPosition().y };
                     
                     if (IsKeyPressed(KEY_E)) {
                         for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
@@ -198,7 +198,7 @@ int main() {
                 teamManager->Update(deltaTime);
                 GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
                 waveManager.Update(deltaTime, teamManager, &levelManager);
-                camera.target = { std::round(teamManager->GetActivePaladin()->GetPosition().x), std::round(teamManager->GetActivePaladin()->GetPosition().y) };
+                camera.target = { teamManager->GetActivePaladin()->GetPosition().x, teamManager->GetActivePaladin()->GetPosition().y };
                 
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
                     GameManager::GetInstance().SetState(GameState::PAUSED);

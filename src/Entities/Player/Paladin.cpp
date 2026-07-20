@@ -181,8 +181,8 @@ void Paladin::Draw() {
     };
 
     Rectangle destRec = {
-        std::round(position.x),
-        std::round(position.y),
+        position.x,
+        position.y,
         frameWidth,
         frameHeight
     };
