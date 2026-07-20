@@ -3,13 +3,20 @@
 
 #include <deque>
 
+class IEnemyPathAccess;
+
 class EnemyPathFinding {
 private:
     bool usePathFinding = false;
     std::deque<Vector2> targetPosition;
+    IEnemyPathAccess* pathAccess;
 public:
+    explicit EnemyPathFinding(IEnemyPathAccess* pathAccess)
+        : pathAccess(pathAccess) {}
+
     bool IsPathFinding() const { return usePathFinding; }
     void SetPathFinding(bool value) { usePathFinding = value; }
+    IEnemyPathAccess* GetPathAccess() const { return pathAccess; }
 
     void ClearTargetPosition() { targetPosition.clear(); }
     void PopTarget() { if (!targetPosition.empty()) targetPosition.pop_front(); }

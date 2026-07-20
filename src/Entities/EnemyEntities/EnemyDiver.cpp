@@ -1,7 +1,7 @@
 #include "Entities/EnemyEntities/EnemyDiver.h"
 
 #include "AI/EnemyState.h"
-#include "Core/Manager/LevelManager.h"
+#include "Core/LevelAccess.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 
@@ -28,15 +28,24 @@ namespace {
     constexpr Vector2 DIVER_SIZE = { 24.0f, 24.0f };
 }
 
-EnemyDiver::EnemyDiver(Vector2 position, TeamManager* targetTeam)
+EnemyDiver::EnemyDiver(
+    Vector2 position,
+    TeamManager* targetTeam,
+    IEntityRemovalAccess* removalAccess,
+    IEnemyPathAccess* pathAccess,
+    ILevelLineOfSightQuery* lineOfSightQuery
+)
     : Enemy(
           position,
           targetTeam,
           DIVER_MAX_HEALTH,
           DIVER_BASE_SPEED,
           DIVER_DAMAGE,
-          DIVER_ATTACK_COOLDOWN
-      ) {
+          DIVER_ATTACK_COOLDOWN,
+          removalAccess
+      ),
+      EnemyPathFinding(pathAccess),
+      lineOfSightQuery(lineOfSightQuery) {
     idleState = std::make_unique<EnemyIdleState>(DIVER_SIGHT_DISTANCE);
     chaseState = std::make_unique<EnemyDiverChaseState>(DIVER_OFF_SIGHT_DISTANCE);
     readyState = std::make_unique<EnemyDiverReadyState>();
@@ -92,19 +101,19 @@ EnemyDiverLungingState* EnemyDiver::GetLungingState() {
     return lungingState.get();
 }
 
-bool EnemyDiver::CanEnterReadyState(LevelManager* levelManager) const {
-    return attackCooldown <= 0.0f && IsWithinClearDiveRange(levelManager);
+bool EnemyDiver::CanEnterReadyState() const {
+    return attackCooldown <= 0.0f && IsWithinClearDiveRange();
 }
 
-bool EnemyDiver::IsWithinClearDiveRange(LevelManager* levelManager) const {
+bool EnemyDiver::IsWithinClearDiveRange() const {
     Paladin* target = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
-    if (!target || !levelManager) return false;
+    if (!target || !lineOfSightQuery) return false;
 
     if (Vector2Distance(position, target->GetPosition()) > DIVE_STOP_DISTANCE) {
         return false;
     }
 
-    return levelManager->HasClearLineOfSight(
+    return lineOfSightQuery->HasClearLineOfSight(
         position,
         target->GetPosition(),
         GetCollisionClearanceRadius()
@@ -143,8 +152,8 @@ void EnemyDiver::StartPathFinding() {
     if (IsPathFinding()) return;
     SetPathFinding(true);
 
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFind(this);
+    if (IEnemyPathAccess* pathAccess = GetPathAccess()) {
+        pathAccess->BeginPathFinding(this);
     }
 }
 
@@ -153,7 +162,7 @@ void EnemyDiver::EndPathFinding() {
     SetPathFinding(false);
     ClearTargetPosition();
 
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFindEnded(this);
+    if (IEnemyPathAccess* pathAccess = GetPathAccess()) {
+        pathAccess->EndPathFinding(this);
     }
 }

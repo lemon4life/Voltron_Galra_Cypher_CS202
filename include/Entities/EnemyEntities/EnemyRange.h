@@ -23,9 +23,16 @@ constexpr Vector2 RANGE_SIZE = { 24.0f, 24.0f };
 class EnemyRange : public Enemy, public EnemyPathFinding {
 private:
     std::unique_ptr<EnemyRangeShootingState> shootingState;
+    ILevelLineOfSightQuery* lineOfSightQuery;
 
 public:
-    EnemyRange(Vector2 position, TeamManager* targetTeam);
+    EnemyRange(
+        Vector2 position,
+        TeamManager* targetTeam,
+        IEntityRemovalAccess* removalAccess,
+        IEnemyPathAccess* pathAccess,
+        ILevelLineOfSightQuery* lineOfSightQuery
+    );
     ~EnemyRange() override;
 
     void Update(float deltaTime) override;
@@ -39,6 +46,7 @@ public:
     float GetProjectileLifetime() const;
     float GetProjectileRadius() const;
     float GetMaxPredictionTime() const;
+    ILevelLineOfSightQuery* GetLineOfSightQuery() const { return lineOfSightQuery; }
 
     void StartPathFinding();
     void EndPathFinding();

@@ -1,7 +1,7 @@
 #pragma once
 #include "Entities/GameObject.h"
 #include "AI/EnemyState.h"
-#include "Core/IEnemyObserver.h"
+#include "Core/LevelAccess.h"
 #include "raylib.h"
 
 #include <memory>
@@ -36,13 +36,19 @@ protected:
     std::unique_ptr<IEnemyState> chaseState;
 
     bool deathNotified = false;
-    std::vector<IEnemyObserver*> observers;
-
-    void NotifyEnemyDied();
+    IEntityRemovalAccess* removalAccess;
 
 public:
-    Enemy(Vector2 pos, TeamManager* t);
-    Enemy(Vector2 pos, TeamManager* t, int maxHealth, float speed, int damage, float attackCooldown);
+    Enemy(Vector2 pos, TeamManager* t, IEntityRemovalAccess* removalAccess);
+    Enemy(
+        Vector2 pos,
+        TeamManager* t,
+        int maxHealth,
+        float speed,
+        int damage,
+        float attackCooldown,
+        IEntityRemovalAccess* removalAccess
+    );
     virtual ~Enemy();
 
     virtual void Update(float deltaTime) override = 0;
@@ -52,9 +58,6 @@ public:
     IEnemyState* GetIdleState() { return idleState.get(); }
     IEnemyState* GetChaseState() { return chaseState.get(); }
     void ChangeState(IEnemyState* newState);
-
-    void AddObserver(IEnemyObserver* observer);
-    void RemoveObserver(IEnemyObserver* observer);
 
     virtual void TakeDamage(int amount);
     bool IsDead() const { return health <= 0; }

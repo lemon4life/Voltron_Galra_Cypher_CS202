@@ -94,7 +94,12 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
                         (float)mapGridLayer1.size() * TILE_SIZE + TILE_SIZE / 2.0f
                     };
 
-                    GameObject* entity = EntityFactory::CreateEntity(type, tileCenter, teamManager);
+                    GameObject* entity = EntityFactory::CreateEntity(
+                        type,
+                        tileCenter,
+                        teamManager,
+                        GetLevelAccessBundle()
+                    );
                     if (entity != nullptr) {
                         AddEntity(entity);
                     }
@@ -222,24 +227,21 @@ void LevelManager::DrawLevel() {
 }
 
 void LevelManager::ClearLevel() {
+    pendingRemoval.clear();
+
     for (auto* entity : levelEntities) {
         if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
             enemyPathManager.RemoveEnemy(enemy);
-            enemy->RemoveObserver(this);
         }
         delete entity;
     }
     levelEntities.clear();
-    pendingRemoval.clear();
     mapGridLayer1.clear();
     mapGridLayer2.clear();
 }
 
 void LevelManager::AddEntity(GameObject* entity) {
     if (entity) {
-        if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
-            enemy->AddObserver(this);
-        }
         levelEntities.push_back(entity);
     }
 }
@@ -374,16 +376,17 @@ Vector2 LevelManager::TileToWorld(int tileX, int tileY) const {
 }
 
 //////////////////////////////////////////////
-// Level Manager funcion for Enemy Observer
+// Narrow level-access capabilities used by entities.
 //////////////////////////////////////////////
 
 void LevelManager::ProcessPendingRemovals() {
-    for (Enemy* enemy : pendingRemoval) {
-        enemyPathManager.RemoveEnemy(enemy);
+    for (GameObject* entity : pendingRemoval) {
+        if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
+            enemyPathManager.RemoveEnemy(enemy);
+        }
 
-        auto it = std::find(levelEntities.begin(), levelEntities.end(), enemy);
+        auto it = std::find(levelEntities.begin(), levelEntities.end(), entity);
         if (it != levelEntities.end()) {
-            enemy->RemoveObserver(this);
             delete *it;
             levelEntities.erase(it);
         }
@@ -391,18 +394,22 @@ void LevelManager::ProcessPendingRemovals() {
     pendingRemoval.clear();
 }
 
-void LevelManager::OnEnemyPathFind(Enemy* enemy) {
+void LevelManager::BeginPathFinding(Enemy* enemy) {
     enemyPathManager.AddEnemy(enemy);
 }
 
-void LevelManager::OnEnemyPathFindEnded(Enemy* enemy) {
+void LevelManager::EndPathFinding(Enemy* enemy) {
     enemyPathManager.RemoveEnemy(enemy);
 }
 
-void LevelManager::OnEnemyDied(Enemy* enemy) {
-    if (!enemy) return;
+void LevelManager::QueueRemoval(GameObject* entity) {
+    if (!entity) return;
 
-    if (std::find(pendingRemoval.begin(), pendingRemoval.end(), enemy) == pendingRemoval.end()) {
-        pendingRemoval.push_back(enemy);
+    if (std::find(levelEntities.begin(), levelEntities.end(), entity) == levelEntities.end()) {
+        return;
+    }
+
+    if (std::find(pendingRemoval.begin(), pendingRemoval.end(), entity) == pendingRemoval.end()) {
+        pendingRemoval.push_back(entity);
     }
 }

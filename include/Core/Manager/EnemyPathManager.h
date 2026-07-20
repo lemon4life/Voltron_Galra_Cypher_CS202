@@ -1,5 +1,4 @@
 #pragma once
-#include "Core/IEnemyObserver.h"
 #include "raylib.h"
 #include <algorithm>
 #include <vector>
@@ -7,6 +6,7 @@
 const float TARGET_LOOP_ALL_INTERVAL = 0.2;
 
 class LevelManager;
+class Enemy;
 
 class EnemyPathManager {
 private:

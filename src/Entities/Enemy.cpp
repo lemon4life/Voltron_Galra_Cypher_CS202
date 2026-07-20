@@ -3,20 +3,27 @@
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
-#include <algorithm>
 #include <iostream>
 
-Enemy::Enemy(Vector2 pos, TeamManager* t)
+Enemy::Enemy(Vector2 pos, TeamManager* t, IEntityRemovalAccess* removalAccess)
     : GameObject(pos), health(100), maxHealth(100), speed(100.f), damage(15),
       attackCooldown(0.1f), baseAttackCooldown(0.1f), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
-      targetTeam(t), currentState(nullptr)
+      targetTeam(t), currentState(nullptr), removalAccess(removalAccess)
 {}
 
 
-Enemy::Enemy(Vector2 pos, TeamManager* t, int imaxHealth, float ispeed, int idamage, float iattackCooldown)
+Enemy::Enemy(
+    Vector2 pos,
+    TeamManager* t,
+    int imaxHealth,
+    float ispeed,
+    int idamage,
+    float iattackCooldown,
+    IEntityRemovalAccess* removalAccess
+)
     : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed), damage(idamage),
       attackCooldown(iattackCooldown), baseAttackCooldown(iattackCooldown), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
-      targetTeam(t), currentState(nullptr)
+      targetTeam(t), currentState(nullptr), removalAccess(removalAccess)
 {}
 
 Enemy::~Enemy() {
@@ -56,29 +63,6 @@ void Enemy::ResetAttackCooldown() {
     attackCooldown = baseAttackCooldown;
 }
 
-void Enemy::AddObserver(IEnemyObserver* observer) {
-    if (!observer) return;
-
-    if (std::find(observers.begin(), observers.end(), observer) == observers.end()) {
-        observers.push_back(observer);
-    }
-}
-
-void Enemy::RemoveObserver(IEnemyObserver* observer) {
-    observers.erase(
-        std::remove(observers.begin(), observers.end(), observer),
-        observers.end()
-    );
-}
-
-
-
-void Enemy::NotifyEnemyDied() {
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyDied(this);
-    }
-}
-
 void Enemy::TakeDamage(int amount) {
     if (health <= 0) return;
 
@@ -88,7 +72,9 @@ void Enemy::TakeDamage(int amount) {
 
     if (health <= 0 && !deathNotified) {
         deathNotified = true;
-        NotifyEnemyDied();
+        if (removalAccess) {
+            removalAccess->QueueRemoval(this);
+        }
     }
 }
 

@@ -1,10 +1,25 @@
 #include "Entities/EnemyEntities/Chaser.h"
+#include "Core/LevelAccess.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/EnemyPathManager.h"
 #include "Core/Manager/GameManager.h"
 
-EnemyChaser::EnemyChaser(Vector2 pos, TeamManager* targetTeam)
-    : Enemy(pos, targetTeam, MAX_HEALTH, BASE_SPEED, BASE_DAMAGE, BASE_ATTACK_COOLDOWN)
+EnemyChaser::EnemyChaser(
+    Vector2 pos,
+    TeamManager* targetTeam,
+    IEntityRemovalAccess* removalAccess,
+    IEnemyPathAccess* pathAccess
+)
+    : Enemy(
+          pos,
+          targetTeam,
+          MAX_HEALTH,
+          BASE_SPEED,
+          BASE_DAMAGE,
+          BASE_ATTACK_COOLDOWN,
+          removalAccess
+      ),
+      EnemyPathFinding(pathAccess)
 {
     idleState = std::make_unique<EnemyIdleState>(SIGHT);
     chaseState = std::make_unique<EnemyChaserChaseState>(SIGHT);
@@ -48,8 +63,8 @@ void EnemyChaser::StartPathFinding() {
     if (IsPathFinding()) return;
     SetPathFinding(true);
 
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFind(this);
+    if (IEnemyPathAccess* pathAccess = GetPathAccess()) {
+        pathAccess->BeginPathFinding(this);
     }
 }
 
@@ -58,7 +73,7 @@ void EnemyChaser::EndPathFinding() {
     SetPathFinding(false);
     ClearTargetPosition();
 
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFindEnded(this);
+    if (IEnemyPathAccess* pathAccess = GetPathAccess()) {
+        pathAccess->EndPathFinding(this);
     }
 }

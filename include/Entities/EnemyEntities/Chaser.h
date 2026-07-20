@@ -1,7 +1,6 @@
 #pragma once
 #include "AI/EnemyState.h"
 #include "Entities/Enemy.h"
-#include "Core/IEnemyObserver.h"
 #include "Core/EnemyPath.h"
 
 #include <vector>
@@ -18,7 +17,12 @@ static const float HEIGHT = 20.f;
 class EnemyChaser : public Enemy, public EnemyPathFinding {
 private:
 public:
-    EnemyChaser(Vector2 pos, TeamManager* targetTeam);
+    EnemyChaser(
+        Vector2 pos,
+        TeamManager* targetTeam,
+        IEntityRemovalAccess* removalAccess,
+        IEnemyPathAccess* pathAccess
+    );
     ~EnemyChaser() override;
 
     void Update(float deltaTime) override;

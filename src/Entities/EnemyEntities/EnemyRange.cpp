@@ -1,18 +1,28 @@
 #include "Entities/EnemyEntities/EnemyRange.h"
 
 #include "AI/EnemyState.h"
+#include "Core/LevelAccess.h"
 
 #include "raymath.h"
 
-EnemyRange::EnemyRange(Vector2 position, TeamManager* targetTeam)
+EnemyRange::EnemyRange(
+    Vector2 position,
+    TeamManager* targetTeam,
+    IEntityRemovalAccess* removalAccess,
+    IEnemyPathAccess* pathAccess,
+    ILevelLineOfSightQuery* lineOfSightQuery
+)
     : Enemy(
           position,
           targetTeam,
           RANGE_MAX_HEALTH,
           RANGE_SPEED,
           RANGE_DAMAGE,
-          RANGE_ATTACK_COOLDOWN
-      ) {
+          RANGE_ATTACK_COOLDOWN,
+          removalAccess
+      ),
+      EnemyPathFinding(pathAccess),
+      lineOfSightQuery(lineOfSightQuery) {
     idleState = std::make_unique<EnemyIdleState>(RANGE_DETECTION_DISTANCE);
     chaseState = std::make_unique<EnemyRangeChaseState>();
     shootingState = std::make_unique<EnemyRangeShootingState>();
@@ -82,8 +92,8 @@ void EnemyRange::StartPathFinding() {
     if (IsPathFinding()) return;
     SetPathFinding(true);
 
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFind(this);
+    if (IEnemyPathAccess* pathAccess = GetPathAccess()) {
+        pathAccess->BeginPathFinding(this);
     }
 }
 
@@ -92,7 +102,7 @@ void EnemyRange::EndPathFinding() {
     SetPathFinding(false);
     ClearTargetPosition();
 
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFindEnded(this);
+    if (IEnemyPathAccess* pathAccess = GetPathAccess()) {
+        pathAccess->EndPathFinding(this);
     }
 }
