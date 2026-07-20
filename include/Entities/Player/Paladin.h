@@ -73,7 +73,12 @@ public:
     void Draw() override;
     void SetParrying(bool parry);
     int GetConsecutiveParries() const { return consecutiveParries; }
-    void IncrementParryCount() { consecutiveParries++; }
+    void IncrementParryCount() { 
+        consecutiveParries++; 
+        if (consecutiveParries >= 3 && isParrying) {
+            ChangeState(&idleState);
+        }
+    }
     void ResetParryCount() { consecutiveParries = 0; }
     bool IsParrying() const { return isParrying; }
     bool CanParryAttack(Vector2 attackerPos) const;

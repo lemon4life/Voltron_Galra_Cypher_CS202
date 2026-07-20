@@ -98,9 +98,24 @@ void EnemyChaserChaseState::Update(Enemy* enemy, float deltaTime) {
                 Vector2 pushDir = Vector2Subtract(ePos, pPos);
                 if (Vector2Length(pushDir) == 0.0f) pushDir = {1.0f, 0.0f};
                 pushDir = Vector2Normalize(pushDir);
+                
+                LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+                Vector2 beforePush = ePos;
+                
                 ePos.x += pushDir.x * 60.0f;
+                enemy->SetPosition(ePos);
+                if (levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox())) {
+                    ePos.x = beforePush.x;
+                    enemy->SetPosition(ePos);
+                }
+                
+                beforePush = ePos;
                 ePos.y += pushDir.y * 60.0f;
                 enemy->SetPosition(ePos);
+                if (levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox())) {
+                    ePos.y = beforePush.y;
+                    enemy->SetPosition(ePos);
+                }
             } else if (enemy->GetAttackCooldown() <= 0.0f) {
                 activePaladin->TakeDamage(enemy->GetDamage());
                 enemy->SetAttackCooldown(1.0f); // 1 second cooldown

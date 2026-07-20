@@ -204,8 +204,9 @@ int main() {
                     GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
                     waveManager.Update(deltaTime, teamManager, &levelManager);
                 }
-                camera.target = { teamManager->GetActivePaladin()->GetPosition().x, teamManager->GetActivePaladin()->GetPosition().y };
-                camera.zoom = (GameManager::GetInstance().GetHitstopTimer() > 0.0f) ? 2.2f : 2.0f;
+                camera.target.x = Lerp(camera.target.x, teamManager->GetActivePaladin()->GetPosition().x, 20.0f * deltaTime);
+                camera.target.y = Lerp(camera.target.y, teamManager->GetActivePaladin()->GetPosition().y, 20.0f * deltaTime);
+                camera.zoom = Lerp(camera.zoom, (GameManager::GetInstance().GetHitstopTimer() > 0.0f) ? 2.2f : 2.0f, 15.0f * deltaTime);
                 
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
                     GameManager::GetInstance().SetState(GameState::PAUSED);

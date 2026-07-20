@@ -113,3 +113,9 @@ Please implement the following technical architecture:
 **Prompt:** `the bug is still there.`
 - **Purpose:** Fix a bug where physical enemies were still bypassing the parry check.
 - **Generated Content:** Discovered that `EnemyChaserState.cpp` and `BossState.cpp` were completely overriding the base `EnemyState.cpp` collision logic. Patched both files to correctly integrate the `activePaladin->CanParryAttack(ePos)` checks into their respective `CheckCollisionRecs` logic blocks so all enemies respect the parry.
+
+
+## Hitstop Camera Polish & Parry Break Fix
+**Prompt:** `Let's polish the hitstop effect and fix two collision/state bugs...`
+- **Purpose:** Implement smooth camera panning and zooming during hitstop (which freezes entities but not the camera). Fix the parry persistence bug so the stack break snaps out of the stance immediately. Fix the knockback logic so it doesn't push enemies through walls.
+- **Generated Content:** Modified `main.cpp` to decouple camera update logic from the Hitstop timer and implemented `Lerp` logic for fluid zooming and panning. Adjusted `Paladin.h`'s `IncrementParryCount` to instantly snap the player to `IdleState` upon reaching 3 parries. Updated `EnemyState`, `EnemyChaserState`, and `BossState` to properly integrate environment AABB checks during the heavy 60px parry pushback to prevent out-of-bounds wall clipping.
