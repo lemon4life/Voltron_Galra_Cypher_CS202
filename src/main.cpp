@@ -15,14 +15,53 @@
 #include "Entities/NPC.h"
 #include "raymath.h"
 
-// Init Window config
-// Window and Game Resolutions (4:3 aspect ratio landscape approx)
-const int WINDOW_WIDTH = 1366;
-const int WINDOW_HEIGHT = 1024;
+#include <algorithm>
+#include <cmath>
 
-const int GAME_WIDTH = 683;
-const int GAME_HEIGHT = 512;
-const int BASE_FPS = 120;
+namespace {
+    constexpr int INITIAL_WINDOW_WIDTH = 1366;
+    constexpr int INITIAL_WINDOW_HEIGHT = 1024;
+    constexpr int GAME_WIDTH = 683;
+    constexpr int GAME_HEIGHT = 512;
+    constexpr int BASE_FPS = 120;
+
+    struct GameViewport {
+        Rectangle destination;
+        float scale;
+    };
+
+    GameViewport CalculateGameViewport() {
+        float windowWidth = (float)std::max(1, GetScreenWidth());
+        float windowHeight = (float)std::max(1, GetScreenHeight());
+        float scale = std::min(
+            windowWidth / (float)GAME_WIDTH,
+            windowHeight / (float)GAME_HEIGHT
+        );
+
+        float scaledWidth = (float)GAME_WIDTH * scale;
+        float scaledHeight = (float)GAME_HEIGHT * scale;
+        return {
+            {
+                (windowWidth - scaledWidth) / 2.0f,
+                (windowHeight - scaledHeight) / 2.0f,
+                scaledWidth,
+                scaledHeight
+            },
+            scale
+        };
+    }
+
+    Vector2 WindowToGamePosition(
+        Vector2 windowPosition,
+        const GameViewport& viewport
+    ) {
+        return {
+            (windowPosition.x - viewport.destination.x) / viewport.scale,
+            (windowPosition.y - viewport.destination.y) / viewport.scale
+        };
+    }
+}
+
 
 void ResetGame(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager) {
     teamManager->GetActivePaladin()->SetPosition({ 256.0f, 256.0f });
@@ -44,7 +83,12 @@ void ResetDemoGame(TeamManager* teamManager, LevelManager* levelManager, WaveMan
 
 int main() {
     // Initialize Window
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Voltron: Mission Galra Cypher");
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(
+        INITIAL_WINDOW_WIDTH,
+        INITIAL_WINDOW_HEIGHT,
+        "Voltron: Mission Galra Cypher"
+    );
 
     // Initialize AudioManager Singleton (Initializes Audio Device)
     AudioManager::GetInstance();
@@ -137,14 +181,26 @@ int main() {
     while (!WindowShouldClose()) {
         // --- Update ---
         float deltaTime = GetFrameTime();
+        GameViewport viewport = CalculateGameViewport();
 
         // Update music stream continuously regardless of game state
         AudioManager::GetInstance().UpdateMusicStream();
         
         // Pass mouse coordinates to player for aiming
-        Vector2 mouseScreen = GetMousePosition();
-        Vector2 mouseInternal = { mouseScreen.x * ((float)GAME_WIDTH / (float)WINDOW_WIDTH), mouseScreen.y * ((float)GAME_HEIGHT / (float)WINDOW_HEIGHT) };
-        Vector2 mouseWorld = GetScreenToWorld2D(mouseInternal, camera);
+        Vector2 mouseWindow = GetMousePosition();
+        Vector2 mouseInternal = WindowToGamePosition(mouseWindow, viewport);
+        bool isMouseInsideGame = CheckCollisionPointRec(
+            mouseWindow,
+            viewport.destination
+        );
+        Vector2 clampedMouseInternal = {
+            std::clamp(mouseInternal.x, 0.0f, (float)GAME_WIDTH),
+            std::clamp(mouseInternal.y, 0.0f, (float)GAME_HEIGHT)
+        };
+        Vector2 hudMousePosition = isMouseInsideGame
+            ? mouseInternal
+            : Vector2{ -1.0f, -1.0f };
+        Vector2 mouseWorld = GetScreenToWorld2D(clampedMouseInternal, camera);
         teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
 
         // Mock EX Generation Input
@@ -265,40 +321,51 @@ int main() {
                 
                 // Draw HUD outside of camera
                 if (state == GameState::HUB) {
-                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT);
+                    uiManager.DrawHUD(
+                        GAME_WIDTH,
+                        GAME_HEIGHT,
+                        hudMousePosition
+                    );
                 } else if (state == GameState::PLAYING) {
-                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT);
+                    uiManager.DrawHUD(
+                        GAME_WIDTH,
+                        GAME_HEIGHT,
+                        hudMousePosition
+                    );
                     waveManager.DrawHUD();
                 } else if (state == GameState::PAUSED) {
-                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT);
+                    uiManager.DrawHUD(
+                        GAME_WIDTH,
+                        GAME_HEIGHT,
+                        hudMousePosition
+                    );
                     DrawRectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, {0, 0, 0, 150});
                     DrawText("PAUSED", GAME_WIDTH / 2 - MeasureText("PAUSED", 40) / 2, GAME_HEIGHT / 2 - 20, 40, RAYWHITE);
+                }
+
+                if (state == GameState::HUB) {
+                    DialogueManager::GetInstance().Draw(GAME_WIDTH, GAME_HEIGHT);
                 }
             }
         EndTextureMode();
 
-        // 2. Draw the internal texture to the main physical window (1024x1024)
+        // 2. Scale the fixed game resolution into the resizable window.
         BeginDrawing();
-            ClearBackground(BLACK); // Clear main window
+            ClearBackground(BLACK);
             
             // Source rectangle from the render texture.
             // Note: OpenGL framebuffers are inverted vertically, so we invert the source height.
             Rectangle sourceRec = { 0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height };
             
-            // Destination rectangle on the main window.
-            // The size is 1024x1024, which is exactly 2.0f times the 512x512 internal resolution.
-            Rectangle destRec = { 0.0f, 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT };
-            
-            // Origin of the destination rectangle (top-left)
             Vector2 origin = { 0.0f, 0.0f };
-            
-            DrawTexturePro(target.texture, sourceRec, destRec, origin, 0.0f, WHITE);
-            
-            // Draw high-res UI elements on top of the scaled game
-            if (state == GameState::HUB) {
-                DialogueManager::GetInstance().Draw();
-            }
-            
+            DrawTexturePro(
+                target.texture,
+                sourceRec,
+                viewport.destination,
+                origin,
+                0.0f,
+                WHITE
+            );
         EndDrawing();
     }
 
