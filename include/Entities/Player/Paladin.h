@@ -15,6 +15,8 @@ struct CharacterSprites {
     Texture2D attack2;
     Texture2D bullet;
     Texture2D impact;
+    Texture2D dashFront;
+    Texture2D dashBack;
 };
 
 class TeamManager;
@@ -97,6 +99,8 @@ public:
     
     Texture2D GetIdleTexture() const;
     Texture2D GetRunTexture() const;
+    Texture2D GetDashFrontTexture() const;
+    Texture2D GetDashBackTexture() const;
 
     // Animation helpers
     void UpdateAnimation(float deltaTime);
