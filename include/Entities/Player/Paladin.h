@@ -66,6 +66,9 @@ protected:
     Vector2 knockbackVelocity;
     float footstepTimer;
     float renderOffsetY;
+        float swapParryWindowTimer;
+    float autoParryDurationTimer;
+    bool isAutoParry;
     Vector2 aimTarget;
 
 public:
@@ -147,6 +150,15 @@ public:
     void SetInvincible(bool invincible) { isInvincible = invincible; }
     Vector2 GetLastMoveDir() const { return lastMoveDir; }
     void SetLastMoveDir(Vector2 dir) { lastMoveDir = dir; }
+
+    void TriggerSwapParryWindow() { swapParryWindowTimer = 0.2f; }
+    void DecrementSwapParryWindow(float dt) { if (swapParryWindowTimer > 0.0f) swapParryWindowTimer -= dt; }
+    bool IsAutoParrying() const { return isAutoParry; }
+    void SetAutoParry(bool val) { isAutoParry = val; }
+    float GetAutoParryDurationTimer() const { return autoParryDurationTimer; }
+    void DecrementAutoParryDuration(float dt) { if (autoParryDurationTimer > 0.0f) autoParryDurationTimer -= dt; }
+    void ResetAutoParryDuration() { autoParryDurationTimer = 1.0f; }
+
     float GetRenderOffsetY() const { return renderOffsetY; }
     void SetRenderOffsetY(float offset) { renderOffsetY = offset; }
 };

@@ -33,7 +33,8 @@ Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
       lastMoveDir{1.0f, 0.0f},
       knockbackVelocity{0.0f, 0.0f}, // Initialize pointing right
       footstepTimer(0.0f),
-      renderOffsetY(0.0f)
+      renderOffsetY(0.0f),
+      swapParryWindowTimer(0.0f), autoParryDurationTimer(0.0f), isAutoParry(false)
 {
     currentState = &idleState;
     currentState->Enter(this);
@@ -101,6 +102,7 @@ void Paladin::TakeDamage(int amount) {
 }
 
 void Paladin::Update(float deltaTime) {
+    DecrementSwapParryWindow(deltaTime);
     // Update Ghost HP
     if (ghostHp > health) {
         ghostHp -= maxHealth * deltaTime * 0.5f; // Drain at 50% max HP per second
@@ -316,6 +318,13 @@ void Paladin::SetParrying(bool parry) {
 }
 
 void Paladin::TriggerParrySuccess(GameObject* attacker) {
+    if (swapParryWindowTimer > 0.0f || isAutoParry) {
+        isAutoParry = true;
+        ResetAutoParryDuration();
+        if (currentState != &parryState) {
+            ChangeState(&parryState);
+        }
+    }
     parrySuccess = true;
     Vector2 pPos = GetPosition();
     Vector2 aPos = attacker->GetPosition();
@@ -349,6 +358,7 @@ Texture2D Paladin::GetParryTexture() const {
 }
 
 bool Paladin::CanParryAttack(Vector2 attackerPos) const {
+    if (swapParryWindowTimer > 0.0f) return true; // Omnidirectional perfect parry window on swap
     if (!isParrying) return false;
     if (consecutiveParries >= 3) return false;
     

@@ -49,6 +49,7 @@ void TeamManager::SwapCharacter() {
     // Transfer position and aim target
     newActive->SetPosition(oldActive->GetPosition());
     newActive->SetAimTarget(oldActive->GetAimTarget());
+    newActive->TriggerSwapParryWindow();
     
     NotifyObservers();
 }

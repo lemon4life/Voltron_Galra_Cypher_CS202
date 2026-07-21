@@ -143,13 +143,28 @@ void PlayerParryState::Enter(Paladin* player) {
 }
 
 void PlayerParryState::Update(Paladin* player, float deltaTime) {
-    if (!IsKeyDown(KEY_F)) {
-        player->ChangeState(player->GetIdleState());
+    if (player->IsAutoParrying()) {
+        player->DecrementAutoParryDuration(deltaTime);
+        if (player->GetAutoParryDurationTimer() <= 0.0f) {
+            player->ChangeState(player->GetIdleState());
+            return;
+        }
+        // Break out if movement, attack, or dash is pressed explicitly
+        if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_A) || IsKeyPressed(KEY_S) || IsKeyPressed(KEY_D) || 
+            IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_SPACE)) {
+            player->ChangeState(player->GetIdleState());
+            return;
+        }
+    } else {
+        if (!IsKeyDown(KEY_F)) {
+            player->ChangeState(player->GetIdleState());
+        }
     }
 }
 
 void PlayerParryState::Exit(Paladin* player) {
     player->SetParrying(false);
+    player->SetAutoParry(false);
 }
 
 // ----------------------------------------------------
