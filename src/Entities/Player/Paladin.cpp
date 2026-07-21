@@ -32,7 +32,8 @@ Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
       parryAngle(0.0f),
       lastMoveDir{1.0f, 0.0f},
       knockbackVelocity{0.0f, 0.0f}, // Initialize pointing right
-      footstepTimer(0.0f)
+      footstepTimer(0.0f),
+      renderOffsetY(0.0f)
 {
     currentState = &idleState;
     currentState->Enter(this);
@@ -86,17 +87,19 @@ void Paladin::ChangeState(IPlayerState* newState) {
 void Paladin::TakeDamage(int amount) {
     if (isInvincible) return; // Ignore damage if invincible
     
-    if (teamManager) {
-        int remainingDamage = teamManager->TakeArmorDamage(amount);
-        if (remainingDamage > 0) {
-            health -= remainingDamage;
-            if (health < 0) health = 0;
-            teamManager->NotifyObservers(); // Update UI with new HP
+    exEnergy = 0.0f; // Clear EX on damage
+    
+    health -= amount;
+    
+    if (health <= 0) {
+        health = 0;
+        if (currentState != &downState) {
+            ChangeState(&downState);
         }
-    } else {
-        // Fallback if no team manager
-        health -= amount;
-        if (health < 0) health = 0;
+    }
+    
+    if (teamManager) {
+        teamManager->NotifyObservers(); // Update UI with new HP
     }
 }
 
@@ -197,6 +200,8 @@ void Paladin::ResetStats() {
     exEnergy = 0.0f;
     dashCooldown = 0.0f;
     texture = GetIdleTexture();
+    renderOffsetY = 0.0f;
+    ChangeState(&idleState);
 }
 
 Rectangle Paladin::GetBoundingBox() const {
@@ -225,8 +230,8 @@ void Paladin::UpdateAnimation(float deltaTime) {
 void Paladin::Draw() {
     // Draw Player Circle underneath
     Texture2D circleTex = AssetManager::GetInstance().GetTexture("Player_Circle");
-    if (circleTex.id != 0 && GameManager::GetInstance().GetState() != GameState::HUB) {
-        Rectangle dest = { position.x, position.y + 12.0f, (float)circleTex.width, (float)circleTex.height };
+    if (circleTex.id != 0) {
+        Rectangle dest = { position.x, position.y + 17.0f, (float)circleTex.width, (float)circleTex.height };
         Vector2 circleOrigin = { (float)circleTex.width / 2.0f, (float)circleTex.height / 2.0f };
         DrawTexturePro(circleTex, {0, 0, (float)circleTex.width, (float)circleTex.height}, dest, circleOrigin, 0.0f, WHITE);
     }
@@ -248,7 +253,7 @@ void Paladin::Draw() {
 
     Rectangle destRec = {
         position.x,
-        position.y,
+        position.y + renderOffsetY,
         frameWidth,
         frameHeight
     };
@@ -259,7 +264,7 @@ void Paladin::Draw() {
 
     DrawTexturePro(texture, sourceRec, destRec, origin, 0.0f, tint);
     
-    if (currentWeapon && GameManager::GetInstance().GetState() != GameState::HUB) {
+    if (currentWeapon && GameManager::GetInstance().GetState() != GameState::HUB && health > 0) {
         Vector2 pivot = GetWeaponPivot();
         if (isParrying) {
             Vector2 dir = Vector2Subtract(aimTarget, position);
@@ -291,7 +296,7 @@ Texture2D Paladin::GetDashBackTexture() const {
 
 void Paladin::UpdateFootsteps(float dt) {
     footstepTimer += dt;
-    if (footstepTimer >= 0.3f) {
+    if (footstepTimer >= 0.6f) {
         footstepTimer = 0.0f;
         AudioManager::GetInstance().PlaySequentialFootstep();
         
@@ -299,7 +304,7 @@ void Paladin::UpdateFootsteps(float dt) {
         Texture2D dustTex = AssetManager::GetInstance().GetTexture("Run_Dust");
         if (dustTex.id != 0) {
             Vector2 spawnPos = { position.x, position.y + 12.0f };
-            GameManager::GetInstance().AddEffect(spawnPos, dustTex, 4, 0.4f);
+            GameManager::GetInstance().AddEffect(spawnPos, dustTex, 4, 0.4f, true); // drawBehind = true
         }
     }
 }
@@ -367,3 +372,5 @@ bool Paladin::CanParryAttack(Vector2 attackerPos) const {
     float dot = (aimDir.x * dirToAttacker.x) + (aimDir.y * dirToAttacker.y);
     return dot > 0.0f; // 180-degree frontal block cone
 }
+
+Texture2D Paladin::GetDownTexture() const { return sprites.down; }

@@ -56,6 +56,9 @@ void AssetManager::LoadCharacterAssets() {
     LoadTexture2D("Keith_Weapon", "assets/sprites/Keith/Weapon_Static.png", true);
     LoadTexture2D("Keith_Attack1", "assets/sprites/Keith/Attack_1.png", true);
     LoadTexture2D("Keith_Attack2", "assets/sprites/Keith/Attack_2.png", true);
+    LoadTexture2D("Keith_DashFront", "assets/sprites/Keith/Dash_front.png");
+    LoadTexture2D("Keith_DashBack", "assets/sprites/Keith/Dash_back.png");
+    LoadTexture2D("Keith_Parry", "assets/sprites/Keith/Parry.png", true);
 
     // Hunk
     LoadTexture2D("Hunk_Idle", "assets/sprites/Hunk/Idle_Sheet.png");
@@ -64,6 +67,18 @@ void AssetManager::LoadCharacterAssets() {
     LoadTexture2D("Hunk_Muzzle", "assets/sprites/Hunk/Muzzle.png", true);
     LoadTexture2D("Hunk_Bullet", "assets/sprites/Hunk/Beam.png", true);
     LoadTexture2D("Hunk_Impact", "assets/sprites/Hunk/Beam_Impact.png", true);
+    LoadTexture2D("Hunk_DashFront", "assets/sprites/Hunk/Dash_front.png");
+    LoadTexture2D("Hunk_DashBack", "assets/sprites/Hunk/Dash_back.png");
+    LoadTexture2D("Hunk_Parry", "assets/sprites/Hunk/Parry.png", true);
+    
+    // Down Sprites
+    LoadTexture2D("Lance_Down", "assets/sprites/Lance/Down.png");
+    LoadTexture2D("Keith_Down", "assets/sprites/Keith/Down.png");
+    LoadTexture2D("Hunk_Down", "assets/sprites/Hunk/Down.png");
+
+    // UI and Effects
+    LoadTexture2D("Player_Circle", "assets/UI/Player_Circle.png");
+    LoadTexture2D("Run_Dust", "assets/UI/Run_Dust.png");
 }
 
 CharacterSprites AssetManager::GetLanceSprites() {
@@ -77,6 +92,7 @@ CharacterSprites AssetManager::GetLanceSprites() {
     sprites.dashFront = GetTexture("Lance_DashFront");
     sprites.dashBack = GetTexture("Lance_DashBack");
     sprites.parry = GetTexture("Lance_Parry");
+    sprites.down = GetTexture("Lance_Down");
     return sprites;
 }
 
@@ -87,6 +103,10 @@ CharacterSprites AssetManager::GetKeithSprites() {
     sprites.weapon = GetTexture("Keith_Weapon");
     sprites.attack1 = GetTexture("Keith_Attack1");
     sprites.attack2 = GetTexture("Keith_Attack2");
+    sprites.dashFront = GetTexture("Keith_DashFront");
+    sprites.dashBack = GetTexture("Keith_DashBack");
+    sprites.parry = GetTexture("Keith_Parry");
+    sprites.down = GetTexture("Keith_Down");
     return sprites;
 }
 
@@ -98,5 +118,9 @@ CharacterSprites AssetManager::GetHunkSprites() {
     sprites.muzzleFlash = GetTexture("Hunk_Muzzle");
     sprites.bullet = GetTexture("Hunk_Bullet");
     sprites.impact = GetTexture("Hunk_Impact");
+    sprites.dashFront = GetTexture("Hunk_DashFront");
+    sprites.dashBack = GetTexture("Hunk_DashBack");
+    sprites.parry = GetTexture("Hunk_Parry");
+    sprites.down = GetTexture("Hunk_Down");
     return sprites;
 }

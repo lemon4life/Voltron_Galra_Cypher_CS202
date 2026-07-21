@@ -66,6 +66,7 @@ EnemyDiver::~EnemyDiver() {
 }
 
 void EnemyDiver::Update(float deltaTime) {
+    UpdateKnockback(deltaTime);
     if (currentState) {
         currentState->Update(this, deltaTime);
     }

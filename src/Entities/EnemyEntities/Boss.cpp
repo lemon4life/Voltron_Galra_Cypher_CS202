@@ -47,6 +47,7 @@ Boss::~Boss() {
 }
 
 void Boss::Update(float deltaTime) {
+    UpdateKnockback(deltaTime);
     if (currentState) {
         currentState->Update(this, deltaTime);
     }

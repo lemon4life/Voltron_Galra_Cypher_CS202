@@ -18,6 +18,7 @@ struct ImpactEffect {
     int currentFrame;
     int numFrames;
     Texture2D texture;
+    bool drawBehind;
 };
 
 class Projectile; // Forward declaration
@@ -75,9 +76,10 @@ public:
 
     void AddProjectile(Projectile* p);
     void UpdateProjectiles(float deltaTime, class TeamManager* teamManager = nullptr);
-    void UpdateAndDrawEffects(float deltaTime);
+    void UpdateEffects(float deltaTime);
+    void DrawEffects(bool background);
     void SetBulletImpactTexture(Texture2D tex) { bulletImpactTex = tex; }
-    void AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime);
+    void AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime, bool drawBehind = false);
     void AddImpactEffect(Vector2 pos);
     void DrawProjectiles();
     void ClearProjectiles();

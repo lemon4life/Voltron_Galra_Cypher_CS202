@@ -134,10 +134,7 @@ int main() {
             uiMousePosition = { -1.0f, -1.0f };
         }
 
-        // Mock EX Generation Input
-        if (IsKeyPressed(KEY_SPACE)) {
-            teamManager->GetActivePaladin()->OnHitEnemy(50);
-        }
+
 
         GameState state = GameManager::GetInstance().GetState();
         
@@ -194,9 +191,7 @@ int main() {
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
                     GameManager::GetInstance().SetState(GameState::PAUSED);
                 }
-                if (teamManager->GetActivePaladin()->GetHealth() <= 0) {
-                    GameManager::GetInstance().SetState(GameState::GAMEOVER);
-                }
+
                 break;
             case GameState::PAUSED:
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
@@ -245,13 +240,18 @@ int main() {
                 if (state == GameState::HUB) {
                     ClearBackground(DARKGREEN);
                     levelManager.DrawLevel();
+                    GameManager::GetInstance().UpdateEffects(deltaTime);
+                    GameManager::GetInstance().DrawEffects(true); // background
                     teamManager->Draw();
+                    GameManager::GetInstance().DrawEffects(false); // foreground
                 } else if (state == GameState::PLAYING || state == GameState::PAUSED) {
                     ClearBackground(DARKGRAY);
                     levelManager.DrawLevel();
+                    GameManager::GetInstance().UpdateEffects(deltaTime);
+                    GameManager::GetInstance().DrawEffects(true); // background
                     teamManager->Draw();
                     GameManager::GetInstance().DrawProjectiles();
-                    GameManager::GetInstance().UpdateAndDrawEffects(deltaTime);
+                    GameManager::GetInstance().DrawEffects(false); // foreground
                 }
                 
                 EndMode2D();

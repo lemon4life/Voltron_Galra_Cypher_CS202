@@ -137,3 +137,15 @@ Please implement the following technical architecture:
 **Prompt:** `I have update the Run sheet for all character to 8 frames instead of 4 frames. In assets/UI/, there are Player_Circle.png (one frame) and Run_Dust.png (4 frames)...`
 - **Purpose:** Implement Soul Knight-style character shadow circle and running dust trails, and update the character run animation configuration.
 - **Generated Content:** Updated `PlayerRunState::Enter` to set `player->SetNumFrames(8)`. Refactored `GameManager`'s hardcoded impact effects system into a generic `AddEffect` system capable of playing arbitrary animated textures. Integrated the `Run_Dust.png` effect into the `Paladin::UpdateFootsteps` timer so it naturally spawns behind the character as they run. Added the `Player_Circle.png` rendering step underneath the character sprite in `Paladin::Draw`.
+
+
+## UI Visual Polish (Effect Layering and Shadows)
+**Prompt:** `place the circle 5 pixel lower, the dust should be rendered behind the character (by layer), because when they moving downward, the dust is right in front of their head, fix it`
+- **Purpose:** Refine visual polishing layers. Fix issues where trailing dust overlapped the character sprite's head while moving downwards, and position the shadow circle accurately under the feet.
+- **Generated Content:** Updated `ImpactEffect` struct to include a `drawBehind` boolean. Split `GameManager::UpdateAndDrawEffects` into two independent phases (`UpdateEffects` and `DrawEffects`) to enable layer ordering. Hooked `DrawEffects(true)` to render behind `TeamManager::Draw()`, and `DrawEffects(false)` to render above. Updated `Paladin.cpp` to correctly flag `Run_Dust` particles as `drawBehind = true`, pushing them behind the character layer. Lowered `Player_Circle.png`'s Y-offset by 5 pixels (to `position.y + 17.0f`) to seat it properly.
+
+
+## Character Death State, Bounce Animation, and Squad Swap
+**Prompt:** `I have also updated Parry, Dash_front, Dash_back for Keith and Hunk, update them. I have added 1-frame Down.png sprite to Lance/, Hunk/ and Keith/...`
+- **Purpose:** Introduce a formalized `PlayerDownState` upon 0 HP, featuring a 0.3-second bounce animation before smoothly swapping to the next alive character or triggering Game Over.
+- **Generated Content:** Created `PlayerDownState` with a 0.3s `bounceTimer` simulating a sine-wave arch offset. Stripped `TeamManager` and `main.cpp` of abrupt death checks. Mapped `Dash_front`, `Dash_back`, `Parry`, and `Down` textures for all characters inside `AssetManager.cpp` and `Paladin.h`.

@@ -26,6 +26,7 @@ protected:
     float attackCooldown;
     const float baseAttackCooldown;
     Vector2 size;
+    Vector2 knockbackVelocity;
 
     EnemyType enemyType;
 
@@ -60,6 +61,8 @@ public:
     void ChangeState(IEnemyState* newState);
 
     virtual void TakeDamage(int amount);
+    void ApplyKnockback(Vector2 dir, float force);
+    void UpdateKnockback(float deltaTime);
     bool IsDead() const { return health <= 0; }
     bool CheckCollision(const std::vector<GameObject*>& entities) const;
 

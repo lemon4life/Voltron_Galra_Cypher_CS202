@@ -3,6 +3,7 @@
 #include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 #include "Core/Manager/GameManager.h"
+#include "Core/Manager/TeamManager.h"
 
 // --- PlayerIdleState ---
 void PlayerIdleState::Enter(Paladin* player) {
@@ -137,4 +138,46 @@ void PlayerParryState::Update(Paladin* player, float deltaTime) {
 
 void PlayerParryState::Exit(Paladin* player) {
     player->SetParrying(false);
+}
+
+// ----------------------------------------------------
+// PlayerDownState
+// ----------------------------------------------------
+void PlayerDownState::Enter(Paladin* player) {
+    player->SetTexture(player->GetDownTexture());
+    player->SetNumFrames(1);
+    player->ResetAnimation();
+    bounceTimer = 0.4f;
+    initialY = player->GetPosition().y;
+}
+
+void PlayerDownState::Update(Paladin* player, float deltaTime) {
+    if (bounceTimer > 0.0f) {
+        bounceTimer -= deltaTime;
+        
+        float yOffset = 0.0f;
+        if (bounceTimer > 0.2f) {
+            float progress = (bounceTimer - 0.2f) / 0.2f; // 1.0 to 0.0
+            yOffset = -15.0f * progress; 
+        }
+        
+        player->SetRenderOffsetY(yOffset);
+        
+        if (bounceTimer <= 0.0f) {
+            player->SetRenderOffsetY(0.0f);
+            
+            TeamManager* teamManager = player->GetTeamManager();
+            if (teamManager) {
+                if (teamManager->IsTeamDead()) {
+                    GameManager::GetInstance().SetState(GameState::GAMEOVER);
+                } else {
+                    teamManager->SwapDueToDeath();
+                }
+            }
+        }
+    }
+}
+
+void PlayerDownState::Exit(Paladin* player) {
+    // Reset to initial Y if needed, though they shouldn't exit until reset anyway
 }

@@ -18,6 +18,7 @@ struct CharacterSprites {
     Texture2D dashFront;
     Texture2D dashBack;
     Texture2D parry;
+    Texture2D down;
 };
 
 class TeamManager;
@@ -43,6 +44,7 @@ protected:
     PlayerParryState parryState;
     PlayerDashState dashState;
     PlayerAttackState attackState;
+    PlayerDownState downState;
 
     // Individual Stats
     int maxHealth;
@@ -63,6 +65,7 @@ protected:
     Vector2 lastMoveDir;
     Vector2 knockbackVelocity;
     float footstepTimer;
+    float renderOffsetY;
     Vector2 aimTarget;
 
 public:
@@ -117,12 +120,14 @@ public:
     PlayerParryState* GetParryState() { return &parryState; }
     PlayerDashState* GetDashState() { return &dashState; }
     PlayerAttackState* GetAttackState() { return &attackState; }
+    PlayerDownState* GetDownState() { return &downState; }
     
     Texture2D GetIdleTexture() const;
     Texture2D GetRunTexture() const;
     Texture2D GetDashFrontTexture() const;
     Texture2D GetDashBackTexture() const;
     Texture2D GetParryTexture() const;
+    Texture2D GetDownTexture() const;
 
     // Animation helpers
     void UpdateAnimation(float deltaTime);
@@ -142,4 +147,6 @@ public:
     void SetInvincible(bool invincible) { isInvincible = invincible; }
     Vector2 GetLastMoveDir() const { return lastMoveDir; }
     void SetLastMoveDir(Vector2 dir) { lastMoveDir = dir; }
+    float GetRenderOffsetY() const { return renderOffsetY; }
+    void SetRenderOffsetY(float offset) { renderOffsetY = offset; }
 };
