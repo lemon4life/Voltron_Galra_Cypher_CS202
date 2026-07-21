@@ -25,6 +25,12 @@ void PlayerIdleState::Update(Paladin* player, float deltaTime) {
             player->ChangeState(player->GetDashState());
             return;
         }
+
+        // Check for Parry Input ('F')
+        if (IsKeyPressed(KEY_F) && player->GetDashCooldown() <= 0.0f) {
+            player->ChangeState(player->GetParryState());
+            return;
+        }
     }
 
     // Check for input to transition to Run state
@@ -58,6 +64,12 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
         // Check for Dash Input (Spacebar and cooldown off)
         if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
             player->ChangeState(player->GetDashState());
+            return;
+        }
+
+        // Check for Parry Input ('F')
+        if (IsKeyPressed(KEY_F) && player->GetDashCooldown() <= 0.0f) {
+            player->ChangeState(player->GetParryState());
             return;
         }
     }

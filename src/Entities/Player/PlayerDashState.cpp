@@ -89,5 +89,5 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
 
 void PlayerDashState::Exit(Paladin* player) {
     player->SetInvincible(false);
-    player->SetDashCooldown(1.0f); // 1.0s cooldown
+    player->SetDashCooldown(0.7f); // 1.0s cooldown
 }

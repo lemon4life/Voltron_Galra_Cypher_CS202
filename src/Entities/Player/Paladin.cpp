@@ -40,10 +40,7 @@ Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
 }
 
 Paladin::~Paladin() {
-    if (IsKeyPressed(KEY_F) && dashCooldown <= 0.0f && !isParrying) {
-        ChangeState(&parryState);
-    }
-    
+
     if (currentState) {
         currentState->Exit(this);
     }
@@ -146,10 +143,7 @@ void Paladin::Update(float deltaTime) {
         }
     }
 
-    if (IsKeyPressed(KEY_F) && dashCooldown <= 0.0f && !isParrying) {
-        ChangeState(&parryState);
-    }
-    
+
     // Apply knockback physics
     if (Vector2Length(knockbackVelocity) > 5.0f) {
         // Smooth exponential decay (similar to weapon recoil lerping)
