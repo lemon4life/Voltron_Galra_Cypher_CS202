@@ -24,9 +24,13 @@ void UIManager::Initialize() {
     statsShellBack = LoadTexture("assets/UI/Team_StatsShell_Back.png");
 }
 
-void UIManager::DrawHUD(int screenWidth, int screenHeight) {
+void UIManager::DrawHUD(
+    int screenWidth,
+    int screenHeight,
+    Vector2 mousePosition
+) {
     if (!teamManager) return;
-    DrawTeamHUD(teamManager, screenWidth, screenHeight);
+    DrawTeamHUD(teamManager, screenWidth, screenHeight, mousePosition);
 }
 
 // Helper for cropping texture to prevent stretching
@@ -50,7 +54,12 @@ void DrawTextureCropped(Texture2D texture, Rectangle destRec, Color tint) {
     DrawTexturePro(texture, sourceRec, destRec, {0,0}, 0.0f, tint);
 }
 
-void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight) {
+void UIManager::DrawTeamHUD(
+    TeamManager* team,
+    int screenWidth,
+    int screenHeight,
+    Vector2 mousePosition
+) {
     if (!team) return;
     Paladin* active = team->GetActivePaladin();
     if (!active) return;
@@ -61,10 +70,7 @@ void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight
 
     // --- Pause Button (Top Left) ---
     Rectangle pauseBtn = { 10.0f, 10.0f, 30.0f, 30.0f };
-    Vector2 rawMouse = GetMousePosition();
-    Vector2 scaledMouse = { rawMouse.x * ((float)screenWidth / 1366.0f), rawMouse.y * ((float)screenHeight / 1024.0f) };
-    
-    bool isHovered = CheckCollisionPointRec(scaledMouse, pauseBtn);
+    bool isHovered = CheckCollisionPointRec(mousePosition, pauseBtn);
     DrawRectangleRec(pauseBtn, isHovered ? Fade(GRAY, 0.8f) : Fade(BLACK, 0.5f));
     DrawRectangleLinesEx(pauseBtn, 2.0f, WHITE);
     DrawRectangle(pauseBtn.x + 8, pauseBtn.y + 6, 4, 18, WHITE);

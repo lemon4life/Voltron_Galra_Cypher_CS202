@@ -6,15 +6,26 @@
 #include "Entities/Enemy.h"
 #include "Core/Manager/GameManager.h"
 #include "raymath.h"
+#include <algorithm>
 #include <cstdlib>
 
 WaveManager::WaveManager() {
     Reset();
 }
 
-void WaveManager::Reset(int startingEnemies) {
+void WaveManager::Reset(
+    int startingEnemies,
+    int startingRangeEnemies,
+    int startingDiverEnemies
+) {
     currentWave = 1;
     enemiesToSpawn = startingEnemies;
+    rangeEnemiesToSpawn = std::clamp(startingRangeEnemies, 0, startingEnemies);
+    diverEnemiesToSpawn = std::clamp(
+        startingDiverEnemies,
+        0,
+        startingEnemies - rangeEnemiesToSpawn
+    );
     spawnTimer = 0.0f;
     timeBetweenWaves = 3.0f;
     showWaveTextTimer = 2.0f;
@@ -50,11 +61,37 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
                     Vector2 spawnPos = { randX, randY };
 
                     if (Vector2Distance(spawnPos, teamManager->GetActivePaladin()->GetPosition()) > 150.0f) {
-                        char spawnType = (currentWave == 5) ? 'B' : 'E';
-                        GameObject* newEnemy = EntityFactory::CreateEntity(spawnType, spawnPos, teamManager);
+                        char spawnType = 'E';
+                        if (currentWave == 5) {
+                            spawnType = 'B';
+                        } else if (rangeEnemiesToSpawn > 0) {
+                            spawnType = 'R';
+                        } else if (diverEnemiesToSpawn > 0) {
+                            spawnType = 'D';
+                        } else if (currentWave >= 2 && currentWave <= 4 &&
+                                   enemiesToSpawn == currentWave) {
+                            // Add one ranged enemy at the start of waves 2-4.
+                            spawnType = 'R';
+                        } else if (currentWave >= 3 && currentWave <= 4 &&
+                                   enemiesToSpawn == currentWave - 1) {
+                            // Add one Diver after the ranged enemy in waves 3-4.
+                            spawnType = 'D';
+                        }
+                        GameObject* newEnemy = EntityFactory::CreateEntity(
+                            spawnType,
+                            spawnPos,
+                            teamManager,
+                            levelManager->GetLevelAccessBundle()
+                        );
                         if (newEnemy) {
                             if (levelManager->IsValidSpawnLocation(newEnemy)) {
                                 levelManager->AddEntity(newEnemy);
+                                if (spawnType == 'R' && rangeEnemiesToSpawn > 0) {
+                                    rangeEnemiesToSpawn--;
+                                }
+                                if (spawnType == 'D' && diverEnemiesToSpawn > 0) {
+                                    diverEnemiesToSpawn--;
+                                }
                                 enemiesToSpawn--;
                                 spawnTimer = 0.07f;
                                 spawned = true;

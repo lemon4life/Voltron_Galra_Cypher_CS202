@@ -8,6 +8,8 @@ class WaveManager {
 private:
     int currentWave;
     int enemiesToSpawn;
+    int rangeEnemiesToSpawn;
+    int diverEnemiesToSpawn;
     float spawnTimer;
     float timeBetweenWaves;
     float showWaveTextTimer;
@@ -15,6 +17,10 @@ private:
 public:
     WaveManager();
     void Update(float deltaTime, TeamManager* teamManager, LevelManager* levelManager);
-    void Reset(int startingEnemies = 1);
+    void Reset(
+        int startingEnemies = 1,
+        int startingRangeEnemies = 0,
+        int startingDiverEnemies = 0
+    );
     void DrawHUD();
 };

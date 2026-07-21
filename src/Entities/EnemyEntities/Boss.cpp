@@ -10,8 +10,20 @@ namespace {
     constexpr Vector2 BOSS_SIZE = Vector2{64.f,72.f};
 }
 
-Boss::Boss(Vector2 pos, TeamManager* targetTeam)
-    : Enemy(pos, targetTeam, BOSS_MAX_HEALTH, BOSS_SPEED, BOSS_DAMAGE, BOSS_ATTACK_COOLDOWN)
+Boss::Boss(
+    Vector2 pos,
+    TeamManager* targetTeam,
+    IEntityRemovalAccess* removalAccess
+)
+    : Enemy(
+          pos,
+          targetTeam,
+          BOSS_MAX_HEALTH,
+          BOSS_SPEED,
+          BOSS_DAMAGE,
+          BOSS_ATTACK_COOLDOWN,
+          removalAccess
+      )
 {
     bossSkillCooldown = 2.0f;
     burstCount = 0;
@@ -20,14 +32,9 @@ Boss::Boss(Vector2 pos, TeamManager* targetTeam)
     enemyType = EnemyType::BOSS;
     size = BOSS_SIZE;
 
-    idleState = std::make_unique<EnemyIdleState>();
-    chaseState = std::make_unique<BossChaseState>();
+    idleState = std::make_unique<EnemyIdleState>(BOSS_SIGHT_DISTANCE);
+    chaseState = std::make_unique<BossChaseState>(BOSS_OFF_SIGHT_DISTANCE);
     rangeState = std::make_unique<BossRangedAttackState>();
-
-
-    idleState->UpdateDistance(BOSS_SIGHT_DISTANCE);
-    chaseState->UpdateDistance(BOSS_OFF_SIGHT_DISTANCE);
-    rangeState->UpdateDistance(BOSS_SIGHT_DISTANCE);
 
     ChangeState(GetIdleState());
 }

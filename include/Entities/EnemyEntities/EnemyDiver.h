@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core/EnemyPath.h"
 #include "Entities/Enemy.h"
+#include "Entities/PathfindingEnemy.h"
 
 #include <memory>
 
@@ -16,6 +16,21 @@ private:
 
 public:
     EnemyDiver(Vector2 position, TeamManager* targetTeam);
+
+class EnemyDiver : public PathfindingEnemy {
+private:
+    std::unique_ptr<EnemyDiverReadyState> readyState;
+    std::unique_ptr<EnemyDiverLungingState> lungingState;
+    ILevelLineOfSightQuery* lineOfSightQuery;
+
+public:
+    EnemyDiver(
+        Vector2 position,
+        TeamManager* targetTeam,
+        IEntityRemovalAccess* removalAccess,
+        IEnemyPathAccess* pathAccess,
+        ILevelLineOfSightQuery* lineOfSightQuery
+    );
     ~EnemyDiver() override;
 
     void Update(float deltaTime) override;
@@ -37,4 +52,6 @@ public:
 
     void StartPathFinding();
     void EndPathFinding();
+    ILevelLineOfSightQuery* GetLineOfSightQuery() const { return lineOfSightQuery; }
+
 };

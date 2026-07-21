@@ -1,5 +1,6 @@
 #include "AI/EnemyState.h"
 
+#include "Core/LevelAccess.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
@@ -46,15 +47,11 @@ namespace {
         return Vector2Add(enemyPosition, Vector2Scale(direction, spawnOffset));
     }
 
-    bool HasClearShot(
-        LevelManager* levelManager,
-        EnemyRange* enemy,
-        Vector2 targetPosition
-    ) {
-        if (!levelManager || !enemy) return false;
+    bool HasClearShot(EnemyRange* enemy, Vector2 targetPosition) {
+        if (!enemy || !enemy->GetLineOfSightQuery()) return false;
 
         Vector2 origin = GetProjectileOrigin(enemy, targetPosition);
-        return levelManager->HasClearLineOfSight(
+        return enemy->GetLineOfSightQuery()->HasClearLineOfSight(
             origin,
             targetPosition,
             enemy->GetProjectileRadius()
@@ -100,7 +97,7 @@ void EnemyRangeChaseState::Update(EnemyRange* enemy, float deltaTime) {
 
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
     if (enemy->IsWithinShootingDistance(playerPosition) &&
-        HasClearShot(levelManager, enemy, playerPosition)) {
+        HasClearShot(enemy, playerPosition)) {
         enemy->EndPathFinding();
         enemy->ChangeState(enemy->GetShootingState());
         return;
@@ -178,10 +175,9 @@ void EnemyRangeShootingState::Update(EnemyRange* enemy, float deltaTime) {
 
     Vector2 playerPosition = player->GetPosition();
     Vector2 predictedPosition = PredictTargetPosition(enemy, player, deltaTime);
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
 
     if (!enemy->IsWithinShootingDistance(playerPosition) ||
-        !HasClearShot(levelManager, enemy, predictedPosition)) {
+        !HasClearShot(enemy, predictedPosition)) {
         enemy->ChangeState(enemy->GetChaseState());
         return;
     }
@@ -269,9 +265,6 @@ void EnemyRangeShootingState::FireProjectile(
     EnemyRange* enemy,
     Vector2 targetPosition
 ) {
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-    //if (!HasClearShot(levelManager, enemy, targetPosition)) return;
-
     Vector2 projectileOrigin = GetProjectileOrigin(enemy, targetPosition);
     Vector2 direction = Vector2Subtract(targetPosition, projectileOrigin);
     if (Vector2Length(direction) <= MIN_DIRECTION_LENGTH) {

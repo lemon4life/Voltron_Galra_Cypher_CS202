@@ -11,8 +11,11 @@ EnemyRange::EnemyRange(Vector2 position, TeamManager* targetTeam)
           RANGE_MAX_HEALTH,
           RANGE_SPEED,
           RANGE_DAMAGE,
-          RANGE_ATTACK_COOLDOWN
-      ) {
+          RANGE_ATTACK_COOLDOWN,
+          removalAccess,
+          pathAccess
+      ),
+      lineOfSightQuery(lineOfSightQuery) {
     idleState = std::make_unique<EnemyIdleState>(RANGE_DETECTION_DISTANCE);
     chaseState = std::make_unique<EnemyRangeChaseState>();
     shootingState = std::make_unique<EnemyRangeShootingState>();
@@ -23,8 +26,6 @@ EnemyRange::EnemyRange(Vector2 position, TeamManager* targetTeam)
 }
 
 EnemyRange::~EnemyRange() {
-    EndPathFinding();
-
     if (currentState) {
         currentState->Exit(this);
     }
@@ -75,24 +76,5 @@ float EnemyRange::GetProjectileRadius() const {
 }
 
 float EnemyRange::GetMaxPredictionTime() const {
-    return MAX_PREDICTION_TIME;
-}
-
-void EnemyRange::StartPathFinding() {
-    if (IsPathFinding()) return;
-    SetPathFinding(true);
-
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFind(this);
-    }
-}
-
-void EnemyRange::EndPathFinding() {
-    if (!IsPathFinding()) return;
-    SetPathFinding(false);
-    ClearTargetPosition();
-
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFindEnded(this);
-    }
+    return RANGE_MAX_PREDICTION_TIME;
 }

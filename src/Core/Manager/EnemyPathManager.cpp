@@ -1,17 +1,20 @@
 #include "Core/Manager/EnemyPathManager.h"
-#include "Core/EnemyPath.h"
 #include "Core/Manager/LevelManager.h"
 #include "Entities/Enemy.h"
+#include "Entities/PathfindingEnemy.h"
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/TeamManager.h"
 
+#include "raymath.h"
+
+#include <algorithm>
+#include <cmath>
 #include <queue>
 #include <unordered_map>
-#include <cmath>
-#include <algorithm>
 
 namespace {
     constexpr float DIAGONAL_COST = 1.41421356f;
+    constexpr float TARGET_LOOP_ALL_INTERVAL = 0.2f;
     constexpr int MAX_SEARCH_STEPS = 500;
     constexpr int MIN_TARGET_POSITIONS = 2;
     constexpr int MAX_TARGET_POSITIONS = 10;
@@ -54,7 +57,10 @@ namespace {
         return (float)straightSteps + DIAGONAL_COST * (float)diagonalSteps;
     }
 
-    Rectangle GetBodyAtWorldPosition(Enemy* enemy, Vector2 worldPosition) {
+    Rectangle GetBodyAtWorldPosition(
+        PathfindingEnemy* enemy,
+        Vector2 worldPosition
+    ) {
         Rectangle currentBox = enemy->GetBoundingBox();
         Vector2 currentPosition = enemy->GetPosition();
 
@@ -66,20 +72,33 @@ namespace {
         };
     }
 
-    bool IsBodyClearAtWorldPosition(LevelManager* levelManager, Enemy* enemy, Vector2 worldPosition) {
+    bool IsBodyClearAtWorldPosition(
+        LevelManager* levelManager,
+        PathfindingEnemy* enemy,
+        Vector2 worldPosition
+    ) {
         if (!levelManager || !enemy) return false;
 
         return !levelManager->IsSolidCollision(GetBodyAtWorldPosition(enemy, worldPosition));
     }
 
-    bool IsBodyClearAtTile(LevelManager* levelManager, Enemy* enemy, Tile tile) {
+    bool IsBodyClearAtTile(
+        LevelManager* levelManager,
+        PathfindingEnemy* enemy,
+        Tile tile
+    ) {
         if (!levelManager || !enemy) return false;
 
         Vector2 worldPosition = levelManager->TileToWorld(tile.x, tile.y);
         return IsBodyClearAtWorldPosition(levelManager, enemy, worldPosition);
     }
 
-    bool CanMoveBetweenTiles(LevelManager* levelManager, Enemy* enemy, Tile current, Tile neighbor) {
+    bool CanMoveBetweenTiles(
+        LevelManager* levelManager,
+        PathfindingEnemy* enemy,
+        Tile current,
+        Tile neighbor
+    ) {
         int dx = neighbor.x - current.x;
         int dy = neighbor.y - current.y;
 
@@ -103,7 +122,7 @@ namespace {
         return true;
     }
 
-    bool HasReachedWaypoint(Enemy* enemy, Vector2 waypoint) {
+    bool HasReachedWaypoint(PathfindingEnemy* enemy, Vector2 waypoint) {
         Rectangle body = enemy->GetBoundingBox();
         float reachDistance = std::max(4.0f, std::min(body.width, body.height) * 0.25f);
 
@@ -112,6 +131,13 @@ namespace {
         float dy = waypoint.y - position.y;
 
         return (dx * dx + dy * dy) <= reachDistance * reachDistance;
+    }
+
+    void PopReachedTargets(PathfindingEnemy* enemy) {
+        while (enemy->HasTargetPosition() &&
+               HasReachedWaypoint(enemy, enemy->FirstTargetPosition())) {
+            enemy->PopTarget();
+        }
     }
 
     bool SameTileDirection(Tile a, Tile b, Tile c) {
@@ -136,14 +162,18 @@ namespace {
         targets.push_back(position);
     }
 
-    std::vector<Vector2> BuildTargetPositions(LevelManager* levelManager, Enemy* enemy, const std::vector<Tile>& path) {
+    std::vector<Vector2> BuildTargetPositions(
+        LevelManager* levelManager,
+        PathfindingEnemy* enemy,
+        const std::vector<Tile>& path
+    ) {
         std::vector<Vector2> targets;
         if (!levelManager || !enemy || path.size() < 2) {
             return targets;
         }
 
-        int finalSlotReserve = 1;
-        int turnLimit = MAX_TARGET_POSITIONS - finalSlotReserve;
+        constexpr int FINAL_TARGET_SLOT_COUNT = 1;
+        int turnLimit = MAX_TARGET_POSITIONS - FINAL_TARGET_SLOT_COUNT;
 
         for (int i = 1; i + 1 < (int)path.size() && (int)targets.size() < turnLimit; ++i) {
             if (!SameTileDirection(path[i - 1], path[i], path[i + 1])) {
@@ -160,7 +190,12 @@ namespace {
         return targets;
     }
 
-    std::vector<Tile> FindPath(LevelManager* levelManager, Enemy* enemy, Tile start, Tile goal) {
+    std::vector<Tile> FindPath(
+        LevelManager* levelManager,
+        PathfindingEnemy* enemy,
+        Tile start,
+        Tile goal
+    ) {
         if (!levelManager) return {};
         if (!enemy) return {};
         if (!IsBodyClearAtTile(levelManager, enemy, start)) return {};
@@ -175,7 +210,7 @@ namespace {
         openSet.push({ start, 0.0f, Heuristic(start, goal) });
         gScore[start] = 0.0f;
 
-        const Tile directions[8] = {
+        constexpr Tile directions[8] = {
             { 1, 0 },
             { -1, 0 },
             { 0, 1 },
@@ -240,51 +275,56 @@ namespace {
     }
 }
 
-void EnemyPathManager::RemoveEnemy(Enemy* enemy) {
+void EnemyPathManager::RemoveEnemy(PathfindingEnemy* enemy) {
     enemies.erase(
         std::remove(enemies.begin(), enemies.end(), enemy),
         enemies.end()
     );
 
-    if (nextEnemyIndex >= enemies.size()) {
+    if (nextEnemyIndex >= (int)enemies.size()) {
         nextEnemyIndex = 0;
     }
 }
 
-void EnemyPathManager::AddEnemy(Enemy* enemy) {
+void EnemyPathManager::AddEnemy(PathfindingEnemy* enemy) {
     if (std::find(enemies.begin(), enemies.end(), enemy) == enemies.end()) {
         enemies.push_back(enemy);
     }
 }
 
-Vector2 EnemyPathManager::GetNextMoveTarget(LevelManager* levelManager, Enemy* enemy, Vector2 fallbackTarget) {
+void EnemyPathManager::Clear() {
+    enemies.clear();
+    nextEnemyIndex = 0;
+}
+
+Vector2 EnemyPathManager::GetNextMoveTarget(
+    LevelManager* levelManager,
+    PathfindingEnemy* enemy,
+    Vector2 fallbackTarget
+) {
     if (!levelManager || !enemy) {
         return fallbackTarget;
     }
 
-    EnemyPathFinding* pathAgent = dynamic_cast<EnemyPathFinding*>(enemy);
-    if (!pathAgent) {
-        return fallbackTarget;
-    }
+    PopReachedTargets(enemy);
 
-    while (pathAgent->HasTargetPosition() &&
-           HasReachedWaypoint(enemy, pathAgent->FirstTargetPosition())) {
-        pathAgent->PopTarget();
-    }
-
-    if (pathAgent->HasTargetPosition()) {
-        Vector2 targetPosition = pathAgent->FirstTargetPosition();
+    if (enemy->HasTargetPosition()) {
+        Vector2 targetPosition = enemy->FirstTargetPosition();
         if (IsBodyClearAtWorldPosition(levelManager, enemy, targetPosition)) {
             return targetPosition;
         }
 
-        pathAgent->ClearTargetPosition();
+        enemy->ClearTargetPosition();
     }
 
     return fallbackTarget;
 }
 
-Vector2 EnemyPathManager::GetLocalAvoidanceDirection(LevelManager* levelManager, Enemy* enemy, Vector2 desiredDirection) {
+Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
+    LevelManager* levelManager,
+    PathfindingEnemy* enemy,
+    Vector2 desiredDirection
+) {
     if (!levelManager || !enemy) {
         return desiredDirection;
     }
@@ -295,7 +335,7 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(LevelManager* levelManager,
     const float separationWeight = 0.85f;
 
     for (GameObject* entity : levelManager->GetEntities()) {
-        Enemy* otherEnemy = dynamic_cast<Enemy*>(entity);
+        Enemy* otherEnemy = static_cast<Enemy*>(entity);
         if (!otherEnemy || otherEnemy == enemy || otherEnemy->IsDead()) {
             continue;
         }
@@ -345,7 +385,10 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
     if (!levelManager || enemies.empty()) return;
     if (TARGET_LOOP_ALL_INTERVAL <= 0.0f) return;
 
-    int enemiesPerFrame = (int)std::ceil((float)enemies.size() * std::min(1.f, (float)deltaTime /TARGET_LOOP_ALL_INTERVAL));
+    int enemiesPerFrame = (int)std::ceil(
+        (float)enemies.size() *
+        std::min(1.0f, deltaTime / TARGET_LOOP_ALL_INTERVAL)
+    );
     if (enemiesPerFrame < 1) {
         enemiesPerFrame = 1;
     }
@@ -359,22 +402,14 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
             nextEnemyIndex = 0;
         }
 
-        Enemy* enemy = enemies[nextEnemyIndex];
+        PathfindingEnemy* enemy = enemies[nextEnemyIndex];
         nextEnemyIndex++;
 
         if (!enemy || enemy->IsDead() || !enemy->GetTargetTeam()) {
             continue;
         }
 
-        EnemyPathFinding* pathAgent = dynamic_cast<EnemyPathFinding*>(enemy);
-        if (!pathAgent) {
-            continue;
-        }
-
-        while (pathAgent->HasTargetPosition() &&
-               HasReachedWaypoint(enemy, pathAgent->FirstTargetPosition())) {
-            pathAgent->PopTarget();
-        }
+        PopReachedTargets(enemy);
 
         Vector2 enemyTilePosition = levelManager->WorldToTile(enemy->GetPosition());
         Vector2 playerTilePosition = levelManager->WorldToTile(enemy->GetTargetTeam()->GetActivePaladin()->GetPosition());
@@ -391,12 +426,12 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
 
         std::vector<Tile> path = FindPath(levelManager, enemy, enemyTile, playerTile);
         if (path.size() < 2) {
-            pathAgent->ClearTargetPosition();
+            enemy->ClearTargetPosition();
             continue;
         }
 
         std::vector<Vector2> targets = BuildTargetPositions(levelManager, enemy, path);
-        if ((int)targets.size() < MIN_TARGET_POSITIONS && path.size() >= 2) {
+        if ((int)targets.size() < MIN_TARGET_POSITIONS) {
             Vector2 firstMove = levelManager->TileToWorld(path[1].x, path[1].y);
             if (targets.empty() || !AlmostSamePosition(firstMove, targets.front())) {
                 targets.insert(targets.begin(), firstMove);
@@ -407,9 +442,9 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
             targets.resize(MAX_TARGET_POSITIONS);
         }
 
-        pathAgent->ClearTargetPosition();
+        enemy->ClearTargetPosition();
         for (Vector2 targetPosition : targets) {
-            pathAgent->AddTargetPosition(targetPosition);
+            enemy->AddTargetPosition(targetPosition);
         }
     }
 }

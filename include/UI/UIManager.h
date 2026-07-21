@@ -20,6 +20,15 @@ public:
     // Obsolete but kept to fulfill IObserver interface
     void OnPlayerStatsChanged(int hp, int maxHp, int armor, int maxArmor, bool isLance) override {}
     
-    void DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight);
-    void DrawHUD(int screenWidth, int screenHeight);
+    void DrawTeamHUD(
+        TeamManager* team,
+        int screenWidth,
+        int screenHeight,
+        Vector2 mousePosition
+    );
+    void DrawHUD(
+        int screenWidth,
+        int screenHeight,
+        Vector2 mousePosition
+    );
 };

@@ -63,13 +63,13 @@ void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
     }
 
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-    if (enemy->CanEnterReadyState(levelManager)) {
+    if (enemy->CanEnterReadyState()) {
         enemy->EndPathFinding();
         enemy->ChangeState(enemy->GetReadyState());
         return;
     }
 
-    if (enemy->IsWithinClearDiveRange(levelManager)) {
+    if (enemy->IsWithinClearDiveRange()) {
         enemy->EndPathFinding();
         return;
     }
