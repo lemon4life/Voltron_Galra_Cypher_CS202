@@ -103,7 +103,7 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
             enemy->SetPosition(ePos);
         } else if (enemy->GetAttackCooldown() <= 0.0f) {
             activePaladin->TakeDamage(enemy->GetDamage());
-            enemy->SetAttackCooldown(1.0f); // 1 second cooldown
+            enemy->ResetAttackCooldown();
             
             // Break parry state if they took damage (limit exceeded)
             if (activePaladin->IsParrying()) {

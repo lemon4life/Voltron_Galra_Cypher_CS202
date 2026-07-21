@@ -121,7 +121,7 @@ void EnemyChaserChaseState::Update(EnemyChaser* enemy, float deltaTime) {
                 }
             } else if (enemy->GetAttackCooldown() <= 0.0f) {
                 activePaladin->TakeDamage(enemy->GetDamage());
-                enemy->SetAttackCooldown(1.0f); // 1 second cooldown
+                enemy->ResetAttackCooldown(); 
                 
                 if (activePaladin->IsParrying()) {
                     activePaladin->ChangeState(activePaladin->GetIdleState());
