@@ -17,6 +17,7 @@ struct ImpactEffect {
     float maxLifetime;
     int currentFrame;
     int numFrames;
+    Texture2D texture;
 };
 
 class Projectile; // Forward declaration
@@ -76,6 +77,7 @@ public:
     void UpdateProjectiles(float deltaTime, class TeamManager* teamManager = nullptr);
     void UpdateAndDrawEffects(float deltaTime);
     void SetBulletImpactTexture(Texture2D tex) { bulletImpactTex = tex; }
+    void AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime);
     void AddImpactEffect(Vector2 pos);
     void DrawProjectiles();
     void ClearProjectiles();

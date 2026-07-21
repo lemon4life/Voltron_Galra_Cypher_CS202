@@ -3,6 +3,8 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/LevelManager.h"
+#include "Core/Manager/AssetManager.h"
+
 #include <cmath>
 #include <iostream>
 
@@ -221,6 +223,14 @@ void Paladin::UpdateAnimation(float deltaTime) {
 }
 
 void Paladin::Draw() {
+    // Draw Player Circle underneath
+    Texture2D circleTex = AssetManager::GetInstance().GetTexture("Player_Circle");
+    if (circleTex.id != 0 && GameManager::GetInstance().GetState() != GameState::HUB) {
+        Rectangle dest = { position.x, position.y + 12.0f, (float)circleTex.width, (float)circleTex.height };
+        Vector2 circleOrigin = { (float)circleTex.width / 2.0f, (float)circleTex.height / 2.0f };
+        DrawTexturePro(circleTex, {0, 0, (float)circleTex.width, (float)circleTex.height}, dest, circleOrigin, 0.0f, WHITE);
+    }
+
     const float frameWidth = (float)texture.width / numFrames;
     const float frameHeight = (float)texture.height;
 
@@ -250,7 +260,16 @@ void Paladin::Draw() {
     DrawTexturePro(texture, sourceRec, destRec, origin, 0.0f, tint);
     
     if (currentWeapon && GameManager::GetInstance().GetState() != GameState::HUB) {
-        currentWeapon->Draw(GetWeaponPivot(), facingLeft);
+        Vector2 pivot = GetWeaponPivot();
+        if (isParrying) {
+            Vector2 dir = Vector2Subtract(aimTarget, position);
+            if (Vector2Length(dir) > 0.0f) dir = Vector2Normalize(dir);
+            else dir = {1.0f, 0.0f};
+            
+            pivot.x += dir.x * 12.0f;
+            pivot.y += dir.y * 12.0f;
+        }
+        currentWeapon->Draw(pivot, facingLeft);
     }
 }
 
@@ -275,6 +294,13 @@ void Paladin::UpdateFootsteps(float dt) {
     if (footstepTimer >= 0.3f) {
         footstepTimer = 0.0f;
         AudioManager::GetInstance().PlaySequentialFootstep();
+        
+        // Spawn Run Dust
+        Texture2D dustTex = AssetManager::GetInstance().GetTexture("Run_Dust");
+        if (dustTex.id != 0) {
+            Vector2 spawnPos = { position.x, position.y + 12.0f };
+            GameManager::GetInstance().AddEffect(spawnPos, dustTex, 4, 0.4f);
+        }
     }
 }
 
@@ -296,6 +322,13 @@ void Paladin::TriggerParrySuccess(GameObject* attacker) {
     Vector2 aPos = attacker->GetPosition();
     float angleToAttacker = atan2f(aPos.y - pPos.y, aPos.x - pPos.x) * (180.0f / PI);
     parryAngle = angleToAttacker + 90.0f; // Orthogonal
+    
+    // Snap aimTarget to point towards the attacker so the shield blocks that way
+    Vector2 dirToAttacker = Vector2Subtract(aPos, pPos);
+    if (Vector2Length(dirToAttacker) > 0.0f) {
+        dirToAttacker = Vector2Normalize(dirToAttacker);
+        aimTarget = { pPos.x + dirToAttacker.x * 100.0f, pPos.y + dirToAttacker.y * 100.0f };
+    }
     
     // Apply knockback
     Vector2 dir = Vector2Subtract(pPos, aPos);

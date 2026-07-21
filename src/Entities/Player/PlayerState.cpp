@@ -42,7 +42,7 @@ void PlayerIdleState::Exit(Paladin* player) {
 void PlayerRunState::Enter(Paladin* player) {
     player->ResetParryCount();
     player->SetTexture(player->GetRunTexture());
-    player->SetNumFrames(4); // Sprite sheet has 4 frames
+    player->SetNumFrames(8); // Updated to 8 frames
     player->ResetAnimation();
 }
 

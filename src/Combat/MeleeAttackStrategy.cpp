@@ -123,7 +123,7 @@ void MeleeAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
     
     Rectangle source = { currentFrame * frameWidth, 0.0f, frameWidth, (float)activeTex.height };
     if (facingLeft) {
-        source.width = -source.width; 
+        source.height = -source.height; 
     }
 
     // Since this is a swing animation, we'll draw it directly centered on the player 

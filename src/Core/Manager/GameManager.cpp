@@ -117,32 +117,37 @@ void GameManager::ClearProjectiles() {
     activeProjectiles.clear();
 }
 
-void GameManager::AddImpactEffect(Vector2 pos) {
+void GameManager::AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime) {
     ImpactEffect effect;
     effect.position = pos;
-    effect.maxLifetime = 0.2f; // 4 frames at 20fps = 0.2s
-    effect.lifetime = 0.2f;
+    effect.maxLifetime = lifetime;
+    effect.lifetime = lifetime;
     effect.currentFrame = 0;
-    effect.numFrames = 4;
+    effect.numFrames = frames;
+    effect.texture = tex;
     activeEffects.push_back(effect);
+}
+
+void GameManager::AddImpactEffect(Vector2 pos) {
+    AddEffect(pos, bulletImpactTex, 4, 0.2f);
 }
 
 void GameManager::UpdateAndDrawEffects(float deltaTime) {
     for (auto it = activeEffects.begin(); it != activeEffects.end();) {
         it->lifetime -= deltaTime;
         
-        if (bulletImpactTex.id != 0) {
+        if (it->texture.id != 0) {
             float progress = 1.0f - (it->lifetime / it->maxLifetime);
             it->currentFrame = (int)(progress * it->numFrames);
             if (it->currentFrame >= it->numFrames) it->currentFrame = it->numFrames - 1;
             
-            float frameWidth = (float)bulletImpactTex.width / it->numFrames;
-            float frameHeight = (float)bulletImpactTex.height;
-            Rectangle source = { it->currentFrame * frameWidth, 0, frameWidth, frameHeight };
+            float frameWidth = (float)it->texture.width / it->numFrames;
+            float frameHeight = (float)it->texture.height;
+            Rectangle source = { it->currentFrame * frameWidth, 0.0f, frameWidth, frameHeight };
             Rectangle dest = { it->position.x, it->position.y, frameWidth, frameHeight };
             Vector2 origin = { frameWidth / 2.0f, frameHeight / 2.0f };
             
-            DrawTexturePro(bulletImpactTex, source, dest, origin, 0.0f, WHITE);
+            DrawTexturePro(it->texture, source, dest, origin, 0.0f, WHITE);
         }
         
         if (it->lifetime <= 0.0f) {
