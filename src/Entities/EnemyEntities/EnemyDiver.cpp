@@ -9,6 +9,8 @@
 
 #include <algorithm>
 
+
+
 namespace {
     constexpr int DIVER_MAX_HEALTH = 140;
     constexpr float DIVER_BASE_SPEED = 210.0f;
