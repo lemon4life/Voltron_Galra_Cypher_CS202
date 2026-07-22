@@ -26,7 +26,12 @@ GameObject* EntityFactory::CreateEntity(
                 levelAccess.pathFinding
             );
         case 'B':
-            return new Boss(position, teamManager, levelAccess.removal);
+            return new Boss(
+                position,
+                teamManager,
+                levelAccess.removal,
+                levelAccess.pathFinding
+            );
         case 'R':
             return new EnemyRange(
                 position,

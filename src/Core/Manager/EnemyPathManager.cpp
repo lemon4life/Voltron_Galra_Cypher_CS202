@@ -1,7 +1,6 @@
 #include "Core/Manager/EnemyPathManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Entities/Enemy.h"
-#include "Entities/PathfindingEnemy.h"
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/TeamManager.h"
 
@@ -58,7 +57,7 @@ namespace {
     }
 
     Rectangle GetBodyAtWorldPosition(
-        PathfindingEnemy* enemy,
+        Enemy* enemy,
         Vector2 worldPosition
     ) {
         Rectangle currentBox = enemy->GetBoundingBox();
@@ -74,7 +73,7 @@ namespace {
 
     bool IsBodyClearAtWorldPosition(
         LevelManager* levelManager,
-        PathfindingEnemy* enemy,
+        Enemy* enemy,
         Vector2 worldPosition
     ) {
         if (!levelManager || !enemy) return false;
@@ -84,7 +83,7 @@ namespace {
 
     bool IsBodyClearAtTile(
         LevelManager* levelManager,
-        PathfindingEnemy* enemy,
+        Enemy* enemy,
         Tile tile
     ) {
         if (!levelManager || !enemy) return false;
@@ -95,7 +94,7 @@ namespace {
 
     bool CanMoveBetweenTiles(
         LevelManager* levelManager,
-        PathfindingEnemy* enemy,
+        Enemy* enemy,
         Tile current,
         Tile neighbor
     ) {
@@ -122,7 +121,7 @@ namespace {
         return true;
     }
 
-    bool HasReachedWaypoint(PathfindingEnemy* enemy, Vector2 waypoint) {
+    bool HasReachedWaypoint(Enemy* enemy, Vector2 waypoint) {
         Rectangle body = enemy->GetBoundingBox();
         float reachDistance = std::max(4.0f, std::min(body.width, body.height) * 0.25f);
 
@@ -133,7 +132,7 @@ namespace {
         return (dx * dx + dy * dy) <= reachDistance * reachDistance;
     }
 
-    void PopReachedTargets(PathfindingEnemy* enemy) {
+    void PopReachedTargets(Enemy* enemy) {
         while (enemy->HasTargetPosition() &&
                HasReachedWaypoint(enemy, enemy->FirstTargetPosition())) {
             enemy->PopTarget();
@@ -164,7 +163,7 @@ namespace {
 
     std::vector<Vector2> BuildTargetPositions(
         LevelManager* levelManager,
-        PathfindingEnemy* enemy,
+        Enemy* enemy,
         const std::vector<Tile>& path
     ) {
         std::vector<Vector2> targets;
@@ -192,7 +191,7 @@ namespace {
 
     std::vector<Tile> FindPath(
         LevelManager* levelManager,
-        PathfindingEnemy* enemy,
+        Enemy* enemy,
         Tile start,
         Tile goal
     ) {
@@ -275,9 +274,9 @@ namespace {
     }
 }
 
-void EnemyPathManager::RemoveEnemy(PathfindingEnemy* enemy) {
+void EnemyPathManager::RemoveEnemy(Enemy& enemy) {
     enemies.erase(
-        std::remove(enemies.begin(), enemies.end(), enemy),
+        std::remove(enemies.begin(), enemies.end(), &enemy),
         enemies.end()
     );
 
@@ -286,9 +285,9 @@ void EnemyPathManager::RemoveEnemy(PathfindingEnemy* enemy) {
     }
 }
 
-void EnemyPathManager::AddEnemy(PathfindingEnemy* enemy) {
-    if (std::find(enemies.begin(), enemies.end(), enemy) == enemies.end()) {
-        enemies.push_back(enemy);
+void EnemyPathManager::AddEnemy(Enemy& enemy) {
+    if (std::find(enemies.begin(), enemies.end(), &enemy) == enemies.end()) {
+        enemies.push_back(&enemy);
     }
 }
 
@@ -298,45 +297,37 @@ void EnemyPathManager::Clear() {
 }
 
 Vector2 EnemyPathManager::GetNextMoveTarget(
-    LevelManager* levelManager,
-    PathfindingEnemy* enemy,
+    LevelManager& levelManager,
+    Enemy& enemy,
     Vector2 fallbackTarget
 ) {
-    if (!levelManager || !enemy) {
-        return fallbackTarget;
-    }
+    PopReachedTargets(&enemy);
 
-    PopReachedTargets(enemy);
-
-    if (enemy->HasTargetPosition()) {
-        Vector2 targetPosition = enemy->FirstTargetPosition();
-        if (IsBodyClearAtWorldPosition(levelManager, enemy, targetPosition)) {
+    if (enemy.HasTargetPosition()) {
+        Vector2 targetPosition = enemy.FirstTargetPosition();
+        if (IsBodyClearAtWorldPosition(&levelManager, &enemy, targetPosition)) {
             return targetPosition;
         }
 
-        enemy->ClearTargetPosition();
+        enemy.ClearTargetPosition();
     }
 
     return fallbackTarget;
 }
 
 Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
-    LevelManager* levelManager,
-    PathfindingEnemy* enemy,
+    LevelManager& levelManager,
+    Enemy& enemy,
     Vector2 desiredDirection
 ) {
-    if (!levelManager || !enemy) {
-        return desiredDirection;
-    }
-
     Vector2 finalDirection = desiredDirection;
-    Vector2 enemyPosition = enemy->GetPosition();
+    Vector2 enemyPosition = enemy.GetPosition();
     const float separationRadius = 42.0f;
     const float separationWeight = 0.85f;
 
-    for (GameObject* entity : levelManager->GetEntities()) {
-        Enemy* otherEnemy = static_cast<Enemy*>(entity);
-        if (!otherEnemy || otherEnemy == enemy || otherEnemy->IsDead()) {
+    for (GameObject* entity : levelManager.GetEntities()) {
+        Enemy* otherEnemy = dynamic_cast<Enemy*>(entity);
+        if (!otherEnemy || otherEnemy == &enemy || otherEnemy->IsDead()) {
             continue;
         }
 
@@ -355,14 +346,14 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
         const float probeDistance = 18.0f;
         Vector2 forwardProbe = Vector2Add(enemyPosition, Vector2Scale(desiredDirection, probeDistance));
 
-        if (!IsBodyClearAtWorldPosition(levelManager, enemy, forwardProbe)) {
+        if (!IsBodyClearAtWorldPosition(&levelManager, &enemy, forwardProbe)) {
             Vector2 left = { -desiredDirection.y, desiredDirection.x };
             Vector2 right = { desiredDirection.y, -desiredDirection.x };
             Vector2 leftProbe = Vector2Add(enemyPosition, Vector2Scale(left, probeDistance));
             Vector2 rightProbe = Vector2Add(enemyPosition, Vector2Scale(right, probeDistance));
 
-            bool leftClear = IsBodyClearAtWorldPosition(levelManager, enemy, leftProbe);
-            bool rightClear = IsBodyClearAtWorldPosition(levelManager, enemy, rightProbe);
+            bool leftClear = IsBodyClearAtWorldPosition(&levelManager, &enemy, leftProbe);
+            bool rightClear = IsBodyClearAtWorldPosition(&levelManager, &enemy, rightProbe);
 
             if (leftClear && !rightClear) {
                 finalDirection = Vector2Add(finalDirection, Vector2Scale(left, 0.75f));
@@ -381,8 +372,8 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
     return desiredDirection;
 }
 
-void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
-    if (!levelManager || enemies.empty()) return;
+void EnemyPathManager::Update(LevelManager& levelManager, float deltaTime) {
+    if (enemies.empty()) return;
     if (TARGET_LOOP_ALL_INTERVAL <= 0.0f) return;
 
     int enemiesPerFrame = (int)std::ceil(
@@ -402,7 +393,7 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
             nextEnemyIndex = 0;
         }
 
-        PathfindingEnemy* enemy = enemies[nextEnemyIndex];
+        Enemy* enemy = enemies[nextEnemyIndex];
         nextEnemyIndex++;
 
         if (!enemy || enemy->IsDead() || !enemy->GetTargetTeam()) {
@@ -411,8 +402,8 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
 
         PopReachedTargets(enemy);
 
-        Vector2 enemyTilePosition = levelManager->WorldToTile(enemy->GetPosition());
-        Vector2 playerTilePosition = levelManager->WorldToTile(enemy->GetTargetTeam()->GetActivePaladin()->GetPosition());
+        Vector2 enemyTilePosition = levelManager.WorldToTile(enemy->GetPosition());
+        Vector2 playerTilePosition = levelManager.WorldToTile(enemy->GetTargetTeam()->GetActivePaladin()->GetPosition());
 
         Tile enemyTile = {
             (int)enemyTilePosition.x,
@@ -424,15 +415,15 @@ void EnemyPathManager::Update(LevelManager* levelManager, float deltaTime) {
             (int)playerTilePosition.y
         };
 
-        std::vector<Tile> path = FindPath(levelManager, enemy, enemyTile, playerTile);
+        std::vector<Tile> path = FindPath(&levelManager, enemy, enemyTile, playerTile);
         if (path.size() < 2) {
             enemy->ClearTargetPosition();
             continue;
         }
 
-        std::vector<Vector2> targets = BuildTargetPositions(levelManager, enemy, path);
+        std::vector<Vector2> targets = BuildTargetPositions(&levelManager, enemy, path);
         if ((int)targets.size() < MIN_TARGET_POSITIONS) {
-            Vector2 firstMove = levelManager->TileToWorld(path[1].x, path[1].y);
+            Vector2 firstMove = levelManager.TileToWorld(path[1].x, path[1].y);
             if (targets.empty() || !AlmostSamePosition(firstMove, targets.front())) {
                 targets.insert(targets.begin(), firstMove);
             }

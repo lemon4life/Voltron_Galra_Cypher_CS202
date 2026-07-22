@@ -144,7 +144,7 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
 void LevelManager::UpdateLevel(float deltaTime) {
     ProcessPendingRemovals();
 
-    enemyPathManager.Update(this, deltaTime);
+    enemyPathManager.Update(*this, deltaTime);
 
     for (auto it = levelEntities.begin(); it != levelEntities.end(); it++) {
         if (Enemy* e = dynamic_cast<Enemy*>(*it)) {
@@ -349,12 +349,42 @@ void LevelManager::ProcessPendingRemovals() {
     pendingRemoval.clear();
 }
 
-void LevelManager::BeginPathFinding(PathfindingEnemy* enemy) {
+void LevelManager::BeginPathFinding(Enemy& enemy) {
     enemyPathManager.AddEnemy(enemy);
 }
 
-void LevelManager::EndPathFinding(PathfindingEnemy* enemy) {
+void LevelManager::EndPathFinding(Enemy& enemy) {
     enemyPathManager.RemoveEnemy(enemy);
+}
+
+bool LevelManager::IsBlocked(Rectangle bounds) const {
+    return IsSolidCollision(bounds);
+}
+
+Rectangle LevelManager::GetLevelBounds() const {
+    return { 0.0f, 0.0f, levelWidth, levelHeight };
+}
+
+Vector2 LevelManager::GetNextMoveTarget(
+    Enemy& enemy,
+    Vector2 fallbackTarget
+) {
+    return enemyPathManager.GetNextMoveTarget(
+        *this,
+        enemy,
+        fallbackTarget
+    );
+}
+
+Vector2 LevelManager::GetLocalDirection(
+    Enemy& enemy,
+    Vector2 desiredDirection
+) {
+    return enemyPathManager.GetLocalAvoidanceDirection(
+        *this,
+        enemy,
+        desiredDirection
+    );
 }
 
 void LevelManager::QueueRemoval(GameObject* entity) {

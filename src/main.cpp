@@ -41,7 +41,7 @@ void ResetDemoGame(TeamManager* teamManager, LevelManager* levelManager, WaveMan
     for(auto p : teamManager->GetTeam()) p->ResetStats();
     GameManager::GetInstance().ClearProjectiles();
     levelManager->LoadLevel("assets/levels/demo-big.txt", teamManager);
-    waveManager->Reset(1, 0, 5);
+    waveManager->Reset(10, 0, 5);
     GameManager::GetInstance().SetState(GameState::PLAYING);
 }
 

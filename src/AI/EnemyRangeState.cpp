@@ -1,8 +1,8 @@
 #include "AI/EnemyState.h"
 
+#include "AI/EnemyCollision.h"
 #include "Core/LevelAccess.h"
 #include "Core/Manager/GameManager.h"
-#include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/EnemyEntities/EnemyRange.h"
 #include "Entities/Player/Paladin.h"
@@ -25,10 +25,6 @@ namespace {
         enemy->SetAttackCooldown(std::max(0.0f, remainingCooldown));
     }
 
-    bool IsBlocked(LevelManager* levelManager, Enemy* enemy) {
-        return levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox());
-    }
-
     Vector2 GetProjectileOrigin(EnemyRange* enemy, Vector2 targetPosition) {
         Vector2 enemyPosition = enemy->GetPosition();
         Vector2 direction = Vector2Subtract(targetPosition, enemyPosition);
@@ -48,10 +44,8 @@ namespace {
     }
 
     bool HasClearShot(EnemyRange* enemy, Vector2 targetPosition) {
-        if (!enemy || !enemy->GetLineOfSightQuery()) return false;
-
         Vector2 origin = GetProjectileOrigin(enemy, targetPosition);
-        return enemy->GetLineOfSightQuery()->HasClearLineOfSight(
+        return enemy->GetLineOfSightQuery().HasClearLineOfSight(
             origin,
             targetPosition,
             enemy->GetProjectileRadius()
@@ -81,7 +75,6 @@ void EnemyRangeChaseState::Update(EnemyRange* enemy, float deltaTime) {
     TeamManager* targetTeam = enemy->GetTargetTeam();
     Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     if (!player) {
-        enemy->EndPathFinding();
         enemy->ChangeState(enemy->GetIdleState());
         return;
     }
@@ -90,29 +83,22 @@ void EnemyRangeChaseState::Update(EnemyRange* enemy, float deltaTime) {
     Vector2 playerPosition = player->GetPosition();
 
     if (enemy->IsBeyondDisengageDistance(playerPosition)) {
-        enemy->EndPathFinding();
         enemy->ChangeState(enemy->GetIdleState());
         return;
     }
 
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
     if (enemy->IsWithinShootingDistance(playerPosition) &&
         HasClearShot(enemy, playerPosition)) {
-        enemy->EndPathFinding();
         enemy->ChangeState(enemy->GetShootingState());
         return;
     }
 
-    enemy->StartPathFinding();
+    IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
 
-    Vector2 moveTarget = playerPosition;
-    if (levelManager) {
-        moveTarget = levelManager->GetEnemyPathManager().GetNextMoveTarget(
-            levelManager,
-            enemy,
-            playerPosition
-        );
-    }
+    Vector2 moveTarget = pathAccess.GetNextMoveTarget(
+        *enemy,
+        playerPosition
+    );
 
     Vector2 direction = Vector2Subtract(moveTarget, enemyPosition);
     if (Vector2Length(direction) > MIN_DIRECTION_LENGTH) {
@@ -121,30 +107,14 @@ void EnemyRangeChaseState::Update(EnemyRange* enemy, float deltaTime) {
         direction = { 0.0f, 0.0f };
     }
 
-    if (levelManager) {
-        direction = levelManager->GetEnemyPathManager().GetLocalAvoidanceDirection(
-            levelManager,
-            enemy,
-            direction
-        );
-    }
+    direction = pathAccess.GetLocalDirection(*enemy, direction);
 
-    float moveDistance = enemy->GetSpeed() * deltaTime;
-
-    enemyPosition.x += direction.x * moveDistance;
-    enemy->SetPosition(enemyPosition);
-    if (IsBlocked(levelManager, enemy)) {
-        enemyPosition.x -= direction.x * moveDistance;
-        enemy->SetPosition(enemyPosition);
-    }
-
-    enemyPosition = enemy->GetPosition();
-    enemyPosition.y += direction.y * moveDistance;
-    enemy->SetPosition(enemyPosition);
-    if (IsBlocked(levelManager, enemy)) {
-        enemyPosition.y -= direction.y * moveDistance;
-        enemy->SetPosition(enemyPosition);
-    }
+    EnemyCollision::MoveAgainstWalls(
+        *enemy,
+        Vector2Scale(direction, enemy->GetSpeed() * deltaTime),
+        pathAccess,
+        EnemyWallResponse::Slide
+    );
 }
 
 void EnemyRangeChaseState::Exit(EnemyRange* enemy) {

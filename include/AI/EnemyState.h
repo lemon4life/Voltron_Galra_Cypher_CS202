@@ -5,6 +5,7 @@
 class EnemyChaser;
 class EnemyDiver;
 class EnemyRange;
+class Boss;
 class Paladin;
 
 /* 
@@ -22,15 +23,16 @@ public:
     void Exit(Enemy* enemy) override;
 };
 
-class EnemyChaseState : public IEnemyState {
+class EnemyDazeState : public IEnemyState {
 private:
-    const float offSightDistance;
-public:
-    explicit EnemyChaseState(float offSightDistance);
+    float dTimer = 0.0f;
 
+public:
     void Enter(Enemy* enemy) override;
     void Update(Enemy* enemy, float deltaTime) override;
     void Exit(Enemy* enemy) override;
+
+    float GetRemainingTime() const { return dTimer; }
 };
 
 /* 
@@ -38,11 +40,20 @@ public:
 */
 
 class EnemyChaserChaseState : public ITypedEnemyState<EnemyChaser> {
-private:
-    const float offSightDistance;
 public:
-    explicit EnemyChaserChaseState(float offSightDistance);
+    void Enter(EnemyChaser* enemy) override;
+    void Update(EnemyChaser* enemy, float deltaTime) override;
+    void Exit(EnemyChaser* enemy) override;
+};
 
+class EnemyChaserDamageState : public ITypedEnemyState<EnemyChaser> {
+private:
+    float dTimer = 0.0f;
+    float remainingChargeDistance = 0.0f;
+    Vector2 chargeDirection = { 0.0f, 0.0f };
+    bool attackResolved = false;
+
+public:
     void Enter(EnemyChaser* enemy) override;
     void Update(EnemyChaser* enemy, float deltaTime) override;
     void Exit(EnemyChaser* enemy) override;
@@ -53,12 +64,7 @@ public:
 */
 
 class EnemyDiverChaseState : public ITypedEnemyState<EnemyDiver> {
-private:
-    const float offSightDistance;
-
 public:
-    explicit EnemyDiverChaseState(float offSightDistance);
-
     void Enter(EnemyDiver* enemy) override;
     void Update(EnemyDiver* enemy, float deltaTime) override;
     void Exit(EnemyDiver* enemy) override;
@@ -120,15 +126,11 @@ public:
     Boss Ranged Attack State
 */
 
-class BossChaseState : public IEnemyState {
-private:
-    const float offSightDistance;
+class BossChaseState : public ITypedEnemyState<Boss> {
 public:
-    explicit BossChaseState(float offSightDistance);
-
-    void Enter(Enemy* enemy) override;
-    void Update(Enemy* enemy, float deltaTime) override;
-    void Exit(Enemy* enemy) override;
+    void Enter(Boss* enemy) override;
+    void Update(Boss* enemy, float deltaTime) override;
+    void Exit(Boss* enemy) override;
 };
 
 class BossRangedAttackState : public IEnemyState {

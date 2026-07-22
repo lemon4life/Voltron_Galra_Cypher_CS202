@@ -1,7 +1,8 @@
 #include "AI/EnemyState.h"
 
+#include "AI/EnemyCollision.h"
+#include "Core/LevelAccess.h"
 #include "Core/Manager/GameManager.h"
-#include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/EnemyEntities/EnemyDiver.h"
 #include "Entities/Player/Paladin.h"
@@ -24,10 +25,6 @@ namespace {
         ));
     }
 
-    bool IsBlocked(LevelManager* levelManager, EnemyDiver* enemy) {
-        return levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox());
-    }
-
     Vector2 NormalizeOrFallback(Vector2 direction, Vector2 fallback) {
         if (Vector2Length(direction) <= MIN_DIRECTION_LENGTH) {
             return fallback;
@@ -35,9 +32,6 @@ namespace {
         return Vector2Normalize(direction);
     }
 }
-
-EnemyDiverChaseState::EnemyDiverChaseState(float offSightDistance)
-    : offSightDistance(offSightDistance) {}
 
 void EnemyDiverChaseState::Enter(EnemyDiver* enemy) {
     enemy->StartPathFinding();
@@ -49,72 +43,46 @@ void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
     TeamManager* targetTeam = enemy->GetTargetTeam();
     Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     if (!player) {
-        enemy->EndPathFinding();
         enemy->ChangeState(enemy->GetIdleState());
         return;
     }
 
     Vector2 enemyPosition = enemy->GetPosition();
     Vector2 playerPosition = player->GetPosition();
-    if (Vector2Distance(enemyPosition, playerPosition) > offSightDistance) {
-        enemy->EndPathFinding();
+    if (enemy->IsBeyondDisengageDistance(playerPosition)) {
         enemy->ChangeState(enemy->GetIdleState());
         return;
     }
 
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
     if (enemy->CanEnterReadyState()) {
-        enemy->EndPathFinding();
         enemy->ChangeState(enemy->GetReadyState());
         return;
     }
 
     if (enemy->IsWithinClearDiveRange()) {
-        enemy->EndPathFinding();
         return;
     }
 
-    enemy->StartPathFinding();
-
-    Vector2 moveTarget = playerPosition;
-    if (levelManager) {
-        moveTarget = levelManager->GetEnemyPathManager().GetNextMoveTarget(
-            levelManager,
-            enemy,
-            playerPosition
-        );
-    }
+    IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
+    Vector2 moveTarget = pathAccess.GetNextMoveTarget(
+        *enemy,
+        playerPosition
+    );
 
     Vector2 direction = NormalizeOrFallback(
         Vector2Subtract(moveTarget, enemyPosition),
         { 0.0f, 0.0f }
     );
-    if (levelManager) {
-        direction = levelManager->GetEnemyPathManager().GetLocalAvoidanceDirection(
-            levelManager,
-            enemy,
-            direction
-        );
-    }
+    direction = pathAccess.GetLocalDirection(*enemy, direction);
 
-    float moveDistance = enemy->GetSpeed() * deltaTime;
+    EnemyCollision::MoveAgainstWalls(
+        *enemy,
+        Vector2Scale(direction, enemy->GetSpeed() * deltaTime),
+        pathAccess,
+        EnemyWallResponse::Slide
+    );
 
-    enemyPosition.x += direction.x * moveDistance;
-    enemy->SetPosition(enemyPosition);
-    if (IsBlocked(levelManager, enemy)) {
-        enemyPosition.x -= direction.x * moveDistance;
-        enemy->SetPosition(enemyPosition);
-    }
-
-    enemyPosition = enemy->GetPosition();
-    enemyPosition.y += direction.y * moveDistance;
-    enemy->SetPosition(enemyPosition);
-    if (IsBlocked(levelManager, enemy)) {
-        enemyPosition.y -= direction.y * moveDistance;
-        enemy->SetPosition(enemyPosition);
-    }
-
-    if (!CheckCollisionRecs(enemy->GetBoundingBox(), player->GetBoundingBox())) {
+    if (!EnemyCollision::CheckPlayerCollision(*enemy, *player)) {
         return;
     }
 
@@ -124,22 +92,12 @@ void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
         { 1.0f, 0.0f }
     );
 
-    Vector2 beforePush = enemyPosition;
-    enemyPosition.x += pushDirection.x * PLAYER_SEPARATION_DISTANCE;
-    enemy->SetPosition(enemyPosition);
-    if (IsBlocked(levelManager, enemy)) {
-        enemyPosition.x = beforePush.x;
-        enemy->SetPosition(enemyPosition);
-    }
-
-    beforePush = enemy->GetPosition();
-    enemyPosition = beforePush;
-    enemyPosition.y += pushDirection.y * PLAYER_SEPARATION_DISTANCE;
-    enemy->SetPosition(enemyPosition);
-    if (IsBlocked(levelManager, enemy)) {
-        enemyPosition.y = beforePush.y;
-        enemy->SetPosition(enemyPosition);
-    }
+    EnemyCollision::MoveAgainstWalls(
+        *enemy,
+        Vector2Scale(pushDirection, PLAYER_SEPARATION_DISTANCE),
+        pathAccess,
+        EnemyWallResponse::Slide
+    );
 }
 
 void EnemyDiverChaseState::Exit(EnemyDiver* enemy) {
@@ -162,21 +120,17 @@ void EnemyDiverReadyState::Update(EnemyDiver* enemy, float deltaTime) {
         return;
     }
 
-    Vector2 previousPosition = enemy->GetPosition();
     Vector2 awayDirection = NormalizeOrFallback(
-        Vector2Subtract(previousPosition, player->GetPosition()),
+        Vector2Subtract(enemy->GetPosition(), player->GetPosition()),
         { 1.0f, 0.0f }
     );
-    Vector2 nextPosition = Vector2Add(
-        previousPosition,
-        Vector2Scale(awayDirection, enemy->GetReadySpeed() * activeTime)
-    );
 
-    enemy->SetPosition(nextPosition);
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-    if (IsBlocked(levelManager, enemy)) {
-        enemy->SetPosition(previousPosition);
-    }
+    EnemyCollision::MoveAgainstWalls(
+        *enemy,
+        Vector2Scale(awayDirection, enemy->GetReadySpeed() * activeTime),
+        enemy->GetPathAccess(),
+        EnemyWallResponse::Stop
+    );
 
     if (dTimer <= 0.0f) {
         enemy->ChangeState(enemy->GetLungingState());
@@ -192,7 +146,9 @@ void EnemyDiverLungingState::Enter(EnemyDiver* enemy) {
 
     TeamManager* targetTeam = enemy->GetTargetTeam();
     Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
-    Vector2 targetPosition = player ? player->GetPosition() : enemy->GetPosition();
+    Vector2 targetPosition = player
+        ? player->GetPosition()
+        : enemy->GetPosition();
     lockedDirection = NormalizeOrFallback(
         Vector2Subtract(targetPosition, enemy->GetPosition()),
         { 1.0f, 0.0f }
@@ -217,30 +173,60 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
 
     float frameDistance = enemy->GetDiveSpeed() * activeTime;
     Rectangle body = enemy->GetBoundingBox();
-    float maximumSubstep = std::max(1.0f, std::min(body.width, body.height) / 2.0f);
-    int substepCount = std::max(1, (int)std::ceil(frameDistance / maximumSubstep));
+    float maximumSubstep = std::max(
+        1.0f,
+        std::min(body.width, body.height) / 2.0f
+    );
+    int substepCount = std::max(
+        1,
+        (int)std::ceil(frameDistance / maximumSubstep)
+    );
     float substepDistance = frameDistance / (float)substepCount;
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+
     TeamManager* targetTeam = enemy->GetTargetTeam();
     Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
 
     for (int step = 0; step < substepCount; ++step) {
-        Vector2 previousPosition = enemy->GetPosition();
-        enemy->SetPosition(Vector2Add(
-            previousPosition,
-            Vector2Scale(lockedDirection, substepDistance)
-        ));
+        EnemyMoveResult moveResult = EnemyCollision::MoveAgainstWalls(
+            *enemy,
+            Vector2Scale(lockedDirection, substepDistance),
+            enemy->GetPathAccess(),
+            EnemyWallResponse::Stop
+        );
 
-        if (IsBlocked(levelManager, enemy)) {
-            enemy->SetPosition(previousPosition);
+        if (moveResult.hitWall) {
             BeginRecovery(enemy);
             return;
         }
 
         if (!hasDamagedPlayer && player &&
-            CheckCollisionRecs(enemy->GetBoundingBox(), player->GetBoundingBox())) {
-            player->TakeDamage(enemy->GetDamage());
+            EnemyCollision::CheckPlayerCollision(*enemy, *player)) {
             hasDamagedPlayer = true;
+
+            if (EnemyCollision::CheckParry(*enemy, *player)) {
+                Vector2 playerPosition = player->GetPosition();
+                player->TriggerParrySuccess(enemy);
+                player->IncrementParryCount();
+                GameManager::GetInstance().TriggerHitstop(0.3f);
+                GameManager::GetInstance().AddImpactEffect(playerPosition);
+
+                Vector2 pushDirection = NormalizeOrFallback(
+                    Vector2Subtract(enemy->GetPosition(), playerPosition),
+                    Vector2Negate(lockedDirection)
+                );
+                EnemyCollision::MoveAgainstWalls(
+                    *enemy,
+                    Vector2Scale(pushDirection, 60.0f),
+                    enemy->GetPathAccess(),
+                    EnemyWallResponse::Slide
+                );
+
+                enemy->ResetAttackCooldown();
+                enemy->ChangeState(enemy->GetDazeState());
+                return;
+            }
+
+            player->TakeDamage(enemy->GetDamage());
         }
     }
 

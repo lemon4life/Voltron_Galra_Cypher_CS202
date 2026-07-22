@@ -4,29 +4,29 @@
 #include <vector>
 
 class LevelManager;
-class PathfindingEnemy;
+class Enemy;
 
 class EnemyPathManager {
 private:
-    std::vector<PathfindingEnemy*> enemies;
+    std::vector<Enemy*> enemies;
     int nextEnemyIndex = 0;
 public:
-    void AddEnemy(PathfindingEnemy* enemy);
+    void AddEnemy(Enemy& enemy);
 
-    void RemoveEnemy(PathfindingEnemy* enemy);
+    void RemoveEnemy(Enemy& enemy);
     void Clear();
 
     Vector2 GetNextMoveTarget(
-        LevelManager* levelManager,
-        PathfindingEnemy* enemy,
+        LevelManager& levelManager,
+        Enemy& enemy,
         Vector2 fallbackTarget
     );
 
     Vector2 GetLocalAvoidanceDirection(
-        LevelManager* levelManager,
-        PathfindingEnemy* enemy,
+        LevelManager& levelManager,
+        Enemy& enemy,
         Vector2 desiredDirection
     );
 
-    void Update(LevelManager* levelManager, float deltaTime);
+    void Update(LevelManager& levelManager, float deltaTime);
 };

@@ -1,7 +1,8 @@
 #include "AI/EnemyState.h"
 
+#include "AI/EnemyCollision.h"
+#include "Core/LevelAccess.h"
 #include "Core/Manager/GameManager.h"
-#include "Core/Manager/LevelManager.h"
 
 #include "Entities/EnemyEntities/Boss.h"
 #include "Entities/Projectile.h"
@@ -12,56 +13,36 @@
 
 // Boss Chase State
 
-BossChaseState::BossChaseState(float offSightDistance)
-    : offSightDistance(offSightDistance) {}
+void BossChaseState::Enter(Boss* enemy) {
+    enemy->StartPathFinding();
+}
 
-void BossChaseState::Enter(Enemy* enemy) {}
-
-void BossChaseState::Update(Enemy* enemy, float deltaTime) {
+void BossChaseState::Update(Boss* enemy, float deltaTime) {
     if (!enemy->GetTargetTeam()) return;
 
     Vector2 ePos = enemy->GetPosition();
     Vector2 pPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
     
-    if (Vector2Distance(ePos, pPos) > offSightDistance) {
+    if (enemy->IsBeyondDisengageDistance(pPos)) {
         enemy->ChangeState(enemy->GetIdleState());
         return;
     }
 
-    // Direct Vector Math
-    Vector2 dir = Vector2Subtract(pPos, ePos);
+    enemy->StartPathFinding();
+    IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
+    Vector2 moveTarget = pathAccess.GetNextMoveTarget(*enemy, pPos);
+    Vector2 dir = Vector2Subtract(moveTarget, ePos);
     if (Vector2Length(dir) > 0.0f) {
         dir = Vector2Normalize(dir);
     }
-    
-    float speed = enemy->GetSpeed();
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-    float levelWidth = GameManager::GetInstance().GetLevelWidth();
-    float levelHeight = GameManager::GetInstance().GetLevelHeight();
+    dir = pathAccess.GetLocalDirection(*enemy, dir);
 
-    // X Axis Wall Sliding
-    ePos.x += dir.x * speed * deltaTime;
-    // Bounds check
-    if (ePos.x < 0.0f) ePos.x = 0.0f;
-    if (ePos.x > levelWidth) ePos.x = levelWidth;
-    
-    enemy->SetPosition(ePos);
-    if (levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox())) {
-        ePos.x -= dir.x * speed * deltaTime; // Revert X
-        enemy->SetPosition(ePos);
-    }
-
-    // Y Axis Wall Sliding
-    ePos.y += dir.y * speed * deltaTime;
-    // Bounds check
-    if (ePos.y < 0.0f) ePos.y = 0.0f;
-    if (ePos.y > levelHeight) ePos.y = levelHeight;
-    
-    enemy->SetPosition(ePos);
-    if (levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox())) {
-        ePos.y -= dir.y * speed * deltaTime; // Revert Y
-        enemy->SetPosition(ePos);
-    }
+    EnemyCollision::MoveAgainstWalls(
+        *enemy,
+        Vector2Scale(dir, enemy->GetSpeed() * deltaTime),
+        pathAccess,
+        EnemyWallResponse::Slide
+    );
 
     // Handle Attack Cooldown
     if (enemy->GetAttackCooldown() > 0.0f) {
@@ -69,35 +50,40 @@ void BossChaseState::Update(Enemy* enemy, float deltaTime) {
         enemy->SetAttackCooldown(remainingCooldown > 0.0f ? remainingCooldown : 0.0f);
     }
     
-    if (Boss* boss = dynamic_cast<Boss*>(enemy)) {
-        float skillCd = boss->GetBossSkillCooldown() - deltaTime;
-        boss->SetBossSkillCooldown(skillCd);
-        if (skillCd <= 0.0f) {
-            boss->ChangeState(boss->GetBossRangedAttackState());
-            return;
-        }
+    float skillCd = enemy->GetBossSkillCooldown() - deltaTime;
+    enemy->SetBossSkillCooldown(skillCd);
+    if (skillCd <= 0.0f) {
+        enemy->ChangeState(enemy->GetBossRangedAttackState());
+        return;
     }
 
     // Check collision with Player for overlap resolution and damage
-    if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTargetTeam()->GetActivePaladin()->GetBoundingBox())) {
+    Paladin* activePaladin = enemy->GetTargetTeam()->GetActivePaladin();
+    if (EnemyCollision::CheckPlayerCollision(*enemy, *activePaladin)) {
         // Attack if cooldown allows
         if (enemy->GetAttackCooldown() <= 0.0f) {
-            enemy->GetTargetTeam()->GetActivePaladin()->TakeDamage(enemy->GetDamage());
+            activePaladin->TakeDamage(enemy->GetDamage());
             enemy->ResetAttackCooldown();
         }
         
         // Separation knockback (push enemy away from player to prevent freeze/deadlock)
+        ePos = enemy->GetPosition();
         Vector2 pushDir = Vector2Subtract(ePos, pPos);
         if (Vector2Length(pushDir) == 0.0f) pushDir = {1.0f, 0.0f}; // Fallback if exactly on top
         pushDir = Vector2Normalize(pushDir);
-        
-        ePos.x += pushDir.x * 20.0f;
-        ePos.y += pushDir.y * 20.0f;
-        enemy->SetPosition(ePos);
+
+        EnemyCollision::MoveAgainstWalls(
+            *enemy,
+            Vector2Scale(pushDir, 20.0f),
+            pathAccess,
+            EnemyWallResponse::Slide
+        );
     }
 }
 
-void BossChaseState::Exit(Enemy* enemy) {}
+void BossChaseState::Exit(Boss* enemy) {
+    enemy->EndPathFinding();
+}
 
 // Boss Ranged Attack State
 void BossRangedAttackState::Enter(Enemy* enemy) {

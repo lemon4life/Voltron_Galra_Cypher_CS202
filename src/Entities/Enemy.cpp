@@ -1,17 +1,24 @@
 #include "Entities/Enemy.h"
+#include "AI/EnemyCollision.h"
 #include "Core/Manager/TeamManager.h"
-#include "Entities/Player/Paladin.h"
-#include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
-#include "Core/Manager/LevelManager.h"
-#include <iostream>
 #include "raymath.h"
 
-Enemy::Enemy(Vector2 pos, TeamManager* t, IEntityRemovalAccess* removalAccess)
+Enemy::Enemy(
+    Vector2 pos,
+    TeamManager* t,
+    IEntityRemovalAccess& removalAccess,
+    IEnemyPathAccess& pathAccess
+)
     : GameObject(pos), health(100), maxHealth(100), speed(100.f), damage(15),
-      attackCooldown(0.1f), baseAttackCooldown(0.1f), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
-      targetTeam(t), currentState(nullptr), removalAccess(removalAccess), knockbackVelocity{0.0f, 0.0f}
-{}
+      attackCooldown(0.1f), baseAttackCooldown(0.1f), dazeDuration(2.0f),
+      size({32.0f, 32.0f}),
+      knockbackVelocity{0.0f, 0.0f}, enemyType(EnemyType::GRUNT),
+      targetTeam(t), currentState(nullptr), removalAccess(removalAccess),
+      pathAccess(pathAccess)
+{
+    dazeState = std::make_unique<EnemyDazeState>();
+}
 
 
 Enemy::Enemy(
@@ -21,15 +28,22 @@ Enemy::Enemy(
     float ispeed,
     int idamage,
     float iattackCooldown,
-    IEntityRemovalAccess* removalAccess
+    IEntityRemovalAccess& removalAccess,
+    IEnemyPathAccess& pathAccess
 )
-    : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed), damage(idamage),
-      attackCooldown(iattackCooldown), baseAttackCooldown(iattackCooldown), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
-      targetTeam(t), currentState(nullptr), removalAccess(removalAccess), knockbackVelocity{0.0f, 0.0f}
-{}
+    : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed),
+      damage(idamage), attackCooldown(iattackCooldown),
+      baseAttackCooldown(iattackCooldown), dazeDuration(2.0f),
+      size({32.0f, 32.0f}),
+      knockbackVelocity{0.0f, 0.0f}, enemyType(EnemyType::GRUNT),
+      targetTeam(t), currentState(nullptr), removalAccess(removalAccess),
+      pathAccess(pathAccess)
+{
+    dazeState = std::make_unique<EnemyDazeState>();
+}
 
 Enemy::~Enemy() {
-
+    EndPathFinding();
 }
 
 // void Enemy::Update(float deltaTime) {
@@ -74,9 +88,7 @@ void Enemy::TakeDamage(int amount) {
 
     if (health <= 0 && !deathNotified) {
         deathNotified = true;
-        if (removalAccess) {
-            removalAccess->QueueRemoval(this);
-        }
+        removalAccess.QueueRemoval(this);
     }
 }
 
@@ -85,13 +97,22 @@ Rectangle Enemy::GetBoundingBox() const {
 }
 
 bool Enemy::CheckCollision(const std::vector<GameObject*>& entities) const {
-    Rectangle myBox = GetBoundingBox();
-    for (auto* entity : entities) {
-        if (entity != this && CheckCollisionRecs(myBox, entity->GetBoundingBox())) {
-            return true;
-        }
-    }
-    return false;
+    return EnemyCollision::CheckAnyEnemyCollision(*this, entities);
+}
+
+void Enemy::StartPathFinding() {
+    if (usePathFinding) return;
+
+    usePathFinding = true;
+    pathAccess.BeginPathFinding(*this);
+}
+
+void Enemy::EndPathFinding() {
+    if (!usePathFinding) return;
+
+    pathAccess.EndPathFinding(*this);
+    usePathFinding = false;
+    ClearTargetPosition();
 }
 
 void Enemy::ApplyKnockback(Vector2 dir, float force) {
@@ -104,28 +125,18 @@ void Enemy::UpdateKnockback(float deltaTime) {
         knockbackVelocity.x -= knockbackVelocity.x * 15.0f * deltaTime;
         knockbackVelocity.y -= knockbackVelocity.y * 15.0f * deltaTime;
         
-        Vector2 currentPos = GetPosition();
-        LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-        float levelWidth = GameManager::GetInstance().GetLevelWidth();
-        float levelHeight = GameManager::GetInstance().GetLevelHeight();
-        
-        currentPos.x += knockbackVelocity.x * deltaTime;
-        if (currentPos.x < 0.0f) currentPos.x = 0.0f;
-        if (currentPos.x > levelWidth) currentPos.x = levelWidth;
-        SetPosition(currentPos);
-        if (levelManager && levelManager->IsSolidCollision(GetBoundingBox())) {
-            currentPos.x -= knockbackVelocity.x * deltaTime;
-            SetPosition(currentPos);
+        EnemyMoveResult moveResult = EnemyCollision::MoveAgainstWalls(
+            *this,
+            Vector2Scale(knockbackVelocity, deltaTime),
+            pathAccess,
+            EnemyWallResponse::Slide
+        );
+
+        if (moveResult.blockedX) {
             knockbackVelocity.x = 0.0f;
         }
-        
-        currentPos.y += knockbackVelocity.y * deltaTime;
-        if (currentPos.y < 0.0f) currentPos.y = 0.0f;
-        if (currentPos.y > levelHeight) currentPos.y = levelHeight;
-        SetPosition(currentPos);
-        if (levelManager && levelManager->IsSolidCollision(GetBoundingBox())) {
-            currentPos.y -= knockbackVelocity.y * deltaTime;
-            SetPosition(currentPos);
+
+        if (moveResult.blockedY) {
             knockbackVelocity.y = 0.0f;
         }
     } else {
