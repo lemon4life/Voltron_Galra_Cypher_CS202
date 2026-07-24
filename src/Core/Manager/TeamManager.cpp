@@ -5,11 +5,7 @@
 
 TeamManager::TeamManager()
     : activeIndex(0),
-      sharedArmor(50),
-      maxSharedArmor(50),
-      sharedUltimateDecibels(0.0f),
-      timeSinceLastDamage(0.0f),
-      armorRegenTimer(0.0f)
+      sharedUltimateDecibels(0.0f)
 {
 }
 
@@ -53,6 +49,44 @@ void TeamManager::SwapCharacter() {
     // Transfer position and aim target
     newActive->SetPosition(oldActive->GetPosition());
     newActive->SetAimTarget(oldActive->GetAimTarget());
+    newActive->TriggerSwapParryWindow();
+    
+    NotifyObservers();
+}
+
+void TeamManager::SwapDueToDeath() {
+    if (team.size() <= 1) return;
+    
+    Paladin* deadActive = GetActivePaladin();
+    if (!deadActive) return;
+    
+    // Move to the back of the team queue
+    team.erase(team.begin() + activeIndex);
+    team.push_back(deadActive);
+    
+    // activeIndex is now effectively pointing to the "next" character in the old array
+    // We need to find the first alive character starting from 0 (since we shifted everything left)
+    int attempts = 0;
+    int nextIndex = 0;
+    bool foundAlive = false;
+    
+    while (attempts < team.size()) {
+        if (team[nextIndex]->GetHealth() > 0) {
+            foundAlive = true;
+            break;
+        }
+        nextIndex = (nextIndex + 1) % team.size();
+        attempts++;
+    }
+    
+    if (!foundAlive) return;
+    
+    activeIndex = nextIndex;
+    Paladin* newActive = GetActivePaladin();
+    
+    // Transfer position and aim target
+    newActive->SetPosition(deadActive->GetPosition());
+    newActive->SetAimTarget(deadActive->GetAimTarget());
     
     NotifyObservers();
 }
@@ -60,59 +94,13 @@ void TeamManager::SwapCharacter() {
 void TeamManager::Update(float deltaTime) {
     if (team.empty()) return;
 
-    // Check if current active paladin is dead
-    Paladin* active = GetActivePaladin();
-    if (active && active->GetHealth() <= 0) {
-        Paladin* deadPaladin = active;
-        
-        // Move to the back of the team queue
-        team.erase(team.begin() + activeIndex);
-        team.push_back(deadPaladin);
-        
-        // Find the next available living Paladin
-        int attempts = 0;
-        bool foundAlive = false;
-        int nextIndex = activeIndex;
-        while (attempts < team.size()) {
-            if (nextIndex >= team.size()) nextIndex = 0;
-            if (team[nextIndex]->GetHealth() > 0) {
-                foundAlive = true;
-                break;
-            }
-            nextIndex++;
-            attempts++;
-        }
-
-        if (!foundAlive) {
-            activeIndex = 0; // Prevent out of bounds
-            GameManager::GetInstance().SetState(GameState::GAMEOVER);
-            return;
-        }
-
-        activeIndex = nextIndex;
-        Paladin* newActive = GetActivePaladin();
-        newActive->SetPosition(deadPaladin->GetPosition());
-        newActive->SetAimTarget(deadPaladin->GetAimTarget());
-        
-        NotifyObservers();
-    }
+    // Check if current active paladin is dead is now handled by PlayerDownState deferred logic.
 
     if (IsKeyPressed(KEY_TAB)) {
         SwapCharacter();
     }
 
-    // Handle Armor Regeneration
-    timeSinceLastDamage += deltaTime;
-    if (timeSinceLastDamage >= 3.0f && sharedArmor < maxSharedArmor) {
-        armorRegenTimer += deltaTime;
-        // Regenerate 10 armor per second (1 point per 0.1s)
-        if (armorRegenTimer >= 0.1f) {
-            sharedArmor += 1;
-            armorRegenTimer = 0.0f;
-            if (sharedArmor > maxSharedArmor) sharedArmor = maxSharedArmor;
-            NotifyObservers();
-        }
-    }
+
 
     // Only update the active paladin
     GetActivePaladin()->Update(deltaTime);
@@ -123,27 +111,7 @@ void TeamManager::Draw() {
     GetActivePaladin()->Draw();
 }
 
-void TeamManager::RecordDamageEvent() {
-    timeSinceLastDamage = 0.0f;
-}
 
-int TeamManager::TakeArmorDamage(int amount) {
-    RecordDamageEvent();
-    
-    if (sharedArmor > 0) {
-        sharedArmor -= amount;
-        if (sharedArmor < 0) {
-            int remainingDamage = -sharedArmor;
-            sharedArmor = 0;
-            NotifyObservers();
-            return remainingDamage;
-        }
-        NotifyObservers();
-        return 0; // Completely absorbed by armor
-    }
-    
-    return amount;
-}
 
 void TeamManager::NotifyObservers() {
     Paladin* active = GetActivePaladin();
@@ -153,6 +121,12 @@ void TeamManager::NotifyObservers() {
         // Observers will need to be updated to handle the new stats format.
         // We will pass the active paladin's HP and the shared armor.
         // Note: isPlayingAsLance boolean flag is now obsolete.
-        observer->OnPlayerStatsChanged(active->GetHealth(), active->GetMaxHealth(), sharedArmor, maxSharedArmor, activeIndex == 0);
+        observer->OnPlayerStatsChanged(active->GetHealth(), active->GetMaxHealth(), 0, 0, activeIndex == 0);
     }
+}
+bool TeamManager::IsTeamDead() const {
+    for (auto* paladin : team) {
+        if (paladin->GetHealth() > 0) return false;
+    }
+    return true;
 }

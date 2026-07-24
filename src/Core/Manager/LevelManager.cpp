@@ -11,33 +11,16 @@
 #include <algorithm>
 
 namespace {
+    constexpr int TILE_SIZE_PIXELS = 32;
     constexpr float TILE_SIZE = 32.0f;
     constexpr float COLLISION_EDGE_PADDING = 0.001f;
-
-    bool IsBlockingTileID(int tileID) {
-        if (tileID == 0) return true;
-        if (tileID >= 1 && tileID <= 14) return true;
-        return false;
-    }
-
-    void CenterEntityOnPoint(GameObject* entity, Vector2 center) {
-        if (!entity) return;
-
-        Rectangle box = entity->GetBoundingBox();
-        Vector2 position = entity->GetPosition();
-        Vector2 boxCenter = {
-            box.x + box.width / 2.0f,
-            box.y + box.height / 2.0f
-        };
-
-        entity->SetPosition({
-            position.x + center.x - boxCenter.x,
-            position.y + center.y - boxCenter.y
-        });
-    }
+    constexpr float PARTIAL_WALL_WIDTH = 9.0f;
+    constexpr float RIGHT_PARTIAL_WALL_OFFSET = TILE_SIZE - PARTIAL_WALL_WIDTH;
+    constexpr int DRAW_PADDING_TILES = 20;
 }
 
-LevelManager::LevelManager() : gridRows(0), gridCols(0), levelWidth(0.0f), levelHeight(0.0f) {
+LevelManager::LevelManager()
+    : levelWidth(0.0f), levelHeight(0.0f), gridRows(0), gridCols(0) {
     tileset = LoadTexture("assets/tileset/Galra_ship_Tileset.png");
 }
 
@@ -63,7 +46,7 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
     bool isCSV = (filepath.length() >= 4 && filepath.substr(filepath.length() - 4) == ".csv");
 
     while (std::getline(file, line)) {
-        if (line.length() > 0 && line.back() == '\r') {
+        if (!line.empty() && line.back() == '\r') {
             line.pop_back(); // Handle Windows line endings
         }
 
@@ -94,20 +77,15 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
                         (float)mapGridLayer1.size() * TILE_SIZE + TILE_SIZE / 2.0f
                     };
 
-                    GameObject* entity = EntityFactory::CreateEntity(type, tileCenter, teamManager);
-                    if (entity != nullptr) {
+                    GameObject* entity = EntityFactory::CreateEntity(
+                        type,
+                        tileCenter,
+                        teamManager,
+                        GetLevelAccessBundle()
+                    );
+                    if (entity) {
                         AddEntity(entity);
                     }
-
-                    // GameObject* entity = EntityFactory::CreateEntity(type, tileCenter, teamManager);
-                    // if (entity != nullptr) {
-                    //     CenterEntityOnPoint(entity, tileCenter);
-                    //     if (IsValidSpawnLocation(entity)) {
-                    //         AddEntity(entity);
-                    //     } else {
-                    //         delete entity;
-                    //     }
-                    // }
                 }
                 row.push_back(tileID);
             }
@@ -133,7 +111,7 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
             if (file2.is_open()) {
                 int r = 0;
                 while (std::getline(file2, line) && r < mapGridLayer2.size()) {
-                    if (line.length() > 0 && line.back() == '\r') line.pop_back();
+                    if (!line.empty() && line.back() == '\r') line.pop_back();
                     std::stringstream ss(line);
                     std::string cellString;
                     int c = 0;
@@ -152,8 +130,8 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
     }
 
     gridRows = mapGridLayer1.size();
-    levelWidth = gridCols * 32.0f;
-    levelHeight = gridRows * 32.0f;
+    levelWidth = gridCols * TILE_SIZE;
+    levelHeight = gridRows * TILE_SIZE;
 
     // Entity spawning via LevelManager is temporarily disabled
     // because CSV map layer 1 only contains visual tile IDs.
@@ -182,20 +160,22 @@ void LevelManager::UpdateLevel(float deltaTime) {
 }
 
 void LevelManager::DrawLevel() {
-    int padding = 20;
-
-    // Calculate columns in the tileset (assuming each tile is 32x32)
-    int tilesetCols = tileset.width / 32;
+    int tilesetCols = tileset.width / TILE_SIZE_PIXELS;
     if (tilesetCols <= 0) tilesetCols = 1; // Fallback to avoid division by zero
 
     for (int layer = 1; layer <= 2; ++layer) {
         const auto& currentGrid = (layer == 1) ? mapGridLayer1 : mapGridLayer2;
         if (currentGrid.empty()) continue;
 
-        for (int r = -padding; r < gridRows + padding; ++r) {
-            for (int c = -padding; c < gridCols + padding; ++c) {
-                Rectangle destRec = { (float)c * 32.0f, (float)r * 32.0f, 32.0f, 32.0f };
-                Rectangle sourceRec = { 0.0f, 0.0f, 32.0f, 32.0f };
+        for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
+            for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
+                Rectangle destRec = {
+                    (float)c * TILE_SIZE,
+                    (float)r * TILE_SIZE,
+                    TILE_SIZE,
+                    TILE_SIZE
+                };
+                Rectangle sourceRec = { 0.0f, 0.0f, TILE_SIZE, TILE_SIZE };
 
                 int tileID = -1; // Default to empty
                 if (r >= 0 && c >= 0 && r < gridRows && c < currentGrid[r].size()) {
@@ -208,8 +188,8 @@ void LevelManager::DrawLevel() {
                     int index = tileID; // CSV IDs are already 0-based
                     int tileX = index % tilesetCols;
                     int tileY = index / tilesetCols;
-                    sourceRec.x = (float)tileX * 32.0f;
-                    sourceRec.y = (float)tileY * 32.0f;
+                    sourceRec.x = (float)tileX * TILE_SIZE;
+                    sourceRec.y = (float)tileY * TILE_SIZE;
                     DrawTexturePro(tileset, sourceRec, destRec, {0,0}, 0.0f, WHITE);
                 }
             }
@@ -222,24 +202,19 @@ void LevelManager::DrawLevel() {
 }
 
 void LevelManager::ClearLevel() {
+    pendingRemoval.clear();
+    enemyPathManager.Clear();
+
     for (auto* entity : levelEntities) {
-        if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
-            enemyPathManager.RemoveEnemy(enemy);
-            enemy->RemoveObserver(this);
-        }
         delete entity;
     }
     levelEntities.clear();
-    pendingRemoval.clear();
     mapGridLayer1.clear();
     mapGridLayer2.clear();
 }
 
 void LevelManager::AddEntity(GameObject* entity) {
     if (entity) {
-        if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
-            enemy->AddObserver(this);
-        }
         levelEntities.push_back(entity);
     }
 }
@@ -271,13 +246,23 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
                     return true; // Fully solid
                 } else if (tileID >= 1 && tileID <= 3) {
                     // Right 9px solid
-                    Rectangle solidPart = { (float)c * TILE_SIZE + 23.0f, (float)r * TILE_SIZE, 9.0f, TILE_SIZE };
+                    Rectangle solidPart = {
+                        (float)c * TILE_SIZE + RIGHT_PARTIAL_WALL_OFFSET,
+                        (float)r * TILE_SIZE,
+                        PARTIAL_WALL_WIDTH,
+                        TILE_SIZE
+                    };
                     if (CheckCollisionRecs(box, solidPart)) {
                         return true;
                     }
                 } else if (tileID >= 12 && tileID <= 14) {
                     // Left 9px solid
-                    Rectangle solidPart = { (float)c * TILE_SIZE, (float)r * TILE_SIZE, 9.0f, TILE_SIZE };
+                    Rectangle solidPart = {
+                        (float)c * TILE_SIZE,
+                        (float)r * TILE_SIZE,
+                        PARTIAL_WALL_WIDTH,
+                        TILE_SIZE
+                    };
                     if (CheckCollisionRecs(box, solidPart)) {
                         return true;
                     }
@@ -330,33 +315,9 @@ bool LevelManager::HasClearLineOfSight(
     return true;
 }
 
-bool LevelManager::IsValidSpawnLocation(Vector2 position) const {
-    // An enemy's bounding box is roughly 24x36, centered.
-    Rectangle spawnBox = { position.x - 12.0f, position.y - 18.0f, 24.0f, 36.0f };
-    return !IsSolidCollision(spawnBox);
-}
-
 bool LevelManager::IsValidSpawnLocation(const GameObject* entity) const {
     if (!entity) return false;
     return !IsSolidCollision(entity->GetBoundingBox());
-}
-
-bool LevelManager::IsWalkableTile(int x, int y) const {
-    if (x < 0 || y < 0 || y >= gridRows || x >= gridCols) {
-        return false;
-    }
-
-    int tileID1 = -1;
-    int tileID2 = -1;
-
-    if (y < (int)mapGridLayer1.size() && x < (int)mapGridLayer1[y].size()) {
-        tileID1 = mapGridLayer1[y][x];
-    }
-    if (y < (int)mapGridLayer2.size() && x < (int)mapGridLayer2[y].size()) {
-        tileID2 = mapGridLayer2[y][x];
-    }
-
-    return !IsBlockingTileID(tileID1) && !IsBlockingTileID(tileID2);
 }
 
 Vector2 LevelManager::WorldToTile(Vector2 worldPos) const {
@@ -374,16 +335,13 @@ Vector2 LevelManager::TileToWorld(int tileX, int tileY) const {
 }
 
 //////////////////////////////////////////////
-// Level Manager funcion for Enemy Observer
+// Narrow level-access capabilities used by entities.
 //////////////////////////////////////////////
 
 void LevelManager::ProcessPendingRemovals() {
-    for (Enemy* enemy : pendingRemoval) {
-        enemyPathManager.RemoveEnemy(enemy);
-
-        auto it = std::find(levelEntities.begin(), levelEntities.end(), enemy);
+    for (GameObject* entity : pendingRemoval) {
+        auto it = std::find(levelEntities.begin(), levelEntities.end(), entity);
         if (it != levelEntities.end()) {
-            enemy->RemoveObserver(this);
             delete *it;
             levelEntities.erase(it);
         }
@@ -391,18 +349,22 @@ void LevelManager::ProcessPendingRemovals() {
     pendingRemoval.clear();
 }
 
-void LevelManager::OnEnemyPathFind(Enemy* enemy) {
+void LevelManager::BeginPathFinding(PathfindingEnemy* enemy) {
     enemyPathManager.AddEnemy(enemy);
 }
 
-void LevelManager::OnEnemyPathFindEnded(Enemy* enemy) {
+void LevelManager::EndPathFinding(PathfindingEnemy* enemy) {
     enemyPathManager.RemoveEnemy(enemy);
 }
 
-void LevelManager::OnEnemyDied(Enemy* enemy) {
-    if (!enemy) return;
+void LevelManager::QueueRemoval(GameObject* entity) {
+    if (!entity) return;
 
-    if (std::find(pendingRemoval.begin(), pendingRemoval.end(), enemy) == pendingRemoval.end()) {
-        pendingRemoval.push_back(enemy);
+    if (std::find(levelEntities.begin(), levelEntities.end(), entity) == levelEntities.end()) {
+        return;
+    }
+
+    if (std::find(pendingRemoval.begin(), pendingRemoval.end(), entity) == pendingRemoval.end()) {
+        pendingRemoval.push_back(entity);
     }
 }

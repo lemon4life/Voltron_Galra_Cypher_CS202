@@ -42,7 +42,7 @@ public:
     
     void StartDialogue();
     void Update(float deltaTime);
-    void Draw();
+    void Draw(int screenWidth, int screenHeight);
     
     bool IsActive() const { return isDialogueActive; }
     bool IsMissionRequested() const { return missionRequested; }

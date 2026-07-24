@@ -2,11 +2,16 @@
 #include <vector>
 #include <string>
 #include "raylib.h"
+#include "Core/LevelAccess.h"
 #include "Entities/GameObject.h"
 #include "Core/Manager/EnemyPathManager.h"
+
 class TeamManager;
 
-class LevelManager : public IEnemyObserver {
+class LevelManager
+    : public IEntityRemovalAccess,
+      public IEnemyPathAccess,
+      public ILevelLineOfSightQuery {
 private:
     std::vector<GameObject*> levelEntities;
     float levelWidth;
@@ -17,9 +22,9 @@ private:
     std::vector<std::vector<int>> mapGridLayer2;
     Texture2D tileset;
 
-    // Data for Enemy Path Manger
+    // Enemy pathfinding and deferred entity removal.
     void ProcessPendingRemovals();
-    std::vector<Enemy*> pendingRemoval;
+    std::vector<GameObject*> pendingRemoval;
     EnemyPathManager enemyPathManager;
 
 public:
@@ -31,25 +36,27 @@ public:
     void UpdateLevel(float deltaTime);
     void ClearLevel();
     void AddEntity(GameObject* entity);
-    bool IsValidSpawnLocation(Vector2 position) const;
     bool IsValidSpawnLocation(const GameObject* entity) const;
     bool IsSolidCollision(Rectangle box) const;
-    bool HasClearLineOfSight(Vector2 start, Vector2 end, float projectileRadius = 5.0f) const;
 
-    bool IsWalkableTile(int x, int y) const;
     Vector2 WorldToTile(Vector2 worldPos) const;
     Vector2 TileToWorld(int tileX, int tileY) const;
 
     float GetLevelWidth() const { return levelWidth; }
     float GetLevelHeight() const { return levelHeight; }
     EnemyPathManager& GetEnemyPathManager() { return enemyPathManager; }
-    int GetGridRows() const { return gridRows; }
-    int GetGridCols() const { return gridCols; }
+    LevelAccessBundle GetLevelAccessBundle() {
+        return { this, this, this };
+    }
 
-    // Override functions of Enemy Observer
-    void OnEnemyPathFind(Enemy* enemy) override;
-    void OnEnemyPathFindEnded(Enemy* enemy) override;
-    void OnEnemyDied(Enemy* enemy) override;
+    bool HasClearLineOfSight(
+        Vector2 start,
+        Vector2 end,
+        float projectileRadius = 5.0f
+    ) const override;
+    void QueueRemoval(GameObject* entity) override;
+    void BeginPathFinding(PathfindingEnemy* enemy) override;
+    void EndPathFinding(PathfindingEnemy* enemy) override;
 
     const std::vector<GameObject*>& GetEntities() const { return levelEntities; }
 };

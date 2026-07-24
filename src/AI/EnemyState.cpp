@@ -86,10 +86,29 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime) {
     
     // Check collision with Player for overlap resolution and damage
     if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTargetTeam()->GetActivePaladin()->GetBoundingBox())) {
-        // Attack if cooldown allows
-        if (enemy->GetAttackCooldown() <= 0.0f) {
-            enemy->GetTargetTeam()->GetActivePaladin()->TakeDamage(enemy->GetDamage());
+        Paladin* activePaladin = enemy->GetTargetTeam()->GetActivePaladin();
+        if (activePaladin->CanParryAttack(ePos)) {
+            activePaladin->TriggerParrySuccess(enemy);
+            activePaladin->IncrementParryCount();
+            GameManager::GetInstance().TriggerHitstop(0.3f);
+            GameManager::GetInstance().AddImpactEffect({pPos.x, pPos.y}); // Visual spark on block!
+            enemy->SetAttackCooldown(2.0f); // Stun
+            
+            // Massive pushback
+            Vector2 pushDir = Vector2Subtract(ePos, pPos);
+            if (Vector2Length(pushDir) == 0.0f) pushDir = {1.0f, 0.0f};
+            pushDir = Vector2Normalize(pushDir);
+            ePos.x += pushDir.x * 60.0f;
+            ePos.y += pushDir.y * 60.0f;
+            enemy->SetPosition(ePos);
+        } else if (enemy->GetAttackCooldown() <= 0.0f) {
+            activePaladin->TakeDamage(enemy->GetDamage());
             enemy->ResetAttackCooldown();
+            
+            // Break parry state if they took damage (limit exceeded)
+            if (activePaladin->IsParrying()) {
+                activePaladin->ChangeState(activePaladin->GetIdleState());
+            }
         }
         
         // Separation knockback (push enemy away from player to prevent freeze/deadlock)

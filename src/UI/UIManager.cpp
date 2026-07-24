@@ -24,33 +24,61 @@ void UIManager::Initialize() {
     statsShellBack = LoadTexture("assets/UI/Team_StatsShell_Back.png");
 }
 
-void UIManager::DrawHUD(int screenWidth, int screenHeight) {
+void UIManager::DrawHUD(
+    int screenWidth,
+    int screenHeight,
+    Vector2 mousePosition
+) {
     if (!teamManager) return;
-    DrawTeamHUD(teamManager, screenWidth, screenHeight);
+    DrawTeamHUD(teamManager, screenWidth, screenHeight, mousePosition);
 }
 
-// Helper for cropping texture to prevent stretching
-void DrawTextureCropped(Texture2D texture, Rectangle destRec, Color tint) {
+void DrawPortrait(Paladin* p, Rectangle destRec) {
+    if (!p) return;
+    Texture2D texture = p->GetIdleTexture();
     if (texture.id == 0) return;
     
+    // Idle sprite has 4 frames
+    float frameWidth = (float)texture.width / 4.0f;
+    float frameHeight = (float)texture.height;
+    
+    // We only want the top half of the first frame
+    Rectangle baseSourceRec = { 0.0f, 2.0f, frameWidth, frameHeight / 2.0f + 2 };
+    
     float destAspect = destRec.width / destRec.height;
-    float srcAspect = (float)texture.width / (float)texture.height;
+    float srcAspect = baseSourceRec.width / baseSourceRec.height;
     
     Rectangle sourceRec;
     if (destAspect > srcAspect) {
         // Dest is wider than source. Crop top/bottom.
-        float cropHeight = texture.width / destAspect;
-        sourceRec = { 0.0f, (texture.height - cropHeight) / 2.0f, (float)texture.width, cropHeight };
+        float cropHeight = baseSourceRec.width / destAspect;
+        sourceRec = { 
+            baseSourceRec.x, 
+            baseSourceRec.y + (baseSourceRec.height - cropHeight) / 2.0f, 
+            baseSourceRec.width, 
+            cropHeight 
+        };
     } else {
         // Dest is taller than source. Crop left/right.
-        float cropWidth = texture.height * destAspect;
-        sourceRec = { (texture.width - cropWidth) / 2.0f, 0.0f, cropWidth, (float)texture.height };
+        float cropWidth = baseSourceRec.height * destAspect;
+        sourceRec = { 
+            baseSourceRec.x + (baseSourceRec.width - cropWidth) / 2.0f, 
+            baseSourceRec.y, 
+            cropWidth, 
+            baseSourceRec.height 
+        };
     }
     
+    Color tint = p->GetHealth() <= 0 ? DARKGRAY : WHITE;
     DrawTexturePro(texture, sourceRec, destRec, {0,0}, 0.0f, tint);
 }
 
-void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight) {
+void UIManager::DrawTeamHUD(
+    TeamManager* team,
+    int screenWidth,
+    int screenHeight,
+    Vector2 mousePosition
+) {
     if (!team) return;
     Paladin* active = team->GetActivePaladin();
     if (!active) return;
@@ -61,10 +89,7 @@ void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight
 
     // --- Pause Button (Top Left) ---
     Rectangle pauseBtn = { 10.0f, 10.0f, 30.0f, 30.0f };
-    Vector2 rawMouse = GetMousePosition();
-    Vector2 scaledMouse = { rawMouse.x * ((float)screenWidth / 1366.0f), rawMouse.y * ((float)screenHeight / 1024.0f) };
-    
-    bool isHovered = CheckCollisionPointRec(scaledMouse, pauseBtn);
+    bool isHovered = CheckCollisionPointRec(mousePosition, pauseBtn);
     DrawRectangleRec(pauseBtn, isHovered ? Fade(GRAY, 0.8f) : Fade(BLACK, 0.5f));
     DrawRectangleLinesEx(pauseBtn, 2.0f, WHITE);
     DrawRectangle(pauseBtn.x + 8, pauseBtn.y + 6, 4, 18, WHITE);
@@ -108,21 +133,14 @@ void UIManager::DrawTeamHUD(TeamManager* team, int screenWidth, int screenHeight
     }
 
     // --- Layer 1: Portraits ---
-    // (Portraits currently disabled as per requirements)
-    /*
-    Color actTint = active->GetHealth() <= 0 ? DARKGRAY : WHITE;
-    Texture2D actPortrait = active->GetIdleTexture();
-    DrawTextureCropped(actPortrait, {startX + 4, startY + 4, 90, 42}, actTint);
+    DrawPortrait(active, {startX + 4, startY + 4, 90, 42});
 
     if (offField1) {
-        Color tint1 = offField1->GetHealth() <= 0 ? DARKGRAY : WHITE;
-        DrawTextureCropped(offField1->GetIdleTexture(), {startX + 226, startY + 4, 60, 28}, tint1);
+        DrawPortrait(offField1, {startX + 226, startY + 4, 60, 28});
     }
     if (offField2) {
-        Color tint2 = offField2->GetHealth() <= 0 ? DARKGRAY : WHITE;
-        DrawTextureCropped(offField2->GetIdleTexture(), {startX + 354, startY + 4, 60, 28}, tint2);
+        DrawPortrait(offField2, {startX + 354, startY + 4, 60, 28});
     }
-    */
 
     // Helper lambda for HP
     auto DrawHP = [&](Paladin* p, float x, float y, float maxW, float h) {

@@ -4,7 +4,7 @@
 Hunk::Hunk(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, 300, 150.0f) // Hunk is tankier: 300 HP, 150 Max Ex
 {
-    speed = 110.0f;
+    speed = 150.0f;
     attackCooldown = 0.5f; // Slower movement
     currentWeapon = new LaserAttackStrategy(sprites.weapon, sprites.muzzleFlash, sprites.bullet, sprites.impact);
     texture = GetIdleTexture();

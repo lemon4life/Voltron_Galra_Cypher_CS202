@@ -3,6 +3,7 @@
 #include "Core/Manager/AudioManager.h"
 #include "Entities/Enemy.h"
 #include <algorithm>
+#include <cstdlib>
 
 MeleeAttackStrategy::MeleeAttackStrategy(Texture2D weapon, Texture2D att1, Texture2D att2) 
     : weaponTex(weapon), attack1Tex(att1), attack2Tex(att2), comboStep(0), nextComboStep(1), frameTimer(0.0f), currentFrame(0), inputBuffered(false) 
@@ -16,7 +17,7 @@ void MeleeAttackStrategy::Attack(Vector2 playerPos) {
     lastPlayerPos = playerPos;
     if (comboStep == 0) {
         // Start combo
-        comboStep = nextComboStep;
+        comboStep = (rand() % 2) + 1;
         currentFrame = 0;
         frameTimer = 0.0f;
         inputBuffered = false;
@@ -81,16 +82,14 @@ void MeleeAttackStrategy::Update(float deltaTime) {
         // Handle animation end & combo transition
         if (currentFrame >= 4) {
             if (inputBuffered) {
-                // Chain to the alternating attack
-                comboStep = (comboStep == 1) ? 2 : 1;
-                nextComboStep = (comboStep == 1) ? 2 : 1; // Prepare the subsequent attack
+                // Chain to a random attack
+                comboStep = (rand() % 2) + 1;
                 currentFrame = 0;
                 inputBuffered = false;
                 enemiesHit.clear();
                 AudioManager::GetInstance().PlaySoundEffect("swing");
             } else {
-                // End combo, but set the next attack to alternate
-                nextComboStep = (comboStep == 1) ? 2 : 1;
+                // End combo
                 comboStep = 0;
                 currentFrame = 0;
                 inputBuffered = false;
@@ -124,7 +123,7 @@ void MeleeAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
     
     Rectangle source = { currentFrame * frameWidth, 0.0f, frameWidth, (float)activeTex.height };
     if (facingLeft) {
-        source.width = -source.width; 
+        source.height = -source.height; 
     }
 
     // Since this is a swing animation, we'll draw it directly centered on the player 

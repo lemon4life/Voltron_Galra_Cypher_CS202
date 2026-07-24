@@ -7,6 +7,7 @@ void PlayerAttackState::Enter(Paladin* player) {
 
     // Trigger the attack
     player->Attack();
+    player->ResetParryCount();
 }
 
 #include "Combat/MeleeAttackStrategy.h"

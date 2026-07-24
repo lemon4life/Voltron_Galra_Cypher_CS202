@@ -9,6 +9,8 @@
 
 #include <algorithm>
 
+
+
 namespace {
     constexpr int DIVER_MAX_HEALTH = 140;
     constexpr float DIVER_BASE_SPEED = 210.0f;
@@ -28,15 +30,24 @@ namespace {
     constexpr Vector2 DIVER_SIZE = { 24.0f, 24.0f };
 }
 
-EnemyDiver::EnemyDiver(Vector2 position, TeamManager* targetTeam)
-    : Enemy(
+EnemyDiver::EnemyDiver(
+    Vector2 position,
+    TeamManager* targetTeam,
+    IEntityRemovalAccess* removalAccess,
+    IEnemyPathAccess* pathAccess,
+    ILevelLineOfSightQuery* lineOfSightQuery
+)
+    : PathfindingEnemy(
           position,
           targetTeam,
           DIVER_MAX_HEALTH,
           DIVER_BASE_SPEED,
           DIVER_DAMAGE,
-          DIVER_ATTACK_COOLDOWN
-      ) {
+          DIVER_ATTACK_COOLDOWN,
+          removalAccess,
+          pathAccess
+      ),
+      lineOfSightQuery(lineOfSightQuery) {
     idleState = std::make_unique<EnemyIdleState>(DIVER_SIGHT_DISTANCE);
     chaseState = std::make_unique<EnemyDiverChaseState>(DIVER_OFF_SIGHT_DISTANCE);
     readyState = std::make_unique<EnemyDiverReadyState>();
@@ -48,8 +59,6 @@ EnemyDiver::EnemyDiver(Vector2 position, TeamManager* targetTeam)
 }
 
 EnemyDiver::~EnemyDiver() {
-    EndPathFinding();
-
     if (currentState) {
         currentState->Exit(this);
     }
@@ -57,6 +66,7 @@ EnemyDiver::~EnemyDiver() {
 }
 
 void EnemyDiver::Update(float deltaTime) {
+    UpdateKnockback(deltaTime);
     if (currentState) {
         currentState->Update(this, deltaTime);
     }
@@ -92,19 +102,19 @@ EnemyDiverLungingState* EnemyDiver::GetLungingState() {
     return lungingState.get();
 }
 
-bool EnemyDiver::CanEnterReadyState(LevelManager* levelManager) const {
-    return attackCooldown <= 0.0f && IsWithinClearDiveRange(levelManager);
+bool EnemyDiver::CanEnterReadyState() const {
+    return attackCooldown <= 0.0f && IsWithinClearDiveRange();
 }
 
-bool EnemyDiver::IsWithinClearDiveRange(LevelManager* levelManager) const {
+bool EnemyDiver::IsWithinClearDiveRange() const {
     Paladin* target = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
-    if (!target || !levelManager) return false;
+    if (!target || !lineOfSightQuery) return false;
 
     if (Vector2Distance(position, target->GetPosition()) > DIVE_STOP_DISTANCE) {
         return false;
     }
 
-    return levelManager->HasClearLineOfSight(
+    return lineOfSightQuery->HasClearLineOfSight(
         position,
         target->GetPosition(),
         GetCollisionClearanceRadius()
@@ -137,23 +147,4 @@ float EnemyDiver::GetDiveRecoveryDuration() const {
 
 float EnemyDiver::GetCollisionClearanceRadius() const {
     return std::max(size.x, size.y) / 2.0f;
-}
-
-void EnemyDiver::StartPathFinding() {
-    if (IsPathFinding()) return;
-    SetPathFinding(true);
-
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFind(this);
-    }
-}
-
-void EnemyDiver::EndPathFinding() {
-    if (!IsPathFinding()) return;
-    SetPathFinding(false);
-    ClearTargetPosition();
-
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFindEnded(this);
-    }
 }

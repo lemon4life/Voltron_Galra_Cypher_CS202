@@ -6,6 +6,7 @@
 #include "Entities/Player/PlaceholderPaladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
+#include "Core/Manager/AssetManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Combat/MeleeAttackStrategy.h"
 #include "Combat/RangedAttackStrategy.h"
@@ -15,14 +16,16 @@
 #include "Entities/NPC.h"
 #include "raymath.h"
 
-// Init Window config
-// Window and Game Resolutions (4:3 aspect ratio landscape approx)
-const int WINDOW_WIDTH = 1366;
-const int WINDOW_HEIGHT = 1024;
+#include <algorithm>
+#include <cmath>
 
-const int GAME_WIDTH = 683;
-const int GAME_HEIGHT = 512;
-const int BASE_FPS = 120;
+namespace {
+    constexpr int INITIAL_WINDOW_WIDTH = 1366;
+    constexpr int INITIAL_WINDOW_HEIGHT = 1024;
+    constexpr int GAME_WIDTH = 683;
+    constexpr int GAME_HEIGHT = 512;
+    constexpr int BASE_FPS = 120;
+}
 
 void ResetGame(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager) {
     teamManager->GetActivePaladin()->SetPosition({ 256.0f, 256.0f });
@@ -44,12 +47,15 @@ void ResetDemoGame(TeamManager* teamManager, LevelManager* levelManager, WaveMan
 
 int main() {
     // Initialize Window
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Voltron: Mission Galra Cypher");
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(
+        INITIAL_WINDOW_WIDTH,
+        INITIAL_WINDOW_HEIGHT,
+        "Voltron: Mission Galra Cypher"
+    );
 
     // Initialize AudioManager Singleton (Initializes Audio Device)
     AudioManager::GetInstance();
-
-    // Load Audio
     AudioManager::GetInstance().Initialize();
 
     // Initialize Dialogue Assets
@@ -58,57 +64,17 @@ int main() {
     // Start background music
     AudioManager::GetInstance().PlayMusicTrack("bgm");
 
-    CharacterSprites lanceSprites;
-    lanceSprites.idle = LoadTexture("assets/sprites/Lance/Idle_Sheet.png");
-    lanceSprites.run = LoadTexture("assets/sprites/Lance/Run_Sheet.png");
-    lanceSprites.weapon = LoadTexture("assets/sprites/Lance/Weapon_Static.png");
-    lanceSprites.muzzleFlash = LoadTexture("assets/sprites/Lance/Muzzle_Flash.png");
-    lanceSprites.bullet = LoadTexture("assets/sprites/Lance/Bullet.png");
-    lanceSprites.impact = LoadTexture("assets/sprites/Lance/Bullet_Impact.png");
-    lanceSprites.dashFront = LoadTexture("assets/sprites/Lance/Dash_front.png");
-    lanceSprites.dashBack = LoadTexture("assets/sprites/Lance/Dash_back.png");
-    
-    SetTextureFilter(lanceSprites.weapon, TEXTURE_FILTER_POINT);
-    SetTextureFilter(lanceSprites.muzzleFlash, TEXTURE_FILTER_POINT);
-    SetTextureFilter(lanceSprites.bullet, TEXTURE_FILTER_POINT);
-    SetTextureFilter(lanceSprites.impact, TEXTURE_FILTER_POINT);
-    SetTextureFilter(lanceSprites.dashFront, TEXTURE_FILTER_POINT);
-    SetTextureFilter(lanceSprites.dashBack, TEXTURE_FILTER_POINT);
-    GameManager::GetInstance().SetBulletImpactTexture(lanceSprites.impact);
-
-    CharacterSprites keithSprites;
-    keithSprites.idle = LoadTexture("assets/sprites/Keith/Idle_Sheet.png");
-    keithSprites.run = LoadTexture("assets/sprites/Keith/Run_Sheet.png");
-    keithSprites.weapon = LoadTexture("assets/sprites/Keith/Weapon_Static.png");
-    keithSprites.attack1 = LoadTexture("assets/sprites/Keith/Attack_1.png");
-    keithSprites.attack2 = LoadTexture("assets/sprites/Keith/Attack_2.png");
-    keithSprites.dashFront.id = 0;
-    keithSprites.dashBack.id = 0;
-    
-    SetTextureFilter(keithSprites.attack1, TEXTURE_FILTER_POINT);
-    SetTextureFilter(keithSprites.attack2, TEXTURE_FILTER_POINT);
+    // Initialize AssetManager and load character textures
+    AssetManager::GetInstance().LoadCharacterAssets();
+    GameManager::GetInstance().SetBulletImpactTexture(AssetManager::GetInstance().GetTexture("Lance_Impact"));
 
     // Initialize TeamManager and Paladins
     Vector2 startPos = { (float)GAME_WIDTH / 2.0f, (float)GAME_HEIGHT / 2.0f };
     TeamManager* teamManager = new TeamManager();
-    Lance* lance = new Lance(startPos, lanceSprites);
-    Keith* keith = new Keith(startPos, keithSprites);
-    CharacterSprites hunkSprites;
-    hunkSprites.idle = LoadTexture("assets/sprites/Hunk/Idle_Sheet.png");
-    hunkSprites.run = LoadTexture("assets/sprites/Hunk/Run_Sheet.png");
-    hunkSprites.weapon = LoadTexture("assets/sprites/Hunk/Weapon_Static.png");
-    hunkSprites.muzzleFlash = LoadTexture("assets/sprites/Hunk/Muzzle.png");
-    hunkSprites.bullet = LoadTexture("assets/sprites/Hunk/Beam.png");
-    hunkSprites.impact = LoadTexture("assets/sprites/Hunk/Beam_Impact.png");
-    hunkSprites.dashFront.id = 0;
-    hunkSprites.dashBack.id = 0;
     
-    SetTextureFilter(hunkSprites.weapon, TEXTURE_FILTER_POINT);
-    SetTextureFilter(hunkSprites.muzzleFlash, TEXTURE_FILTER_POINT);
-    SetTextureFilter(hunkSprites.bullet, TEXTURE_FILTER_POINT);
-    SetTextureFilter(hunkSprites.impact, TEXTURE_FILTER_POINT);
-    
-    Hunk* hunk = new Hunk(startPos, hunkSprites);
+    Lance* lance = new Lance(startPos, AssetManager::GetInstance().GetLanceSprites());
+    Keith* keith = new Keith(startPos, AssetManager::GetInstance().GetKeithSprites());
+    Hunk* hunk = new Hunk(startPos, AssetManager::GetInstance().GetHunkSprites());
     
     teamManager->AddMember(lance);
     teamManager->AddMember(keith);
@@ -124,41 +90,51 @@ int main() {
     levelManager.LoadLevel("assets/levels/hub.txt", teamManager);
     GameManager::GetInstance().SetLevelManager(&levelManager);
 
-
     // Initialize WaveManager
     WaveManager waveManager;
-
-    // Initialize render texture for internal game resolution
-    RenderTexture2D target = LoadRenderTexture(GAME_WIDTH, GAME_HEIGHT);
-    SetTextureFilter(target.texture, TEXTURE_FILTER_POINT); // keep pixel art crisp
 
     // Initialize Camera
     Camera2D camera = { 0 };
     camera.target = { 0.0f, 0.0f };
-    camera.offset = { std::round(GAME_WIDTH / 2.0f), std::round(GAME_HEIGHT / 2.0f) };
+    camera.offset = { std::round(INITIAL_WINDOW_WIDTH / 2.0f), std::round(INITIAL_WINDOW_HEIGHT / 2.0f) };
     camera.rotation = 0.0f;
-    camera.zoom = 1.0f;
+    camera.zoom = 2.0f;
 
     GameManager::GetInstance().UpdateTargetFPS(BASE_FPS);
 
     // Main Game Loop
     while (!WindowShouldClose()) {
-        // --- Update ---
         float deltaTime = GetFrameTime();
+        
+        // Dynamic camera scaling based on window size
+        float scale = std::min((float)GetScreenWidth() / GAME_WIDTH, (float)GetScreenHeight() / GAME_HEIGHT);
+        camera.offset = { (float)GetScreenWidth() / 2.0f, (float)GetScreenHeight() / 2.0f };
+        
+        float hitstopZoom = (GameManager::GetInstance().GetHitstopTimer() > 0.0f) ? 1.1f : 1.0f;
+        camera.zoom = Lerp(camera.zoom, scale * hitstopZoom, 15.0f * deltaTime);
+
+        Camera2D uiCamera = { 0 };
+        uiCamera.zoom = scale;
+        uiCamera.offset = { 
+            (GetScreenWidth() - (GAME_WIDTH * scale)) / 2.0f, 
+            (GetScreenHeight() - (GAME_HEIGHT * scale)) / 2.0f 
+        };
 
         // Update music stream continuously regardless of game state
         AudioManager::GetInstance().UpdateMusicStream();
         
         // Pass mouse coordinates to player for aiming
-        Vector2 mouseScreen = GetMousePosition();
-        Vector2 mouseInternal = { mouseScreen.x * ((float)GAME_WIDTH / (float)WINDOW_WIDTH), mouseScreen.y * ((float)GAME_HEIGHT / (float)WINDOW_HEIGHT) };
-        Vector2 mouseWorld = GetScreenToWorld2D(mouseInternal, camera);
+        Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), camera);
         teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
-
-        // Mock EX Generation Input
-        if (IsKeyPressed(KEY_SPACE)) {
-            teamManager->GetActivePaladin()->OnHitEnemy(50);
+        
+        // UI mouse calculation relative to the scaled virtual resolution
+        Vector2 uiMousePosition = GetScreenToWorld2D(GetMousePosition(), uiCamera);
+        if (uiMousePosition.x < 0 || uiMousePosition.x > GAME_WIDTH || 
+            uiMousePosition.y < 0 || uiMousePosition.y > GAME_HEIGHT) {
+            uiMousePosition = { -1.0f, -1.0f };
         }
+
+
 
         GameState state = GameManager::GetInstance().GetState();
         
@@ -184,7 +160,6 @@ int main() {
                     
                     levelManager.UpdateLevel(deltaTime);
                     teamManager->Update(deltaTime);
-                    camera.target = { std::round(teamManager->GetActivePaladin()->GetPosition().x), std::round(teamManager->GetActivePaladin()->GetPosition().y) };
                     
                     if (IsKeyPressed(KEY_E)) {
                         for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
@@ -198,20 +173,25 @@ int main() {
                         }
                     }
                 }
+                camera.target.x = Lerp(camera.target.x, teamManager->GetActivePaladin()->GetPosition().x, 20.0f * deltaTime);
+                camera.target.y = Lerp(camera.target.y, teamManager->GetActivePaladin()->GetPosition().y, 20.0f * deltaTime);
                 break;
             case GameState::PLAYING:
-                levelManager.UpdateLevel(deltaTime);
-                teamManager->Update(deltaTime);
-                GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
-                waveManager.Update(deltaTime, teamManager, &levelManager);
-                camera.target = { std::round(teamManager->GetActivePaladin()->GetPosition().x), std::round(teamManager->GetActivePaladin()->GetPosition().y) };
+                if (GameManager::GetInstance().GetHitstopTimer() > 0.0f) {
+                    GameManager::GetInstance().UpdateHitstop(deltaTime);
+                } else {
+                    levelManager.UpdateLevel(deltaTime);
+                    teamManager->Update(deltaTime);
+                    GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
+                    waveManager.Update(deltaTime, teamManager, &levelManager);
+                }
+                camera.target.x = Lerp(camera.target.x, teamManager->GetActivePaladin()->GetPosition().x, 20.0f * deltaTime);
+                camera.target.y = Lerp(camera.target.y, teamManager->GetActivePaladin()->GetPosition().y, 20.0f * deltaTime);
                 
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
                     GameManager::GetInstance().SetState(GameState::PAUSED);
                 }
-                if (teamManager->GetActivePaladin()->GetHealth() <= 0) {
-                    GameManager::GetInstance().SetState(GameState::GAMEOVER);
-                }
+
                 break;
             case GameState::PAUSED:
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
@@ -232,109 +212,72 @@ int main() {
         }
 
         // --- Draw ---
-        
-        // 1. Draw to the internal render texture
-        BeginTextureMode(target);
+        BeginDrawing();
+            ClearBackground(BLACK);
+
             if (state == GameState::MENU) {
+                BeginMode2D(uiCamera);
                 ClearBackground(DARKGRAY);
                 DrawText("Voltron: Mission Galra Cypher", 70, 200, 24, WHITE);
                 DrawText("Press ENTER to Start", 140, 300, 20, LIGHTGRAY);
                 DrawText("Press R to Enter Demo Map", 120, 335, 20, LIGHTGRAY);
+                EndMode2D();
             } else if (state == GameState::GAMEOVER) {
+                BeginMode2D(uiCamera);
                 ClearBackground(BLACK);
                 DrawText("GAME OVER", 180, 220, 30, RED);
                 DrawText("Press R to Restart", 160, 280, 20, LIGHTGRAY);
+                EndMode2D();
             } else if (state == GameState::VICTORY) {
+                BeginMode2D(uiCamera);
                 ClearBackground(RAYWHITE);
                 DrawText("MISSION ACCOMPLISHED", 90, 200, 40, GOLD);
                 DrawText("Press R to return to Main Menu", 150, 300, 20, DARKGRAY);
+                EndMode2D();
             } else {
                 BeginMode2D(camera);
                 
                 if (state == GameState::HUB) {
                     ClearBackground(DARKGREEN);
                     levelManager.DrawLevel();
+                    GameManager::GetInstance().UpdateEffects(deltaTime);
+                    GameManager::GetInstance().DrawEffects(true); // background
                     teamManager->Draw();
-                } else if (state == GameState::PLAYING) {
+                    GameManager::GetInstance().DrawEffects(false); // foreground
+                } else if (state == GameState::PLAYING || state == GameState::PAUSED) {
                     ClearBackground(DARKGRAY);
                     levelManager.DrawLevel();
+                    GameManager::GetInstance().UpdateEffects(deltaTime);
+                    GameManager::GetInstance().DrawEffects(true); // background
                     teamManager->Draw();
                     GameManager::GetInstance().DrawProjectiles();
-            GameManager::GetInstance().UpdateAndDrawEffects(deltaTime);
-                } else if (state == GameState::PAUSED) {
-                    ClearBackground(DARKGRAY);
-                    levelManager.DrawLevel();
-                    teamManager->Draw();
-                    GameManager::GetInstance().DrawProjectiles();
-            GameManager::GetInstance().UpdateAndDrawEffects(deltaTime);
+                    GameManager::GetInstance().DrawEffects(false); // foreground
                 }
                 
                 EndMode2D();
                 
                 // Draw HUD outside of camera
+                BeginMode2D(uiCamera);
                 if (state == GameState::HUB) {
-                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT);
+                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT, uiMousePosition);
+                    DialogueManager::GetInstance().Draw(GAME_WIDTH, GAME_HEIGHT);
                 } else if (state == GameState::PLAYING) {
-                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT);
+                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT, uiMousePosition);
                     waveManager.DrawHUD();
                 } else if (state == GameState::PAUSED) {
-                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT);
+                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT, uiMousePosition);
                     DrawRectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, {0, 0, 0, 150});
                     DrawText("PAUSED", GAME_WIDTH / 2 - MeasureText("PAUSED", 40) / 2, GAME_HEIGHT / 2 - 20, 40, RAYWHITE);
                 }
+                EndMode2D();
             }
-        EndTextureMode();
-
-        // 2. Draw the internal texture to the main physical window (1024x1024)
-        BeginDrawing();
-            ClearBackground(BLACK); // Clear main window
-            
-            // Source rectangle from the render texture.
-            // Note: OpenGL framebuffers are inverted vertically, so we invert the source height.
-            Rectangle sourceRec = { 0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height };
-            
-            // Destination rectangle on the main window.
-            // The size is 1024x1024, which is exactly 2.0f times the 512x512 internal resolution.
-            Rectangle destRec = { 0.0f, 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT };
-            
-            // Origin of the destination rectangle (top-left)
-            Vector2 origin = { 0.0f, 0.0f };
-            
-            DrawTexturePro(target.texture, sourceRec, destRec, origin, 0.0f, WHITE);
-            
-            // Draw high-res UI elements on top of the scaled game
-            if (state == GameState::HUB) {
-                DialogueManager::GetInstance().Draw();
-            }
-            
         EndDrawing();
     }
 
     // De-Initialization
     delete teamManager;
-    UnloadTexture(lanceSprites.idle);
-    UnloadTexture(lanceSprites.run);
-    UnloadTexture(lanceSprites.weapon);
-    UnloadTexture(lanceSprites.muzzleFlash);
-    UnloadTexture(lanceSprites.bullet);
-    UnloadTexture(lanceSprites.impact);
-    UnloadTexture(lanceSprites.dashFront);
-    UnloadTexture(lanceSprites.dashBack);
-    UnloadTexture(keithSprites.idle);
-    UnloadTexture(keithSprites.run);
-    UnloadTexture(keithSprites.weapon);
-    UnloadTexture(keithSprites.attack1);
-    UnloadTexture(keithSprites.attack2);
-    UnloadTexture(hunkSprites.idle);
-    UnloadTexture(hunkSprites.run);
-    UnloadTexture(hunkSprites.weapon);
-    UnloadTexture(hunkSprites.muzzleFlash);
-    UnloadTexture(hunkSprites.bullet);
-    UnloadTexture(hunkSprites.impact);
-    UnloadRenderTexture(target);
+    AssetManager::GetInstance().UnloadAll();
     CloseWindow();
-
-    // Note: AudioManager singleton's destructor will close the audio device automatically when main exits.
 
     return 0;
 }

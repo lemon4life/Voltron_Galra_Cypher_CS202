@@ -3,20 +3,29 @@
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
-#include <algorithm>
+#include "Core/Manager/LevelManager.h"
 #include <iostream>
+#include "raymath.h"
 
-Enemy::Enemy(Vector2 pos, TeamManager* t)
+Enemy::Enemy(Vector2 pos, TeamManager* t, IEntityRemovalAccess* removalAccess)
     : GameObject(pos), health(100), maxHealth(100), speed(100.f), damage(15),
       attackCooldown(0.1f), baseAttackCooldown(0.1f), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
-      targetTeam(t), currentState(nullptr)
+      targetTeam(t), currentState(nullptr), removalAccess(removalAccess), knockbackVelocity{0.0f, 0.0f}
 {}
 
 
-Enemy::Enemy(Vector2 pos, TeamManager* t, int imaxHealth, float ispeed, int idamage, float iattackCooldown)
+Enemy::Enemy(
+    Vector2 pos,
+    TeamManager* t,
+    int imaxHealth,
+    float ispeed,
+    int idamage,
+    float iattackCooldown,
+    IEntityRemovalAccess* removalAccess
+)
     : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed), damage(idamage),
       attackCooldown(iattackCooldown), baseAttackCooldown(iattackCooldown), size({32.0f, 32.0f}), enemyType(EnemyType::GRUNT),
-      targetTeam(t), currentState(nullptr)
+      targetTeam(t), currentState(nullptr), removalAccess(removalAccess), knockbackVelocity{0.0f, 0.0f}
 {}
 
 Enemy::~Enemy() {
@@ -56,29 +65,6 @@ void Enemy::ResetAttackCooldown() {
     attackCooldown = baseAttackCooldown;
 }
 
-void Enemy::AddObserver(IEnemyObserver* observer) {
-    if (!observer) return;
-
-    if (std::find(observers.begin(), observers.end(), observer) == observers.end()) {
-        observers.push_back(observer);
-    }
-}
-
-void Enemy::RemoveObserver(IEnemyObserver* observer) {
-    observers.erase(
-        std::remove(observers.begin(), observers.end(), observer),
-        observers.end()
-    );
-}
-
-
-
-void Enemy::NotifyEnemyDied() {
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyDied(this);
-    }
-}
-
 void Enemy::TakeDamage(int amount) {
     if (health <= 0) return;
 
@@ -88,7 +74,9 @@ void Enemy::TakeDamage(int amount) {
 
     if (health <= 0 && !deathNotified) {
         deathNotified = true;
-        NotifyEnemyDied();
+        if (removalAccess) {
+            removalAccess->QueueRemoval(this);
+        }
     }
 }
 
@@ -104,4 +92,43 @@ bool Enemy::CheckCollision(const std::vector<GameObject*>& entities) const {
         }
     }
     return false;
+}
+
+void Enemy::ApplyKnockback(Vector2 dir, float force) {
+    knockbackVelocity.x += dir.x * force;
+    knockbackVelocity.y += dir.y * force;
+}
+
+void Enemy::UpdateKnockback(float deltaTime) {
+    if (Vector2Length(knockbackVelocity) > 5.0f) {
+        knockbackVelocity.x -= knockbackVelocity.x * 15.0f * deltaTime;
+        knockbackVelocity.y -= knockbackVelocity.y * 15.0f * deltaTime;
+        
+        Vector2 currentPos = GetPosition();
+        LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+        float levelWidth = GameManager::GetInstance().GetLevelWidth();
+        float levelHeight = GameManager::GetInstance().GetLevelHeight();
+        
+        currentPos.x += knockbackVelocity.x * deltaTime;
+        if (currentPos.x < 0.0f) currentPos.x = 0.0f;
+        if (currentPos.x > levelWidth) currentPos.x = levelWidth;
+        SetPosition(currentPos);
+        if (levelManager && levelManager->IsSolidCollision(GetBoundingBox())) {
+            currentPos.x -= knockbackVelocity.x * deltaTime;
+            SetPosition(currentPos);
+            knockbackVelocity.x = 0.0f;
+        }
+        
+        currentPos.y += knockbackVelocity.y * deltaTime;
+        if (currentPos.y < 0.0f) currentPos.y = 0.0f;
+        if (currentPos.y > levelHeight) currentPos.y = levelHeight;
+        SetPosition(currentPos);
+        if (levelManager && levelManager->IsSolidCollision(GetBoundingBox())) {
+            currentPos.y -= knockbackVelocity.y * deltaTime;
+            SetPosition(currentPos);
+            knockbackVelocity.y = 0.0f;
+        }
+    } else {
+        knockbackVelocity = {0.0f, 0.0f};
+    }
 }

@@ -10,8 +10,20 @@ namespace {
     constexpr Vector2 BOSS_SIZE = Vector2{64.f,72.f};
 }
 
-Boss::Boss(Vector2 pos, TeamManager* targetTeam)
-    : Enemy(pos, targetTeam, BOSS_MAX_HEALTH, BOSS_SPEED, BOSS_DAMAGE, BOSS_ATTACK_COOLDOWN)
+Boss::Boss(
+    Vector2 pos,
+    TeamManager* targetTeam,
+    IEntityRemovalAccess* removalAccess
+)
+    : Enemy(
+          pos,
+          targetTeam,
+          BOSS_MAX_HEALTH,
+          BOSS_SPEED,
+          BOSS_DAMAGE,
+          BOSS_ATTACK_COOLDOWN,
+          removalAccess
+      )
 {
     bossSkillCooldown = 2.0f;
     burstCount = 0;
@@ -35,6 +47,7 @@ Boss::~Boss() {
 }
 
 void Boss::Update(float deltaTime) {
+    UpdateKnockback(deltaTime);
     if (currentState) {
         currentState->Update(this, deltaTime);
     }

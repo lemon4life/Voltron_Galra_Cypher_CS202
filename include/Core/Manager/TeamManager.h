@@ -25,9 +25,11 @@ public:
     void Draw();
 
     void SwapCharacter();
+    void SwapDueToDeath();
     Paladin* GetActivePaladin() const;
 
-    int TakeArmorDamage(int amount); // Returns remaining damage that penetrates armor
+    int TakeArmorDamage(int amount);
+    bool IsTeamDead() const; // Returns remaining damage that penetrates armor
     void RecordDamageEvent();
     
     int GetSharedArmor() const { return sharedArmor; }

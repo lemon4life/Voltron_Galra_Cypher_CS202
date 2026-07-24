@@ -73,3 +73,6 @@ cmake-build-debug/
 
 # Local tmp folder
 /tmp/
+
+#locoal AGENTS.md
+AGENTS.md

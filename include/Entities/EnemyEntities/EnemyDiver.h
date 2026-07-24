@@ -1,21 +1,28 @@
 #pragma once
 
-#include "Core/EnemyPath.h"
+
 #include "Entities/Enemy.h"
+#include "Entities/PathfindingEnemy.h"
 
 #include <memory>
 
 class EnemyDiverReadyState;
 class EnemyDiverLungingState;
-class LevelManager;
 
-class EnemyDiver : public Enemy, public EnemyPathFinding {
+class EnemyDiver : public PathfindingEnemy {
 private:
     std::unique_ptr<EnemyDiverReadyState> readyState;
     std::unique_ptr<EnemyDiverLungingState> lungingState;
+    ILevelLineOfSightQuery* lineOfSightQuery;
 
 public:
-    EnemyDiver(Vector2 position, TeamManager* targetTeam);
+    EnemyDiver(
+        Vector2 position,
+        TeamManager* targetTeam,
+        IEntityRemovalAccess* removalAccess,
+        IEnemyPathAccess* pathAccess,
+        ILevelLineOfSightQuery* lineOfSightQuery
+    );
     ~EnemyDiver() override;
 
     void Update(float deltaTime) override;
@@ -24,8 +31,8 @@ public:
     EnemyDiverReadyState* GetReadyState();
     EnemyDiverLungingState* GetLungingState();
 
-    bool CanEnterReadyState(LevelManager* levelManager) const;
-    bool IsWithinClearDiveRange(LevelManager* levelManager) const;
+    bool CanEnterReadyState() const;
+    bool IsWithinClearDiveRange() const;
 
     float GetReadyDuration() const;
     float GetReadySpeed() const;
@@ -34,7 +41,6 @@ public:
     float GetDiveSpeed() const;
     float GetDiveRecoveryDuration() const;
     float GetCollisionClearanceRadius() const;
+    ILevelLineOfSightQuery* GetLineOfSightQuery() const { return lineOfSightQuery; }
 
-    void StartPathFinding();
-    void EndPathFinding();
 };

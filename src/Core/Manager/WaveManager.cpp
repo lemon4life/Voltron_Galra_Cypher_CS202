@@ -77,7 +77,12 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
                             // Add one Diver after the ranged enemy in waves 3-4.
                             spawnType = 'D';
                         }
-                        GameObject* newEnemy = EntityFactory::CreateEntity(spawnType, spawnPos, teamManager);
+                        GameObject* newEnemy = EntityFactory::CreateEntity(
+                            spawnType,
+                            spawnPos,
+                            teamManager,
+                            levelManager->GetLevelAccessBundle()
+                        );
                         if (newEnemy) {
                             if (levelManager->IsValidSpawnLocation(newEnemy)) {
                                 levelManager->AddEntity(newEnemy);

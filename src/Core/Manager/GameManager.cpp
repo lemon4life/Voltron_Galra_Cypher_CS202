@@ -1,6 +1,7 @@
 #include "Core/Manager/GameManager.h"
 #include "Entities/Projectile.h"
 #include "Core/Manager/LevelManager.h"
+#include "raymath.h"
 
 GameManager::GameManager() : currentState(GameState::MENU), levelManager(nullptr) {
     // Starts in MENU state by default
@@ -47,8 +48,19 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
 
         // If it's an enemy projectile, check collision with Player
         if ((*it)->IsEnemyProjectile() && teamManager && teamManager->GetActivePaladin()) {
-            if (CheckCollisionRecs(pBox, teamManager->GetActivePaladin()->GetBoundingBox())) {
-                teamManager->GetActivePaladin()->TakeDamage((*it)->GetDamage());
+            Paladin* activePaladin = teamManager->GetActivePaladin();
+            if (CheckCollisionRecs(pBox, activePaladin->GetBoundingBox())) {
+                if (activePaladin->CanParryAttack((*it)->GetPosition())) {
+                    activePaladin->TriggerParrySuccess(*it);
+                    activePaladin->IncrementParryCount();
+                    TriggerHitstop(0.1f);
+                    AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});
+                } else {
+                    activePaladin->TakeDamage((*it)->GetDamage());
+                    if (activePaladin->IsParrying()) {
+                        activePaladin->ChangeState(activePaladin->GetIdleState()); // Break parry on failed block
+                    }
+                }
                 hitSomething = true;
             }
         }
@@ -67,6 +79,10 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
                         if (Enemy* e = dynamic_cast<Enemy*>(entity)) {
                             if (!(*it)->IsEnemyProjectile()) {
                                 e->TakeDamage((*it)->GetDamage());
+                                Vector2 kdir = Vector2Subtract(e->GetPosition(), (*it)->GetPosition());
+                                if (Vector2Length(kdir) > 0.0f) kdir = Vector2Normalize(kdir);
+                                else kdir = {1.0f, 0.0f};
+                                e->ApplyKnockback(kdir, 350.0f);
                                 AddImpactEffect(pBox.x > e->GetBoundingBox().x ? (Vector2){pBox.x, pBox.y} : (Vector2){pBox.x + 10, pBox.y});
                                 if (teamManager && teamManager->GetActivePaladin()) {
                                     teamManager->GetActivePaladin()->OnHitEnemy((*it)->GetDamage());
@@ -106,38 +122,48 @@ void GameManager::ClearProjectiles() {
     activeProjectiles.clear();
 }
 
-void GameManager::AddImpactEffect(Vector2 pos) {
+void GameManager::AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime, bool drawBehind) {
     ImpactEffect effect;
     effect.position = pos;
-    effect.maxLifetime = 0.2f; // 4 frames at 20fps = 0.2s
-    effect.lifetime = 0.2f;
+    effect.maxLifetime = lifetime;
+    effect.lifetime = lifetime;
     effect.currentFrame = 0;
-    effect.numFrames = 4;
+    effect.numFrames = frames;
+    effect.texture = tex;
+    effect.drawBehind = drawBehind;
     activeEffects.push_back(effect);
 }
 
-void GameManager::UpdateAndDrawEffects(float deltaTime) {
+void GameManager::AddImpactEffect(Vector2 pos) {
+    AddEffect(pos, bulletImpactTex, 4, 0.2f);
+}
+
+void GameManager::UpdateEffects(float deltaTime) {
     for (auto it = activeEffects.begin(); it != activeEffects.end();) {
         it->lifetime -= deltaTime;
-        
-        if (bulletImpactTex.id != 0) {
-            float progress = 1.0f - (it->lifetime / it->maxLifetime);
-            it->currentFrame = (int)(progress * it->numFrames);
-            if (it->currentFrame >= it->numFrames) it->currentFrame = it->numFrames - 1;
-            
-            float frameWidth = (float)bulletImpactTex.width / it->numFrames;
-            float frameHeight = (float)bulletImpactTex.height;
-            Rectangle source = { it->currentFrame * frameWidth, 0, frameWidth, frameHeight };
-            Rectangle dest = { it->position.x, it->position.y, frameWidth, frameHeight };
-            Vector2 origin = { frameWidth / 2.0f, frameHeight / 2.0f };
-            
-            DrawTexturePro(bulletImpactTex, source, dest, origin, 0.0f, WHITE);
-        }
-        
         if (it->lifetime <= 0.0f) {
             it = activeEffects.erase(it);
         } else {
+            if (it->texture.id != 0) {
+                float progress = 1.0f - (it->lifetime / it->maxLifetime);
+                it->currentFrame = (int)(progress * it->numFrames);
+                if (it->currentFrame >= it->numFrames) it->currentFrame = it->numFrames - 1;
+            }
             ++it;
+        }
+    }
+}
+
+void GameManager::DrawEffects(bool background) {
+    for (const auto& effect : activeEffects) {
+        if (effect.drawBehind == background && effect.texture.id != 0) {
+            float frameWidth = (float)effect.texture.width / effect.numFrames;
+            float frameHeight = (float)effect.texture.height;
+            Rectangle source = { effect.currentFrame * frameWidth, 0.0f, frameWidth, frameHeight };
+            Rectangle dest = { effect.position.x, effect.position.y, frameWidth, frameHeight };
+            Vector2 origin = { frameWidth / 2.0f, frameHeight / 2.0f };
+            
+            DrawTexturePro(effect.texture, source, dest, origin, 0.0f, WHITE);
         }
     }
 }

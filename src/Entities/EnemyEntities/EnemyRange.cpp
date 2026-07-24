@@ -4,15 +4,39 @@
 
 #include "raymath.h"
 
-EnemyRange::EnemyRange(Vector2 position, TeamManager* targetTeam)
-    : Enemy(
+namespace {
+    constexpr int RANGE_MAX_HEALTH = 70;
+    constexpr float RANGE_SPEED = 120.0f;
+    constexpr int RANGE_DAMAGE = 12;
+    constexpr float RANGE_ATTACK_COOLDOWN = 1.0f;
+    constexpr float RANGE_DETECTION_DISTANCE = 700.0f;
+    constexpr float RANGE_DISENGAGE_DISTANCE = 900.0f;
+    constexpr float RANGE_SHOOTING_DISTANCE = 200.0f;
+    constexpr float RANGE_PROJECTILE_SPEED = 320.0f;
+    constexpr float RANGE_PROJECTILE_LIFETIME = 2.0f;
+    constexpr float RANGE_PROJECTILE_RADIUS = 5.0f;
+    constexpr float RANGE_MAX_PREDICTION_TIME = 1.0f;
+    constexpr Vector2 RANGE_SIZE = { 24.0f, 24.0f };
+}
+
+EnemyRange::EnemyRange(
+    Vector2 position,
+    TeamManager* targetTeam,
+    IEntityRemovalAccess* removalAccess,
+    IEnemyPathAccess* pathAccess,
+    ILevelLineOfSightQuery* lineOfSightQuery
+)
+    : PathfindingEnemy(
           position,
           targetTeam,
           RANGE_MAX_HEALTH,
           RANGE_SPEED,
           RANGE_DAMAGE,
-          RANGE_ATTACK_COOLDOWN
-      ) {
+          RANGE_ATTACK_COOLDOWN,
+          removalAccess,
+          pathAccess
+      ),
+      lineOfSightQuery(lineOfSightQuery) {
     idleState = std::make_unique<EnemyIdleState>(RANGE_DETECTION_DISTANCE);
     chaseState = std::make_unique<EnemyRangeChaseState>();
     shootingState = std::make_unique<EnemyRangeShootingState>();
@@ -23,8 +47,6 @@ EnemyRange::EnemyRange(Vector2 position, TeamManager* targetTeam)
 }
 
 EnemyRange::~EnemyRange() {
-    EndPathFinding();
-
     if (currentState) {
         currentState->Exit(this);
     }
@@ -32,6 +54,7 @@ EnemyRange::~EnemyRange() {
 }
 
 void EnemyRange::Update(float deltaTime) {
+    UpdateKnockback(deltaTime);
     if (currentState) {
         currentState->Update(this, deltaTime);
     }
@@ -75,24 +98,5 @@ float EnemyRange::GetProjectileRadius() const {
 }
 
 float EnemyRange::GetMaxPredictionTime() const {
-    return MAX_PREDICTION_TIME;
-}
-
-void EnemyRange::StartPathFinding() {
-    if (IsPathFinding()) return;
-    SetPathFinding(true);
-
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFind(this);
-    }
-}
-
-void EnemyRange::EndPathFinding() {
-    if (!IsPathFinding()) return;
-    SetPathFinding(false);
-    ClearTargetPosition();
-
-    for (IEnemyObserver* observer : observers) {
-        observer->OnEnemyPathFindEnded(this);
-    }
+    return RANGE_MAX_PREDICTION_TIME;
 }

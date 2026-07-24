@@ -23,3 +23,22 @@ public:
     void Update(Paladin* player, float deltaTime) override;
     void Exit(Paladin* player) override;
 };
+
+class PlayerParryState : public IPlayerState {
+private:
+    float parryTimer;
+public:
+    void Enter(Paladin* player) override;
+    void Update(Paladin* player, float deltaTime) override;
+    void Exit(Paladin* player) override;
+};
+
+class PlayerDownState : public IPlayerState {
+private:
+    float bounceTimer;
+    float initialY;
+public:
+    void Enter(Paladin* player) override;
+    void Update(Paladin* player, float deltaTime) override;
+    void Exit(Paladin* player) override;
+};

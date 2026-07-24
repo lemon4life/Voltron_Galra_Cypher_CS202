@@ -17,6 +17,8 @@ struct ImpactEffect {
     float maxLifetime;
     int currentFrame;
     int numFrames;
+    Texture2D texture;
+    bool drawBehind;
 };
 
 class Projectile; // Forward declaration
@@ -32,6 +34,7 @@ private:
     Texture2D bulletImpactTex;
 
     int targetFPS;
+    float hitstopTimer;
     
     float levelWidth = 0.0f;
     float levelHeight = 0.0f;
@@ -51,6 +54,10 @@ public:
     GameManager& operator=(GameManager&&) = delete;
 
     // --- Accessors ---
+    void TriggerHitstop(float duration) { hitstopTimer = duration; }
+    float GetHitstopTimer() const { return hitstopTimer; }
+    void UpdateHitstop(float dt) { if (hitstopTimer > 0.0f) hitstopTimer -= dt; }
+
     GameState GetState() const { return currentState; }
     void SetState(GameState newState) { currentState = newState; }
 
@@ -69,8 +76,10 @@ public:
 
     void AddProjectile(Projectile* p);
     void UpdateProjectiles(float deltaTime, class TeamManager* teamManager = nullptr);
-    void UpdateAndDrawEffects(float deltaTime);
+    void UpdateEffects(float deltaTime);
+    void DrawEffects(bool background);
     void SetBulletImpactTexture(Texture2D tex) { bulletImpactTex = tex; }
+    void AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime, bool drawBehind = false);
     void AddImpactEffect(Vector2 pos);
     void DrawProjectiles();
     void ClearProjectiles();
