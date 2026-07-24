@@ -2,8 +2,13 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Entities/Enemy.h"
+#include "Entities/Items/DestructibleBox.h"
 #include <algorithm>
 #include <cstdlib>
+
+namespace {
+    constexpr float MELEE_KNOCKBACK_FORCE = 350.0f;
+}
 
 MeleeAttackStrategy::MeleeAttackStrategy(Texture2D weapon, Texture2D att1, Texture2D att2) 
     : weaponTex(weapon), attack1Tex(att1), attack2Tex(att2), comboStep(0), nextComboStep(1), frameTimer(0.0f), currentFrame(0), inputBuffered(false) 
@@ -21,7 +26,7 @@ void MeleeAttackStrategy::Attack(Vector2 playerPos) {
         currentFrame = 0;
         frameTimer = 0.0f;
         inputBuffered = false;
-        enemiesHit.clear();
+        objectsHit.clear();
         AudioManager::GetInstance().PlaySoundEffect("swing");
     } else if (comboStep == 1 || comboStep == 2) {
         // Buffer the next hit if clicked during the active swing
@@ -53,28 +58,34 @@ void MeleeAttackStrategy::Update(float deltaTime) {
             
             const auto& entities = GameManager::GetInstance().GetLevelEntities();
             for (auto* entity : entities) {
-                if (Enemy* enemy = dynamic_cast<Enemy*>(entity)) {
-                    if (std::find(enemiesHit.begin(), enemiesHit.end(), enemy) == enemiesHit.end()) {
-                        if (CheckCollisionRecs(hitbox, enemy->GetBoundingBox())) {
-                            // Deal damage
-                            int dmg = (comboStep == 1) ? 35 : 45; // 2nd hit hits harder
-                            enemy->TakeDamage(dmg);
-                            
-                            // Instant positional knockback
-                            Vector2 enemyPos = enemy->GetPosition();
-                            enemyPos.x += aimDir.x * 20.0f;
-                            enemyPos.y += aimDir.y * 20.0f;
-                            
-                            // Basic bounds check (if we had levelManager access here, we'd check walls)
-                            // For simplicity, just push them.
-                            enemy->SetPosition(enemyPos);
-                            
-                            enemiesHit.push_back(enemy);
-                            
-                            // Visual impact effect
-                            GameManager::GetInstance().AddImpactEffect({enemy->GetPosition().x, enemy->GetPosition().y});
-                        }
-                    }
+                if (std::find(objectsHit.begin(), objectsHit.end(), entity)
+                    != objectsHit.end()) {
+                    continue;
+                }
+                if (!CheckCollisionRecs(hitbox, entity->GetBoundingBox())) {
+                    continue;
+                }
+
+                int damage = (comboStep == 1) ? 35 : 45;
+                bool damagedObject = false;
+
+                if (entity->GetObjectType() == GameObjectType::Enemy) {
+                    Enemy& enemy = static_cast<Enemy&>(*entity);
+                    enemy.TakeDamage(damage);
+                    enemy.ApplyKnockback(aimDir, MELEE_KNOCKBACK_FORCE);
+                    damagedObject = true;
+                } else if (entity->GetObjectType() == GameObjectType::Box) {
+                    DestructibleBox& box =
+                        static_cast<DestructibleBox&>(*entity);
+                    box.TakeDamage(damage);
+                    damagedObject = true;
+                }
+
+                if (damagedObject) {
+                    objectsHit.push_back(entity);
+                    GameManager::GetInstance().AddImpactEffect(
+                        entity->GetPosition()
+                    );
                 }
             }
         }
@@ -86,7 +97,7 @@ void MeleeAttackStrategy::Update(float deltaTime) {
                 comboStep = (rand() % 2) + 1;
                 currentFrame = 0;
                 inputBuffered = false;
-                enemiesHit.clear();
+                objectsHit.clear();
                 AudioManager::GetInstance().PlaySoundEffect("swing");
             } else {
                 // End combo

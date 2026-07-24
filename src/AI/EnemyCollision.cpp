@@ -52,8 +52,12 @@ bool EnemyCollision::CheckAnyEnemyCollision(
     const std::vector<GameObject*>& entities
 ) {
     for (GameObject* entity : entities) {
-        Enemy* other = dynamic_cast<Enemy*>(entity);
-        if (other && CheckEnemyCollision(enemy, *other)) {
+        if (entity->GetObjectType() != GameObjectType::Enemy) {
+            continue;
+        }
+
+        Enemy* other = static_cast<Enemy*>(entity);
+        if (CheckEnemyCollision(enemy, *other)) {
             return true;
         }
     }

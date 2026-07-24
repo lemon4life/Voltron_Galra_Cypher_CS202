@@ -1,13 +1,15 @@
 #include "Entities/Projectile.h"
 
 Projectile::Projectile(Vector2 pos, Vector2 vel, float life, int dmg, bool isEnemy)
-    : GameObject(pos), velocity(vel), lifetime(life), active(true), damage(dmg), isEnemyProj(isEnemy) {
+    : GameObject(pos, GameObjectType::Projectile),
+      velocity(vel), lifetime(life), active(true), damage(dmg), isEnemyProj(isEnemy) {
     texture.id = 0;
     boundingBox = { pos.x, pos.y, 10.0f, 10.0f };
 }
 
 Projectile::Projectile(Vector2 pos, Vector2 vel, float life, int dmg, Texture2D tex, bool isEnemy)
-    : GameObject(pos), velocity(vel), lifetime(life), active(true), damage(dmg), isEnemyProj(isEnemy), texture(tex) {
+    : GameObject(pos, GameObjectType::Projectile),
+      velocity(vel), lifetime(life), active(true), damage(dmg), isEnemyProj(isEnemy), texture(tex) {
     // Small bounding box for the projectile
     boundingBox = { pos.x, pos.y, 10.0f, 10.0f };
 }

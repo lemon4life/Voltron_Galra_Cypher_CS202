@@ -326,8 +326,12 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
     const float separationWeight = 0.85f;
 
     for (GameObject* entity : levelManager.GetEntities()) {
-        Enemy* otherEnemy = dynamic_cast<Enemy*>(entity);
-        if (!otherEnemy || otherEnemy == &enemy || otherEnemy->IsDead()) {
+        if (entity->GetObjectType() != GameObjectType::Enemy) {
+            continue;
+        }
+
+        Enemy* otherEnemy = static_cast<Enemy*>(entity);
+        if (otherEnemy == &enemy || otherEnemy->IsDead()) {
             continue;
         }
 

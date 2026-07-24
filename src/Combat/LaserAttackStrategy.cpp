@@ -62,7 +62,8 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
     // Check intersection with all enemies
     const auto& entities = GameManager::GetInstance().GetLevelEntities();
     for (auto* entity : entities) {
-        if (Enemy* e = dynamic_cast<Enemy*>(entity)) {
+        if (entity->GetObjectType() == GameObjectType::Enemy) {
+            Enemy* e = static_cast<Enemy*>(entity);
             if (CheckCollisionSegmentRec(barrelTip, laserEndPoint, e->GetBoundingBox())) {
                 e->TakeDamage(50); // Piercing laser damage
                 // Add Impact Effect visually

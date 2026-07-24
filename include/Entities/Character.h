@@ -9,7 +9,10 @@ protected:
 
 public:
     Character(Vector2 pos, float spd, int hp, Texture2D tex)
-        : GameObject(pos), speed(spd), health(hp), texture(tex) {}
+        : GameObject(pos, GameObjectType::Player),
+          speed(spd),
+          health(hp),
+          texture(tex) {}
     
     virtual ~Character() = default;
 

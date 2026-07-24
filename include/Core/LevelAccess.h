@@ -5,6 +5,21 @@
 class GameObject;
 class Enemy;
 
+enum class MapObjectId : int {
+    Empty = -1,
+    DestructibleBox = 1,
+    Chaser = 2,
+    Range = 3,
+    Diver = 4,
+    Boss = 5,
+    NPC = 6
+};
+
+struct GameObjectCell {
+    int row;
+    int column;
+};
+
 class ILevelLineOfSightQuery {
 public:
     virtual ~ILevelLineOfSightQuery() = default;
@@ -21,6 +36,16 @@ public:
     virtual ~IEntityRemovalAccess() = default;
 
     virtual void QueueRemoval(GameObject* entity) = 0;
+};
+
+class IMapObjectDestroyAccess {
+public:
+    virtual ~IMapObjectDestroyAccess() = default;
+
+    virtual void QueueMapObjectDestruction(
+        GameObject& object,
+        GameObjectCell cell
+    ) = 0;
 };
 
 class IEnemyPathAccess {
@@ -48,4 +73,5 @@ struct LevelAccessBundle {
     IEntityRemovalAccess& removal;
     IEnemyPathAccess& pathFinding;
     ILevelLineOfSightQuery& lineOfSight;
+    IMapObjectDestroyAccess& mapObjectDestruction;
 };

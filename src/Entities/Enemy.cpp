@@ -10,7 +10,8 @@ Enemy::Enemy(
     IEntityRemovalAccess& removalAccess,
     IEnemyPathAccess& pathAccess
 )
-    : GameObject(pos), health(100), maxHealth(100), speed(100.f), damage(15),
+    : GameObject(pos, GameObjectType::Enemy),
+      health(100), maxHealth(100), speed(100.f), damage(15),
       attackCooldown(0.1f), baseAttackCooldown(0.1f), dazeDuration(2.0f),
       size({32.0f, 32.0f}),
       knockbackVelocity{0.0f, 0.0f}, enemyType(EnemyType::GRUNT),
@@ -31,7 +32,8 @@ Enemy::Enemy(
     IEntityRemovalAccess& removalAccess,
     IEnemyPathAccess& pathAccess
 )
-    : GameObject(pos), health(imaxHealth), maxHealth(imaxHealth), speed(ispeed),
+    : GameObject(pos, GameObjectType::Enemy),
+      health(imaxHealth), maxHealth(imaxHealth), speed(ispeed),
       damage(idamage), attackCooldown(iattackCooldown),
       baseAttackCooldown(iattackCooldown), dazeDuration(2.0f),
       size({32.0f, 32.0f}),

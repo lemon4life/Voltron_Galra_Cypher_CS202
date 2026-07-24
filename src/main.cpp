@@ -163,7 +163,8 @@ int main() {
                     
                     if (IsKeyPressed(KEY_E)) {
                         for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
-                            if (NPC* npc = dynamic_cast<NPC*>(entity)) {
+                            if (entity->GetObjectType() == GameObjectType::NPC) {
+                                NPC* npc = static_cast<NPC*>(entity);
                                 if (Vector2Distance(teamManager->GetActivePaladin()->GetPosition(), npc->GetPosition()) < 50.0f) {
                                     DialogueManager::GetInstance().LoadDialogueTree("assets/story/intro.txt");
                                     DialogueManager::GetInstance().StartDialogue();
