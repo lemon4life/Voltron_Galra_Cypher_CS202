@@ -17,6 +17,8 @@ namespace {
     constexpr float MIN_DIRECTION_LENGTH = 0.001f;
     constexpr float VELOCITY_SMOOTHING = 0.35f;
     constexpr float PLAYER_VELOCITY_LIMIT_MULTIPLIER = 1.5f;
+    constexpr int MIN_AIM_ERROR_CENTIDEGREES = -300;
+    constexpr int MAX_AIM_ERROR_CENTIDEGREES = 300;
 
     void UpdateAttackCooldown(Enemy* enemy, float deltaTime) {
         if (!enemy || enemy->GetAttackCooldown() <= 0.0f) return;
@@ -145,15 +147,28 @@ void EnemyRangeShootingState::Update(EnemyRange* enemy, float deltaTime) {
 
     Vector2 playerPosition = player->GetPosition();
     Vector2 predictedPosition = PredictTargetPosition(enemy, player, deltaTime);
+    bool hasDirectShot = HasClearShot(enemy, playerPosition);
+    bool hasPredictedShot = HasClearShot(enemy, predictedPosition);
 
     if (!enemy->IsWithinShootingDistance(playerPosition) ||
-        !HasClearShot(enemy, predictedPosition)) {
+        (!hasDirectShot && !hasPredictedShot)) {
         enemy->ChangeState(enemy->GetChaseState());
         return;
     }
 
     if (enemy->GetAttackCooldown() <= 0.0f) {
-        FireProjectile(enemy, predictedPosition);
+        bool usePrediction = GetRandomValue(0, 1) == 0;
+        Vector2 targetPosition = playerPosition;
+        if (usePrediction) {
+            targetPosition = hasPredictedShot
+                ? predictedPosition
+                : playerPosition;
+        } else {
+            targetPosition = hasDirectShot
+                ? playerPosition
+                : predictedPosition;
+        }
+        FireProjectile(enemy, targetPosition);
     }
 }
 
@@ -242,6 +257,12 @@ void EnemyRangeShootingState::FireProjectile(
     } else {
         direction = Vector2Normalize(direction);
     }
+
+    float aimErrorDegrees = (float)GetRandomValue(
+        MIN_AIM_ERROR_CENTIDEGREES,
+        MAX_AIM_ERROR_CENTIDEGREES
+    ) / 100.0f;
+    direction = Vector2Rotate(direction, aimErrorDegrees * DEG2RAD);
 
     float projectileRadius = enemy->GetProjectileRadius();
     Vector2 projectilePosition = {
