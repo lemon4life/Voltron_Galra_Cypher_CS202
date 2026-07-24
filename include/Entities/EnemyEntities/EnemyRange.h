@@ -1,23 +1,23 @@
 #pragma once
 
-#include "Entities/PathfindingEnemy.h"
+#include "Entities/Enemy.h"
 
 #include <memory>
 
 class EnemyRangeShootingState;
 
-class EnemyRange : public PathfindingEnemy {
+class EnemyRange : public Enemy {
 private:
     std::unique_ptr<EnemyRangeShootingState> shootingState;
-    ILevelLineOfSightQuery* lineOfSightQuery;
+    ILevelLineOfSightQuery& lineOfSightQuery;
 
 public:
     EnemyRange(
         Vector2 position,
         TeamManager* targetTeam,
-        IEntityRemovalAccess* removalAccess,
-        IEnemyPathAccess* pathAccess,
-        ILevelLineOfSightQuery* lineOfSightQuery
+        IEntityRemovalAccess& removalAccess,
+        IEnemyPathAccess& pathAccess,
+        ILevelLineOfSightQuery& lineOfSightQuery
     );
     ~EnemyRange() override;
 
@@ -32,6 +32,6 @@ public:
     float GetProjectileLifetime() const;
     float GetProjectileRadius() const;
     float GetMaxPredictionTime() const;
-    ILevelLineOfSightQuery* GetLineOfSightQuery() const { return lineOfSightQuery; }
+    const ILevelLineOfSightQuery& GetLineOfSightQuery() const { return lineOfSightQuery; }
 
 };

@@ -22,11 +22,11 @@ namespace {
 EnemyRange::EnemyRange(
     Vector2 position,
     TeamManager* targetTeam,
-    IEntityRemovalAccess* removalAccess,
-    IEnemyPathAccess* pathAccess,
-    ILevelLineOfSightQuery* lineOfSightQuery
+    IEntityRemovalAccess& removalAccess,
+    IEnemyPathAccess& pathAccess,
+    ILevelLineOfSightQuery& lineOfSightQuery
 )
-    : PathfindingEnemy(
+    : Enemy(
           position,
           targetTeam,
           RANGE_MAX_HEALTH,

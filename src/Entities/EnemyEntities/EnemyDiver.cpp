@@ -1,7 +1,6 @@
 #include "Entities/EnemyEntities/EnemyDiver.h"
 
 #include "AI/EnemyState.h"
-#include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 
@@ -12,19 +11,18 @@
 
 
 namespace {
-    constexpr int DIVER_MAX_HEALTH = 140;
+    constexpr int DIVER_MAX_HEALTH = 200;
     constexpr float DIVER_BASE_SPEED = 210.0f;
-    constexpr int DIVER_DAMAGE = 30;
+    constexpr int DIVER_DAMAGE = 70;
     constexpr float DIVER_ATTACK_COOLDOWN = 2.5f;
     constexpr float DIVER_SIGHT_DISTANCE = 40000.0f;
     constexpr float DIVER_OFF_SIGHT_DISTANCE = 40000.0f;
-    constexpr float DIVE_TRIGGER_DISTANCE = 200.0f;
-    constexpr float DIVE_STOP_DISTANCE = 100.f;
+    constexpr float DIVE_STOP_DISTANCE = 70.f;
 
-    constexpr float READY_DURATION = 0.5f;
-    constexpr float READY_SPEED = 125.0f;
-    constexpr float DIVE_SPEED = 700.0f;
-    constexpr float DIVE_DURATION = 0.35f;
+    constexpr float READY_DURATION = 0.3f;
+    constexpr float READY_SPEED = 50.0f;
+    constexpr float DIVE_SPEED = 800.0f;
+    constexpr float DIVE_DURATION = 0.2f;
     constexpr float DIVE_RECOVERY_DURATION = 0.2f;
 
     constexpr Vector2 DIVER_SIZE = { 24.0f, 24.0f };
@@ -33,11 +31,11 @@ namespace {
 EnemyDiver::EnemyDiver(
     Vector2 position,
     TeamManager* targetTeam,
-    IEntityRemovalAccess* removalAccess,
-    IEnemyPathAccess* pathAccess,
-    ILevelLineOfSightQuery* lineOfSightQuery
+    IEntityRemovalAccess& removalAccess,
+    IEnemyPathAccess& pathAccess,
+    ILevelLineOfSightQuery& lineOfSightQuery
 )
-    : PathfindingEnemy(
+    : Enemy(
           position,
           targetTeam,
           DIVER_MAX_HEALTH,
@@ -49,7 +47,7 @@ EnemyDiver::EnemyDiver(
       ),
       lineOfSightQuery(lineOfSightQuery) {
     idleState = std::make_unique<EnemyIdleState>(DIVER_SIGHT_DISTANCE);
-    chaseState = std::make_unique<EnemyDiverChaseState>(DIVER_OFF_SIGHT_DISTANCE);
+    chaseState = std::make_unique<EnemyDiverChaseState>();
     readyState = std::make_unique<EnemyDiverReadyState>();
     lungingState = std::make_unique<EnemyDiverLungingState>();
     enemyType = EnemyType::DIVER;
@@ -108,17 +106,21 @@ bool EnemyDiver::CanEnterReadyState() const {
 
 bool EnemyDiver::IsWithinClearDiveRange() const {
     Paladin* target = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
-    if (!target || !lineOfSightQuery) return false;
+    if (!target) return false;
 
     if (Vector2Distance(position, target->GetPosition()) > DIVE_STOP_DISTANCE) {
         return false;
     }
 
-    return lineOfSightQuery->HasClearLineOfSight(
+    return lineOfSightQuery.HasClearLineOfSight(
         position,
         target->GetPosition(),
         GetCollisionClearanceRadius()
     );
+}
+
+bool EnemyDiver::IsBeyondDisengageDistance(Vector2 targetPosition) const {
+    return Vector2Distance(position, targetPosition) > DIVER_OFF_SIGHT_DISTANCE;
 }
 
 float EnemyDiver::GetReadyDuration() const {

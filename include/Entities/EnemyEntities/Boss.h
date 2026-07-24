@@ -13,7 +13,8 @@ public:
     Boss(
         Vector2 pos,
         TeamManager* targetTeam,
-        IEntityRemovalAccess* removalAccess
+        IEntityRemovalAccess& removalAccess,
+        IEnemyPathAccess& pathAccess
     );
     ~Boss() override;
 
@@ -27,4 +28,5 @@ public:
     float GetBurstTimer() const { return burstTimer; }
     void SetBurstTimer(float timer) { burstTimer = timer; }
     BossRangedAttackState* GetBossRangedAttackState() { return rangeState.get(); }
+    bool IsBeyondDisengageDistance(Vector2 targetPosition) const;
 };

@@ -35,7 +35,7 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
     // Determine active enemies dynamically
     int activeEnemies = 0;
     for (auto* entity : levelManager->GetEntities()) {
-        if (dynamic_cast<Enemy*>(entity)) {
+        if (entity->GetObjectType() == GameObjectType::Enemy) {
             activeEnemies++;
         }
     }

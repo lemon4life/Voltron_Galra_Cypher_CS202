@@ -72,7 +72,7 @@ Desktop.ini
 cmake-build-debug/
 
 # Local tmp folder
-/tmp/
+/tmp/*
 
 #locoal AGENTS.md
 AGENTS.md

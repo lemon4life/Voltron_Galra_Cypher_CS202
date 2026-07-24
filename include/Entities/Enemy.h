@@ -4,6 +4,7 @@
 #include "Core/LevelAccess.h"
 #include "raylib.h"
 
+#include <deque>
 #include <memory>
 #include <vector>
 
@@ -25,6 +26,7 @@ protected:
     int damage;
     float attackCooldown;
     const float baseAttackCooldown;
+    float dazeDuration;
     Vector2 size;
     Vector2 knockbackVelocity;
 
@@ -35,12 +37,23 @@ protected:
 
     std::unique_ptr<IEnemyState> idleState;
     std::unique_ptr<IEnemyState> chaseState;
+    std::unique_ptr<EnemyDazeState> dazeState;
 
     bool deathNotified = false;
-    IEntityRemovalAccess* removalAccess;
+    IEntityRemovalAccess& removalAccess;
+    IEnemyPathAccess& pathAccess;
+
+private:
+    bool usePathFinding = false;
+    std::deque<Vector2> targetPositions;
 
 public:
-    Enemy(Vector2 pos, TeamManager* t, IEntityRemovalAccess* removalAccess);
+    Enemy(
+        Vector2 pos,
+        TeamManager* t,
+        IEntityRemovalAccess& removalAccess,
+        IEnemyPathAccess& pathAccess
+    );
     Enemy(
         Vector2 pos,
         TeamManager* t,
@@ -48,7 +61,8 @@ public:
         float speed,
         int damage,
         float attackCooldown,
-        IEntityRemovalAccess* removalAccess
+        IEntityRemovalAccess& removalAccess,
+        IEnemyPathAccess& pathAccess
     );
     virtual ~Enemy();
 
@@ -58,6 +72,7 @@ public:
     IEnemyState* GetCurrentState() { return currentState; }
     IEnemyState* GetIdleState() { return idleState.get(); }
     IEnemyState* GetChaseState() { return chaseState.get(); }
+    EnemyDazeState* GetDazeState() { return dazeState.get(); }
     void ChangeState(IEnemyState* newState);
 
     virtual void TakeDamage(int amount);
@@ -79,6 +94,30 @@ public:
     float GetAttackCooldown() const { return attackCooldown; }
     void SetAttackCooldown(float cd) { attackCooldown = cd; }
     void ResetAttackCooldown();
+    float GetDazeDuration() const { return dazeDuration; }
+    void SetDazeDuration(float duration) { dazeDuration = duration; }
+    float GetDazeTimeRemaining() const {
+        return dazeState ? dazeState->GetRemainingTime() : 0.0f;
+    }
+
+    IEnemyPathAccess& GetPathAccess() const { return pathAccess; }
+    void StartPathFinding();
+    void EndPathFinding();
+    bool IsPathFinding() const { return usePathFinding; }
+
+    void ClearTargetPosition() { targetPositions.clear(); }
+    void PopTarget() {
+        if (!targetPositions.empty()) targetPositions.pop_front();
+    }
+    void AddTargetPosition(Vector2 targetPosition) {
+        targetPositions.push_back(targetPosition);
+    }
+    Vector2 FirstTargetPosition() const {
+        return targetPositions.empty()
+            ? Vector2{ -1.0f, -1.0f }
+            : targetPositions.front();
+    }
+    bool HasTargetPosition() const { return !targetPositions.empty(); }
 
     TeamManager* GetTargetTeam() const { return targetTeam; }
 };

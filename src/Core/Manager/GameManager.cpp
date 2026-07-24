@@ -34,6 +34,7 @@ void GameManager::AddProjectile(Projectile* p) {
 }
 
 #include "Entities/Enemy.h"
+#include "Entities/Items/DestructibleBox.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 
@@ -46,8 +47,28 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
         bool hitSomething = false;
         Rectangle pBox = (*it)->GetBoundingBox();
 
+        // Damage box entities before the solid object-grid cell consumes the projectile.
+        for (GameObject* entity : entities) {
+            if (entity->GetObjectType() != GameObjectType::Box) {
+                continue;
+            }
+            if (!CheckCollisionRecs(pBox, entity->GetBoundingBox())) {
+                continue;
+            }
+
+            DestructibleBox& box = static_cast<DestructibleBox&>(*entity);
+            box.TakeDamage((*it)->GetDamage());
+            AddImpactEffect({
+                pBox.x + pBox.width / 2.0f,
+                pBox.y + pBox.height / 2.0f
+            });
+            hitSomething = true;
+            break;
+        }
+
         // If it's an enemy projectile, check collision with Player
-        if ((*it)->IsEnemyProjectile() && teamManager && teamManager->GetActivePaladin()) {
+        if (!hitSomething && (*it)->IsEnemyProjectile() &&
+            teamManager && teamManager->GetActivePaladin()) {
             Paladin* activePaladin = teamManager->GetActivePaladin();
             if (CheckCollisionRecs(pBox, activePaladin->GetBoundingBox())) {
                 if (activePaladin->CanParryAttack((*it)->GetPosition())) {
@@ -76,7 +97,8 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
             } else {
                 for (auto* entity : entities) {
                     if (CheckCollisionRecs(pBox, entity->GetBoundingBox())) {
-                        if (Enemy* e = dynamic_cast<Enemy*>(entity)) {
+                        if (entity->GetObjectType() == GameObjectType::Enemy) {
+                            Enemy* e = static_cast<Enemy*>(entity);
                             if (!(*it)->IsEnemyProjectile()) {
                                 e->TakeDamage((*it)->GetDamage());
                                 Vector2 kdir = Vector2Subtract(e->GetPosition(), (*it)->GetPosition());

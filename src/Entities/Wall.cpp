@@ -1,7 +1,7 @@
 #include "Entities/Wall.h"
 #include "raylib.h"
 
-Wall::Wall(Vector2 pos) : GameObject(pos) {
+Wall::Wall(Vector2 pos) : GameObject(pos, GameObjectType::Wall) {
     // Each tile is 32x32 pixels
     boundingBox = { pos.x, pos.y, 32.0f, 32.0f };
 }

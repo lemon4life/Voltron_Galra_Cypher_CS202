@@ -1,5 +1,7 @@
 #include "Entities/EnemyEntities/Boss.h"
 
+#include "raymath.h"
+
 namespace {
     constexpr int BOSS_MAX_HEALTH = 500;
     constexpr float BOSS_SPEED = 75.0f;
@@ -13,7 +15,8 @@ namespace {
 Boss::Boss(
     Vector2 pos,
     TeamManager* targetTeam,
-    IEntityRemovalAccess* removalAccess
+    IEntityRemovalAccess& removalAccess,
+    IEnemyPathAccess& pathAccess
 )
     : Enemy(
           pos,
@@ -22,7 +25,8 @@ Boss::Boss(
           BOSS_SPEED,
           BOSS_DAMAGE,
           BOSS_ATTACK_COOLDOWN,
-          removalAccess
+          removalAccess,
+          pathAccess
       )
 {
     bossSkillCooldown = 2.0f;
@@ -33,7 +37,7 @@ Boss::Boss(
     size = BOSS_SIZE;
 
     idleState = std::make_unique<EnemyIdleState>(BOSS_SIGHT_DISTANCE);
-    chaseState = std::make_unique<BossChaseState>(BOSS_OFF_SIGHT_DISTANCE);
+    chaseState = std::make_unique<BossChaseState>();
     rangeState = std::make_unique<BossRangedAttackState>();
 
     ChangeState(GetIdleState());
@@ -60,4 +64,8 @@ void Boss::Draw() {
     // Draw Health Bar
     float hpPercent = (float)health / maxHealth;
     DrawRectangle(position.x - size.x/2.f, position.y - size.y/2.f, size.x * hpPercent, 4, RED);
+}
+
+bool Boss::IsBeyondDisengageDistance(Vector2 targetPosition) const {
+    return Vector2Distance(position, targetPosition) > BOSS_OFF_SIGHT_DISTANCE;
 }

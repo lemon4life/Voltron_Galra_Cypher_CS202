@@ -1,158 +1,202 @@
 #include "AI/EnemyState.h"
+
+#include "AI/EnemyCollision.h"
+#include "Core/LevelAccess.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/TeamManager.h"
 #include "Entities/EnemyEntities/EnemyChaser.h"
 #include "Entities/Player/Paladin.h"
-#include "Core/Manager/TeamManager.h"
-#include "Core/Manager/GameManager.h"
-#include "Core/Manager/LevelManager.h"
+
 #include "raymath.h"
 
+#include <algorithm>
+#include <cmath>
+
 namespace {
-    bool IsBlocked(LevelManager* levelManager, Enemy* enemy) {
-        return levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox());
+    constexpr float MIN_DIRECTION_LENGTH = 0.001f;
+
+    Vector2 NormalizeOrFallback(Vector2 direction, Vector2 fallback) {
+        if (Vector2Length(direction) <= MIN_DIRECTION_LENGTH) {
+            return fallback;
+        }
+        return Vector2Normalize(direction);
+    }
+
+    void FinishDamageAttempt(EnemyChaser* enemy) {
+        enemy->ResetAttackCooldown();
+        enemy->ChangeState(enemy->GetChaseState());
     }
 }
 
-EnemyChaserChaseState::EnemyChaserChaseState(float offSightDistance)
-    : offSightDistance(offSightDistance) {}
-
-void EnemyChaserChaseState::Enter(EnemyChaser* enemy) { }
+void EnemyChaserChaseState::Enter(EnemyChaser* enemy) {
+    enemy->StartPathFinding();
+}
 
 void EnemyChaserChaseState::Update(EnemyChaser* enemy, float deltaTime) {
-    if (!enemy->GetTargetTeam()) return;
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* activePaladin = targetTeam
+        ? targetTeam->GetActivePaladin()
+        : nullptr;
+    if (!activePaladin) return;
 
-    
-    Vector2 ePos = enemy->GetPosition();
-    Vector2 pPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-    Vector2 dir = { 0.0f, 0.0f };
-    float speed = enemy->GetSpeed();
-    float distanceToP = Vector2Length(Vector2Subtract(pPos, ePos));
-    
-    // Change back to idleState if player is too far away
-    if (Vector2Distance(ePos, pPos) > offSightDistance) {
-        enemy->EndPathFinding();
+    Vector2 enemyPosition = enemy->GetPosition();
+    Vector2 playerPosition = activePaladin->GetPosition();
+
+    if (enemy->IsBeyondDisengageDistance(playerPosition)) {
         enemy->ChangeState(enemy->GetIdleState());
         return;
     }
-    
-    // Apply Path finding if far from player
-    // If near player use head to player direction directly
-    if (distanceToP > 10.f) {
-        enemy->StartPathFinding();
-        Vector2 moveTarget = pPos;
-        if (levelManager) {
-            moveTarget = levelManager->GetEnemyPathManager().GetNextMoveTarget(levelManager, enemy, pPos);
+
+    if (enemy->GetAttackCooldown() > 0.0f) {
+        float remainingCooldown = enemy->GetAttackCooldown() - deltaTime;
+        enemy->SetAttackCooldown(std::max(0.0f, remainingCooldown));
+    }
+
+    if (enemy->IsWithinStopPathFindingDistance(playerPosition)) {
+        if (enemy->GetAttackCooldown() <= 0.0f) {
+            enemy->ChangeState(enemy->GetDamageState());
         }
-        dir = Vector2Subtract(moveTarget, ePos);
-    } else {
-        enemy->EndPathFinding();
-        dir = Vector2Subtract(pPos, ePos);
+        return;
     }
 
-    if (Vector2Length(dir) > 0.0f) {
-        dir = Vector2Normalize(dir);
-    }
+    IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
+    Vector2 moveTarget = pathAccess.GetNextMoveTarget(
+        *enemy,
+        playerPosition
+    );
+    Vector2 direction = NormalizeOrFallback(
+        Vector2Subtract(moveTarget, enemyPosition),
+        { 0.0f, 0.0f }
+    );
+    direction = pathAccess.GetLocalDirection(*enemy, direction);
 
-    if (levelManager) {
-        dir = levelManager->GetEnemyPathManager().GetLocalAvoidanceDirection(levelManager, enemy, dir);
-    }
-
-    // Handle Attack Cooldown
-    float cd = enemy->GetAttackCooldown();
-    if (cd > 0.0f) {
-        float remainingCooldown = cd - deltaTime;
-        enemy->SetAttackCooldown(remainingCooldown > 0.0f ? remainingCooldown : 0.0f);
-    }
-
-    // Collision calculation
-    {
-        ePos = enemy->GetPosition();
-
-        // X Axis Wall Sliding
-        ePos.x += dir.x * speed * deltaTime;
-        enemy->SetPosition(ePos);
-        if (IsBlocked(levelManager, enemy)) {
-            ePos.x -= dir.x * speed * deltaTime;
-            enemy->SetPosition(ePos);
-        }
-        ePos = enemy->GetPosition();
-
-        // Y Axis Wall Sliding
-        ePos.y += dir.y * speed * deltaTime;
-        enemy->SetPosition(ePos);
-        if (IsBlocked(levelManager, enemy)) {
-            ePos.y -= dir.y * speed * deltaTime;
-            enemy->SetPosition(ePos);
-        }
-        ePos = enemy->GetPosition();
-
-        // Check collision with Player for overlap resolution and damage
-        if (CheckCollisionRecs(enemy->GetBoundingBox(), enemy->GetTargetTeam()->GetActivePaladin()->GetBoundingBox())) {
-            Paladin* activePaladin = enemy->GetTargetTeam()->GetActivePaladin();
-            
-            if (activePaladin->CanParryAttack(ePos)) {
-                activePaladin->TriggerParrySuccess(enemy);
-                activePaladin->IncrementParryCount();
-                GameManager::GetInstance().TriggerHitstop(0.3f);
-                GameManager::GetInstance().AddImpactEffect({pPos.x, pPos.y});
-                enemy->SetAttackCooldown(2.0f); // Stun
-                
-                // Massive pushback
-                Vector2 pushDir = Vector2Subtract(ePos, pPos);
-                if (Vector2Length(pushDir) == 0.0f) pushDir = {1.0f, 0.0f};
-                pushDir = Vector2Normalize(pushDir);
-                
-                LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-                Vector2 beforePush = ePos;
-                
-                ePos.x += pushDir.x * 60.0f;
-                enemy->SetPosition(ePos);
-                if (levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox())) {
-                    ePos.x = beforePush.x;
-                    enemy->SetPosition(ePos);
-                }
-                
-                beforePush = ePos;
-                ePos.y += pushDir.y * 60.0f;
-                enemy->SetPosition(ePos);
-                if (levelManager && levelManager->IsSolidCollision(enemy->GetBoundingBox())) {
-                    ePos.y = beforePush.y;
-                    enemy->SetPosition(ePos);
-                }
-            } else if (enemy->GetAttackCooldown() <= 0.0f) {
-                activePaladin->TakeDamage(enemy->GetDamage());
-                enemy->ResetAttackCooldown(); 
-                
-                if (activePaladin->IsParrying()) {
-                    activePaladin->ChangeState(activePaladin->GetIdleState());
-                }
-            }
-            
-            // Separation knockback (push enemy away from player to prevent freeze/deadlock)
-            Vector2 pushDir = Vector2Subtract(ePos, pPos);
-            if (Vector2Length(pushDir) == 0.0f) pushDir = {1.0f, 0.0f}; // Fallback if exactly on top
-            pushDir = Vector2Normalize(pushDir);
-            
-            Vector2 beforePush = ePos;
-            ePos.x += pushDir.x * 20.0f;
-            enemy->SetPosition(ePos);
-            if (IsBlocked(levelManager, enemy)) {
-                ePos.x = beforePush.x;
-                enemy->SetPosition(ePos);
-            }
-
-            beforePush = ePos;
-            ePos.y += pushDir.y * 20.0f;
-            enemy->SetPosition(ePos);
-            if (IsBlocked(levelManager, enemy)) {
-                ePos.y = beforePush.y;
-                enemy->SetPosition(ePos);
-            }
-        }
-    }
+    EnemyCollision::MoveAgainstWalls(
+        *enemy,
+        Vector2Scale(direction, enemy->GetSpeed() * deltaTime),
+        pathAccess,
+        EnemyWallResponse::Slide
+    );
 }
 
 void EnemyChaserChaseState::Exit(EnemyChaser* enemy) {
-    // Exit from path finding manager if it is still on
     enemy->EndPathFinding();
+}
+
+void EnemyChaserDamageState::Enter(EnemyChaser* enemy) {
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
+    Vector2 targetPosition = player
+        ? player->GetPosition()
+        : enemy->GetPosition();
+
+    chargeDirection = NormalizeOrFallback(
+        Vector2Subtract(targetPosition, enemy->GetPosition()),
+        { 1.0f, 0.0f }
+    );
+    remainingChargeDistance = std::max(
+        0.0f,
+        enemy->GetDamageChargeDistance()
+    );
+    dTimer = std::max(0.0f, enemy->GetDamageChargeDuration());
+    attackResolved = false;
+}
+
+void EnemyChaserDamageState::Update(
+    EnemyChaser* enemy,
+    float deltaTime
+) {
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
+    if (!player) {
+        FinishDamageAttempt(enemy);
+        return;
+    }
+
+    float activeTime = std::min(std::max(deltaTime, 0.0f), dTimer);
+    dTimer = std::max(0.0f, dTimer - deltaTime);
+
+    float chargeDuration = std::max(
+        MIN_DIRECTION_LENGTH,
+        enemy->GetDamageChargeDuration()
+    );
+    float chargeSpeed = enemy->GetDamageChargeDistance() / chargeDuration;
+    float frameDistance = std::min(
+        remainingChargeDistance,
+        chargeSpeed * activeTime
+    );
+
+    Rectangle body = enemy->GetBoundingBox();
+    float maximumSubstep = std::max(
+        1.0f,
+        std::min(body.width, body.height) / 2.0f
+    );
+    int substepCount = std::max(
+        1,
+        (int)std::ceil(frameDistance / maximumSubstep)
+    );
+    float substepDistance = frameDistance / (float)substepCount;
+
+    for (int step = 0; step < substepCount; ++step) {
+        EnemyMoveResult moveResult = EnemyCollision::MoveAgainstWalls(
+            *enemy,
+            Vector2Scale(chargeDirection, substepDistance),
+            enemy->GetPathAccess(),
+            EnemyWallResponse::Stop
+        );
+
+        if (moveResult.hitWall) {
+            FinishDamageAttempt(enemy);
+            return;
+        }
+
+        remainingChargeDistance = std::max(
+            0.0f,
+            remainingChargeDistance - substepDistance
+        );
+
+        if (attackResolved ||
+            !EnemyCollision::CheckPlayerCollision(*enemy, *player)) {
+            continue;
+        }
+
+        attackResolved = true;
+        if (EnemyCollision::CheckParry(*enemy, *player)) {
+            Vector2 playerPosition = player->GetPosition();
+            player->TriggerParrySuccess(enemy);
+            player->IncrementParryCount();
+            GameManager::GetInstance().TriggerHitstop(0.3f);
+            GameManager::GetInstance().AddImpactEffect(playerPosition);
+
+            Vector2 pushDirection = NormalizeOrFallback(
+                Vector2Subtract(enemy->GetPosition(), playerPosition),
+                Vector2Negate(chargeDirection)
+            );
+            EnemyCollision::MoveAgainstWalls(
+                *enemy,
+                Vector2Scale(pushDirection, 60.0f),
+                enemy->GetPathAccess(),
+                EnemyWallResponse::Slide
+            );
+
+            enemy->ResetAttackCooldown();
+            enemy->ChangeState(enemy->GetDazeState());
+            return;
+        }
+
+        player->TakeDamage(enemy->GetDamage());
+        if (player->IsParrying()) {
+            player->ChangeState(player->GetIdleState());
+        }
+    }
+
+    if (dTimer <= 0.0f || remainingChargeDistance <= 0.0f) {
+        FinishDamageAttempt(enemy);
+    }
+}
+
+void EnemyChaserDamageState::Exit(EnemyChaser* enemy) {
+    dTimer = 0.0f;
+    remainingChargeDistance = 0.0f;
+    chargeDirection = { 0.0f, 0.0f };
+    attackResolved = false;
 }

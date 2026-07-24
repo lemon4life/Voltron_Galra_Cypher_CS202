@@ -2,26 +2,25 @@
 
 
 #include "Entities/Enemy.h"
-#include "Entities/PathfindingEnemy.h"
 
 #include <memory>
 
 class EnemyDiverReadyState;
 class EnemyDiverLungingState;
 
-class EnemyDiver : public PathfindingEnemy {
+class EnemyDiver : public Enemy {
 private:
     std::unique_ptr<EnemyDiverReadyState> readyState;
     std::unique_ptr<EnemyDiverLungingState> lungingState;
-    ILevelLineOfSightQuery* lineOfSightQuery;
+    ILevelLineOfSightQuery& lineOfSightQuery;
 
 public:
     EnemyDiver(
         Vector2 position,
         TeamManager* targetTeam,
-        IEntityRemovalAccess* removalAccess,
-        IEnemyPathAccess* pathAccess,
-        ILevelLineOfSightQuery* lineOfSightQuery
+        IEntityRemovalAccess& removalAccess,
+        IEnemyPathAccess& pathAccess,
+        ILevelLineOfSightQuery& lineOfSightQuery
     );
     ~EnemyDiver() override;
 
@@ -33,6 +32,7 @@ public:
 
     bool CanEnterReadyState() const;
     bool IsWithinClearDiveRange() const;
+    bool IsBeyondDisengageDistance(Vector2 targetPosition) const;
 
     float GetReadyDuration() const;
     float GetReadySpeed() const;
@@ -41,6 +41,6 @@ public:
     float GetDiveSpeed() const;
     float GetDiveRecoveryDuration() const;
     float GetCollisionClearanceRadius() const;
-    ILevelLineOfSightQuery* GetLineOfSightQuery() const { return lineOfSightQuery; }
+    const ILevelLineOfSightQuery& GetLineOfSightQuery() const { return lineOfSightQuery; }
 
 };

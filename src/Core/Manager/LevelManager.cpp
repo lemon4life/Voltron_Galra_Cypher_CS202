@@ -3,6 +3,7 @@
 #include "Core/EntityFactory.h"
 
 #include "Entities/Enemy.h"
+#include "Entities/Items/DestructibleBox.h"
 
 #include <fstream>
 #include <sstream>
@@ -29,6 +30,103 @@ LevelManager::~LevelManager() {
     UnloadTexture(tileset);
 }
 
+bool LevelManager::LoadObjectGrid(const std::string& filepath) {
+    mapObjectGrid.clear();
+    mapObjectGrid.reserve(mapGridLayer1.size());
+    for (const auto& row : mapGridLayer1) {
+        mapObjectGrid.push_back(
+            std::vector<MapObjectId>(row.size(), MapObjectId::Empty)
+        );
+    }
+
+    std::string objectLayerPath = filepath;
+    size_t layerNamePosition = objectLayerPath.find("Layer 1");
+    if (layerNamePosition == std::string::npos) {
+        return false;
+    }
+
+    objectLayerPath.replace(
+        layerNamePosition,
+        std::string("Layer 1").size(),
+        "Game Objects"
+    );
+
+    std::ifstream objectFile(objectLayerPath);
+    if (!objectFile.is_open()) {
+        return false;
+    }
+
+    bool dimensionsMatch = true;
+    std::string line;
+    int rowIndex = 0;
+    while (std::getline(objectFile, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+
+        if (rowIndex >= (int)mapObjectGrid.size()) {
+            dimensionsMatch = false;
+            rowIndex++;
+            continue;
+        }
+
+        std::stringstream rowStream(line);
+        std::string cellString;
+        int columnIndex = 0;
+        while (std::getline(rowStream, cellString, ',')) {
+            if (columnIndex >= (int)mapObjectGrid[rowIndex].size()) {
+                dimensionsMatch = false;
+                columnIndex++;
+                continue;
+            }
+
+            try {
+                mapObjectGrid[rowIndex][columnIndex] =
+                    static_cast<MapObjectId>(std::stoi(cellString));
+            } catch (...) {
+                mapObjectGrid[rowIndex][columnIndex] = MapObjectId::Empty;
+            }
+            columnIndex++;
+        }
+
+        if (columnIndex != (int)mapObjectGrid[rowIndex].size()) {
+            dimensionsMatch = false;
+        }
+        rowIndex++;
+    }
+
+    if (rowIndex != (int)mapObjectGrid.size()) {
+        dimensionsMatch = false;
+    }
+
+    if (!dimensionsMatch) {
+        std::cerr
+            << "Game Objects layer dimensions do not match Layer 1: "
+            << objectLayerPath
+            << std::endl;
+    }
+
+    return true;
+}
+
+void LevelManager::SpawnGameObjects() {
+    for (int row = 0; row < (int)mapObjectGrid.size(); ++row) {
+        for (int column = 0;
+             column < (int)mapObjectGrid[row].size();
+             ++column) {
+            if (mapObjectGrid[row][column] != MapObjectId::DestructibleBox) {
+                continue;
+            }
+
+            AddEntity(new DestructibleBox(
+                TileToWorld(column, row),
+                { row, column },
+                *this
+            ));
+        }
+    }
+}
+
 void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManager) {
     ClearLevel();
 
@@ -41,6 +139,7 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
     std::string line;
     mapGridLayer1.clear();
     mapGridLayer2.clear();
+    mapObjectGrid.clear();
     gridCols = 0;
 
     bool isCSV = (filepath.length() >= 4 && filepath.substr(filepath.length() - 4) == ".csv");
@@ -133,21 +232,32 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
     levelWidth = gridCols * TILE_SIZE;
     levelHeight = gridRows * TILE_SIZE;
 
-    // Entity spawning via LevelManager is temporarily disabled
-    // because CSV map layer 1 only contains visual tile IDs.
-    // Entities could be spawned via a separate Layer 2.
+    if (isCSV) {
+        LoadObjectGrid(filepath);
+    } else {
+        mapObjectGrid.reserve(mapGridLayer1.size());
+        for (const auto& row : mapGridLayer1) {
+            mapObjectGrid.push_back(
+                std::vector<MapObjectId>(row.size(), MapObjectId::Empty)
+            );
+        }
+    }
+
+    SpawnGameObjects();
 
     // Store in GameManager for global access
     GameManager::GetInstance().SetLevelBounds(levelWidth, levelHeight);
 }
 
 void LevelManager::UpdateLevel(float deltaTime) {
+    ProcessPendingMapObjectDestructions();
     ProcessPendingRemovals();
 
-    enemyPathManager.Update(this, deltaTime);
+    enemyPathManager.Update(*this, deltaTime);
 
     for (auto it = levelEntities.begin(); it != levelEntities.end(); it++) {
-        if (Enemy* e = dynamic_cast<Enemy*>(*it)) {
+        if ((*it)->GetObjectType() == GameObjectType::Enemy) {
+            Enemy* e = static_cast<Enemy*>(*it);
             if (e->IsDead()) {
                 continue;
             }
@@ -156,6 +266,7 @@ void LevelManager::UpdateLevel(float deltaTime) {
         (*it)->Update(deltaTime);
     }
 
+    ProcessPendingMapObjectDestructions();
     ProcessPendingRemovals();
 }
 
@@ -202,6 +313,7 @@ void LevelManager::DrawLevel() {
 }
 
 void LevelManager::ClearLevel() {
+    pendingMapObjectDestructions.clear();
     pendingRemoval.clear();
     enemyPathManager.Clear();
 
@@ -211,6 +323,7 @@ void LevelManager::ClearLevel() {
     levelEntities.clear();
     mapGridLayer1.clear();
     mapGridLayer2.clear();
+    mapObjectGrid.clear();
 }
 
 void LevelManager::AddEntity(GameObject* entity) {
@@ -231,9 +344,13 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
         for (int c = minCol; c <= maxCol; ++c) {
             int tileID1 = -1;
             int tileID2 = -1;
+            MapObjectId mapObjectId = MapObjectId::Empty;
             if (r >= 0 && c >= 0 && r < gridRows) {
                 if (r < mapGridLayer1.size() && c < mapGridLayer1[r].size()) tileID1 = mapGridLayer1[r][c];
                 if (r < mapGridLayer2.size() && c < mapGridLayer2[r].size()) tileID2 = mapGridLayer2[r][c];
+                if (r < mapObjectGrid.size() && c < mapObjectGrid[r].size()) {
+                    mapObjectId = mapObjectGrid[r][c];
+                }
             } else {
                 return true; // Out of bounds is fully solid void
             }
@@ -268,8 +385,20 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
                     }
                 }
             }
+
+            if (IsSolidMapObject(mapObjectId)) {
+                return true;
+            }
         }
     }
+    return false;
+}
+
+bool LevelManager::IsSolidMapObject(MapObjectId objectId) const {
+    if (objectId == MapObjectId::DestructibleBox) {
+        return true; // DestructibleBox occupies one solid cell.
+    }
+
     return false;
 }
 
@@ -338,6 +467,42 @@ Vector2 LevelManager::TileToWorld(int tileX, int tileY) const {
 // Narrow level-access capabilities used by entities.
 //////////////////////////////////////////////
 
+void LevelManager::ProcessPendingMapObjectDestructions() {
+    for (const PendingMapObjectDestruction& request
+         : pendingMapObjectDestructions) {
+        GameObject* object = request.object;
+        if (!object) {
+            continue;
+        }
+
+        if (std::find(levelEntities.begin(), levelEntities.end(), object)
+            == levelEntities.end()) {
+            continue;
+        }
+
+        if (object->GetObjectType() != GameObjectType::Box) {
+            continue;
+        }
+
+        int row = request.cell.row;
+        int column = request.cell.column;
+        if (row < 0 || column < 0 ||
+            row >= (int)mapObjectGrid.size() ||
+            column >= (int)mapObjectGrid[row].size()) {
+            continue;
+        }
+
+        if (mapObjectGrid[row][column] != MapObjectId::DestructibleBox) {
+            continue;
+        }
+
+        mapObjectGrid[row][column] = MapObjectId::Empty;
+        QueueRemoval(object);
+    }
+
+    pendingMapObjectDestructions.clear();
+}
+
 void LevelManager::ProcessPendingRemovals() {
     for (GameObject* entity : pendingRemoval) {
         auto it = std::find(levelEntities.begin(), levelEntities.end(), entity);
@@ -349,12 +514,42 @@ void LevelManager::ProcessPendingRemovals() {
     pendingRemoval.clear();
 }
 
-void LevelManager::BeginPathFinding(PathfindingEnemy* enemy) {
+void LevelManager::BeginPathFinding(Enemy& enemy) {
     enemyPathManager.AddEnemy(enemy);
 }
 
-void LevelManager::EndPathFinding(PathfindingEnemy* enemy) {
+void LevelManager::EndPathFinding(Enemy& enemy) {
     enemyPathManager.RemoveEnemy(enemy);
+}
+
+bool LevelManager::IsBlocked(Rectangle bounds) const {
+    return IsSolidCollision(bounds);
+}
+
+Rectangle LevelManager::GetLevelBounds() const {
+    return { 0.0f, 0.0f, levelWidth, levelHeight };
+}
+
+Vector2 LevelManager::GetNextMoveTarget(
+    Enemy& enemy,
+    Vector2 fallbackTarget
+) {
+    return enemyPathManager.GetNextMoveTarget(
+        *this,
+        enemy,
+        fallbackTarget
+    );
+}
+
+Vector2 LevelManager::GetLocalDirection(
+    Enemy& enemy,
+    Vector2 desiredDirection
+) {
+    return enemyPathManager.GetLocalAvoidanceDirection(
+        *this,
+        enemy,
+        desiredDirection
+    );
 }
 
 void LevelManager::QueueRemoval(GameObject* entity) {
@@ -366,5 +561,41 @@ void LevelManager::QueueRemoval(GameObject* entity) {
 
     if (std::find(pendingRemoval.begin(), pendingRemoval.end(), entity) == pendingRemoval.end()) {
         pendingRemoval.push_back(entity);
+    }
+}
+
+void LevelManager::QueueMapObjectDestruction(
+    GameObject& object,
+    GameObjectCell cell
+) {
+    if (object.GetObjectType() != GameObjectType::Box) {
+        return;
+    }
+
+    if (std::find(levelEntities.begin(), levelEntities.end(), &object)
+        == levelEntities.end()) {
+        return;
+    }
+
+    if (cell.row < 0 || cell.column < 0 ||
+        cell.row >= (int)mapObjectGrid.size() ||
+        cell.column >= (int)mapObjectGrid[cell.row].size()) {
+        return;
+    }
+
+    if (mapObjectGrid[cell.row][cell.column]
+        != MapObjectId::DestructibleBox) {
+        return;
+    }
+
+    auto duplicate = std::find_if(
+        pendingMapObjectDestructions.begin(),
+        pendingMapObjectDestructions.end(),
+        [&object](const PendingMapObjectDestruction& request) {
+            return request.object == &object;
+        }
+    );
+    if (duplicate == pendingMapObjectDestructions.end()) {
+        pendingMapObjectDestructions.push_back({ &object, cell });
     }
 }

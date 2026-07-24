@@ -152,7 +152,8 @@ void DialogueManager::Update(float deltaTime) {
                 // Determine player name dynamically
                 std::string playerName = "Lance";
                 for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
-                    if (Paladin* p = dynamic_cast<Paladin*>(entity)) {
+                    if (entity->GetObjectType() == GameObjectType::Player) {
+                        Paladin* p = static_cast<Paladin*>(entity);
                         if (p->GetTeamManager()->GetActiveIndex() != 0) {
                             playerName = "Keith";
                         }

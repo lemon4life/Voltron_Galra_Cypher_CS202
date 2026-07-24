@@ -41,7 +41,7 @@ void ResetDemoGame(TeamManager* teamManager, LevelManager* levelManager, WaveMan
     for(auto p : teamManager->GetTeam()) p->ResetStats();
     GameManager::GetInstance().ClearProjectiles();
     levelManager->LoadLevel("assets/levels/demo-big.txt", teamManager);
-    waveManager->Reset(1, 0, 5);
+    waveManager->Reset(10, 0, 5);
     GameManager::GetInstance().SetState(GameState::PLAYING);
 }
 
@@ -163,7 +163,8 @@ int main() {
                     
                     if (IsKeyPressed(KEY_E)) {
                         for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
-                            if (NPC* npc = dynamic_cast<NPC*>(entity)) {
+                            if (entity->GetObjectType() == GameObjectType::NPC) {
+                                NPC* npc = static_cast<NPC*>(entity);
                                 if (Vector2Distance(teamManager->GetActivePaladin()->GetPosition(), npc->GetPosition()) < 50.0f) {
                                     DialogueManager::GetInstance().LoadDialogueTree("assets/story/intro.txt");
                                     DialogueManager::GetInstance().StartDialogue();
