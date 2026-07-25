@@ -16,6 +16,7 @@ public:
 
     void Initialize();
     void SetTeamManager(TeamManager* tm) { teamManager = tm; }
+    bool IsPauseButtonPressed(Vector2 mousePosition) const;
 
     // Obsolete but kept to fulfill IObserver interface
     void OnPlayerStatsChanged(int hp, int maxHp, int armor, int maxArmor, bool isLance) override {}

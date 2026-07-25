@@ -1,4 +1,4 @@
-#include "GUI/PauseMenu.h"
+#include "UI/PauseMenu.h"
 
 #include "Core/Manager/AudioManager.h"
 

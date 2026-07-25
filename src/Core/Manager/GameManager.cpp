@@ -3,7 +3,10 @@
 #include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 
-GameManager::GameManager() : currentState(GameState::MENU), levelManager(nullptr) {
+GameManager::GameManager()
+    : currentState(GameState::MENU),
+      previousGameState(GameState::MENU),
+      levelManager(nullptr) {
     // Starts in MENU state by default
 }
 
@@ -19,6 +22,38 @@ GameManager& GameManager::GetInstance() {
     // Thread-safe in C++11+ (Meyers' Singleton)
     static GameManager instance;
     return instance;
+}
+
+bool GameManager::PauseGame() {
+    if (currentState != GameState::HUB &&
+        currentState != GameState::PLAYING) {
+        return false;
+    }
+
+    previousGameState = currentState;
+    currentState = GameState::PAUSED;
+    return true;
+}
+
+bool GameManager::ResumeGame() {
+    if (currentState != GameState::PAUSED) {
+        return false;
+    }
+
+    currentState = previousGameState;
+    return true;
+}
+
+bool GameManager::IsPaused() const {
+    return currentState == GameState::PAUSED;
+}
+
+GameState GameManager::GetPreviousGameState() const {
+    return previousGameState;
+}
+
+GameState GameManager::GetRenderState() const {
+    return IsPaused() ? previousGameState : currentState;
 }
 
 const std::vector<GameObject*>& GameManager::GetLevelEntities() const {

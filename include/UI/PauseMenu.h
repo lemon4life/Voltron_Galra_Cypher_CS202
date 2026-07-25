@@ -1,7 +1,7 @@
 #pragma once
 
-#include "GUI/GUIButton.h"
-#include "GUI/GUISlider.h"
+#include "UI/GUIButton.h"
+#include "UI/GUISlider.h"
 
 enum class PauseMenuAction {
     None,

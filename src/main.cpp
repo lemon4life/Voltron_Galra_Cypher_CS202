@@ -14,8 +14,8 @@
 #include "Core/Manager/WaveManager.h"
 #include "Core/Manager/DialogueManager.h"
 #include "Entities/NPC.h"
-#include "GUI/MainMenu.h"
-#include "GUI/PauseMenu.h"
+#include "UI/MainMenu.h"
+#include "UI/PauseMenu.h"
 #include "raymath.h"
 
 #include <algorithm>
@@ -65,10 +65,13 @@ int main() {
         INITIAL_WINDOW_HEIGHT,
         "Voltron: Mission Galra Cypher"
     );
+    SetExitKey(KEY_NULL);
 
     // Initialize AudioManager Singleton (Initializes Audio Device)
     AudioManager::GetInstance();
     AudioManager::GetInstance().Initialize();
+
+    // Initialize GUI components
     MainMenu mainMenu;
     PauseMenu pauseMenu;
     bool quitRequested = false;
@@ -138,9 +141,8 @@ int main() {
         // Update music stream continuously regardless of game state
         AudioManager::GetInstance().UpdateMusicStream();
         
-        // Pass mouse coordinates to player for aiming
+        // Calculate world-space mouse coordinates for active gameplay states.
         Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), camera);
-        teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
         
         // UI mouse calculation relative to the scaled virtual resolution
         Vector2 uiMousePosition = GetScreenToWorld2D(GetMousePosition(), uiCamera);
@@ -151,13 +153,29 @@ int main() {
 
 
 
-        GameState state = GameManager::GetInstance().GetState();
-        
-        switch (state) {
+        GameManager& gameManager = GameManager::GetInstance();
+        GameState state = gameManager.GetState();
+
+        const bool keyboardPauseRequested =
+            IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE);
+        const bool hudPauseRequested =
+            (state == GameState::HUB || state == GameState::PLAYING) &&
+            uiManager.IsPauseButtonPressed(uiMousePosition);
+
+        if (state == GameState::PAUSED && keyboardPauseRequested) {
+            gameManager.ResumeGame();
+        } else if ((state == GameState::HUB || state == GameState::PLAYING) &&
+                   (keyboardPauseRequested || hudPauseRequested)) {
+            gameManager.PauseGame();
+        }
+
+        const GameState updateState = gameManager.GetState();
+
+        switch (updateState) {
             case GameState::MENU:
                 switch (mainMenu.Update(uiMousePosition)) {
                     case MainMenuAction::Play:
-                        GameManager::GetInstance().SetState(GameState::HUB);
+                        gameManager.SetState(GameState::HUB);
                         break;
                     case MainMenuAction::Quit:
                         quitRequested = true;
@@ -170,6 +188,7 @@ int main() {
                 }
                 break;
             case GameState::HUB:
+                teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
                 if (DialogueManager::GetInstance().IsActive()) {
                     DialogueManager::GetInstance().Update(deltaTime);
                 } else {
@@ -195,43 +214,37 @@ int main() {
                         }
                     }
                 }
+                gameManager.UpdateEffects(deltaTime);
                 camera.target.x = Lerp(camera.target.x, teamManager->GetActivePaladin()->GetPosition().x, 20.0f * deltaTime);
                 camera.target.y = Lerp(camera.target.y, teamManager->GetActivePaladin()->GetPosition().y, 20.0f * deltaTime);
                 break;
             case GameState::PLAYING:
-                if (GameManager::GetInstance().GetHitstopTimer() > 0.0f) {
-                    GameManager::GetInstance().UpdateHitstop(deltaTime);
+                teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
+                if (gameManager.GetHitstopTimer() > 0.0f) {
+                    gameManager.UpdateHitstop(deltaTime);
                 } else {
                     levelManager.UpdateLevel(deltaTime);
                     teamManager->Update(deltaTime);
-                    GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
+                    gameManager.UpdateProjectiles(deltaTime, teamManager);
                     waveManager.Update(deltaTime, teamManager, &levelManager);
                 }
+                gameManager.UpdateEffects(deltaTime);
                 camera.target.x = Lerp(camera.target.x, teamManager->GetActivePaladin()->GetPosition().x, 20.0f * deltaTime);
                 camera.target.y = Lerp(camera.target.y, teamManager->GetActivePaladin()->GetPosition().y, 20.0f * deltaTime);
-                
-                if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
-                    GameManager::GetInstance().SetState(GameState::PAUSED);
-                }
-
                 break;
             case GameState::PAUSED:
-                if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
-                    GameManager::GetInstance().SetState(GameState::PLAYING);
-                } else {
-                    switch (pauseMenu.Update(uiMousePosition)) {
-                        case PauseMenuAction::Resume:
-                            GameManager::GetInstance().SetState(GameState::PLAYING);
-                            break;
-                        case PauseMenuAction::BackToMainMenu:
-                            ReturnToMainMenu(teamManager, &levelManager);
-                            break;
-                        case PauseMenuAction::Quit:
-                            quitRequested = true;
-                            break;
-                        case PauseMenuAction::None:
-                            break;
-                    }
+                switch (pauseMenu.Update(uiMousePosition)) {
+                    case PauseMenuAction::Resume:
+                        gameManager.ResumeGame();
+                        break;
+                    case PauseMenuAction::BackToMainMenu:
+                        ReturnToMainMenu(teamManager, &levelManager);
+                        break;
+                    case PauseMenuAction::Quit:
+                        quitRequested = true;
+                        break;
+                    case PauseMenuAction::None:
+                        break;
                 }
                 break;
             case GameState::GAMEOVER:
@@ -241,29 +254,29 @@ int main() {
                 break;
             case GameState::VICTORY:
                 if (IsKeyPressed(KEY_R)) {
-                    GameManager::GetInstance().SetState(GameState::MENU);
+                    gameManager.SetState(GameState::MENU);
                     ResetGame(teamManager, &levelManager, &waveManager);
                 }
                 break;
         }
 
-        state = GameManager::GetInstance().GetState();
+        const GameState renderState = gameManager.GetRenderState();
 
         // --- Draw ---
         BeginDrawing();
             ClearBackground(BLACK);
 
-            if (state == GameState::MENU) {
+            if (renderState == GameState::MENU) {
                 BeginMode2D(uiCamera);
                 mainMenu.Draw(uiMousePosition);
                 EndMode2D();
-            } else if (state == GameState::GAMEOVER) {
+            } else if (renderState == GameState::GAMEOVER) {
                 BeginMode2D(uiCamera);
                 ClearBackground(BLACK);
                 DrawText("GAME OVER", 180, 220, 30, RED);
                 DrawText("Press R to Restart", 160, 280, 20, LIGHTGRAY);
                 EndMode2D();
-            } else if (state == GameState::VICTORY) {
+            } else if (renderState == GameState::VICTORY) {
                 BeginMode2D(uiCamera);
                 ClearBackground(RAYWHITE);
                 DrawText("MISSION ACCOMPLISHED", 90, 200, 40, GOLD);
@@ -272,37 +285,38 @@ int main() {
             } else {
                 BeginMode2D(camera);
                 
-                if (state == GameState::HUB) {
+                if (renderState == GameState::HUB) {
                     ClearBackground(DARKGREEN);
                     levelManager.DrawLevel();
-                    GameManager::GetInstance().UpdateEffects(deltaTime);
-                    GameManager::GetInstance().DrawEffects(true); // background
+                    gameManager.DrawEffects(true); // background
                     teamManager->Draw();
-                    GameManager::GetInstance().DrawEffects(false); // foreground
-                } else if (state == GameState::PLAYING || state == GameState::PAUSED) {
+                    gameManager.DrawEffects(false); // foreground
+                } else if (renderState == GameState::PLAYING) {
                     ClearBackground(DARKGRAY);
                     levelManager.DrawLevel();
-                    GameManager::GetInstance().UpdateEffects(deltaTime);
-                    GameManager::GetInstance().DrawEffects(true); // background
+                    gameManager.DrawEffects(true); // background
                     teamManager->Draw();
-                    GameManager::GetInstance().DrawProjectiles();
-                    GameManager::GetInstance().DrawEffects(false); // foreground
+                    gameManager.DrawProjectiles();
+                    gameManager.DrawEffects(false); // foreground
                 }
                 
                 EndMode2D();
                 
                 // Draw HUD outside of camera
                 BeginMode2D(uiCamera);
-                if (state == GameState::HUB) {
+                if (renderState == GameState::HUB) {
                     uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT, uiMousePosition);
                     DialogueManager::GetInstance().Draw(GAME_WIDTH, GAME_HEIGHT);
-                } else if (state == GameState::PLAYING) {
+                } else if (renderState == GameState::PLAYING) {
                     uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT, uiMousePosition);
                     waveManager.DrawHUD();
-                } else if (state == GameState::PAUSED) {
-                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT, uiMousePosition);
-                    pauseMenu.Draw(uiMousePosition);
                 }
+                EndMode2D();
+            }
+
+            if (gameManager.IsPaused()) {
+                BeginMode2D(uiCamera);
+                pauseMenu.Draw(uiMousePosition);
                 EndMode2D();
             }
         EndDrawing();

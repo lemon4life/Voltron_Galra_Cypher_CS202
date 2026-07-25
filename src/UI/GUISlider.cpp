@@ -1,4 +1,4 @@
-#include "GUI/GUISlider.h"
+#include "UI/GUISlider.h"
 
 #include <algorithm>
 #include <cmath>

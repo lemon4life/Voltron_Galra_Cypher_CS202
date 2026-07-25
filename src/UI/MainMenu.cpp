@@ -1,4 +1,4 @@
-#include "GUI/MainMenu.h"
+#include "UI/MainMenu.h"
 
 #include "Core/Manager/AudioManager.h"
 

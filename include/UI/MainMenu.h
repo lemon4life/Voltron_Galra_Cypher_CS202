@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GUI/GUIButton.h"
+#include "UI/GUIButton.h"
 
 enum class MainMenuAction {
     None,
