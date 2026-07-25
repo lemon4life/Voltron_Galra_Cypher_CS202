@@ -1,4 +1,6 @@
 #include "Core/Manager/AudioManager.h"
+
+#include <algorithm>
 #include <iostream>
 
 AudioManager::AudioManager() {
@@ -46,6 +48,7 @@ void AudioManager::Initialize() {
         clickSounds.push_back(::LoadSound(("assets/audio/click_" + num + ".ogg").c_str()));
     }
     currentFootstepIndex = 0;
+    SetSoundEffectsVolume(soundEffectsVolume);
 }
 
 void AudioManager::PlayRandomLaser() {
@@ -76,6 +79,7 @@ void AudioManager::PlayRandomClick() {
 void AudioManager::LoadSound(const std::string& name, const std::string& filepath) {
     if (sounds.find(name) == sounds.end()) {
         sounds[name] = ::LoadSound(filepath.c_str());
+        ::SetSoundVolume(sounds[name], soundEffectsVolume);
     }
 }
 
@@ -96,6 +100,7 @@ void AudioManager::PlaySoundEffectPitch(const std::string& name, float pitch) {
 void AudioManager::LoadMusic(const std::string& name, const std::string& filepath) {
     if (music.find(name) == music.end()) {
         music[name] = LoadMusicStream(filepath.c_str());
+        ::SetMusicVolume(music[name], musicVolume);
     }
 }
 
@@ -111,4 +116,37 @@ void AudioManager::UpdateMusicStream() {
             ::UpdateMusicStream(pair.second);
         }
     }
+}
+
+void AudioManager::SetSoundEffectsVolume(float volume) {
+    soundEffectsVolume = std::clamp(volume, 0.0f, 1.0f);
+
+    for (auto& pair : sounds) {
+        ::SetSoundVolume(pair.second, soundEffectsVolume);
+    }
+    for (Sound& sound : laserSounds) {
+        ::SetSoundVolume(sound, soundEffectsVolume);
+    }
+    for (Sound& sound : footstepSounds) {
+        ::SetSoundVolume(sound, soundEffectsVolume);
+    }
+    for (Sound& sound : clickSounds) {
+        ::SetSoundVolume(sound, soundEffectsVolume);
+    }
+}
+
+void AudioManager::SetMusicVolumeLevel(float volume) {
+    musicVolume = std::clamp(volume, 0.0f, 1.0f);
+
+    for (auto& pair : music) {
+        ::SetMusicVolume(pair.second, musicVolume);
+    }
+}
+
+float AudioManager::GetSoundEffectsVolume() const {
+    return soundEffectsVolume;
+}
+
+float AudioManager::GetMusicVolumeLevel() const {
+    return musicVolume;
 }

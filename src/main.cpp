@@ -14,6 +14,8 @@
 #include "Core/Manager/WaveManager.h"
 #include "Core/Manager/DialogueManager.h"
 #include "Entities/NPC.h"
+#include "GUI/MainMenu.h"
+#include "GUI/PauseMenu.h"
 #include "raymath.h"
 
 #include <algorithm>
@@ -45,6 +47,16 @@ void ResetDemoGame(TeamManager* teamManager, LevelManager* levelManager, WaveMan
     GameManager::GetInstance().SetState(GameState::PLAYING);
 }
 
+void ReturnToMainMenu(TeamManager* teamManager, LevelManager* levelManager) {
+    GameManager::GetInstance().ClearProjectiles();
+    for (auto* paladin : teamManager->GetTeam()) {
+        paladin->ResetStats();
+    }
+    teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
+    levelManager->LoadLevel("assets/levels/hub.txt", teamManager);
+    GameManager::GetInstance().SetState(GameState::MENU);
+}
+
 int main() {
     // Initialize Window
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -57,6 +69,9 @@ int main() {
     // Initialize AudioManager Singleton (Initializes Audio Device)
     AudioManager::GetInstance();
     AudioManager::GetInstance().Initialize();
+    MainMenu mainMenu;
+    PauseMenu pauseMenu;
+    bool quitRequested = false;
 
     // Initialize Dialogue Assets
     DialogueManager::GetInstance().InitializeAssets();
@@ -103,7 +118,7 @@ int main() {
     GameManager::GetInstance().UpdateTargetFPS(BASE_FPS);
 
     // Main Game Loop
-    while (!WindowShouldClose()) {
+    while (!WindowShouldClose() && !quitRequested) {
         float deltaTime = GetFrameTime();
         
         // Dynamic camera scaling based on window size
@@ -140,9 +155,15 @@ int main() {
         
         switch (state) {
             case GameState::MENU:
-                if (IsKeyPressed(KEY_ENTER)) {
-                    AudioManager::GetInstance().PlayRandomClick();
-                    GameManager::GetInstance().SetState(GameState::HUB);
+                switch (mainMenu.Update(uiMousePosition)) {
+                    case MainMenuAction::Play:
+                        GameManager::GetInstance().SetState(GameState::HUB);
+                        break;
+                    case MainMenuAction::Quit:
+                        quitRequested = true;
+                        break;
+                    case MainMenuAction::None:
+                        break;
                 }
                 if (IsKeyPressed(KEY_R)) {
                     ResetDemoGame(teamManager, &levelManager, &waveManager);
@@ -197,6 +218,20 @@ int main() {
             case GameState::PAUSED:
                 if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) {
                     GameManager::GetInstance().SetState(GameState::PLAYING);
+                } else {
+                    switch (pauseMenu.Update(uiMousePosition)) {
+                        case PauseMenuAction::Resume:
+                            GameManager::GetInstance().SetState(GameState::PLAYING);
+                            break;
+                        case PauseMenuAction::BackToMainMenu:
+                            ReturnToMainMenu(teamManager, &levelManager);
+                            break;
+                        case PauseMenuAction::Quit:
+                            quitRequested = true;
+                            break;
+                        case PauseMenuAction::None:
+                            break;
+                    }
                 }
                 break;
             case GameState::GAMEOVER:
@@ -212,16 +247,15 @@ int main() {
                 break;
         }
 
+        state = GameManager::GetInstance().GetState();
+
         // --- Draw ---
         BeginDrawing();
             ClearBackground(BLACK);
 
             if (state == GameState::MENU) {
                 BeginMode2D(uiCamera);
-                ClearBackground(DARKGRAY);
-                DrawText("Voltron: Mission Galra Cypher", 70, 200, 24, WHITE);
-                DrawText("Press ENTER to Start", 140, 300, 20, LIGHTGRAY);
-                DrawText("Press R to Enter Demo Map", 120, 335, 20, LIGHTGRAY);
+                mainMenu.Draw(uiMousePosition);
                 EndMode2D();
             } else if (state == GameState::GAMEOVER) {
                 BeginMode2D(uiCamera);
@@ -267,8 +301,7 @@ int main() {
                     waveManager.DrawHUD();
                 } else if (state == GameState::PAUSED) {
                     uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT, uiMousePosition);
-                    DrawRectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, {0, 0, 0, 150});
-                    DrawText("PAUSED", GAME_WIDTH / 2 - MeasureText("PAUSED", 40) / 2, GAME_HEIGHT / 2 - 20, 40, RAYWHITE);
+                    pauseMenu.Draw(uiMousePosition);
                 }
                 EndMode2D();
             }

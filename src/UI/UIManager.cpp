@@ -95,13 +95,10 @@ void UIManager::DrawTeamHUD(
     DrawRectangle(pauseBtn.x + 8, pauseBtn.y + 6, 4, 18, WHITE);
     DrawRectangle(pauseBtn.x + 18, pauseBtn.y + 6, 4, 18, WHITE);
     
-    if (isHovered && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        GameState currentState = GameManager::GetInstance().GetState();
-        if (currentState == GameState::PLAYING) {
-            GameManager::GetInstance().SetState(GameState::PAUSED);
-        } else if (currentState == GameState::PAUSED) {
-            GameManager::GetInstance().SetState(GameState::PLAYING);
-        }
+    if (isHovered &&
+        IsMouseButtonPressed(MOUSE_LEFT_BUTTON) &&
+        GameManager::GetInstance().GetState() == GameState::PLAYING) {
+        GameManager::GetInstance().SetState(GameState::PAUSED);
     }
 
     // Position of the Stats HUD container
