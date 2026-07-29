@@ -1,7 +1,9 @@
 #pragma once
+
 #include "raylib.h"
-#include <vector>
+
 #include <string>
+#include <vector>
 
 struct MenuButton {
     Rectangle bounds;
@@ -21,6 +23,7 @@ private:
     float loadingProgress = 0.0f;
     float transitionTimer = 0.0f;
     bool isReady = false;
+    bool quitRequested = false;
 
     std::vector<Texture2D> bgSlides;
     int currentSlideIndex;
@@ -46,5 +49,6 @@ public:
     void Update(float deltaTime);
     bool IsReady() const { return isReady; }
     MenuState GetState() const { return currentState; }
+    bool ConsumeQuitRequest();
     void Draw(int screenWidth, int screenHeight);
 };

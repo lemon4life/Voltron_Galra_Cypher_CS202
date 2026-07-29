@@ -41,6 +41,11 @@ void EnemyChaserChaseState::Update(EnemyChaser* enemy, float deltaTime) {
 
     Vector2 enemyPosition = enemy->GetPosition();
     Vector2 playerPosition = activePaladin->GetPosition();
+    bool isWithinAggroRange =
+        enemy->IsWithinAggroRange(playerPosition);
+    bool isWithinAttackRange =
+        enemy->IsWithinStopPathFindingDistance(playerPosition);
+    enemy->UpdateAggroMeter(isWithinAggroRange, deltaTime);
 
     if (enemy->IsBeyondDisengageDistance(playerPosition)) {
         enemy->ChangeState(enemy->GetIdleState());
@@ -52,8 +57,10 @@ void EnemyChaserChaseState::Update(EnemyChaser* enemy, float deltaTime) {
         enemy->SetAttackCooldown(std::max(0.0f, remainingCooldown));
     }
 
-    if (enemy->IsWithinStopPathFindingDistance(playerPosition)) {
-        if (enemy->GetAttackCooldown() <= 0.0f) {
+    if (isWithinAttackRange) {
+        if (enemy->GetAttackCooldown() <= 0.0f &&
+            enemy->IsAggroReady()) {
+            enemy->ResetAggroMeter();
             enemy->ChangeState(enemy->GetDamageState());
         }
         return;

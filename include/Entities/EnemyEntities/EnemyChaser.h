@@ -6,6 +6,8 @@
 class EnemyChaser : public Enemy {
 private:
     std::unique_ptr<EnemyChaserDamageState> damageState;
+    float aggroMeter = 0.0f;
+    float requiredAggroDuration = 1.0f;
 
 public:
     EnemyChaser(
@@ -21,7 +23,12 @@ public:
 
     EnemyChaserDamageState* GetDamageState();
     bool IsBeyondDisengageDistance(Vector2 targetPosition) const;
+    bool IsWithinAggroRange(Vector2 targetPosition) const;
     bool IsWithinStopPathFindingDistance(Vector2 targetPosition) const;
     float GetDamageChargeDistance() const;
     float GetDamageChargeDuration() const;
+
+    void UpdateAggroMeter(bool isNearPlayer, float deltaTime);
+    bool IsAggroReady() const;
+    void ResetAggroMeter();
 };

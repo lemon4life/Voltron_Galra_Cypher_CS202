@@ -1,9 +1,12 @@
 #include "UI/UIManager.h"
 #include "Core/Manager/TeamManager.h"
-#include "Core/Manager/GameManager.h"
 #include "Entities/Player/Paladin.h"
 #include <string>
 #include <vector>
+
+namespace {
+constexpr Rectangle PAUSE_BUTTON_BOUNDS = {10.0f, 10.0f, 30.0f, 30.0f};
+}
 
 UIManager::UIManager() : teamManager(nullptr) {
     statsShell.id = 0;
@@ -22,6 +25,11 @@ UIManager::~UIManager() {
 void UIManager::Initialize() {
     statsShell = LoadTexture("assets/UI/Team_StatsShell.png");
     statsShellBack = LoadTexture("assets/UI/Team_StatsShell_Back.png");
+}
+
+bool UIManager::IsPauseButtonPressed(Vector2 mousePosition) const {
+    return CheckCollisionPointRec(mousePosition, PAUSE_BUTTON_BOUNDS) &&
+           IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
 void UIManager::DrawHUD(
@@ -88,22 +96,12 @@ void UIManager::DrawTeamHUD(
     if (numPaladins == 0) return;
 
     // --- Pause Button (Top Left) ---
-    Rectangle pauseBtn = { 10.0f, 10.0f, 30.0f, 30.0f };
+    const Rectangle pauseBtn = PAUSE_BUTTON_BOUNDS;
     bool isHovered = CheckCollisionPointRec(mousePosition, pauseBtn);
     DrawRectangleRec(pauseBtn, isHovered ? Fade(GRAY, 0.8f) : Fade(BLACK, 0.5f));
     DrawRectangleLinesEx(pauseBtn, 2.0f, WHITE);
     DrawRectangle(pauseBtn.x + 8, pauseBtn.y + 6, 4, 18, WHITE);
     DrawRectangle(pauseBtn.x + 18, pauseBtn.y + 6, 4, 18, WHITE);
-    
-    if (isHovered && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        GameState currentState = GameManager::GetInstance().GetState();
-        if (currentState == GameState::GAMEPLAY) {
-            GameManager::GetInstance().SetState(GameState::PAUSE);
-        } else if (currentState == GameState::PAUSE) {
-            GameManager::GetInstance().SetState(GameState::GAMEPLAY);
-        }
-    }
-
     // Position of the Stats HUD container
     float startX = 50.0f;
     float startY = 10.0f;
