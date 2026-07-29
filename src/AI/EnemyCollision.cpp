@@ -28,8 +28,8 @@ bool EnemyCollision::CheckPlayerCollision(
     const Paladin& player
 ) {
     return CheckCollisionRecs(
-        enemy.GetBoundingBox(),
-        player.GetBoundingBox()
+        enemy.GetCollisionBox(),
+        player.GetCollisionBox()
     );
 }
 
@@ -42,8 +42,8 @@ bool EnemyCollision::CheckEnemyCollision(
     }
 
     return CheckCollisionRecs(
-        enemy.GetBoundingBox(),
-        other.GetBoundingBox()
+        enemy.GetCollisionBox(),
+        other.GetCollisionBox()
     );
 }
 
@@ -92,7 +92,7 @@ EnemyMoveResult EnemyCollision::MoveAgainstWalls(
         );
 
         enemy.SetPosition(nextPosition);
-        if (pathAccess.IsBlocked(enemy.GetBoundingBox())) {
+        if (pathAccess.IsBlocked(enemy.GetCollisionBox())) {
             enemy.SetPosition(startPosition);
             result.blockedX = displacement.x != 0.0f;
             result.blockedY = displacement.y != 0.0f;
@@ -109,7 +109,7 @@ EnemyMoveResult EnemyCollision::MoveAgainstWalls(
         levelBounds
     ).x;
     enemy.SetPosition(currentPosition);
-    if (pathAccess.IsBlocked(enemy.GetBoundingBox())) {
+    if (pathAccess.IsBlocked(enemy.GetCollisionBox())) {
         currentPosition.x = startPosition.x;
         enemy.SetPosition(currentPosition);
         result.blockedX = true;
@@ -123,7 +123,7 @@ EnemyMoveResult EnemyCollision::MoveAgainstWalls(
         levelBounds
     ).y;
     enemy.SetPosition(currentPosition);
-    if (pathAccess.IsBlocked(enemy.GetBoundingBox())) {
+    if (pathAccess.IsBlocked(enemy.GetCollisionBox())) {
         currentPosition.y = beforeY.y;
         enemy.SetPosition(currentPosition);
         result.blockedY = true;

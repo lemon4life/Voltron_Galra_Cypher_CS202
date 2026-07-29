@@ -98,6 +98,10 @@ Rectangle Enemy::GetBoundingBox() const {
     return { position.x - size.x/2.f, position.y - size.y/2.f, size.x, size.y };
 }
 
+Rectangle Enemy::GetCollisionBox() const {
+    return { position.x - size.x/2.f, position.y + size.y * 0.2f, size.x, size.y * 0.3f };
+}
+
 bool Enemy::CheckCollision(const std::vector<GameObject*>& entities) const {
     return EnemyCollision::CheckAnyEnemyCollision(*this, entities);
 }
@@ -144,4 +148,14 @@ void Enemy::UpdateKnockback(float deltaTime) {
     } else {
         knockbackVelocity = {0.0f, 0.0f};
     }
+}
+
+
+EnemyMoveResult Enemy::UpdateMovement(Vector2 desiredVelocity, float deltaTime, EnemyWallResponse response) {
+    float friction = 6.0f;
+    currentVelocity.x += (desiredVelocity.x - currentVelocity.x) * friction * deltaTime;
+    currentVelocity.y += (desiredVelocity.y - currentVelocity.y) * friction * deltaTime;
+    
+    Vector2 displacement = { currentVelocity.x * deltaTime, currentVelocity.y * deltaTime };
+    return EnemyCollision::MoveAgainstWalls(*this, displacement, pathAccess, response);
 }

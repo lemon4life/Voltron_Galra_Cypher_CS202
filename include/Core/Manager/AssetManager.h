@@ -3,11 +3,16 @@
 #include "raylib.h"
 #include <string>
 #include <unordered_map>
-#include "Entities/Player/Paladin.h" // For CharacterSprites
+#include <vector>
+#include <functional>
+#include "Entities/Player/Paladin.h"
+#include "Entities/Enemy.h" // For CharacterSprites
 
 class AssetManager {
 private:
     std::unordered_map<std::string, Texture2D> textures;
+    std::vector<std::function<void()>> loadTasks;
+    int totalTasks = 0;
 
     AssetManager() = default;
     ~AssetManager() { UnloadAll(); }
@@ -25,10 +30,15 @@ public:
     void UnloadAll();
 
     // Helper to load all character sprites
-    void LoadCharacterAssets();
+    void QueueCharacterAssets();
+    bool UpdateLoading(float& outProgress);
     
     // Quick getters for specific sprite sheets
     CharacterSprites GetLanceSprites();
     CharacterSprites GetKeithSprites();
     CharacterSprites GetHunkSprites();
+    
+    EnemySprites GetRangeSprites();
+    EnemySprites GetDiverSprites();
+    EnemySprites GetChaserSprites();
 };

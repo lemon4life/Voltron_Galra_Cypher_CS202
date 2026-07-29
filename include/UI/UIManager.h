@@ -32,4 +32,11 @@ public:
         int screenHeight,
         Vector2 mousePosition
     );
+
+    // --- Core UI Helpers ---
+    // Draws a full-screen semi-transparent black rectangle over previous renders
+    static void DrawModalOverlay();
+
+    // Draws a reusable pop-up card frame centered in the screen or at given bounds
+    static void DrawPopupFrame(Rectangle bounds, const char* title);
 };

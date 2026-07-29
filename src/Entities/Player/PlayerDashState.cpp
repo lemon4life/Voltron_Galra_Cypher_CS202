@@ -2,6 +2,7 @@
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
+#include "Core/Manager/ParticleManager.h"
 #include "raymath.h"
 
 void PlayerDashState::Enter(Paladin* player) {
@@ -35,6 +36,7 @@ void PlayerDashState::Enter(Paladin* player) {
         player->SetNumFrames(1);
     }
     player->ResetAnimation();
+    trailTimer = 0.0f; // Reset trail timer at the start of every dash
 }
 
 void PlayerDashState::Update(Paladin* player, float deltaTime) {
@@ -67,7 +69,7 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
     if (currentPos.x > levelWidth) currentPos.x = levelWidth;
     
     player->SetPosition(currentPos);
-    if (levelManager && levelManager->IsSolidCollision(player->GetBoundingBox())) {
+    if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
         currentPos.x -= dashDirection.x * dashSpeed * deltaTime; // revert X
         player->SetPosition(currentPos);
     }
@@ -79,9 +81,22 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
     if (currentPos.y > levelHeight) currentPos.y = levelHeight;
     
     player->SetPosition(currentPos);
-    if (levelManager && levelManager->IsSolidCollision(player->GetBoundingBox())) {
+    if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
         currentPos.y -= dashDirection.y * dashSpeed * deltaTime; // revert Y
         player->SetPosition(currentPos);
+    }
+
+    // Emit a sprite ghost every 0.05s for the dash trail
+    trailTimer -= deltaTime;
+    if (trailTimer <= 0.0f) {
+        trailTimer = 0.05f;
+        ParticleManager::GetInstance().SpawnDashTrail(
+            player->GetPosition(),
+            player->GetCurrentSourceRect(),
+            player->GetTexture(),
+            0.0f,
+            player->IsFacingLeft()
+        );
     }
 
     player->UpdateAnimation(deltaTime);

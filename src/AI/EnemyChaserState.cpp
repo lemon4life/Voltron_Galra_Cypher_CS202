@@ -77,12 +77,7 @@ void EnemyChaserChaseState::Update(EnemyChaser* enemy, float deltaTime) {
     );
     direction = pathAccess.GetLocalDirection(*enemy, direction);
 
-    EnemyCollision::MoveAgainstWalls(
-        *enemy,
-        Vector2Scale(direction, enemy->GetSpeed() * deltaTime),
-        pathAccess,
-        EnemyWallResponse::Slide
-    );
+    enemy->UpdateMovement(Vector2Scale(direction, enemy->GetSpeed()), deltaTime, EnemyWallResponse::Slide);
 }
 
 void EnemyChaserChaseState::Exit(EnemyChaser* enemy) {

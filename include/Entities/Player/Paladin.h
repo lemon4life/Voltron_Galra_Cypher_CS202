@@ -109,6 +109,7 @@ public:
     void UpdateFootsteps(float dt);
 
     Rectangle GetBoundingBox() const override;
+    Rectangle GetCollisionBox() const override;
     bool CheckCollision(const std::vector<GameObject*>& entities) const;
 
     // Getters
@@ -138,6 +139,12 @@ public:
     void ResetAnimation() { currentFrame = 0; frameTimer = 0.0f; }
     void SetFacingLeft(bool left) { facingLeft = left; }
     bool IsFacingLeft() const { return facingLeft; }
+    // Returns the source rectangle for the current animation frame (used by particle effects)
+    Rectangle GetCurrentSourceRect() const {
+        float fw = (float)texture.width / (float)numFrames;
+        float fh = (float)texture.height;
+        return { (float)currentFrame * fw, 0.0f, fw, fh };
+    }
 
     // Dash Getters and Setters
     float GetDashCooldown() const { return dashCooldown; }

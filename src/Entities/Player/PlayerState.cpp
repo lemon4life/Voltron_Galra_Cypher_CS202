@@ -14,7 +14,7 @@ void PlayerIdleState::Enter(Paladin* player) {
 
 void PlayerIdleState::Update(Paladin* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
-    if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
+    if (GameManager::GetInstance().GetState() == GameState::GAMEPLAY) {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             player->ChangeState(player->GetAttackState());
             return;
@@ -55,7 +55,7 @@ void PlayerRunState::Enter(Paladin* player) {
 
 void PlayerRunState::Update(Paladin* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
-    if (GameManager::GetInstance().GetState() == GameState::PLAYING) {
+    if (GameManager::GetInstance().GetState() == GameState::GAMEPLAY) {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             player->ChangeState(player->GetAttackState());
             return;
@@ -110,7 +110,7 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
     if (currentPos.x > levelWidth) currentPos.x = levelWidth;
     
     player->SetPosition(currentPos);
-    if (levelManager && levelManager->IsSolidCollision(player->GetBoundingBox())) {
+    if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
         currentPos.x -= moveDir.x * speed * deltaTime;
         player->SetPosition(currentPos);
     }
@@ -122,7 +122,7 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
     if (currentPos.y > levelHeight) currentPos.y = levelHeight;
 
     player->SetPosition(currentPos);
-    if (levelManager && levelManager->IsSolidCollision(player->GetBoundingBox())) {
+    if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
         currentPos.y -= moveDir.y * speed * deltaTime;
         player->SetPosition(currentPos);
     }
@@ -196,7 +196,7 @@ void PlayerDownState::Update(Paladin* player, float deltaTime) {
             TeamManager* teamManager = player->GetTeamManager();
             if (teamManager) {
                 if (teamManager->IsTeamDead()) {
-                    GameManager::GetInstance().SetState(GameState::GAMEOVER);
+                    GameManager::GetInstance().SetState(GameState::GAME_OVER);
                 } else {
                     teamManager->SwapDueToDeath();
                 }

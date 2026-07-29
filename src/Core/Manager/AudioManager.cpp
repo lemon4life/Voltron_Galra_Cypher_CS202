@@ -43,9 +43,15 @@ void AudioManager::Initialize() {
 
     for (int i = 0; i < 5; ++i) {
         std::string num = "00" + std::to_string(i);
-        laserSounds.push_back(::LoadSound(("assets/audio/laserSmall_" + num + ".ogg").c_str()));
-        footstepSounds.push_back(::LoadSound(("assets/audio/footstep_concrete_" + num + ".ogg").c_str()));
-        clickSounds.push_back(::LoadSound(("assets/audio/click_" + num + ".ogg").c_str()));
+        laserSounds.push_back(::LoadSound(
+            ("assets/audio/Weapon/Firearm/laserSmall_" + num + ".ogg").c_str()
+        ));
+        footstepSounds.push_back(::LoadSound(
+            ("assets/audio/Impact/Footstep/footstep_concrete_" + num + ".ogg").c_str()
+        ));
+        clickSounds.push_back(::LoadSound(
+            ("assets/audio/UI/Button/click_" + num + ".ogg").c_str()
+        ));
     }
     currentFootstepIndex = 0;
     SetSoundEffectsVolume(soundEffectsVolume);

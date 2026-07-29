@@ -38,47 +38,86 @@ void AssetManager::UnloadAll() {
     textures.clear();
 }
 
-void AssetManager::LoadCharacterAssets() {
+void AssetManager::QueueCharacterAssets() {
+    loadTasks.clear();
+    auto add = [this](const std::string& k, const std::string& p, bool f = false) { 
+        loadTasks.push_back([this, k, p, f](){ LoadTexture2D(k, p, f); }); 
+    };
+
     // Lance
-    LoadTexture2D("Lance_Idle", "assets/sprites/Lance/Idle_Sheet.png");
-    LoadTexture2D("Lance_Run", "assets/sprites/Lance/Run_Sheet.png");
-    LoadTexture2D("Lance_DashFront", "assets/sprites/Lance/Dash_front.png");
-    LoadTexture2D("Lance_DashBack", "assets/sprites/Lance/Dash_back.png");
-    LoadTexture2D("Lance_Weapon", "assets/sprites/Lance/Weapon_Static.png", true); // Point filter for rotation
-    LoadTexture2D("Lance_Muzzle", "assets/sprites/Lance/Muzzle_Flash.png", true);
-    LoadTexture2D("Lance_Bullet", "assets/sprites/Lance/Bullet.png", true);
-    LoadTexture2D("Lance_Impact", "assets/sprites/Lance/Bullet_Impact.png", true);
-    LoadTexture2D("Lance_Parry", "assets/sprites/Lance/Parry.png", true);
+    add("Lance_Idle", "assets/sprites/Lance/Idle_Sheet.png");
+    add("Lance_Run", "assets/sprites/Lance/Run_Sheet.png");
+    add("Lance_DashFront", "assets/sprites/Lance/Dash_front.png");
+    add("Lance_DashBack", "assets/sprites/Lance/Dash_back.png");
+    add("Lance_Weapon", "assets/sprites/Lance/Weapon_Static.png", true);
+    add("Lance_Muzzle", "assets/sprites/Lance/Muzzle_Flash.png", true);
+    add("Lance_Bullet", "assets/sprites/Lance/Bullet.png", true);
+    add("Lance_Impact", "assets/sprites/Lance/Bullet_Impact.png", true);
+    add("Lance_Parry", "assets/sprites/Lance/Parry.png", true);
 
     // Keith
-    LoadTexture2D("Keith_Idle", "assets/sprites/Keith/Idle_Sheet.png");
-    LoadTexture2D("Keith_Run", "assets/sprites/Keith/Run_Sheet.png");
-    LoadTexture2D("Keith_Weapon", "assets/sprites/Keith/Weapon_Static.png", true);
-    LoadTexture2D("Keith_Attack1", "assets/sprites/Keith/Attack_1.png", true);
-    LoadTexture2D("Keith_Attack2", "assets/sprites/Keith/Attack_2.png", true);
-    LoadTexture2D("Keith_DashFront", "assets/sprites/Keith/Dash_front.png");
-    LoadTexture2D("Keith_DashBack", "assets/sprites/Keith/Dash_back.png");
-    LoadTexture2D("Keith_Parry", "assets/sprites/Keith/Parry.png", true);
+    add("Keith_Idle", "assets/sprites/Keith/Idle_Sheet.png");
+    add("Keith_Run", "assets/sprites/Keith/Run_Sheet.png");
+    add("Keith_Weapon", "assets/sprites/Keith/Weapon_Static.png", true);
+    add("Keith_Attack1", "assets/sprites/Keith/Attack_1.png", true);
+    add("Keith_Attack2", "assets/sprites/Keith/Attack_2.png", true);
+    add("Keith_DashFront", "assets/sprites/Keith/Dash_front.png");
+    add("Keith_DashBack", "assets/sprites/Keith/Dash_back.png");
+    add("Keith_Parry", "assets/sprites/Keith/Parry.png", true);
 
     // Hunk
-    LoadTexture2D("Hunk_Idle", "assets/sprites/Hunk/Idle_Sheet.png");
-    LoadTexture2D("Hunk_Run", "assets/sprites/Hunk/Run_Sheet.png");
-    LoadTexture2D("Hunk_Weapon", "assets/sprites/Hunk/Weapon_Static.png", true);
-    LoadTexture2D("Hunk_Muzzle", "assets/sprites/Hunk/Muzzle.png", true);
-    LoadTexture2D("Hunk_Bullet", "assets/sprites/Hunk/Beam.png", true);
-    LoadTexture2D("Hunk_Impact", "assets/sprites/Hunk/Beam_Impact.png", true);
-    LoadTexture2D("Hunk_DashFront", "assets/sprites/Hunk/Dash_front.png");
-    LoadTexture2D("Hunk_DashBack", "assets/sprites/Hunk/Dash_back.png");
-    LoadTexture2D("Hunk_Parry", "assets/sprites/Hunk/Parry.png", true);
+    add("Hunk_Idle", "assets/sprites/Hunk/Idle_Sheet.png");
+    add("Hunk_Run", "assets/sprites/Hunk/Run_Sheet.png");
+    add("Hunk_Weapon", "assets/sprites/Hunk/Weapon_Static.png", true);
+    add("Hunk_Muzzle", "assets/sprites/Hunk/Muzzle.png", true);
+    add("Hunk_Bullet", "assets/sprites/Hunk/Beam.png", true);
+    add("Hunk_Impact", "assets/sprites/Hunk/Beam_Impact.png", true);
+    add("Hunk_DashFront", "assets/sprites/Hunk/Dash_front.png");
+    add("Hunk_DashBack", "assets/sprites/Hunk/Dash_back.png");
+    add("Hunk_Parry", "assets/sprites/Hunk/Parry.png", true);
     
     // Down Sprites
-    LoadTexture2D("Lance_Down", "assets/sprites/Lance/Down.png");
-    LoadTexture2D("Keith_Down", "assets/sprites/Keith/Down.png");
-    LoadTexture2D("Hunk_Down", "assets/sprites/Hunk/Down.png");
+    add("Lance_Down", "assets/sprites/Lance/Down.png");
+    add("Keith_Down", "assets/sprites/Keith/Down.png");
+    add("Hunk_Down", "assets/sprites/Hunk/Down.png");
 
     // UI and Effects
-    LoadTexture2D("Player_Circle", "assets/UI/Player_Circle.png");
-    LoadTexture2D("Run_Dust", "assets/UI/Run_Dust.png");
+    add("Player_Circle", "assets/UI/Player_Circle.png");
+    add("box", "assets/sprites/Objects/box.png", true);
+    add("Run_Dust", "assets/UI/Run_Dust.png");
+
+    add("Knight_Idle", "assets/sprites/Enemy/Knight.png", true);
+    add("Knight_Run", "assets/sprites/Enemy/Knight_run-Sheet.png", true);
+    add("Knight_Down", "assets/sprites/Enemy/Knight_down.png", true);
+    add("Knight_Gun", "assets/sprites/Enemy/Knight_gun.png", true);
+    add("Knight_Gun_Bullet", "assets/sprites/Enemy/Knight_gun_bullet.png", true);
+    add("Knight_Lance", "assets/sprites/Enemy/Knight_lance.png", true);
+    add("Lance_Stab", "assets/sprites/Effects/Lance_stab_small.png", true);
+    add("Knight_Sword", "assets/sprites/Enemy/Knight_sword.png", true);
+    add("Sword_Slash_Small", "assets/sprites/Effects/Sword_slash_small.png", true);
+    add("Sword_Slash_Big", "assets/sprites/Effects/Sword_slash_big.png", true);
+}
+
+bool AssetManager::UpdateLoading(float& outProgress) {
+    if (totalTasks == 0 && !loadTasks.empty()) {
+        totalTasks = loadTasks.size();
+    }
+    
+    // Process up to 2 tasks per frame
+    for(int i=0; i<2; i++) {
+        if (!loadTasks.empty()) {
+            loadTasks.front()();
+            loadTasks.erase(loadTasks.begin());
+        }
+    }
+    
+    if (totalTasks > 0) {
+        outProgress = 1.0f - ((float)loadTasks.size() / (float)totalTasks);
+    } else {
+        outProgress = 1.0f;
+    }
+    
+    return loadTasks.empty();
 }
 
 CharacterSprites AssetManager::GetLanceSprites() {
@@ -123,4 +162,35 @@ CharacterSprites AssetManager::GetHunkSprites() {
     sprites.parry = GetTexture("Hunk_Parry");
     sprites.down = GetTexture("Hunk_Down");
     return sprites;
+}
+
+EnemySprites AssetManager::GetRangeSprites() {
+    return EnemySprites{
+        GetTexture("Knight_Idle"),
+        GetTexture("Knight_Run"),
+        GetTexture("Knight_Down"),
+        GetTexture("Knight_Gun"),
+        GetTexture("Knight_Gun_Bullet"), // effect not used here
+        GetTexture("Knight_Gun_Bullet")
+    };
+}
+EnemySprites AssetManager::GetDiverSprites() {
+    return EnemySprites{
+        GetTexture("Knight_Idle"),
+        GetTexture("Knight_Run"),
+        GetTexture("Knight_Down"),
+        GetTexture("Knight_Lance"),
+        GetTexture("Lance_Stab"),
+        {0}
+    };
+}
+EnemySprites AssetManager::GetChaserSprites() {
+    return EnemySprites{
+        GetTexture("Knight_Idle"),
+        GetTexture("Knight_Run"),
+        GetTexture("Knight_Down"),
+        GetTexture("Knight_Sword"),
+        GetTexture("Sword_Slash_Small"),
+        {0}
+    };
 }

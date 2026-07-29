@@ -21,4 +21,5 @@ public:
     void Destroy() { active = false; }
     int GetDamage() const { return damage; }
     bool IsEnemyProjectile() const { return isEnemyProj; }
+    Vector2 GetVelocity() const { return velocity; }
 };

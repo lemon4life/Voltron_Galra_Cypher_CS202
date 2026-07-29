@@ -1,12 +1,13 @@
 #pragma once
 #include "IAttackStrategy.h"
+#include "Combat/WeaponKinematics.h"
 
 class RangedAttackStrategy : public IAttackStrategy {
 private:
     Texture2D weaponTex;
     Texture2D muzzleFlashTex;
     Texture2D bulletTex;
-    Vector2 recoilOffset;
+    WeaponKinematics kinematics;
     float muzzleFlashTimer;
 
 public:

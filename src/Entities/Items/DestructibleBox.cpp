@@ -1,4 +1,6 @@
 #include "Entities/Items/DestructibleBox.h"
+#include "Core/Manager/AssetManager.h"
+#include "raylib.h"
 
 #include <algorithm>
 
@@ -29,20 +31,14 @@ void DestructibleBox::Update(float deltaTime) {
 
 void DestructibleBox::Draw() {
     Rectangle bounds = GetBoundingBox();
-    DrawRectangleRec(bounds, BOX_COLOR);
-    DrawRectangleLinesEx(bounds, 2.0f, BOX_EDGE_COLOR);
-    DrawLineEx(
-        { bounds.x + 4.0f, bounds.y + 4.0f },
-        { bounds.x + bounds.width - 4.0f, bounds.y + bounds.height - 4.0f },
-        2.0f,
-        BOX_EDGE_COLOR
-    );
-    DrawLineEx(
-        { bounds.x + bounds.width - 4.0f, bounds.y + 4.0f },
-        { bounds.x + 4.0f, bounds.y + bounds.height - 4.0f },
-        2.0f,
-        BOX_EDGE_COLOR
-    );
+    Texture2D tex = AssetManager::GetInstance().GetTexture("box");
+    if (tex.id != 0) {
+        Rectangle src = { 0, 0, (float)tex.width, (float)tex.height };
+        DrawTexturePro(tex, src, bounds, {0,0}, 0.0f, WHITE);
+    } else {
+        DrawRectangleRec(bounds, BOX_COLOR);
+        DrawRectangleLinesEx(bounds, 2.0f, BOX_EDGE_COLOR);
+    }
 
     if (health < BOX_MAX_HEALTH) {
         float healthRatio = (float)health / (float)BOX_MAX_HEALTH;

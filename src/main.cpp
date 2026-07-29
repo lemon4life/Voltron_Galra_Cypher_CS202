@@ -1,194 +1,210 @@
 #include "raylib.h"
-#include "Core/Manager/TeamManager.h"
-#include "Entities/Player/Lance.h"
-#include "Entities/Player/Keith.h"
-#include "Entities/Player/Hunk.h"
-#include "Entities/Player/PlaceholderPaladin.h"
-#include "Core/Manager/GameManager.h"
-#include "Core/Manager/AudioManager.h"
-#include "Core/Manager/AssetManager.h"
-#include "Core/Manager/LevelManager.h"
-#include "Combat/MeleeAttackStrategy.h"
-#include "Combat/RangedAttackStrategy.h"
-#include "UI/UIManager.h"
-#include "Core/Manager/WaveManager.h"
-#include "Core/Manager/DialogueManager.h"
-#include "Entities/NPC.h"
-#include "UI/MainMenu.h"
-#include "UI/PauseMenu.h"
 #include "raymath.h"
 
+#include "Core/Constants.h"
+#include "Core/Manager/AssetManager.h"
+#include "Core/Manager/AudioManager.h"
+#include "Core/Manager/CameraManager.h"
+#include "Core/Manager/DialogueManager.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/LevelManager.h"
+#include "Core/Manager/ParticleManager.h"
+#include "Core/Manager/TeamManager.h"
+#include "Core/Manager/WaveManager.h"
+#include "Entities/NPC.h"
+#include "Entities/Player/Hunk.h"
+#include "Entities/Player/Keith.h"
+#include "Entities/Player/Lance.h"
+#include "UI/MainMenu.h"
+#include "UI/PauseMenu.h"
+#include "UI/UIManager.h"
+
 #include <algorithm>
-#include <cmath>
 
 namespace {
-    constexpr int INITIAL_WINDOW_WIDTH = 1366;
-    constexpr int INITIAL_WINDOW_HEIGHT = 1024;
-    constexpr int GAME_WIDTH = 683;
-    constexpr int GAME_HEIGHT = 512;
-    constexpr int BASE_FPS = 120;
-}
-
-void ResetGame(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager) {
-    teamManager->GetActivePaladin()->SetPosition({ 256.0f, 256.0f });
-    for(auto p : teamManager->GetTeam()) p->ResetStats();
-    GameManager::GetInstance().ClearProjectiles();
-    levelManager->LoadLevel("assets/map/level1_Tile Layer 1.csv", teamManager);
-    waveManager->Reset();
-    GameManager::GetInstance().SetState(GameState::PLAYING);
-}
-
-void ResetDemoGame(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager) {
-    teamManager->GetActivePaladin()->SetPosition({ 256.0f, 256.0f });
-    for(auto p : teamManager->GetTeam()) p->ResetStats();
-    GameManager::GetInstance().ClearProjectiles();
-    levelManager->LoadLevel("assets/levels/demo-big.txt", teamManager);
-    waveManager->Reset(10, 0, 5);
-    GameManager::GetInstance().SetState(GameState::PLAYING);
-}
-
-void ReturnToMainMenu(TeamManager* teamManager, LevelManager* levelManager) {
-    GameManager::GetInstance().ClearProjectiles();
-    for (auto* paladin : teamManager->GetTeam()) {
-        paladin->ResetStats();
+    void ResetGame(
+        TeamManager* teamManager,
+        LevelManager* levelManager,
+        WaveManager* waveManager
+    ) {
+        teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
+        for (auto* paladin : teamManager->GetTeam()) {
+            paladin->ResetStats();
+        }
+        GameManager::GetInstance().ClearProjectiles();
+        levelManager->LoadLevel(
+            "assets/map/level1_Tile Layer 1.csv",
+            teamManager
+        );
+        waveManager->Reset();
+        GameManager::GetInstance().SetState(GameState::GAMEPLAY);
     }
-    teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
-    levelManager->LoadLevel("assets/levels/hub.txt", teamManager);
-    GameManager::GetInstance().SetState(GameState::MENU);
+
+    void ResetDemoGame(
+        TeamManager* teamManager,
+        LevelManager* levelManager,
+        WaveManager* waveManager
+    ) {
+        teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
+        for (auto* paladin : teamManager->GetTeam()) {
+            paladin->ResetStats();
+        }
+        GameManager::GetInstance().ClearProjectiles();
+        levelManager->LoadLevel("assets/levels/demo-big.txt", teamManager);
+        waveManager->Reset(10, 0, 5);
+        GameManager::GetInstance().SetState(GameState::GAMEPLAY);
+    }
+
+    void ReturnToMainMenu(
+        TeamManager* teamManager,
+        LevelManager* levelManager
+    ) {
+        GameManager::GetInstance().ClearProjectiles();
+        for (auto* paladin : teamManager->GetTeam()) {
+            paladin->ResetStats();
+        }
+        teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
+        levelManager->LoadLevel("assets/levels/hub.txt", teamManager);
+        GameManager::GetInstance().SetState(GameState::MAIN_MENU);
+    }
 }
 
 int main() {
-    // Initialize Window
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(
-        INITIAL_WINDOW_WIDTH,
-        INITIAL_WINDOW_HEIGHT,
-        "Voltron: Mission Galra Cypher"
+        Constants::SCREEN_WIDTH,
+        Constants::SCREEN_HEIGHT,
+        Constants::GAME_TITLE
     );
     SetExitKey(KEY_NULL);
 
-    // Initialize AudioManager Singleton (Initializes Audio Device)
-    AudioManager::GetInstance();
     AudioManager::GetInstance().Initialize();
+    ParticleManager::GetInstance().Initialize();
+    DialogueManager::GetInstance().InitializeAssets();
 
-    // Initialize GUI components
     MainMenu mainMenu;
+    mainMenu.Initialize();
+    AssetManager::GetInstance().QueueCharacterAssets();
+
     PauseMenu pauseMenu;
     bool quitRequested = false;
 
-    // Initialize Dialogue Assets
-    DialogueManager::GetInstance().InitializeAssets();
-
-    // Start background music
-    AudioManager::GetInstance().PlayMusicTrack("bgm");
-
-    // Initialize AssetManager and load character textures
-    AssetManager::GetInstance().LoadCharacterAssets();
-    GameManager::GetInstance().SetBulletImpactTexture(AssetManager::GetInstance().GetTexture("Lance_Impact"));
-
-    // Initialize TeamManager and Paladins
-    Vector2 startPos = { (float)GAME_WIDTH / 2.0f, (float)GAME_HEIGHT / 2.0f };
-    TeamManager* teamManager = new TeamManager();
-    
-    Lance* lance = new Lance(startPos, AssetManager::GetInstance().GetLanceSprites());
-    Keith* keith = new Keith(startPos, AssetManager::GetInstance().GetKeithSprites());
-    Hunk* hunk = new Hunk(startPos, AssetManager::GetInstance().GetHunkSprites());
-    
-    teamManager->AddMember(lance);
-    teamManager->AddMember(keith);
-    teamManager->AddMember(hunk);
-
-    // Initialize UI Manager
+    TeamManager* teamManager = nullptr;
     UIManager uiManager;
-    uiManager.Initialize();
-    uiManager.SetTeamManager(teamManager);
-
-    // Setup LevelManager
     LevelManager levelManager;
-    levelManager.LoadLevel("assets/levels/hub.txt", teamManager);
-    GameManager::GetInstance().SetLevelManager(&levelManager);
-
-    // Initialize WaveManager
     WaveManager waveManager;
+    bool systemInitialized = false;
 
-    // Initialize Camera
-    Camera2D camera = { 0 };
-    camera.target = { 0.0f, 0.0f };
-    camera.offset = { std::round(INITIAL_WINDOW_WIDTH / 2.0f), std::round(INITIAL_WINDOW_HEIGHT / 2.0f) };
-    camera.rotation = 0.0f;
-    camera.zoom = 2.0f;
+    CameraManager::GetInstance().Initialize();
+    GameManager& gameManager = GameManager::GetInstance();
+    gameManager.UpdateTargetFPS(Constants::TARGET_FPS);
 
-    GameManager::GetInstance().UpdateTargetFPS(BASE_FPS);
+    GameState settingsReturnState = GameState::MAIN_MENU;
 
-    // Main Game Loop
     while (!WindowShouldClose() && !quitRequested) {
         float deltaTime = GetFrameTime();
-        
-        // Dynamic camera scaling based on window size
-        float scale = std::min((float)GetScreenWidth() / GAME_WIDTH, (float)GetScreenHeight() / GAME_HEIGHT);
-        camera.offset = { (float)GetScreenWidth() / 2.0f, (float)GetScreenHeight() / 2.0f };
-        
-        float hitstopZoom = (GameManager::GetInstance().GetHitstopTimer() > 0.0f) ? 1.1f : 1.0f;
-        camera.zoom = Lerp(camera.zoom, scale * hitstopZoom, 15.0f * deltaTime);
+        float scale = std::min(
+            (float)GetScreenWidth() / Constants::GAME_WIDTH,
+            (float)GetScreenHeight() / Constants::GAME_HEIGHT
+        );
 
-        Camera2D uiCamera = { 0 };
+        Camera2D uiCamera = {};
         uiCamera.zoom = scale;
-        uiCamera.offset = { 
-            (GetScreenWidth() - (GAME_WIDTH * scale)) / 2.0f, 
-            (GetScreenHeight() - (GAME_HEIGHT * scale)) / 2.0f 
+        uiCamera.offset = {
+            (GetScreenWidth() - Constants::GAME_WIDTH * scale) / 2.0f,
+            (GetScreenHeight() - Constants::GAME_HEIGHT * scale) / 2.0f
         };
 
-        // Update music stream continuously regardless of game state
         AudioManager::GetInstance().UpdateMusicStream();
-        
-        // Calculate world-space mouse coordinates for active gameplay states.
-        Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), camera);
-        
-        // UI mouse calculation relative to the scaled virtual resolution
-        Vector2 uiMousePosition = GetScreenToWorld2D(GetMousePosition(), uiCamera);
-        if (uiMousePosition.x < 0 || uiMousePosition.x > GAME_WIDTH || 
-            uiMousePosition.y < 0 || uiMousePosition.y > GAME_HEIGHT) {
-            uiMousePosition = { -1.0f, -1.0f };
+
+        Vector2 mouseWorld = GetScreenToWorld2D(
+            GetMousePosition(),
+            CameraManager::GetInstance().GetCamera()
+        );
+        Vector2 uiMousePosition = GetScreenToWorld2D(
+            GetMousePosition(),
+            uiCamera
+        );
+        if (uiMousePosition.x < 0.0f ||
+            uiMousePosition.x > Constants::GAME_WIDTH ||
+            uiMousePosition.y < 0.0f ||
+            uiMousePosition.y > Constants::GAME_HEIGHT) {
+            uiMousePosition = {-1.0f, -1.0f};
         }
 
-
-
-        GameManager& gameManager = GameManager::GetInstance();
         GameState state = gameManager.GetState();
 
-        const bool keyboardPauseRequested =
-            IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE);
-        const bool hudPauseRequested =
-            (state == GameState::HUB || state == GameState::PLAYING) &&
-            uiManager.IsPauseButtonPressed(uiMousePosition);
+        if (state == GameState::MAIN_MENU &&
+            mainMenu.IsReady() &&
+            !systemInitialized) {
+            gameManager.SetBulletImpactTexture(
+                AssetManager::GetInstance().GetTexture("Lance_Impact")
+            );
 
-        if (state == GameState::PAUSED && keyboardPauseRequested) {
-            gameManager.ResumeGame();
-        } else if ((state == GameState::HUB || state == GameState::PLAYING) &&
-                   (keyboardPauseRequested || hudPauseRequested)) {
-            gameManager.PauseGame();
+            Vector2 startPosition = {
+                (float)Constants::GAME_WIDTH / 2.0f,
+                (float)Constants::GAME_HEIGHT / 2.0f
+            };
+            teamManager = new TeamManager();
+            teamManager->AddMember(new Lance(
+                startPosition,
+                AssetManager::GetInstance().GetLanceSprites()
+            ));
+            teamManager->AddMember(new Keith(
+                startPosition,
+                AssetManager::GetInstance().GetKeithSprites()
+            ));
+            teamManager->AddMember(new Hunk(
+                startPosition,
+                AssetManager::GetInstance().GetHunkSprites()
+            ));
+
+            uiManager.Initialize();
+            uiManager.SetTeamManager(teamManager);
+
+            levelManager.LoadLevel("assets/levels/hub.txt", teamManager);
+            gameManager.SetLevelManager(&levelManager);
+            systemInitialized = true;
         }
 
-        const GameState updateState = gameManager.GetState();
+        if (systemInitialized) {
+            teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
 
-        switch (updateState) {
-            case GameState::MENU:
-                switch (mainMenu.Update(uiMousePosition)) {
-                    case MainMenuAction::Play:
-                        gameManager.SetState(GameState::HUB);
-                        break;
-                    case MainMenuAction::Quit:
-                        quitRequested = true;
-                        break;
-                    case MainMenuAction::None:
-                        break;
+            bool keyboardPauseRequested =
+                IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE);
+            bool hudPauseRequested =
+                (state == GameState::HUB ||
+                 state == GameState::GAMEPLAY) &&
+                uiManager.IsPauseButtonPressed(uiMousePosition);
+
+            if (state == GameState::PAUSE && keyboardPauseRequested) {
+                gameManager.ResumeGame();
+            } else if ((state == GameState::HUB ||
+                        state == GameState::GAMEPLAY) &&
+                       (keyboardPauseRequested || hudPauseRequested)) {
+                gameManager.PauseGame();
+            }
+            state = gameManager.GetState();
+        }
+
+        switch (state) {
+            case GameState::MAIN_MENU: {
+                mainMenu.Update(deltaTime);
+                if (mainMenu.ConsumeQuitRequest()) {
+                    quitRequested = true;
                 }
-                if (IsKeyPressed(KEY_R)) {
+                if (gameManager.GetState() == GameState::SETTINGS) {
+                    settingsReturnState = GameState::MAIN_MENU;
+                }
+                if (systemInitialized && IsKeyPressed(KEY_R)) {
                     ResetDemoGame(teamManager, &levelManager, &waveManager);
                 }
                 break;
+            }
             case GameState::HUB:
-                teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
+                if (!systemInitialized) {
+                    break;
+                }
                 if (DialogueManager::GetInstance().IsActive()) {
                     DialogueManager::GetInstance().Update(deltaTime);
                 } else {
@@ -197,29 +213,42 @@ int main() {
                         ResetGame(teamManager, &levelManager, &waveManager);
                         break;
                     }
-                    
+
                     levelManager.UpdateLevel(deltaTime);
                     teamManager->Update(deltaTime);
-                    
+
                     if (IsKeyPressed(KEY_E)) {
-                        for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
-                            if (entity->GetObjectType() == GameObjectType::NPC) {
-                                NPC* npc = static_cast<NPC*>(entity);
-                                if (Vector2Distance(teamManager->GetActivePaladin()->GetPosition(), npc->GetPosition()) < 50.0f) {
-                                    DialogueManager::GetInstance().LoadDialogueTree("assets/story/intro.txt");
-                                    DialogueManager::GetInstance().StartDialogue();
-                                    break;
-                                }
+                        for (auto* entity : gameManager.GetLevelEntities()) {
+                            if (entity->GetObjectType() != GameObjectType::NPC) {
+                                continue;
+                            }
+                            NPC* npc = static_cast<NPC*>(entity);
+                            if (Vector2Distance(
+                                    teamManager->GetActivePaladin()->GetPosition(),
+                                    npc->GetPosition()
+                                ) < 50.0f) {
+                                DialogueManager::GetInstance().LoadDialogueTree(
+                                    "assets/story/intro.txt"
+                                );
+                                DialogueManager::GetInstance().StartDialogue();
+                                break;
                             }
                         }
                     }
                 }
                 gameManager.UpdateEffects(deltaTime);
-                camera.target.x = Lerp(camera.target.x, teamManager->GetActivePaladin()->GetPosition().x, 20.0f * deltaTime);
-                camera.target.y = Lerp(camera.target.y, teamManager->GetActivePaladin()->GetPosition().y, 20.0f * deltaTime);
+                CameraManager::GetInstance().UpdateCamera(
+                    teamManager->GetActivePaladin()->GetPosition(),
+                    mouseWorld,
+                    deltaTime,
+                    levelManager.GetLevelBounds(),
+                    false
+                );
                 break;
-            case GameState::PLAYING:
-                teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
+            case GameState::GAMEPLAY:
+                if (!systemInitialized) {
+                    break;
+                }
                 if (gameManager.GetHitstopTimer() > 0.0f) {
                     gameManager.UpdateHitstop(deltaTime);
                 } else {
@@ -229,10 +258,16 @@ int main() {
                     waveManager.Update(deltaTime, teamManager, &levelManager);
                 }
                 gameManager.UpdateEffects(deltaTime);
-                camera.target.x = Lerp(camera.target.x, teamManager->GetActivePaladin()->GetPosition().x, 20.0f * deltaTime);
-                camera.target.y = Lerp(camera.target.y, teamManager->GetActivePaladin()->GetPosition().y, 20.0f * deltaTime);
+                ParticleManager::GetInstance().Update(deltaTime);
+                CameraManager::GetInstance().UpdateCamera(
+                    teamManager->GetActivePaladin()->GetPosition(),
+                    mouseWorld,
+                    deltaTime,
+                    levelManager.GetLevelBounds(),
+                    gameManager.GetHitstopTimer() > 0.0f
+                );
                 break;
-            case GameState::PAUSED:
+            case GameState::PAUSE:
                 switch (pauseMenu.Update(uiMousePosition)) {
                     case PauseMenuAction::Resume:
                         gameManager.ResumeGame();
@@ -247,85 +282,144 @@ int main() {
                         break;
                 }
                 break;
-            case GameState::GAMEOVER:
+            case GameState::SETTINGS: {
+                Rectangle backButton = {
+                    GetScreenWidth() / 2.0f - 60.0f,
+                    GetScreenHeight() / 2.0f + 70.0f,
+                    120.0f,
+                    40.0f
+                };
+                if (IsKeyPressed(KEY_ESCAPE) ||
+                    (CheckCollisionPointRec(GetMousePosition(), backButton) &&
+                     IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) {
+                    AudioManager::GetInstance().PlayRandomClick();
+                    gameManager.SetState(settingsReturnState);
+                }
+                break;
+            }
+            case GameState::GAME_OVER:
                 if (IsKeyPressed(KEY_R)) {
                     ResetGame(teamManager, &levelManager, &waveManager);
                 }
                 break;
             case GameState::VICTORY:
                 if (IsKeyPressed(KEY_R)) {
-                    gameManager.SetState(GameState::MENU);
-                    ResetGame(teamManager, &levelManager, &waveManager);
+                    ReturnToMainMenu(teamManager, &levelManager);
                 }
                 break;
         }
 
-        const GameState renderState = gameManager.GetRenderState();
+        state = gameManager.GetState();
+        GameState renderState = gameManager.GetRenderState();
 
-        // --- Draw ---
         BeginDrawing();
+        ClearBackground(BLACK);
+
+        if (renderState == GameState::HUB ||
+            renderState == GameState::GAMEPLAY) {
+            BeginMode2D(CameraManager::GetInstance().GetCamera());
+            ClearBackground(
+                renderState == GameState::HUB ? DARKGREEN : DARKGRAY
+            );
+            levelManager.DrawLevel();
+            gameManager.DrawEffects(true);
+            teamManager->Draw();
+            if (renderState == GameState::GAMEPLAY) {
+                gameManager.DrawProjectiles();
+            }
+            ParticleManager::GetInstance().Draw();
+            gameManager.DrawEffects(false);
+            EndMode2D();
+
+            BeginMode2D(uiCamera);
+            uiManager.DrawHUD(
+                Constants::GAME_WIDTH,
+                Constants::GAME_HEIGHT,
+                uiMousePosition
+            );
+            if (renderState == GameState::HUB) {
+                DialogueManager::GetInstance().Draw(
+                    Constants::GAME_WIDTH,
+                    Constants::GAME_HEIGHT
+                );
+            } else if (state == GameState::GAMEPLAY) {
+                waveManager.DrawHUD();
+            }
+            EndMode2D();
+        } else if (renderState == GameState::GAME_OVER) {
+            BeginMode2D(uiCamera);
             ClearBackground(BLACK);
+            DrawText("GAME OVER", 180, 220, 30, RED);
+            DrawText("Press R to Restart", 160, 280, 20, LIGHTGRAY);
+            EndMode2D();
+        } else if (renderState == GameState::VICTORY) {
+            BeginMode2D(uiCamera);
+            ClearBackground(RAYWHITE);
+            DrawText("MISSION ACCOMPLISHED", 90, 200, 40, GOLD);
+            DrawText(
+                "Press R to return to Main Menu",
+                150,
+                300,
+                20,
+                DARKGRAY
+            );
+            EndMode2D();
+        } else {
+            mainMenu.Draw(GetScreenWidth(), GetScreenHeight());
+        }
 
-            if (renderState == GameState::MENU) {
-                BeginMode2D(uiCamera);
-                mainMenu.Draw(uiMousePosition);
-                EndMode2D();
-            } else if (renderState == GameState::GAMEOVER) {
-                BeginMode2D(uiCamera);
-                ClearBackground(BLACK);
-                DrawText("GAME OVER", 180, 220, 30, RED);
-                DrawText("Press R to Restart", 160, 280, 20, LIGHTGRAY);
-                EndMode2D();
-            } else if (renderState == GameState::VICTORY) {
-                BeginMode2D(uiCamera);
-                ClearBackground(RAYWHITE);
-                DrawText("MISSION ACCOMPLISHED", 90, 200, 40, GOLD);
-                DrawText("Press R to return to Main Menu", 150, 300, 20, DARKGRAY);
-                EndMode2D();
-            } else {
-                BeginMode2D(camera);
-                
-                if (renderState == GameState::HUB) {
-                    ClearBackground(DARKGREEN);
-                    levelManager.DrawLevel();
-                    gameManager.DrawEffects(true); // background
-                    teamManager->Draw();
-                    gameManager.DrawEffects(false); // foreground
-                } else if (renderState == GameState::PLAYING) {
-                    ClearBackground(DARKGRAY);
-                    levelManager.DrawLevel();
-                    gameManager.DrawEffects(true); // background
-                    teamManager->Draw();
-                    gameManager.DrawProjectiles();
-                    gameManager.DrawEffects(false); // foreground
-                }
-                
-                EndMode2D();
-                
-                // Draw HUD outside of camera
-                BeginMode2D(uiCamera);
-                if (renderState == GameState::HUB) {
-                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT, uiMousePosition);
-                    DialogueManager::GetInstance().Draw(GAME_WIDTH, GAME_HEIGHT);
-                } else if (renderState == GameState::PLAYING) {
-                    uiManager.DrawHUD(GAME_WIDTH, GAME_HEIGHT, uiMousePosition);
-                    waveManager.DrawHUD();
-                }
-                EndMode2D();
-            }
+        if (state == GameState::PAUSE) {
+            BeginMode2D(uiCamera);
+            pauseMenu.Draw(uiMousePosition);
+            EndMode2D();
+        } else if (state == GameState::SETTINGS) {
+            UIManager::DrawModalOverlay();
+            Rectangle popupBounds = {
+                GetScreenWidth() / 2.0f - 200.0f,
+                GetScreenHeight() / 2.0f - 150.0f,
+                400.0f,
+                300.0f
+            };
+            UIManager::DrawPopupFrame(popupBounds, "SETTINGS");
 
-            if (gameManager.IsPaused()) {
-                BeginMode2D(uiCamera);
-                pauseMenu.Draw(uiMousePosition);
-                EndMode2D();
-            }
+            Rectangle backButton = {
+                GetScreenWidth() / 2.0f - 60.0f,
+                GetScreenHeight() / 2.0f + 70.0f,
+                120.0f,
+                40.0f
+            };
+            bool hovered = CheckCollisionPointRec(
+                GetMousePosition(),
+                backButton
+            );
+            DrawRectangleRounded(
+                backButton,
+                0.2f,
+                10,
+                hovered ? LIGHTGRAY : DARKGRAY
+            );
+            DrawRectangleRoundedLinesEx(
+                backButton,
+                0.2f,
+                10,
+                2.0f,
+                BLACK
+            );
+            int textWidth = MeasureText("BACK", 20);
+            DrawText(
+                "BACK",
+                (int)(backButton.x + (backButton.width - textWidth) / 2.0f),
+                (int)(backButton.y + 10.0f),
+                20,
+                hovered ? BLACK : WHITE
+            );
+        }
+
         EndDrawing();
     }
 
-    // De-Initialization
     delete teamManager;
     AssetManager::GetInstance().UnloadAll();
     CloseWindow();
-
     return 0;
 }
