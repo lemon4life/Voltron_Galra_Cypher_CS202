@@ -97,10 +97,10 @@ void UIManager::DrawTeamHUD(
     
     if (isHovered && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         GameState currentState = GameManager::GetInstance().GetState();
-        if (currentState == GameState::PLAYING) {
-            GameManager::GetInstance().SetState(GameState::PAUSED);
-        } else if (currentState == GameState::PAUSED) {
-            GameManager::GetInstance().SetState(GameState::PLAYING);
+        if (currentState == GameState::GAMEPLAY) {
+            GameManager::GetInstance().SetState(GameState::PAUSE);
+        } else if (currentState == GameState::PAUSE) {
+            GameManager::GetInstance().SetState(GameState::GAMEPLAY);
         }
     }
 
@@ -198,4 +198,24 @@ void UIManager::DrawTeamHUD(
     int textY = startY + 34 + (12 - fontSize) / 2;
     DrawText(hpText, textX, textY, fontSize, WHITE);
 
+}
+
+// --- Core UI Helpers ---
+
+void UIManager::DrawModalOverlay() {
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.6f));
+}
+
+void UIManager::DrawPopupFrame(Rectangle bounds, const char* title) {
+    // Background and border
+    DrawRectangleRounded(bounds, 0.1f, 16, Fade(DARKGRAY, 0.95f));
+    DrawRectangleRoundedLinesEx(bounds, 0.1f, 16, 2.0f, BLACK);
+
+    // Title area
+    int titleWidth = MeasureText(title, 24);
+    int titleX = bounds.x + (bounds.width - titleWidth) / 2;
+    int titleY = bounds.y + 20;
+
+    DrawText(title, titleX, titleY, 24, WHITE);
+    DrawLine(bounds.x + 20, bounds.y + 60, bounds.x + bounds.width - 20, bounds.y + 60, GRAY);
 }
