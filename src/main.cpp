@@ -369,6 +369,7 @@ int main() {
         }
 
         if (state == GameState::PAUSE) {
+            UIManager::DrawModalOverlay();
             BeginMode2D(uiCamera);
             pauseMenu.Draw(uiMousePosition);
             EndMode2D();

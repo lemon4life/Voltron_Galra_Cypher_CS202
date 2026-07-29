@@ -58,8 +58,6 @@ PauseMenuAction PauseMenu::Update(Vector2 mousePosition) {
 }
 
 void PauseMenu::Draw(Vector2 mousePosition) const {
-    DrawRectangleRec(Rectangle{0.0f, 0.0f, UI_WIDTH, UI_HEIGHT},
-                     Color{0, 0, 0, 175});
     DrawRectangleRec(containerBounds, Color{25, 31, 43, 248});
     DrawRectangleLinesEx(containerBounds, 2.0f, Color{145, 156, 178, 255});
 

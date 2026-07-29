@@ -17,7 +17,7 @@ These files exist in the merged `UI-dev` branch but not in `main`.
 | `include/UI/GUISlider.h` | Declares a reusable slider with a label and normalized `0.0`-to-`1.0` value. |
 | `src/UI/GUISlider.cpp` | Implements slider dragging, clamping, value updates, and rendering for runtime volume controls. |
 | `include/UI/PauseMenu.h` | Declares the pause overlay and its Resume, Back to Main Menu, Quit, sound-volume, and music-volume actions. |
-| `src/UI/PauseMenu.cpp` | Implements the layered pause container and connects its sliders to `AudioManager`. |
+| `src/UI/PauseMenu.cpp` | Implements the scaled pause container and connects its sliders to `AudioManager`; the full-window dimming layer is owned by the main render loop. |
 | `tmp/compare.md` | Records the final organized difference between `main` and the merged `UI-dev` branch. |
 
 ## 2. Removed file
