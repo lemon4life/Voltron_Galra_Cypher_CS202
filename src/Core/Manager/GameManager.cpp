@@ -1,10 +1,11 @@
 #include "Core/Manager/GameManager.h"
 #include "Entities/Projectile.h"
 #include "Core/Manager/LevelManager.h"
+#include "Core/Manager/ParticleManager.h"
 #include "raymath.h"
 
-GameManager::GameManager() : currentState(GameState::MENU), levelManager(nullptr) {
-    // Starts in MENU state by default
+GameManager::GameManager() : currentState(GameState::MAIN_MENU), levelManager(nullptr) {
+    // Starts in MAIN_MENU state by default
 }
 
 GameManager::~GameManager() {
@@ -76,6 +77,10 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
                     activePaladin->IncrementParryCount();
                     TriggerHitstop(0.1f);
                     AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});
+                    // Parry sparks — burst at the point of contact
+                    ParticleManager::GetInstance().SpawnParrySparks(
+                        { pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f }, 16
+                    );
                 } else {
                     activePaladin->TakeDamage((*it)->GetDamage());
                     if (activePaladin->IsParrying()) {
@@ -93,6 +98,11 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
                 hitSomething = true;
                 if (!(*it)->IsEnemyProjectile()) {
                     AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});
+                    // Wall impact debris — splatter in the direction the projectile came from
+                    ParticleManager::GetInstance().SpawnImpact(
+                        { pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f },
+                        (*it)->GetVelocity(), YELLOW, 8
+                    );
                 }
             } else {
                 for (auto* entity : entities) {
@@ -105,7 +115,12 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
                                 if (Vector2Length(kdir) > 0.0f) kdir = Vector2Normalize(kdir);
                                 else kdir = {1.0f, 0.0f};
                                 e->ApplyKnockback(kdir, 350.0f);
+                                Vector2 impactPos = { pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f };
                                 AddImpactEffect(pBox.x > e->GetBoundingBox().x ? (Vector2){pBox.x, pBox.y} : (Vector2){pBox.x + 10, pBox.y});
+                                // Enemy hit debris — cyan tinted splatter
+                                ParticleManager::GetInstance().SpawnImpact(
+                                    impactPos, (*it)->GetVelocity(), SKYBLUE, 6
+                                );
                                 if (teamManager && teamManager->GetActivePaladin()) {
                                     teamManager->GetActivePaladin()->OnHitEnemy((*it)->GetDamage());
                                 }

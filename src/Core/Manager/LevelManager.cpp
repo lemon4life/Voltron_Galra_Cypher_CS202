@@ -23,6 +23,7 @@ namespace {
 LevelManager::LevelManager()
     : levelWidth(0.0f), levelHeight(0.0f), gridRows(0), gridCols(0) {
     tileset = LoadTexture("assets/tileset/Galra_ship_Tileset.png");
+    SetTextureFilter(tileset, TEXTURE_FILTER_POINT);
 }
 
 LevelManager::~LevelManager() {
@@ -281,8 +282,8 @@ void LevelManager::DrawLevel() {
         for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
             for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
                 Rectangle destRec = {
-                    (float)c * TILE_SIZE,
-                    (float)r * TILE_SIZE,
+                    std::floor((float)c * TILE_SIZE),
+                    std::floor((float)r * TILE_SIZE),
                     TILE_SIZE,
                     TILE_SIZE
                 };
@@ -299,8 +300,10 @@ void LevelManager::DrawLevel() {
                     int index = tileID; // CSV IDs are already 0-based
                     int tileX = index % tilesetCols;
                     int tileY = index / tilesetCols;
-                    sourceRec.x = (float)tileX * TILE_SIZE;
-                    sourceRec.y = (float)tileY * TILE_SIZE;
+                    sourceRec.x = (float)tileX * TILE_SIZE + 0.05f;
+                    sourceRec.y = (float)tileY * TILE_SIZE + 0.05f;
+                    sourceRec.width = TILE_SIZE - 0.1f;
+                    sourceRec.height = TILE_SIZE - 0.1f;
                     DrawTexturePro(tileset, sourceRec, destRec, {0,0}, 0.0f, WHITE);
                 }
             }

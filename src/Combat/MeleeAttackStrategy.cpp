@@ -5,13 +5,14 @@
 #include "Entities/Items/DestructibleBox.h"
 #include <algorithm>
 #include <cstdlib>
+#include "Core/Constants.h"
 
 namespace {
     constexpr float MELEE_KNOCKBACK_FORCE = 350.0f;
 }
 
 MeleeAttackStrategy::MeleeAttackStrategy(Texture2D weapon, Texture2D att1, Texture2D att2) 
-    : weaponTex(weapon), attack1Tex(att1), attack2Tex(att2), comboStep(0), nextComboStep(1), frameTimer(0.0f), currentFrame(0), inputBuffered(false) 
+    : weaponTex(weapon), attack1Tex(att1), attack2Tex(att2), comboStep(0), nextComboStep(1), frameTimer(0.0f), currentFrame(0), inputBuffered(false), kinematics(WeaponKinematicsType::Melee) 
 {
     aimDir = {1.0f, 0.0f};
     aimAngle = 0.0f;
@@ -28,6 +29,7 @@ void MeleeAttackStrategy::Attack(Vector2 playerPos) {
         inputBuffered = false;
         objectsHit.clear();
         AudioManager::GetInstance().PlaySoundEffect("swing");
+        kinematics.ApplySwing(0.2f, 120.0f, (comboStep == 2));
     } else if (comboStep == 1 || comboStep == 2) {
         // Buffer the next hit if clicked during the active swing
         if (currentFrame >= 1) {
@@ -37,6 +39,7 @@ void MeleeAttackStrategy::Attack(Vector2 playerPos) {
 }
 
 void MeleeAttackStrategy::Update(float deltaTime) {
+    kinematics.Update(deltaTime);
     if (comboStep == 0) return;
 
     frameTimer += deltaTime;
@@ -66,7 +69,7 @@ void MeleeAttackStrategy::Update(float deltaTime) {
                     continue;
                 }
 
-                int damage = (comboStep == 1) ? 35 : 45;
+                int damage = (comboStep == 1) ? 50 : 80;
                 bool damagedObject = false;
 
                 if (entity->GetObjectType() == GameObjectType::Enemy) {
@@ -99,6 +102,7 @@ void MeleeAttackStrategy::Update(float deltaTime) {
                 inputBuffered = false;
                 objectsHit.clear();
                 AudioManager::GetInstance().PlaySoundEffect("swing");
+                kinematics.ApplySwing(0.2f, 120.0f, (comboStep == 2));
             } else {
                 // End combo
                 comboStep = 0;
@@ -111,39 +115,43 @@ void MeleeAttackStrategy::Update(float deltaTime) {
 
 void MeleeAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
     lastPlayerPos = playerPos;
-    if (comboStep == 0) {
-        if (weaponTex.id != 0) {
-            Rectangle source = { 0.0f, 0.0f, (float)weaponTex.width, (float)weaponTex.height };
-            if (facingLeft) {
-                source.height = -source.height; 
-            }
-            Rectangle dest = { playerPos.x, playerPos.y, (float)weaponTex.width, (float)weaponTex.height };
-            Vector2 origin = { 0.0f, (float)weaponTex.height / 2.0f };
-            DrawTexturePro(weaponTex, source, dest, origin, aimAngle, WHITE);
+    float currentAngle = aimAngle + (facingLeft ? -kinematics.GetAngleOffset() : kinematics.GetAngleOffset());
+
+    // 1. Draw Weapon
+    if (weaponTex.id != 0) {
+        Rectangle source = { 0.0f, 0.0f, (float)weaponTex.width, (float)weaponTex.height };
+        if (facingLeft) {
+            source.height = -source.height; 
         }
-        return;
+        Rectangle dest = { playerPos.x, playerPos.y, (float)weaponTex.width, (float)weaponTex.height };
+        Vector2 origin = { 0.0f, (float)weaponTex.height / 2.0f }; // Pivot at hilt
+        DrawTexturePro(weaponTex, source, dest, origin, currentAngle, WHITE);
     }
 
-    Texture2D activeTex = (comboStep == 1) ? attack1Tex : attack2Tex;
-    
-    // Safety check
-    if (activeTex.id == 0) return;
+    // 2. Draw Effect ON TOP (triggered at +30 degrees approx -> frame 1)
+    if (comboStep != 0 && currentFrame >= 1 && currentFrame <= 3) {
+        Texture2D activeTex = (comboStep == 1) ? attack1Tex : attack2Tex;
+        if (activeTex.id != 0) {
+            int slashFrame = currentFrame - 1;
+            float frameWidth = (float)activeTex.width / 3.0f; // Sword_slash_small is 3 frames
+            float sourceHeight = (float)activeTex.height;
+            
+            if (facingLeft) sourceHeight = -sourceHeight;
+            if (comboStep == 2) sourceHeight = -sourceHeight; // Reverse visual direction for upward swing
 
-    // Sprite sheet has 4 frames
-    float frameWidth = (float)activeTex.width / 4.0f;
-    
-    Rectangle source = { currentFrame * frameWidth, 0.0f, frameWidth, (float)activeTex.height };
-    if (facingLeft) {
-        source.height = -source.height; 
+            Rectangle source = { slashFrame * frameWidth, 0.0f, frameWidth, sourceHeight };
+            
+            float distanceOut = weaponTex.id != 0 ? (float)weaponTex.width : 32.0f; // Calculate offset distance
+            float rad = currentAngle * PI / 180.0f;
+            Vector2 drawPos = { playerPos.x + std::cos(rad) * distanceOut, playerPos.y + std::sin(rad) * distanceOut };
+            
+            float scale = Constants::GLOBAL_SCALE; // Scale up the slash effect so it's proportional to the sword
+            Rectangle dest = { drawPos.x, drawPos.y, frameWidth * scale, (float)activeTex.height * scale };
+            Vector2 origin = { (frameWidth * scale) / 2.0f, ((float)activeTex.height * scale) / 2.0f };
+
+            BeginBlendMode(BLEND_ADDITIVE);
+            DrawTexturePro(activeTex, source, dest, origin, currentAngle, WHITE); // Align rotation exactly to sword
+            EndBlendMode();
+        }
     }
-
-    // Since this is a swing animation, we'll draw it directly centered on the player 
-    // with some offset so it sweeps in front of them.
-    float distanceOut = 16.0f;
-    Vector2 drawPos = { playerPos.x + aimDir.x * distanceOut, playerPos.y + aimDir.y * distanceOut };
-    
-    Rectangle dest = { drawPos.x, drawPos.y, frameWidth, (float)activeTex.height };
-    Vector2 origin = { frameWidth / 2.0f, (float)activeTex.height / 2.0f };
-
-    DrawTexturePro(activeTex, source, dest, origin, aimAngle, WHITE);
 }

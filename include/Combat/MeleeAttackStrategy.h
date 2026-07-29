@@ -1,5 +1,6 @@
 #pragma once
 #include "Combat/IAttackStrategy.h"
+#include "Combat/WeaponKinematics.h"
 #include <vector>
 
 class GameObject;
@@ -16,7 +17,8 @@ private:
     int currentFrame;    // 0 to 3
     float timePerFrame;  // attack speed scaling
     bool inputBuffered;
-    Vector2 lastPlayerPos;  // if player clicks again during active combo
+    Vector2 lastPlayerPos;
+    WeaponKinematics kinematics;  // if player clicks again during active combo
     
     std::vector<GameObject*> objectsHit; // Track objects hit in the current swing
 

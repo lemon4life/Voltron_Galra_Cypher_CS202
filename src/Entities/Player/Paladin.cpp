@@ -121,7 +121,7 @@ void Paladin::Update(float deltaTime) {
     float angle = atan2f(dir.y, dir.x) * (180.0f / PI);
     
     if (!isParrying) {
-        if (GameManager::GetInstance().GetState() == GameState::HUB || GameManager::GetInstance().GetState() == GameState::MENU) {
+        if (GameManager::GetInstance().GetState() == GameState::HUB || GameManager::GetInstance().GetState() == GameState::MAIN_MENU) {
             if (lastMoveDir.x < 0.0f) facingLeft = true;
             else if (lastMoveDir.x > 0.0f) facingLeft = false;
         } else {
@@ -162,7 +162,7 @@ void Paladin::Update(float deltaTime) {
         if (currentPos.x < 0.0f) currentPos.x = 0.0f;
         if (currentPos.x > levelWidth) currentPos.x = levelWidth;
         SetPosition(currentPos);
-        if (levelManager && levelManager->IsSolidCollision(GetBoundingBox())) {
+        if (levelManager && levelManager->IsSolidCollision(GetCollisionBox())) {
             currentPos.x -= knockbackVelocity.x * deltaTime;
             SetPosition(currentPos);
             knockbackVelocity.x = 0.0f;
@@ -173,7 +173,7 @@ void Paladin::Update(float deltaTime) {
         if (currentPos.y < 0.0f) currentPos.y = 0.0f;
         if (currentPos.y > levelHeight) currentPos.y = levelHeight;
         SetPosition(currentPos);
-        if (levelManager && levelManager->IsSolidCollision(GetBoundingBox())) {
+        if (levelManager && levelManager->IsSolidCollision(GetCollisionBox())) {
             currentPos.y -= knockbackVelocity.y * deltaTime;
             SetPosition(currentPos);
             knockbackVelocity.y = 0.0f;
@@ -203,6 +203,10 @@ void Paladin::ResetStats() {
 Rectangle Paladin::GetBoundingBox() const {
     // 16x24 bounding box centered on position for 32x32 sprite
     return { position.x - 8.0f, position.y - 12.0f, 16.0f, 24.0f };
+}
+
+Rectangle Paladin::GetCollisionBox() const {
+    return { position.x - 8.0f, position.y + 4.0f, 16.0f, 8.0f };
 }
 
 bool Paladin::CheckCollision(const std::vector<GameObject*>& entities) const {

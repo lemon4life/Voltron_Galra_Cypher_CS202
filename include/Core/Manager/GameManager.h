@@ -3,11 +3,12 @@
 #include <vector>
 
 enum class GameState {
-    MENU,
+    MAIN_MENU,
     HUB,
-    PLAYING,
-    PAUSED,
-    GAMEOVER,
+    GAMEPLAY,
+    PAUSE,
+    SETTINGS,
+    GAME_OVER,
     VICTORY
 };
 

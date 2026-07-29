@@ -32,4 +32,5 @@ public:
     Vector2 GetPosition() const { return position; }
     void SetPosition(Vector2 pos) { position = pos; }
     virtual Rectangle GetBoundingBox() const { return boundingBox; }
+    virtual Rectangle GetCollisionBox() const { return GetBoundingBox(); }
 };

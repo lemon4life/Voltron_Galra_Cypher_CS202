@@ -3,7 +3,7 @@
 #include "Core/Manager/GameManager.h"
 
 RangedAttackStrategy::RangedAttackStrategy(Texture2D tex, Texture2D muzzleTex, Texture2D bullTex) 
-    : weaponTex(tex), muzzleFlashTex(muzzleTex), bulletTex(bullTex), recoilOffset{0,0}, muzzleFlashTimer(0.0f) {
+    : weaponTex(tex), muzzleFlashTex(muzzleTex), bulletTex(bullTex), kinematics(WeaponKinematicsType::Ranged), muzzleFlashTimer(0.0f) {
     aimDir = {1.0f, 0.0f};
     aimAngle = 0.0f;
 }
@@ -15,7 +15,7 @@ void RangedAttackStrategy::Attack(Vector2 playerPos) {
     // Create projectile originating at player center
     Projectile* p = new Projectile(playerPos, projVelocity, 2.0f, 34, bulletTex);
     
-    recoilOffset = { -aimDir.x * 15.0f, -aimDir.y * 15.0f };
+    kinematics.ApplyRecoil(aimDir, 15.0f);
     muzzleFlashTimer = 0.05f;
     GameManager::GetInstance().AddProjectile(p);
     
@@ -23,8 +23,8 @@ void RangedAttackStrategy::Attack(Vector2 playerPos) {
 }
 
 void RangedAttackStrategy::Update(float deltaTime) {
-    recoilOffset.x -= recoilOffset.x * 15.0f * deltaTime;
-    recoilOffset.y -= recoilOffset.y * 15.0f * deltaTime;
+    
+    kinematics.Update(deltaTime);
     
     if (muzzleFlashTimer > 0.0f) {
         muzzleFlashTimer -= deltaTime;
@@ -38,7 +38,7 @@ void RangedAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
         source.height = -source.height; 
     }
 
-    Vector2 drawPos = { playerPos.x + recoilOffset.x, playerPos.y + recoilOffset.y };
+    Vector2 drawPos = { playerPos.x + kinematics.GetOffset().x, playerPos.y + kinematics.GetOffset().y };
     Rectangle dest = { drawPos.x, drawPos.y, (float)weaponTex.width, (float)weaponTex.height };
     Vector2 origin = { 0.0f, (float)weaponTex.height / 2.0f };
 

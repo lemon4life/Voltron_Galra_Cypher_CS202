@@ -60,7 +60,7 @@ namespace {
         Enemy* enemy,
         Vector2 worldPosition
     ) {
-        Rectangle currentBox = enemy->GetBoundingBox();
+        Rectangle currentBox = enemy->GetCollisionBox();
         Vector2 currentPosition = enemy->GetPosition();
 
         return {
@@ -122,7 +122,7 @@ namespace {
     }
 
     bool HasReachedWaypoint(Enemy* enemy, Vector2 waypoint) {
-        Rectangle body = enemy->GetBoundingBox();
+        Rectangle body = enemy->GetCollisionBox();
         float reachDistance = std::max(4.0f, std::min(body.width, body.height) * 0.25f);
 
         Vector2 position = enemy->GetPosition();
