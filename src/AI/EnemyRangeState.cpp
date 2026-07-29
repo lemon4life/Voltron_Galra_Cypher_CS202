@@ -9,6 +9,7 @@
 #include "Entities/Projectile.h"
 
 #include "raymath.h"
+#include "Core/Constants.h"
 
 #include <algorithm>
 #include <cmath>
@@ -34,13 +35,19 @@ namespace {
             direction = Vector2Normalize(direction);
         }
 
-        Rectangle body = enemy->GetBoundingBox();
-        float halfExtent =
-            std::abs(direction.x) * body.width / 2.0f +
-            std::abs(direction.y) * body.height / 2.0f;
-        float spawnOffset = halfExtent + enemy->GetProjectileRadius() + 1.0f;
-
-        return Vector2Add(enemyPosition, Vector2Scale(direction, spawnOffset));
+        bool facingLeft = targetPosition.x < enemyPosition.x;
+        Vector2 pivot = { enemyPosition.x, enemyPosition.y + 5.0f };
+        
+        float localX = Constants::KNIGHT_PROJECTILE_OFFSET.x;
+        float localY = facingLeft ? -4.0f : 4.0f;
+        float angle = atan2f(direction.y, direction.x);
+        
+        Vector2 rotatedOffset = {
+            localX * cosf(angle) - localY * sinf(angle),
+            localX * sinf(angle) + localY * cosf(angle)
+        };
+        
+        return Vector2Add(pivot, rotatedOffset);
     }
 
     bool HasClearShot(EnemyRange* enemy, Vector2 targetPosition) {
@@ -109,12 +116,7 @@ void EnemyRangeChaseState::Update(EnemyRange* enemy, float deltaTime) {
 
     direction = pathAccess.GetLocalDirection(*enemy, direction);
 
-    EnemyCollision::MoveAgainstWalls(
-        *enemy,
-        Vector2Scale(direction, enemy->GetSpeed() * deltaTime),
-        pathAccess,
-        EnemyWallResponse::Slide
-    );
+    enemy->UpdateMovement(Vector2Scale(direction, enemy->GetSpeed()), deltaTime, EnemyWallResponse::Slide);
 }
 
 void EnemyRangeChaseState::Exit(EnemyRange* enemy) {
@@ -255,8 +257,10 @@ void EnemyRangeShootingState::FireProjectile(
         velocity,
         enemy->GetProjectileLifetime(),
         enemy->GetDamage(),
+        enemy->GetSprites().projectile,
         true
     );
     GameManager::GetInstance().AddProjectile(projectile);
+    enemy->GetKinematics().ApplyRecoil(direction, 15.0f);
     enemy->ResetAttackCooldown();
 }

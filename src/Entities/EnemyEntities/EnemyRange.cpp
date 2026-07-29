@@ -1,4 +1,7 @@
 #include "Entities/EnemyEntities/EnemyRange.h"
+#include "Core/Manager/AssetManager.h"
+#include "Core/Manager/TeamManager.h"
+#include "Entities/Player/Paladin.h"
 
 #include "AI/EnemyState.h"
 
@@ -41,8 +44,10 @@ EnemyRange::EnemyRange(
     chaseState = std::make_unique<EnemyRangeChaseState>();
     shootingState = std::make_unique<EnemyRangeShootingState>();
     enemyType = EnemyType::RANGE;
+    kinematics.SetType(WeaponKinematicsType::Ranged);
     size = RANGE_SIZE;
 
+    SetEnemySprites(AssetManager::GetInstance().GetRangeSprites());
     ChangeState(GetIdleState());
 }
 
@@ -57,21 +62,107 @@ void EnemyRange::Update(float deltaTime) {
     UpdateKnockback(deltaTime);
     if (currentState) {
         currentState->Update(this, deltaTime);
+    kinematics.Update(deltaTime);
+    }
+    
+    if (health <= 0) return;
+
+    if (targetTeam && targetTeam->GetActivePaladin()) {
+        Vector2 targetPos = targetTeam->GetActivePaladin()->GetPosition();
+        facingLeft = targetPos.x < position.x;
+        
+        Vector2 aimDir = Vector2Subtract(targetPos, position);
+        weaponAngle = atan2f(aimDir.y, aimDir.x) * RAD2DEG;
+        if (facingLeft) weaponAngle += 180.0f;
+    }
+    
+    if (currentState == chaseState.get()) {
+        runFrameTime += deltaTime;
+        if (runFrameTime >= 0.08f) {
+            currentRunFrame = (currentRunFrame + 1) % 8;
+            runFrameTime = 0.0f;
+        }
+    } else {
+        currentRunFrame = 0;
     }
 }
 
 void EnemyRange::Draw() {
-    DrawRectangleRec(GetBoundingBox(), VIOLET);
+    Texture2D texToDraw = sprites.idle;
+    if (health <= 0) {
+        texToDraw = sprites.down;
+    } else if (currentState == chaseState.get()) {
+        texToDraw = sprites.run;
+    }
+
+    float frameWidth = (float)texToDraw.width;
+    if (texToDraw.id == sprites.run.id && sprites.run.id != 0) {
+        frameWidth /= 8.0f;
+    }
+    float frameHeight = (float)texToDraw.height;
+    
+    Rectangle dest = { position.x, position.y, frameWidth, frameHeight };
+    Vector2 origin = { frameWidth / 2.0f, frameHeight / 2.0f };
+    
+    Rectangle src = { 0, 0, frameWidth, frameHeight };
+    if (texToDraw.id == sprites.run.id && sprites.run.id != 0) {
+        src.x = currentRunFrame * frameWidth;
+    }
+    
+    if (facingLeft) {
+        src.width = -src.width;
+    }
+    
+    DrawTexturePro(texToDraw, src, dest, origin, 0.0f, WHITE);
+    
+    if (health > 0 && sprites.weapon.id != 0) {
+        Rectangle wSrc = { 0, 0, (float)sprites.weapon.width, (float)sprites.weapon.height };
+        if (facingLeft) wSrc.width = -wSrc.width;
+        
+        Vector2 offset = kinematics.GetOffset();
+        Rectangle wDest = { position.x + offset.x, position.y + offset.y + 5.0f, (float)sprites.weapon.width, (float)sprites.weapon.height };
+        Vector2 wOrigin = { 0.0f, sprites.weapon.height / 2.0f }; 
+        if (facingLeft) {
+            wOrigin.x = sprites.weapon.width;
+        }
+        
+        DrawTexturePro(sprites.weapon, wSrc, wDest, wOrigin, weaponAngle, WHITE);
+        
+        if (false) {
+            float efWidth = sprites.effect.width;
+            if (sprites.effect.width > 200) { // Heuristic: it's a spritesheet
+                if (sprites.effect.id == AssetManager::GetInstance().GetTexture("Lance_Stab").id) efWidth /= 4.0f;
+                else if (sprites.effect.id == AssetManager::GetInstance().GetTexture("Sword_Slash_Small").id) efWidth /= 3.0f;
+            }
+            Rectangle eSrc = { currentEffectFrame * efWidth, 0, efWidth, (float)sprites.effect.height };
+            if (facingLeft) eSrc.width = -eSrc.width;
+            
+            float tipOffset = sprites.weapon.width * 0.8f;
+            float radAngle = weaponAngle * DEG2RAD;
+            if (facingLeft) radAngle += PI;
+            Vector2 tipPos = {
+                position.x + cosf(radAngle) * tipOffset,
+                position.y + 5.0f + sinf(radAngle) * tipOffset
+            };
+            
+            Rectangle eDest = { tipPos.x, tipPos.y, efWidth, (float)sprites.effect.height };
+            Vector2 eOrigin = { 0.0f, sprites.effect.height / 2.0f };
+            if (facingLeft) eOrigin.x = efWidth;
+            
+            DrawTexturePro(sprites.effect, eSrc, eDest, eOrigin, weaponAngle, WHITE);
+        }
+    }
 
     float healthPercent = (float)health / (float)maxHealth;
     DrawRectangle(
         (int)(position.x - size.x / 2.0f),
-        (int)(position.y - size.y / 2.0f - 6.0f),
+        (int)(position.y - frameHeight / 2.0f - 10.0f),
         (int)(size.x * healthPercent),
         4,
         RED
     );
 }
+
 
 EnemyRangeShootingState* EnemyRange::GetShootingState() {
     return shootingState.get();

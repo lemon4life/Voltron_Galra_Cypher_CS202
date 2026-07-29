@@ -13,6 +13,7 @@ private:
     std::unique_ptr<EnemyDiverReadyState> readyState;
     std::unique_ptr<EnemyDiverLungingState> lungingState;
     ILevelLineOfSightQuery& lineOfSightQuery;
+    Vector2 staticEffectPos;
 
 public:
     EnemyDiver(
