@@ -1,47 +1,62 @@
 #include "UI/PauseMenu.h"
 
+#include "Core/Constants.h"
 #include "Core/Manager/AudioManager.h"
 
 namespace {
-constexpr float UI_WIDTH = 683.0f;
-constexpr float UI_HEIGHT = 512.0f;
+constexpr float CONTAINER_WIDTH = 320.0f;
+constexpr float CONTAINER_HEIGHT = 256.0f;
+constexpr float BUTTON_WIDTH = 230.0f;
+constexpr float BUTTON_HEIGHT = 34.0f;
 }
 
 PauseMenu::PauseMenu()
-    : containerBounds{(UI_WIDTH - 400.0f) * 0.5f, 36.0f, 400.0f, 440.0f},
-      soundEffectsSlider(
-          Rectangle{(UI_WIDTH - 260.0f) * 0.5f, 150.0f, 260.0f, 7.0f},
-          "Sound Effects",
-          AudioManager::GetInstance().GetSoundEffectsVolume()),
-      musicSlider(
-          Rectangle{(UI_WIDTH - 260.0f) * 0.5f, 215.0f, 260.0f, 7.0f},
-          "Music",
-          AudioManager::GetInstance().GetMusicVolumeLevel()),
+    : containerBounds{
+          (Constants::GAME_WIDTH - CONTAINER_WIDTH) * 0.5f,
+          (Constants::GAME_HEIGHT - CONTAINER_HEIGHT) * 0.5f,
+          CONTAINER_WIDTH,
+          CONTAINER_HEIGHT},
       resumeButton(
-          Rectangle{(UI_WIDTH - 280.0f) * 0.5f, 265.0f, 280.0f, 44.0f},
+          Rectangle{
+              (Constants::GAME_WIDTH - BUTTON_WIDTH) * 0.5f,
+              192.0f,
+              BUTTON_WIDTH,
+              BUTTON_HEIGHT},
           "Resume"),
+      settingsButton(
+          Rectangle{
+              (Constants::GAME_WIDTH - BUTTON_WIDTH) * 0.5f,
+              234.0f,
+              BUTTON_WIDTH,
+              BUTTON_HEIGHT},
+          "Settings"),
       backToMainMenuButton(
-          Rectangle{(UI_WIDTH - 280.0f) * 0.5f, 325.0f, 280.0f, 44.0f},
+          Rectangle{
+              (Constants::GAME_WIDTH - BUTTON_WIDTH) * 0.5f,
+              276.0f,
+              BUTTON_WIDTH,
+              BUTTON_HEIGHT},
           "Back to Main Menu"),
       quitButton(
-          Rectangle{(UI_WIDTH - 280.0f) * 0.5f, 385.0f, 280.0f, 44.0f},
+          Rectangle{
+              (Constants::GAME_WIDTH - BUTTON_WIDTH) * 0.5f,
+              318.0f,
+              BUTTON_WIDTH,
+              BUTTON_HEIGHT},
           "Quit Game") {
 }
 
 PauseMenuAction PauseMenu::Update(Vector2 mousePosition) {
     AudioManager& audioManager = AudioManager::GetInstance();
 
-    if (soundEffectsSlider.Update(mousePosition)) {
-        audioManager.SetSoundEffectsVolume(soundEffectsSlider.GetValue());
-    }
-
-    if (musicSlider.Update(mousePosition)) {
-        audioManager.SetMusicVolumeLevel(musicSlider.GetValue());
-    }
-
     if (resumeButton.Update(mousePosition)) {
         audioManager.PlayRandomClick();
         return PauseMenuAction::Resume;
+    }
+
+    if (settingsButton.Update(mousePosition)) {
+        audioManager.PlayRandomClick();
+        return PauseMenuAction::Settings;
     }
 
     if (backToMainMenuButton.Update(mousePosition)) {
@@ -61,19 +76,18 @@ void PauseMenu::Draw(Vector2 mousePosition) const {
     DrawRectangleRec(containerBounds, Color{25, 31, 43, 248});
     DrawRectangleLinesEx(containerBounds, 2.0f, Color{145, 156, 178, 255});
 
-    constexpr int titleFontSize = 30;
+    constexpr int titleFontSize = 26;
     constexpr const char* title = "PAUSED";
     const int titleWidth = MeasureText(title, titleFontSize);
     DrawText(title,
              static_cast<int>(containerBounds.x +
                               (containerBounds.width - titleWidth) * 0.5f),
-             70,
+             static_cast<int>(containerBounds.y + 16.0f),
              titleFontSize,
              RAYWHITE);
 
-    soundEffectsSlider.Draw();
-    musicSlider.Draw();
     resumeButton.Draw(mousePosition);
+    settingsButton.Draw(mousePosition);
     backToMainMenuButton.Draw(mousePosition);
     quitButton.Draw(mousePosition);
 }

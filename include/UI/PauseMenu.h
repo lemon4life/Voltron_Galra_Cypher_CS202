@@ -1,11 +1,11 @@
 #pragma once
 
 #include "UI/GUIButton.h"
-#include "UI/GUISlider.h"
 
 enum class PauseMenuAction {
     None,
     Resume,
+    Settings,
     BackToMainMenu,
     Quit
 };
@@ -13,9 +13,8 @@ enum class PauseMenuAction {
 class PauseMenu {
 private:
     Rectangle containerBounds;
-    GUISlider soundEffectsSlider;
-    GUISlider musicSlider;
     GUIButton resumeButton;
+    GUIButton settingsButton;
     GUIButton backToMainMenuButton;
     GUIButton quitButton;
 

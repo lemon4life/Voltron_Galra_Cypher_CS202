@@ -183,26 +183,29 @@ void DialogueManager::Draw(int screenWidth, int screenHeight) {
     if (!isDialogueActive || currentTree.empty()) return;
 
     const DialogueNode& node = currentTree[currentNode];
-    constexpr float REFERENCE_HEIGHT = 1024.0f;
-    float uiScale = (float)screenHeight / REFERENCE_HEIGHT;
-    float scaledScreenWidth = (float)screenWidth;
-    float scaledScreenHeight = (float)screenHeight;
-    float margin = 20.0f * uiScale;
+    constexpr float MARGIN = 10.0f;
+    constexpr float PORTRAIT_HEIGHT = 400.0f;
+    constexpr float PORTRAIT_BOTTOM_OFFSET = 100.0f;
+    constexpr float BOX_HEIGHT = 125.0f;
+    constexpr float TEXT_SPACING = 0.5f;
+    const float logicalWidth = static_cast<float>(screenWidth);
+    const float logicalHeight = static_cast<float>(screenHeight);
 
     // Render portrait
     if (portraits.find(node.speakerName) != portraits.end()) {
         Texture2D port = portraits[node.speakerName];
         
-        float targetHeight = 800.0f * uiScale;
+        float targetHeight = PORTRAIT_HEIGHT;
         float scale = targetHeight / (float)port.height;
         float scaledWidth = (float)port.width * scale;
         
         bool isLeft = (node.speakerName == "Lance" || node.speakerName == "Keith");
         
         float portX = isLeft
-            ? margin
-            : scaledScreenWidth - scaledWidth - margin;
-        float portY = scaledScreenHeight - 200.0f * uiScale - targetHeight;
+            ? MARGIN
+            : logicalWidth - scaledWidth - MARGIN;
+        float portY =
+            logicalHeight - PORTRAIT_BOTTOM_OFFSET - targetHeight;
         
         Rectangle source = { 0, 0, (float)port.width, (float)port.height };
         
@@ -212,34 +215,33 @@ void DialogueManager::Draw(int screenWidth, int screenHeight) {
     }
 
     // Background box at the bottom
-    float boxHeight = 250.0f * uiScale;
     Rectangle box = {
-        margin,
-        scaledScreenHeight - boxHeight - margin,
-        scaledScreenWidth - margin * 2.0f,
-        boxHeight
+        MARGIN,
+        logicalHeight - BOX_HEIGHT - MARGIN,
+        logicalWidth - MARGIN * 2.0f,
+        BOX_HEIGHT
     };
     DrawRectangleRec(box, { 30, 30, 30, 240 });
-    DrawRectangleLinesEx(box, 6.0f * uiScale, DARKGRAY);
+    DrawRectangleLinesEx(box, 3.0f, DARKGRAY);
 
     // Name Box
     Rectangle nameBox = {
-        box.x + 20.0f * uiScale,
-        box.y - 40.0f * uiScale,
-        200.0f * uiScale,
-        60.0f * uiScale
+        box.x + 10.0f,
+        box.y - 20.0f,
+        100.0f,
+        30.0f
     };
     DrawRectangleRec(nameBox, { 50, 50, 50, 255 });
-    DrawRectangleLinesEx(nameBox, 4.0f * uiScale, LIGHTGRAY);
+    DrawRectangleLinesEx(nameBox, 2.0f, LIGHTGRAY);
     DrawTextEx(
         dialogFont,
         node.speakerName.c_str(),
         {
-            nameBox.x + 20.0f * uiScale,
-            nameBox.y + 10.0f * uiScale
+            nameBox.x + 10.0f,
+            nameBox.y + 5.0f
         },
-        48.0f * uiScale,
-        uiScale,
+        24.0f,
+        TEXT_SPACING,
         YELLOW
     );
 
@@ -249,17 +251,17 @@ void DialogueManager::Draw(int screenWidth, int screenHeight) {
         dialogFont,
         visibleText.c_str(),
         {
-            box.x + 40.0f * uiScale,
-            box.y + 60.0f * uiScale
+            box.x + 20.0f,
+            box.y + 30.0f
         },
-        44.0f * uiScale,
-        uiScale,
+        22.0f,
+        TEXT_SPACING,
         WHITE
     );
 
     // Options (Only draw if typing is done)
     if (visibleCharCount >= (int)node.text.length()) {
-        float optionY = box.y + 140.0f * uiScale;
+        float optionY = box.y + 70.0f;
         for (int i = 0; i < (int)node.options.size(); ++i) {
             Color color = (i == selectedOption) ? YELLOW : LIGHTGRAY;
             std::string prefix = (i == selectedOption) ? "> " : "  ";
@@ -267,11 +269,11 @@ void DialogueManager::Draw(int screenWidth, int screenHeight) {
                 dialogFont,
                 (prefix + node.options[i]).c_str(),
                 {
-                    box.x + 60.0f * uiScale,
-                    optionY + (float)i * 50.0f * uiScale
+                    box.x + 30.0f,
+                    optionY + (float)i * 25.0f
                 },
-                40.0f * uiScale,
-                uiScale,
+                20.0f,
+                TEXT_SPACING,
                 color
             );
         }
