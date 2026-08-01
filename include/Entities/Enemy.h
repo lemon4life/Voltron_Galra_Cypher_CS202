@@ -149,6 +149,9 @@ public:
             ? Vector2{ -1.0f, -1.0f }
             : targetPositions.front();
     }
+    const std::deque<Vector2>& GetTargetPositions() const {
+        return targetPositions;
+    }
     bool HasTargetPosition() const { return !targetPositions.empty(); }
 
     TeamManager* GetTargetTeam() const { return targetTeam; }

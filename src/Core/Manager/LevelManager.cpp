@@ -401,16 +401,23 @@ bool LevelManager::HasClearLineOfSight(
         end.y - start.y
     };
     float distance = std::sqrt(segment.x * segment.x + segment.y * segment.y);
+    float radius = std::max(projectileRadius, COLLISION_EDGE_PADDING);
     if (distance <= COLLISION_EDGE_PADDING) {
-        return true;
+        Rectangle probe = {
+            start.x - radius,
+            start.y - radius,
+            radius * 2.0f,
+            radius * 2.0f
+        };
+        return !IsSolidCollision(probe);
     }
 
-    float radius = std::max(projectileRadius, COLLISION_EDGE_PADDING);
     int probeCount = std::max(1, (int)std::ceil(distance / MAX_PROBE_SPACING));
 
-    // Skip both endpoints: the first can overlap the shooter and the last is
-    // expected to overlap the target. Intermediate probes test the shot path.
-    for (int probeIndex = 1; probeIndex < probeCount; ++probeIndex) {
+    // Entities are not part of IsSolidCollision, so both endpoints can be
+    // checked safely. This catches a shooter, muzzle, or target overlapping
+    // actual level geometry.
+    for (int probeIndex = 0; probeIndex <= probeCount; ++probeIndex) {
         float amount = (float)probeIndex / (float)probeCount;
         Vector2 point = {
             start.x + segment.x * amount,

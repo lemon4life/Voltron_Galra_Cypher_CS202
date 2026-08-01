@@ -109,12 +109,7 @@ public:
 
 class EnemyRangeShootingState : public ITypedEnemyState<EnemyRange> {
 private:
-    Vector2 previousPlayerPosition = { 0.0f, 0.0f };
-    Vector2 estimatedPlayerVelocity = { 0.0f, 0.0f };
-    bool hasPreviousPlayerPosition = false;
-
-    Vector2 PredictTargetPosition(EnemyRange* enemy, Paladin* player, float deltaTime);
-    void FireProjectile(EnemyRange* enemy, Vector2 targetPosition);
+    bool TryFireProjectile(EnemyRange* enemy, Vector2 targetPosition);
 
 public:
     void Enter(EnemyRange* enemy) override;
