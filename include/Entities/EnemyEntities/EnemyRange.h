@@ -23,6 +23,7 @@ public:
 
     void Update(float deltaTime) override;
     void Draw() override;
+    EnemyPathGoal GetPathGoal() const override;
 
     EnemyRangeShootingState* GetShootingState();
 

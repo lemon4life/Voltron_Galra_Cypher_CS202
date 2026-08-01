@@ -28,14 +28,17 @@ void BossChaseState::Update(Boss* enemy, float deltaTime) {
         return;
     }
 
-    enemy->StartPathFinding();
     IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
-    Vector2 moveTarget = pathAccess.GetNextMoveTarget(*enemy, pPos);
-    Vector2 dir = Vector2Subtract(moveTarget, ePos);
-    if (Vector2Length(dir) > 0.0f) {
-        dir = Vector2Normalize(dir);
+    std::optional<Vector2> moveTarget =
+        pathAccess.GetNextMoveTarget(*enemy);
+    Vector2 dir = { 0.0f, 0.0f };
+    if (moveTarget) {
+        dir = Vector2Subtract(*moveTarget, ePos);
+        if (Vector2Length(dir) > 0.0f) {
+            dir = Vector2Normalize(dir);
+        }
+        dir = pathAccess.GetLocalDirection(*enemy, dir);
     }
-    dir = pathAccess.GetLocalDirection(*enemy, dir);
 
     EnemyCollision::MoveAgainstWalls(
         *enemy,

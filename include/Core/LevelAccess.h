@@ -2,6 +2,8 @@
 
 #include "raylib.h"
 
+#include <optional>
+
 class GameObject;
 class Enemy;
 
@@ -61,9 +63,8 @@ public:
     virtual bool IsBlocked(Rectangle bounds) const = 0;
     virtual Rectangle GetLevelBounds() const = 0;
 
-    virtual Vector2 GetNextMoveTarget(
-        Enemy& enemy,
-        Vector2 fallbackTarget
+    virtual std::optional<Vector2> GetNextMoveTarget(
+        Enemy& enemy
     ) = 0;
 
     virtual Vector2 GetLocalDirection(

@@ -75,9 +75,8 @@ public:
     void EndPathFinding(Enemy& enemy) override;
     bool IsBlocked(Rectangle bounds) const override;
     Rectangle GetLevelBounds() const override;
-    Vector2 GetNextMoveTarget(
-        Enemy& enemy,
-        Vector2 fallbackTarget
+    std::optional<Vector2> GetNextMoveTarget(
+        Enemy& enemy
     ) override;
     Vector2 GetLocalDirection(
         Enemy& enemy,

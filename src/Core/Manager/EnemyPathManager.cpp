@@ -10,13 +10,13 @@
 #include <cmath>
 #include <queue>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace {
     constexpr float DIAGONAL_COST = 1.41421356f;
     constexpr float TARGET_LOOP_ALL_INTERVAL = 0.2f;
     constexpr int MAX_SEARCH_STEPS = 500;
-    constexpr int MIN_TARGET_POSITIONS = 2;
-    constexpr int MAX_TARGET_POSITIONS = 10;
+    constexpr float BODY_PATH_PROBE_SPACING = 4.0f;
 
     struct Tile {
         int x;
@@ -45,6 +45,11 @@ namespace {
         bool operator()(const AStarNode& a, const AStarNode& b) const {
             return a.fCost > b.fCost;
         }
+    };
+
+    struct PathSearchResult {
+        EnemyPathStatus status = EnemyPathStatus::Unreachable;
+        std::vector<Vector2> targets;
     };
 
     float Heuristic(Tile a, Tile b) {
@@ -78,7 +83,9 @@ namespace {
     ) {
         if (!levelManager || !enemy) return false;
 
-        return !levelManager->IsSolidCollision(GetBodyAtWorldPosition(enemy, worldPosition));
+        return !levelManager->IsSolidCollision(
+            GetBodyAtWorldPosition(enemy, worldPosition)
+        );
     }
 
     bool IsBodyClearAtTile(
@@ -89,7 +96,44 @@ namespace {
         if (!levelManager || !enemy) return false;
 
         Vector2 worldPosition = levelManager->TileToWorld(tile.x, tile.y);
-        return IsBodyClearAtWorldPosition(levelManager, enemy, worldPosition);
+        return IsBodyClearAtWorldPosition(
+            levelManager,
+            enemy,
+            worldPosition
+        );
+    }
+
+    bool IsBodyPathClear(
+        LevelManager* levelManager,
+        Enemy* enemy,
+        Vector2 start,
+        Vector2 end
+    ) {
+        if (!levelManager || !enemy) return false;
+
+        Vector2 segment = Vector2Subtract(end, start);
+        float distance = Vector2Length(segment);
+        int probeCount = std::max(
+            1,
+            (int)std::ceil(distance / BODY_PATH_PROBE_SPACING)
+        );
+
+        for (int probeIndex = 0; probeIndex <= probeCount; ++probeIndex) {
+            float amount = (float)probeIndex / (float)probeCount;
+            Vector2 probePosition = Vector2Add(
+                start,
+                Vector2Scale(segment, amount)
+            );
+            if (!IsBodyClearAtWorldPosition(
+                    levelManager,
+                    enemy,
+                    probePosition
+                )) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     bool CanMoveBetweenTiles(
@@ -109,11 +153,8 @@ namespace {
             Tile horizontalTile = { current.x + dx, current.y };
             Tile verticalTile = { current.x, current.y + dy };
 
-            if (!IsBodyClearAtTile(levelManager, enemy, horizontalTile)) {
-                return false;
-            }
-
-            if (!IsBodyClearAtTile(levelManager, enemy, verticalTile)) {
+            if (!IsBodyClearAtTile(levelManager, enemy, horizontalTile) ||
+                !IsBodyClearAtTile(levelManager, enemy, verticalTile)) {
                 return false;
             }
         }
@@ -123,7 +164,10 @@ namespace {
 
     bool HasReachedWaypoint(Enemy* enemy, Vector2 waypoint) {
         Rectangle body = enemy->GetCollisionBox();
-        float reachDistance = std::max(4.0f, std::min(body.width, body.height) * 0.25f);
+        float reachDistance = std::max(
+            4.0f,
+            std::min(body.width, body.height) * 0.25f
+        );
 
         Vector2 position = enemy->GetPosition();
         float dx = waypoint.x - position.x;
@@ -139,75 +183,166 @@ namespace {
         }
     }
 
-    bool SameTileDirection(Tile a, Tile b, Tile c) {
-        int dx1 = b.x - a.x;
-        int dy1 = b.y - a.y;
-        int dx2 = c.x - b.x;
-        int dy2 = c.y - b.y;
-
-        return dx1 == dx2 && dy1 == dy2;
-    }
-
     bool AlmostSamePosition(Vector2 a, Vector2 b) {
         float dx = a.x - b.x;
         float dy = a.y - b.y;
         return (dx * dx + dy * dy) < 4.0f;
     }
 
-    void PushTarget(std::vector<Vector2>& targets, Vector2 position) {
-        if ((int)targets.size() >= MAX_TARGET_POSITIONS) return;
-        if (!targets.empty() && AlmostSamePosition(targets.back(), position)) return;
-
-        targets.push_back(position);
-    }
-
-    std::vector<Vector2> BuildTargetPositions(
+    bool IsGoalPosition(
         LevelManager* levelManager,
         Enemy* enemy,
-        const std::vector<Tile>& path
+        Vector2 candidatePosition,
+        Vector2 playerPosition
+    ) {
+        if (!levelManager || !enemy) return false;
+
+        EnemyPathGoal goal = enemy->GetPathGoal();
+        if (Vector2Distance(candidatePosition, playerPosition) >
+            goal.acceptanceDistance) {
+            return false;
+        }
+
+        if (goal.mode == EnemyPathGoalMode::ClearLineOfSight) {
+            return levelManager->HasClearLineOfSight(
+                candidatePosition,
+                playerPosition,
+                goal.clearanceRadius
+            );
+        }
+
+        return IsBodyPathClear(
+            levelManager,
+            enemy,
+            candidatePosition,
+            playerPosition
+        );
+    }
+
+    std::vector<Vector2> CondenseValidatedRoute(
+        LevelManager* levelManager,
+        Enemy* enemy,
+        const std::vector<Vector2>& fullRoute
     ) {
         std::vector<Vector2> targets;
-        if (!levelManager || !enemy || path.size() < 2) {
-            return targets;
-        }
+        if (!levelManager || !enemy) return targets;
 
-        constexpr int FINAL_TARGET_SLOT_COUNT = 1;
-        int turnLimit = MAX_TARGET_POSITIONS - FINAL_TARGET_SLOT_COUNT;
-
-        for (int i = 1; i + 1 < (int)path.size() && (int)targets.size() < turnLimit; ++i) {
-            if (!SameTileDirection(path[i - 1], path[i], path[i + 1])) {
-                PushTarget(targets, levelManager->TileToWorld(path[i].x, path[i].y));
+        Vector2 segmentStart = enemy->GetPosition();
+        size_t nextIndex = 0;
+        while (nextIndex < fullRoute.size()) {
+            size_t selectedIndex = fullRoute.size();
+            for (size_t candidateIndex = fullRoute.size();
+                 candidateIndex > nextIndex;
+                 --candidateIndex) {
+                size_t routeIndex = candidateIndex - 1;
+                if (IsBodyPathClear(
+                        levelManager,
+                        enemy,
+                        segmentStart,
+                        fullRoute[routeIndex]
+                    )) {
+                    selectedIndex = routeIndex;
+                    break;
+                }
             }
+
+            if (selectedIndex == fullRoute.size()) {
+                return {};
+            }
+
+            Vector2 selectedTarget = fullRoute[selectedIndex];
+            if (!AlmostSamePosition(segmentStart, selectedTarget)) {
+                targets.push_back(selectedTarget);
+            }
+            segmentStart = selectedTarget;
+            nextIndex = selectedIndex + 1;
         }
 
-        if ((int)targets.size() < MIN_TARGET_POSITIONS - 1 && path.size() > 2) {
-            Tile nearPlayerTile = path[path.size() - 2];
-            PushTarget(targets, levelManager->TileToWorld(nearPlayerTile.x, nearPlayerTile.y));
-        }
-
-        PushTarget(targets, enemy->GetTargetTeam()->GetActivePaladin()->GetPosition());
         return targets;
     }
 
-    std::vector<Tile> FindPath(
+    PathSearchResult FindPath(
         LevelManager* levelManager,
         Enemy* enemy,
-        Tile start,
-        Tile goal
+        Vector2 playerPosition
     ) {
-        if (!levelManager) return {};
-        if (!enemy) return {};
-        if (!IsBodyClearAtTile(levelManager, enemy, start)) return {};
-        if (!IsBodyClearAtTile(levelManager, enemy, goal)) return {};
+        if (!levelManager || !enemy) return {};
 
-        std::priority_queue<AStarNode, std::vector<AStarNode>, CompareAStarNode> openSet;
+        Vector2 enemyPosition = enemy->GetPosition();
+        if (IsGoalPosition(
+                levelManager,
+                enemy,
+                enemyPosition,
+                playerPosition
+            )) {
+            return { EnemyPathStatus::AtGoal, {} };
+        }
+
+        Vector2 enemyTilePosition = levelManager->WorldToTile(enemyPosition);
+        Vector2 playerTilePosition = levelManager->WorldToTile(playerPosition);
+        Tile enemyTile = {
+            (int)enemyTilePosition.x,
+            (int)enemyTilePosition.y
+        };
+        Tile playerTile = {
+            (int)playerTilePosition.x,
+            (int)playerTilePosition.y
+        };
+
+        std::priority_queue<
+            AStarNode,
+            std::vector<AStarNode>,
+            CompareAStarNode
+        > openSet;
         std::unordered_map<Tile, Tile, TileHash> cameFrom;
         std::unordered_map<Tile, float, TileHash> gScore;
+        std::unordered_set<Tile, TileHash> closedSet;
         cameFrom.reserve(MAX_SEARCH_STEPS);
         gScore.reserve(MAX_SEARCH_STEPS);
+        closedSet.reserve(MAX_SEARCH_STEPS);
 
-        openSet.push({ start, 0.0f, Heuristic(start, goal) });
-        gScore[start] = 0.0f;
+        for (int rowOffset = -1; rowOffset <= 1; ++rowOffset) {
+            for (int columnOffset = -1; columnOffset <= 1; ++columnOffset) {
+                Tile startTile = {
+                    enemyTile.x + columnOffset,
+                    enemyTile.y + rowOffset
+                };
+                Vector2 startPosition = levelManager->TileToWorld(
+                    startTile.x,
+                    startTile.y
+                );
+                if (!IsBodyClearAtTile(levelManager, enemy, startTile) ||
+                    !IsBodyPathClear(
+                        levelManager,
+                        enemy,
+                        enemyPosition,
+                        startPosition
+                    )) {
+                    continue;
+                }
+
+                float startCost = Vector2Distance(
+                    enemyPosition,
+                    startPosition
+                ) / 32.0f;
+                auto existingStart = gScore.find(startTile);
+                if (existingStart != gScore.end() &&
+                    existingStart->second <= startCost) {
+                    continue;
+                }
+
+                gScore[startTile] = startCost;
+                openSet.push({
+                    startTile,
+                    startCost,
+                    startCost + Heuristic(startTile, playerTile)
+                });
+            }
+        }
+
+        if (openSet.empty()) {
+            return { EnemyPathStatus::Unreachable, {} };
+        }
 
         constexpr Tile directions[8] = {
             { 1, 0 },
@@ -224,25 +359,78 @@ namespace {
         while (!openSet.empty() && searchSteps < MAX_SEARCH_STEPS) {
             AStarNode current = openSet.top();
             openSet.pop();
-            searchSteps++;
 
             auto currentScore = gScore.find(current.tile);
-            if (currentScore != gScore.end() && current.gCost > currentScore->second) {
+            if (currentScore != gScore.end() &&
+                current.gCost > currentScore->second) {
                 continue;
             }
 
-            if (current.tile == goal) {
+            if (closedSet.find(current.tile) != closedSet.end()) {
+                continue;
+            }
+            closedSet.insert(current.tile);
+            searchSteps++;
+
+            Vector2 currentPosition = levelManager->TileToWorld(
+                current.tile.x,
+                current.tile.y
+            );
+            if (IsGoalPosition(
+                    levelManager,
+                    enemy,
+                    currentPosition,
+                    playerPosition
+                )) {
                 std::vector<Tile> path;
-                Tile step = goal;
+                Tile step = current.tile;
                 path.push_back(step);
 
-                while (!(step == start)) {
-                    step = cameFrom[step];
+                auto parent = cameFrom.find(step);
+                while (parent != cameFrom.end()) {
+                    step = parent->second;
                     path.push_back(step);
+                    parent = cameFrom.find(step);
+                }
+                std::reverse(path.begin(), path.end());
+
+                std::vector<Vector2> fullRoute;
+                fullRoute.reserve(path.size() + 1);
+                for (Tile pathTile : path) {
+                    fullRoute.push_back(levelManager->TileToWorld(
+                        pathTile.x,
+                        pathTile.y
+                    ));
                 }
 
-                std::reverse(path.begin(), path.end());
-                return path;
+                if (enemy->GetPathGoal().mode ==
+                        EnemyPathGoalMode::BodyApproach &&
+                    (fullRoute.empty() ||
+                     !AlmostSamePosition(fullRoute.back(), playerPosition))) {
+                    fullRoute.push_back(playerPosition);
+                }
+
+                std::vector<Vector2> targets = CondenseValidatedRoute(
+                    levelManager,
+                    enemy,
+                    fullRoute
+                );
+                if (targets.empty()) {
+                    bool routeEndsAtEnemy = fullRoute.empty() ||
+                        (fullRoute.size() == 1 &&
+                         AlmostSamePosition(
+                             fullRoute.front(),
+                             enemyPosition
+                         ));
+                    return {
+                        routeEndsAtEnemy
+                            ? EnemyPathStatus::AtGoal
+                            : EnemyPathStatus::Unreachable,
+                        {}
+                    };
+                }
+
+                return { EnemyPathStatus::Ready, targets };
             }
 
             for (Tile direction : directions) {
@@ -251,7 +439,13 @@ namespace {
                     current.tile.y + direction.y
                 };
 
-                if (!CanMoveBetweenTiles(levelManager, enemy, current.tile, neighbor)) {
+                if (closedSet.find(neighbor) != closedSet.end() ||
+                    !CanMoveBetweenTiles(
+                        levelManager,
+                        enemy,
+                        current.tile,
+                        neighbor
+                    )) {
                     continue;
                 }
 
@@ -260,17 +454,19 @@ namespace {
                 float tentativeGCost = current.gCost + moveCost;
                 auto existingScore = gScore.find(neighbor);
 
-                if (existingScore == gScore.end() || tentativeGCost < existingScore->second) {
+                if (existingScore == gScore.end() ||
+                    tentativeGCost < existingScore->second) {
                     cameFrom[neighbor] = current.tile;
                     gScore[neighbor] = tentativeGCost;
 
-                    float fCost = tentativeGCost + Heuristic(neighbor, goal);
+                    float fCost = tentativeGCost +
+                        Heuristic(neighbor, playerTile);
                     openSet.push({ neighbor, tentativeGCost, fCost });
                 }
             }
         }
 
-        return {};
+        return { EnemyPathStatus::Unreachable, {} };
     }
 }
 
@@ -296,23 +492,32 @@ void EnemyPathManager::Clear() {
     nextEnemyIndex = 0;
 }
 
-Vector2 EnemyPathManager::GetNextMoveTarget(
+std::optional<Vector2> EnemyPathManager::GetNextMoveTarget(
     LevelManager& levelManager,
-    Enemy& enemy,
-    Vector2 fallbackTarget
+    Enemy& enemy
 ) {
     PopReachedTargets(&enemy);
 
     if (enemy.HasTargetPosition()) {
         Vector2 targetPosition = enemy.FirstTargetPosition();
-        if (IsBodyClearAtWorldPosition(&levelManager, &enemy, targetPosition)) {
+        if (IsBodyPathClear(
+                &levelManager,
+                &enemy,
+                enemy.GetPosition(),
+                targetPosition
+            )) {
             return targetPosition;
         }
 
         enemy.ClearTargetPosition();
+        enemy.SetPathStatus(EnemyPathStatus::Pending);
+        return std::nullopt;
     }
 
-    return fallbackTarget;
+    if (enemy.GetPathStatus() == EnemyPathStatus::Ready) {
+        enemy.SetPathStatus(EnemyPathStatus::AtGoal);
+    }
+    return std::nullopt;
 }
 
 Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
@@ -335,36 +540,73 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
             continue;
         }
 
-        Vector2 away = Vector2Subtract(enemyPosition, otherEnemy->GetPosition());
+        Vector2 away = Vector2Subtract(
+            enemyPosition,
+            otherEnemy->GetPosition()
+        );
         float distance = Vector2Length(away);
         if (distance > 0.001f && distance < separationRadius) {
-            float strength = (separationRadius - distance) / separationRadius;
+            float strength =
+                (separationRadius - distance) / separationRadius;
             finalDirection = Vector2Add(
                 finalDirection,
-                Vector2Scale(Vector2Normalize(away), strength * separationWeight)
+                Vector2Scale(
+                    Vector2Normalize(away),
+                    strength * separationWeight
+                )
             );
         }
     }
 
     if (Vector2Length(desiredDirection) > 0.001f) {
         const float probeDistance = 18.0f;
-        Vector2 forwardProbe = Vector2Add(enemyPosition, Vector2Scale(desiredDirection, probeDistance));
+        Vector2 forwardProbe = Vector2Add(
+            enemyPosition,
+            Vector2Scale(desiredDirection, probeDistance)
+        );
 
-        if (!IsBodyClearAtWorldPosition(&levelManager, &enemy, forwardProbe)) {
+        if (!IsBodyClearAtWorldPosition(
+                &levelManager,
+                &enemy,
+                forwardProbe
+            )) {
             Vector2 left = { -desiredDirection.y, desiredDirection.x };
             Vector2 right = { desiredDirection.y, -desiredDirection.x };
-            Vector2 leftProbe = Vector2Add(enemyPosition, Vector2Scale(left, probeDistance));
-            Vector2 rightProbe = Vector2Add(enemyPosition, Vector2Scale(right, probeDistance));
+            Vector2 leftProbe = Vector2Add(
+                enemyPosition,
+                Vector2Scale(left, probeDistance)
+            );
+            Vector2 rightProbe = Vector2Add(
+                enemyPosition,
+                Vector2Scale(right, probeDistance)
+            );
 
-            bool leftClear = IsBodyClearAtWorldPosition(&levelManager, &enemy, leftProbe);
-            bool rightClear = IsBodyClearAtWorldPosition(&levelManager, &enemy, rightProbe);
+            bool leftClear = IsBodyClearAtWorldPosition(
+                &levelManager,
+                &enemy,
+                leftProbe
+            );
+            bool rightClear = IsBodyClearAtWorldPosition(
+                &levelManager,
+                &enemy,
+                rightProbe
+            );
 
             if (leftClear && !rightClear) {
-                finalDirection = Vector2Add(finalDirection, Vector2Scale(left, 0.75f));
+                finalDirection = Vector2Add(
+                    finalDirection,
+                    Vector2Scale(left, 0.75f)
+                );
             } else if (rightClear && !leftClear) {
-                finalDirection = Vector2Add(finalDirection, Vector2Scale(right, 0.75f));
+                finalDirection = Vector2Add(
+                    finalDirection,
+                    Vector2Scale(right, 0.75f)
+                );
             } else if (leftClear && rightClear) {
-                finalDirection = Vector2Add(finalDirection, Vector2Scale(left, 0.35f));
+                finalDirection = Vector2Add(
+                    finalDirection,
+                    Vector2Scale(left, 0.35f)
+                );
             }
         }
     }
@@ -404,42 +646,19 @@ void EnemyPathManager::Update(LevelManager& levelManager, float deltaTime) {
             continue;
         }
 
-        PopReachedTargets(enemy);
-
-        Vector2 enemyTilePosition = levelManager.WorldToTile(enemy->GetPosition());
-        Vector2 playerTilePosition = levelManager.WorldToTile(enemy->GetTargetTeam()->GetActivePaladin()->GetPosition());
-
-        Tile enemyTile = {
-            (int)enemyTilePosition.x,
-            (int)enemyTilePosition.y
-        };
-
-        Tile playerTile = {
-            (int)playerTilePosition.x,
-            (int)playerTilePosition.y
-        };
-
-        std::vector<Tile> path = FindPath(&levelManager, enemy, enemyTile, playerTile);
-        if (path.size() < 2) {
+        Paladin* player = enemy->GetTargetTeam()->GetActivePaladin();
+        if (!player) {
             enemy->ClearTargetPosition();
+            enemy->SetPathStatus(EnemyPathStatus::Unreachable);
             continue;
         }
 
-        std::vector<Vector2> targets = BuildTargetPositions(&levelManager, enemy, path);
-        if ((int)targets.size() < MIN_TARGET_POSITIONS) {
-            Vector2 firstMove = levelManager.TileToWorld(path[1].x, path[1].y);
-            if (targets.empty() || !AlmostSamePosition(firstMove, targets.front())) {
-                targets.insert(targets.begin(), firstMove);
-            }
-        }
-
-        if ((int)targets.size() > MAX_TARGET_POSITIONS) {
-            targets.resize(MAX_TARGET_POSITIONS);
-        }
-
-        enemy->ClearTargetPosition();
-        for (Vector2 targetPosition : targets) {
-            enemy->AddTargetPosition(targetPosition);
-        }
+        PathSearchResult result = FindPath(
+            &levelManager,
+            enemy,
+            player->GetPosition()
+        );
+        enemy->SetTargetPositions(result.targets);
+        enemy->SetPathStatus(result.status);
     }
 }

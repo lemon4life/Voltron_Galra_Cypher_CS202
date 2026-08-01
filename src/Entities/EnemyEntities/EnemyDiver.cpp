@@ -209,6 +209,14 @@ bool EnemyDiver::CanEnterReadyState() const {
     return attackCooldown <= 0.0f && IsWithinClearDiveRange();
 }
 
+EnemyPathGoal EnemyDiver::GetPathGoal() const {
+    return {
+        EnemyPathGoalMode::ClearLineOfSight,
+        DIVE_STOP_DISTANCE,
+        GetCollisionClearanceRadius()
+    };
+}
+
 bool EnemyDiver::IsWithinClearDiveRange() const {
     Paladin* target = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     if (!target) return false;

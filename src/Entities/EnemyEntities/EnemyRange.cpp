@@ -19,14 +19,6 @@ namespace {
     constexpr float RANGE_PROJECTILE_LIFETIME = 2.0f;
     constexpr float RANGE_PROJECTILE_RADIUS = 5.0f;
     constexpr Vector2 RANGE_SIZE = { 24.0f, 24.0f };
-
-    constexpr bool DRAW_RANGE_PATH_DEBUG = true;
-    constexpr float DEBUG_PATH_THICKNESS = 2.0f;
-    constexpr float DEBUG_WAYPOINT_RADIUS = 4.0f;
-    constexpr float DEBUG_CURRENT_TARGET_RADIUS = 6.0f;
-    constexpr Color DEBUG_PATH_COLOR = { 255, 140, 0, 220 };
-    constexpr Color DEBUG_WAYPOINT_COLOR = { 255, 230, 40, 255 };
-    constexpr Color DEBUG_CURRENT_TARGET_COLOR = { 80, 255, 100, 255 };
 }
 
 EnemyRange::EnemyRange(
@@ -169,32 +161,6 @@ void EnemyRange::Draw() {
         RED
     );
 
-    if (DRAW_RANGE_PATH_DEBUG && health > 0 && IsPathFinding()) {
-        const std::deque<Vector2>& targetPositions = GetTargetPositions();
-        Vector2 segmentStart = position;
-        bool isCurrentTarget = true;
-
-        for (Vector2 targetPosition : targetPositions) {
-            DrawLineEx(
-                segmentStart,
-                targetPosition,
-                DEBUG_PATH_THICKNESS,
-                DEBUG_PATH_COLOR
-            );
-            DrawCircleV(
-                targetPosition,
-                isCurrentTarget
-                    ? DEBUG_CURRENT_TARGET_RADIUS
-                    : DEBUG_WAYPOINT_RADIUS,
-                isCurrentTarget
-                    ? DEBUG_CURRENT_TARGET_COLOR
-                    : DEBUG_WAYPOINT_COLOR
-            );
-
-            segmentStart = targetPosition;
-            isCurrentTarget = false;
-        }
-    }
 }
 
 
@@ -220,4 +186,12 @@ float EnemyRange::GetProjectileLifetime() const {
 
 float EnemyRange::GetProjectileRadius() const {
     return RANGE_PROJECTILE_RADIUS;
+}
+
+EnemyPathGoal EnemyRange::GetPathGoal() const {
+    return {
+        EnemyPathGoalMode::ClearLineOfSight,
+        RANGE_SHOOTING_DISTANCE,
+        RANGE_PROJECTILE_RADIUS
+    };
 }

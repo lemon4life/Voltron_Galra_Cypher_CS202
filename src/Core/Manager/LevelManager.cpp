@@ -1,4 +1,5 @@
 #include "Core/Manager/LevelManager.h"
+#include "Core/Constants.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/EntityFactory.h"
 
@@ -297,6 +298,14 @@ void LevelManager::DrawLevel() {
     for (auto* entity : levelEntities) {
         entity->Draw();
     }
+
+    if (Constants::DEBUG_DRAW_ENEMY_PATHS) {
+        for (GameObject* entity : levelEntities) {
+            if (entity->GetObjectType() == GameObjectType::Enemy) {
+                static_cast<Enemy*>(entity)->DrawPathDebug();
+            }
+        }
+    }
 }
 
 void LevelManager::ClearLevel() {
@@ -524,14 +533,12 @@ Rectangle LevelManager::GetLevelBounds() const {
     return { 0.0f, 0.0f, levelWidth, levelHeight };
 }
 
-Vector2 LevelManager::GetNextMoveTarget(
-    Enemy& enemy,
-    Vector2 fallbackTarget
+std::optional<Vector2> LevelManager::GetNextMoveTarget(
+    Enemy& enemy
 ) {
     return enemyPathManager.GetNextMoveTarget(
         *this,
-        enemy,
-        fallbackTarget
+        enemy
     );
 }
 

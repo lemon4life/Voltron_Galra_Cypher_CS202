@@ -20,6 +20,7 @@ public:
 
     void Update(float deltaTime) override;
     void Draw() override;
+    EnemyPathGoal GetPathGoal() const override;
 
     EnemyChaserDamageState* GetDamageState();
     bool IsBeyondDisengageDistance(Vector2 targetPosition) const;
