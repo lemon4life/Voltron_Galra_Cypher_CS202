@@ -30,7 +30,7 @@ private:
     Texture2D tileset;
 
     bool LoadObjectGrid(const std::string& filepath);
-    void SpawnGameObjects();
+    void SpawnGameObjects(TeamManager* teamManager);
     bool IsSolidMapObject(MapObjectId objectId) const;
 
     // Enemy pathfinding and deferred object/entity removal.

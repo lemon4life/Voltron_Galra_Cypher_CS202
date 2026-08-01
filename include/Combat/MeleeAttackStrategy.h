@@ -19,11 +19,19 @@ private:
     bool inputBuffered;
     Vector2 lastPlayerPos;
     WeaponKinematics kinematics;  // if player clicks again during active combo
+    int lightDamage;
+    int heavyDamage;
     
     std::vector<GameObject*> objectsHit; // Track objects hit in the current swing
 
 public:
-    MeleeAttackStrategy(Texture2D weapon, Texture2D att1, Texture2D att2);
+    MeleeAttackStrategy(
+        Texture2D weapon,
+        Texture2D att1,
+        Texture2D att2,
+        int lightDamage,
+        int heavyDamage
+    );
     
     void Attack(Vector2 playerPos) override;
     void Update(float deltaTime) override;

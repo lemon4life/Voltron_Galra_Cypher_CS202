@@ -2,8 +2,20 @@
 #include "Entities/Projectile.h"
 #include "Core/Manager/GameManager.h"
 
-RangedAttackStrategy::RangedAttackStrategy(Texture2D tex, Texture2D muzzleTex, Texture2D bullTex) 
-    : weaponTex(tex), muzzleFlashTex(muzzleTex), bulletTex(bullTex), kinematics(WeaponKinematicsType::Ranged), muzzleFlashTimer(0.0f) {
+RangedAttackStrategy::RangedAttackStrategy(
+    Texture2D tex,
+    Texture2D muzzleTex,
+    Texture2D bullTex,
+    int damage,
+    float recoilStrength
+)
+    : weaponTex(tex),
+      muzzleFlashTex(muzzleTex),
+      bulletTex(bullTex),
+      kinematics(WeaponKinematicsType::Ranged),
+      muzzleFlashTimer(0.0f),
+      damage(damage),
+      recoilStrength(recoilStrength) {
     aimDir = {1.0f, 0.0f};
     aimAngle = 0.0f;
 }
@@ -13,9 +25,15 @@ RangedAttackStrategy::RangedAttackStrategy(Texture2D tex, Texture2D muzzleTex, T
 void RangedAttackStrategy::Attack(Vector2 playerPos) {
     Vector2 projVelocity = { aimDir.x * 400.0f, aimDir.y * 400.0f };
     // Create projectile originating at player center
-    Projectile* p = new Projectile(playerPos, projVelocity, 2.0f, 34, bulletTex);
+    Projectile* p = new Projectile(
+        playerPos,
+        projVelocity,
+        2.0f,
+        damage,
+        bulletTex
+    );
     
-    kinematics.ApplyRecoil(aimDir, 15.0f);
+    kinematics.ApplyRecoil(aimDir, recoilStrength);
     muzzleFlashTimer = 0.05f;
     GameManager::GetInstance().AddProjectile(p);
     

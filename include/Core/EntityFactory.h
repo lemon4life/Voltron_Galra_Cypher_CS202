@@ -7,8 +7,9 @@ class TeamManager;
 class EntityFactory {
 public:
     static GameObject* CreateEntity(
-        char type,
+        MapObjectId type,
         Vector2 position,
+        GameObjectCell cell,
         TeamManager* teamManager,
         const LevelAccessBundle& levelAccess
     );

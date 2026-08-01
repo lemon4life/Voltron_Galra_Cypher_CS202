@@ -61,35 +61,38 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
                     Vector2 spawnPos = { randX, randY };
 
                     if (Vector2Distance(spawnPos, teamManager->GetActivePaladin()->GetPosition()) > 150.0f) {
-                        char spawnType = 'E';
+                        MapObjectId spawnType = MapObjectId::Chaser;
                         if (currentWave == 5) {
-                            spawnType = 'B';
+                            spawnType = MapObjectId::Boss;
                         } else if (rangeEnemiesToSpawn > 0) {
-                            spawnType = 'R';
+                            spawnType = MapObjectId::Range;
                         } else if (diverEnemiesToSpawn > 0) {
-                            spawnType = 'D';
+                            spawnType = MapObjectId::Diver;
                         } else if (currentWave >= 2 && currentWave <= 4 &&
                                    enemiesToSpawn == currentWave) {
                             // Add one ranged enemy at the start of waves 2-4.
-                            spawnType = 'R';
+                            spawnType = MapObjectId::Range;
                         } else if (currentWave >= 3 && currentWave <= 4 &&
                                    enemiesToSpawn == currentWave - 1) {
                             // Add one Diver after the ranged enemy in waves 3-4.
-                            spawnType = 'D';
+                            spawnType = MapObjectId::Diver;
                         }
                         GameObject* newEnemy = EntityFactory::CreateEntity(
                             spawnType,
                             spawnPos,
+                            {-1, -1},
                             teamManager,
                             levelManager->GetLevelAccessBundle()
                         );
                         if (newEnemy) {
                             if (levelManager->IsValidSpawnLocation(newEnemy)) {
                                 levelManager->AddEntity(newEnemy);
-                                if (spawnType == 'R' && rangeEnemiesToSpawn > 0) {
+                                if (spawnType == MapObjectId::Range &&
+                                    rangeEnemiesToSpawn > 0) {
                                     rangeEnemiesToSpawn--;
                                 }
-                                if (spawnType == 'D' && diverEnemiesToSpawn > 0) {
+                                if (spawnType == MapObjectId::Diver &&
+                                    diverEnemiesToSpawn > 0) {
                                     diverEnemiesToSpawn--;
                                 }
                                 enemiesToSpawn--;

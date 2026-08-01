@@ -11,16 +11,21 @@
 #include "Core/Manager/ParticleManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/WaveManager.h"
+#include "Entities/Hub/HubPaladinStand.h"
 #include "Entities/NPC.h"
 #include "Entities/Player/Hunk.h"
 #include "Entities/Player/Keith.h"
 #include "Entities/Player/Lance.h"
 #include "UI/MainMenu.h"
 #include "UI/PauseMenu.h"
+#include "UI/PaladinSelectionMenu.h"
 #include "UI/SettingsMenu.h"
 #include "UI/UIManager.h"
 
 #include <algorithm>
+#include <limits>
+#include <string>
+#include <vector>
 
 namespace {
     constexpr float MAX_MODAL_SCALE = 1.35f;
@@ -47,6 +52,79 @@ namespace {
             return {-1.0f, -1.0f};
         }
         return mousePosition;
+    }
+
+    GameObject* FindNearestHubInteractable(
+        const std::vector<GameObject*>& entities,
+        Vector2 playerPosition
+    ) {
+        GameObject* nearest = nullptr;
+        float nearestDistance = std::numeric_limits<float>::max();
+
+        for (GameObject* entity : entities) {
+            if (!entity) {
+                continue;
+            }
+
+            bool canInteract = false;
+            if (entity->GetObjectType() == GameObjectType::HubPaladinStand) {
+                HubPaladinStand* stand =
+                    static_cast<HubPaladinStand*>(entity);
+                canInteract = stand->IsWithinInteractionRange(playerPosition);
+            } else if (entity->GetObjectType() == GameObjectType::NPC) {
+                canInteract = Vector2Distance(
+                    playerPosition,
+                    entity->GetPosition()
+                ) < 50.0f;
+            }
+
+            if (!canInteract) {
+                continue;
+            }
+
+            float distance = Vector2Distance(
+                playerPosition,
+                entity->GetPosition()
+            );
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearest = entity;
+            }
+        }
+        return nearest;
+    }
+
+    void DrawHubInteractionPrompt(GameObject* interactable) {
+        if (!interactable) {
+            return;
+        }
+
+        std::string text = "Press E to talk";
+        if (interactable->GetObjectType() ==
+            GameObjectType::HubPaladinStand) {
+            HubPaladinStand* stand =
+                static_cast<HubPaladinStand*>(interactable);
+            text = std::string("Press E to inspect ") +
+                   stand->GetDisplayName();
+        }
+
+        constexpr int FONT_SIZE = 16;
+        int textWidth = MeasureText(text.c_str(), FONT_SIZE);
+        Rectangle background = {
+            (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
+            Constants::GAME_HEIGHT - 44.0f,
+            (float)textWidth + 20.0f,
+            28.0f
+        };
+        DrawRectangleRec(background, Color{15, 20, 29, 220});
+        DrawRectangleLinesEx(background, 1.0f, GOLD);
+        DrawText(
+            text.c_str(),
+            static_cast<int>(background.x + 10.0f),
+            static_cast<int>(background.y + 6.0f),
+            FONT_SIZE,
+            RAYWHITE
+        );
     }
 
     void ResetGame(
@@ -77,7 +155,10 @@ namespace {
             paladin->ResetStats();
         }
         GameManager::GetInstance().ClearProjectiles();
-        levelManager->LoadLevel("assets/levels/demo-big.txt", teamManager);
+        levelManager->LoadLevel(
+            "assets/map/demo-big_Tile Layer 1.csv",
+            teamManager
+        );
         waveManager->Reset(10, 0, 5);
         GameManager::GetInstance().SetState(GameState::GAMEPLAY);
     }
@@ -91,7 +172,10 @@ namespace {
             paladin->ResetStats();
         }
         teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
-        levelManager->LoadLevel("assets/levels/hub.txt", teamManager);
+        levelManager->LoadLevel(
+            "assets/map/hub_Tile Layer 1.csv",
+            teamManager
+        );
         GameManager::GetInstance().SetState(GameState::MAIN_MENU);
     }
 }
@@ -115,6 +199,7 @@ int main() {
 
     PauseMenu pauseMenu;
     SettingsMenu settingsMenu;
+    PaladinSelectionMenu paladinSelectionMenu;
     bool quitRequested = false;
 
     TeamManager* teamManager = nullptr;
@@ -181,17 +266,32 @@ int main() {
             uiManager.Initialize();
             uiManager.SetTeamManager(teamManager);
 
-            levelManager.LoadLevel("assets/levels/hub.txt", teamManager);
+            levelManager.LoadLevel(
+                "assets/map/hub_Tile Layer 1.csv",
+                teamManager
+            );
             gameManager.SetLevelManager(&levelManager);
             systemInitialized = true;
         }
 
         if (systemInitialized) {
-            teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
+            if (state != GameState::HUB &&
+                paladinSelectionMenu.IsOpen()) {
+                paladinSelectionMenu.Close();
+            }
+
+            bool selectionOpen =
+                state == GameState::HUB &&
+                paladinSelectionMenu.IsOpen();
+            if (!selectionOpen) {
+                teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
+            }
 
             bool keyboardPauseRequested =
-                IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE);
+                !selectionOpen &&
+                (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE));
             bool hudPauseRequested =
+                !selectionOpen &&
                 (state == GameState::HUB ||
                  state == GameState::GAMEPLAY) &&
                 uiManager.IsPauseButtonPressed(uiMousePosition);
@@ -216,6 +316,7 @@ int main() {
                     settingsReturnState = GameState::MAIN_MENU;
                 }
                 if (systemInitialized && IsKeyPressed(KEY_R)) {
+                    paladinSelectionMenu.Close();
                     ResetDemoGame(teamManager, &levelManager, &waveManager);
                 }
                 break;
@@ -224,11 +325,18 @@ int main() {
                 if (!systemInitialized) {
                     break;
                 }
-                if (DialogueManager::GetInstance().IsActive()) {
+                if (paladinSelectionMenu.IsOpen()) {
+                    paladinSelectionMenu.Update(
+                        deltaTime,
+                        uiMousePosition,
+                        *teamManager
+                    );
+                } else if (DialogueManager::GetInstance().IsActive()) {
                     DialogueManager::GetInstance().Update(deltaTime);
                 } else {
                     if (DialogueManager::GetInstance().IsMissionRequested()) {
                         DialogueManager::GetInstance().ClearMissionRequest();
+                        paladinSelectionMenu.Close();
                         ResetGame(teamManager, &levelManager, &waveManager);
                         break;
                     }
@@ -237,32 +345,38 @@ int main() {
                     teamManager->Update(deltaTime);
 
                     if (IsKeyPressed(KEY_E)) {
-                        for (auto* entity : gameManager.GetLevelEntities()) {
-                            if (entity->GetObjectType() != GameObjectType::NPC) {
-                                continue;
-                            }
-                            NPC* npc = static_cast<NPC*>(entity);
-                            if (Vector2Distance(
-                                    teamManager->GetActivePaladin()->GetPosition(),
-                                    npc->GetPosition()
-                                ) < 50.0f) {
-                                DialogueManager::GetInstance().LoadDialogueTree(
-                                    "assets/story/intro.txt"
-                                );
-                                DialogueManager::GetInstance().StartDialogue();
-                                break;
-                            }
+                        GameObject* interactable = FindNearestHubInteractable(
+                            gameManager.GetLevelEntities(),
+                            teamManager->GetActivePaladin()->GetPosition()
+                        );
+                        if (interactable &&
+                            interactable->GetObjectType() ==
+                                GameObjectType::HubPaladinStand) {
+                            HubPaladinStand* stand =
+                                static_cast<HubPaladinStand*>(interactable);
+                            paladinSelectionMenu.Open(
+                                stand->GetPaladinId()
+                            );
+                        } else if (interactable &&
+                                   interactable->GetObjectType() ==
+                                       GameObjectType::NPC) {
+                            DialogueManager::GetInstance().LoadDialogueTree(
+                                "assets/story/intro.txt"
+                            );
+                            DialogueManager::GetInstance().StartDialogue();
                         }
                     }
                 }
-                gameManager.UpdateEffects(deltaTime);
-                CameraManager::GetInstance().UpdateCamera(
-                    teamManager->GetActivePaladin()->GetPosition(),
-                    mouseWorld,
-                    deltaTime,
-                    levelManager.GetLevelBounds(),
-                    false
-                );
+                if (!paladinSelectionMenu.IsOpen()) {
+                    gameManager.UpdateEffects(deltaTime);
+                    CameraManager::GetInstance().UpdateCamera(
+                        teamManager->GetActivePaladin()->GetPosition(),
+                        mouseWorld,
+                        deltaTime,
+                        levelManager.GetLevelBounds(),
+                        false
+                    );
+                }
                 break;
             case GameState::GAMEPLAY:
                 if (!systemInitialized) {
@@ -296,6 +410,7 @@ int main() {
                         gameManager.SetState(GameState::SETTINGS);
                         break;
                     case PauseMenuAction::BackToMainMenu:
+                        paladinSelectionMenu.Close();
                         ReturnToMainMenu(teamManager, &levelManager);
                         break;
                     case PauseMenuAction::Quit:
@@ -324,6 +439,7 @@ int main() {
                 break;
             case GameState::VICTORY:
                 if (IsKeyPressed(KEY_R)) {
+                    paladinSelectionMenu.Close();
                     ReturnToMainMenu(teamManager, &levelManager);
                 }
                 break;
@@ -356,11 +472,13 @@ int main() {
             EndMode2D();
 
             BeginMode2D(uiCamera);
-            uiManager.DrawHUD(
-                Constants::GAME_WIDTH,
-                Constants::GAME_HEIGHT,
-                uiMousePosition
-            );
+            if (!paladinSelectionMenu.IsOpen()) {
+                uiManager.DrawHUD(
+                    Constants::GAME_WIDTH,
+                    Constants::GAME_HEIGHT,
+                    uiMousePosition
+                );
+            }
             if (renderState == GameState::HUB &&
                 DialogueManager::GetInstance().IsActive()) {
                 DialogueManager::GetInstance().Draw(
@@ -369,6 +487,12 @@ int main() {
                 );
             } else if (state == GameState::GAMEPLAY) {
                 waveManager.DrawHUD();
+            } else if (renderState == GameState::HUB &&
+                       !paladinSelectionMenu.IsOpen()) {
+                DrawHubInteractionPrompt(FindNearestHubInteractable(
+                    gameManager.GetLevelEntities(),
+                    teamManager->GetActivePaladin()->GetPosition()
+                ));
             }
             EndMode2D();
         } else if (renderState == GameState::GAME_OVER) {
@@ -402,6 +526,15 @@ int main() {
             UIManager::DrawModalOverlay();
             BeginMode2D(modalCamera);
             settingsMenu.Draw(modalMousePosition);
+            EndMode2D();
+        } else if (state == GameState::HUB &&
+                   paladinSelectionMenu.IsOpen()) {
+            UIManager::DrawModalOverlay();
+            BeginMode2D(uiCamera);
+            paladinSelectionMenu.Draw(
+                uiMousePosition,
+                *teamManager
+            );
             EndMode2D();
         }
 

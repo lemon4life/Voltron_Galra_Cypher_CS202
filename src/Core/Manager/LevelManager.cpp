@@ -10,6 +10,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <utility>
 
 namespace {
     constexpr int TILE_SIZE_PIXELS = 32;
@@ -18,6 +19,58 @@ namespace {
     constexpr float PARTIAL_WALL_WIDTH = 9.0f;
     constexpr float RIGHT_PARTIAL_WALL_OFFSET = TILE_SIZE - PARTIAL_WALL_WIDTH;
     constexpr int DRAW_PADDING_TILES = 20;
+
+    bool LoadCsvGrid(
+        const std::string& filepath,
+        std::vector<std::vector<int>>& output
+    ) {
+        std::ifstream file(filepath);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open level layer: " << filepath
+                      << std::endl;
+            return false;
+        }
+
+        output.clear();
+        std::string line;
+        std::size_t expectedColumns = 0;
+        while (std::getline(file, line)) {
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+
+            std::stringstream rowStream(line);
+            std::string cellString;
+            std::vector<int> row;
+            while (std::getline(rowStream, cellString, ',')) {
+                try {
+                    row.push_back(std::stoi(cellString));
+                } catch (...) {
+                    std::cerr << "Invalid CSV value in " << filepath
+                              << std::endl;
+                    output.clear();
+                    return false;
+                }
+            }
+
+            if (row.empty()) {
+                std::cerr << "Empty CSV row in " << filepath << std::endl;
+                output.clear();
+                return false;
+            }
+            if (expectedColumns == 0) {
+                expectedColumns = row.size();
+            } else if (row.size() != expectedColumns) {
+                std::cerr << "Non-rectangular CSV layer: " << filepath
+                          << std::endl;
+                output.clear();
+                return false;
+            }
+            output.push_back(std::move(row));
+        }
+
+        return !output.empty();
+    }
 }
 
 LevelManager::LevelManager()
@@ -107,22 +160,25 @@ bool LevelManager::LoadObjectGrid(const std::string& filepath) {
             << std::endl;
     }
 
-    return true;
+    return dimensionsMatch;
 }
 
-void LevelManager::SpawnGameObjects() {
+void LevelManager::SpawnGameObjects(TeamManager* teamManager) {
     for (int row = 0; row < (int)mapObjectGrid.size(); ++row) {
         for (int column = 0;
              column < (int)mapObjectGrid[row].size();
              ++column) {
-            if (mapObjectGrid[row][column] != MapObjectId::DestructibleBox) {
+            MapObjectId objectId = mapObjectGrid[row][column];
+            if (objectId == MapObjectId::Empty) {
                 continue;
             }
 
-            AddEntity(new DestructibleBox(
+            AddEntity(EntityFactory::CreateEntity(
+                objectId,
                 TileToWorld(column, row),
                 { row, column },
-                *this
+                teamManager,
+                GetLevelAccessBundle()
             ));
         }
     }
@@ -130,121 +186,49 @@ void LevelManager::SpawnGameObjects() {
 
 void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManager) {
     ClearLevel();
+    levelWidth = 0.0f;
+    levelHeight = 0.0f;
+    gridRows = 0;
+    gridCols = 0;
 
-    std::ifstream file(filepath);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open level file: " << filepath << std::endl;
+    if (filepath.find("Layer 1") == std::string::npos ||
+        filepath.size() < 4 ||
+        filepath.substr(filepath.size() - 4) != ".csv") {
+        std::cerr << "Level path must reference a Layer 1 CSV: "
+                  << filepath << std::endl;
         return;
     }
 
-    std::string line;
-    mapGridLayer1.clear();
-    mapGridLayer2.clear();
-    mapObjectGrid.clear();
-    gridCols = 0;
-
-    bool isCSV = (filepath.length() >= 4 && filepath.substr(filepath.length() - 4) == ".csv");
-
-    while (std::getline(file, line)) {
-        if (!line.empty() && line.back() == '\r') {
-            line.pop_back(); // Handle Windows line endings
-        }
-
-        std::vector<int> row;
-        if (isCSV) {
-            std::stringstream ss(line);
-            std::string cellString;
-            while (std::getline(ss, cellString, ',')) {
-                try {
-                    row.push_back(std::stoi(cellString));
-                } catch (const std::invalid_argument& e) {
-                    row.push_back(-1); // -1 is empty in 0-based tiled CSV
-                }
-            }
-        } else {
-            // Legacy .txt map parsing
-            for (int c = 0; c < line.length(); ++c) {
-                char type = line[c];
-                int tileID = -1;
-
-                if (type == 'W') tileID = 5; // Map to Wall Face ID
-                else if (type == '.') tileID = 20; // Map to Floor ID
-                else if (type == 'N' || type == 'E' || type == 'R' ||
-                         type == 'D' || type == 'B') {
-                    tileID = 20; // Map to Floor ID
-                    Vector2 tileCenter = {
-                        (float)c * TILE_SIZE + TILE_SIZE / 2.0f,
-                        (float)mapGridLayer1.size() * TILE_SIZE + TILE_SIZE / 2.0f
-                    };
-
-                    GameObject* entity = EntityFactory::CreateEntity(
-                        type,
-                        tileCenter,
-                        teamManager,
-                        GetLevelAccessBundle()
-                    );
-                    if (entity) {
-                        AddEntity(entity);
-                    }
-                }
-                row.push_back(tileID);
-            }
-        }
-
-        if (row.size() > gridCols) gridCols = row.size();
-        mapGridLayer1.push_back(row);
-    }
-    file.close();
-
-    // If this is a CSV map, attempt to load Layer 2
-    if (isCSV) {
-        // Initialize mapGridLayer2 with -1s
-        for (int i = 0; i < mapGridLayer1.size(); ++i) {
-            mapGridLayer2.push_back(std::vector<int>(mapGridLayer1[i].size(), -1));
-        }
-
-        std::string layer2Path = filepath;
-        size_t pos = layer2Path.find("Layer 1");
-        if (pos != std::string::npos) {
-            layer2Path.replace(pos, 7, "Layer 2");
-            std::ifstream file2(layer2Path);
-            if (file2.is_open()) {
-                int r = 0;
-                while (std::getline(file2, line) && r < mapGridLayer2.size()) {
-                    if (!line.empty() && line.back() == '\r') line.pop_back();
-                    std::stringstream ss(line);
-                    std::string cellString;
-                    int c = 0;
-                    while (std::getline(ss, cellString, ',') && c < mapGridLayer2[r].size()) {
-                        try {
-                            int id2 = std::stoi(cellString);
-                            mapGridLayer2[r][c] = id2;
-                        } catch (...) {}
-                        c++;
-                    }
-                    r++;
-                }
-                file2.close();
-            }
-        }
+    if (!LoadCsvGrid(filepath, mapGridLayer1)) {
+        return;
     }
 
-    gridRows = mapGridLayer1.size();
+    std::string layer2Path = filepath;
+    layer2Path.replace(layer2Path.find("Layer 1"), 7, "Layer 2");
+    if (!LoadCsvGrid(layer2Path, mapGridLayer2)) {
+        ClearLevel();
+        return;
+    }
+
+    if (mapGridLayer2.size() != mapGridLayer1.size() ||
+        mapGridLayer2.front().size() != mapGridLayer1.front().size()) {
+        std::cerr << "Layer 2 dimensions do not match Layer 1: "
+                  << layer2Path << std::endl;
+        ClearLevel();
+        return;
+    }
+
+    if (!LoadObjectGrid(filepath)) {
+        ClearLevel();
+        return;
+    }
+
+    gridRows = static_cast<int>(mapGridLayer1.size());
+    gridCols = static_cast<int>(mapGridLayer1.front().size());
     levelWidth = gridCols * TILE_SIZE;
     levelHeight = gridRows * TILE_SIZE;
 
-    if (isCSV) {
-        LoadObjectGrid(filepath);
-    } else {
-        mapObjectGrid.reserve(mapGridLayer1.size());
-        for (const auto& row : mapGridLayer1) {
-            mapObjectGrid.push_back(
-                std::vector<MapObjectId>(row.size(), MapObjectId::Empty)
-            );
-        }
-    }
-
-    SpawnGameObjects();
+    SpawnGameObjects(teamManager);
 
     // Store in GameManager for global access
     GameManager::GetInstance().SetLevelBounds(levelWidth, levelHeight);

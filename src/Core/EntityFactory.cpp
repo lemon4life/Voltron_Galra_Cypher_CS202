@@ -2,37 +2,56 @@
 #include "Entities/Enemy.h"
 #include "Entities/Wall.h"
 #include "Entities/NPC.h"
+#include "Entities/Hub/HubPaladinStand.h"
+#include "Entities/Items/DestructibleBox.h"
 #include "Entities/EnemyEntities/EnemyChaser.h"
 #include "Entities/EnemyEntities/Boss.h"
 #include "Entities/EnemyEntities/EnemyDiver.h"
 #include "Entities/EnemyEntities/EnemyRange.h"
+#include "Core/Manager/AssetManager.h"
+
+namespace {
+GameObject* CreateHubPaladinStand(PaladinId id, Vector2 position) {
+    const PaladinDefinition& definition = PaladinCatalog::Get(id);
+    return new HubPaladinStand(
+        id,
+        position,
+        AssetManager::GetInstance().GetTexture(definition.idleTextureKey)
+    );
+}
+}
 
 GameObject* EntityFactory::CreateEntity(
-    char type,
+    MapObjectId type,
     Vector2 position,
+    GameObjectCell cell,
     TeamManager* teamManager,
     const LevelAccessBundle& levelAccess
 ) {
     switch (type) {
-        case 'W':
-            return new Wall(position);
-        case 'N':
+        case MapObjectId::DestructibleBox:
+            return new DestructibleBox(
+                position,
+                cell,
+                levelAccess.mapObjectDestruction
+            );
+        case MapObjectId::NPC:
             return new NPC(position);
-        case 'E':
+        case MapObjectId::Chaser:
             return new EnemyChaser(
                 position,
                 teamManager,
                 levelAccess.removal,
                 levelAccess.pathFinding
             );
-        case 'B':
+        case MapObjectId::Boss:
             return new Boss(
                 position,
                 teamManager,
                 levelAccess.removal,
                 levelAccess.pathFinding
             );
-        case 'R':
+        case MapObjectId::Range:
             return new EnemyRange(
                 position,
                 teamManager,
@@ -40,7 +59,7 @@ GameObject* EntityFactory::CreateEntity(
                 levelAccess.pathFinding,
                 levelAccess.lineOfSight
             );
-        case 'D':
+        case MapObjectId::Diver:
             return new EnemyDiver(
                 position,
                 teamManager,
@@ -48,7 +67,13 @@ GameObject* EntityFactory::CreateEntity(
                 levelAccess.pathFinding,
                 levelAccess.lineOfSight
             );
-        // We will add 'c' for Chest later
+        case MapObjectId::HubLanceStand:
+            return CreateHubPaladinStand(PaladinId::Lance, position);
+        case MapObjectId::HubKeithStand:
+            return CreateHubPaladinStand(PaladinId::Keith, position);
+        case MapObjectId::HubHunkStand:
+            return CreateHubPaladinStand(PaladinId::Hunk, position);
+        case MapObjectId::Empty:
         default:
             return nullptr;
     }

@@ -12,7 +12,10 @@ enum class MapObjectId : int {
     Range = 3,
     Diver = 4,
     Boss = 5,
-    NPC = 6
+    NPC = 6,
+    HubLanceStand = 7,
+    HubKeithStand = 8,
+    HubHunkStand = 9
 };
 
 struct GameObjectCell {
