@@ -59,14 +59,18 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
 
     Vector2 currentPos = player->GetPosition();
-    float levelWidth = GameManager::GetInstance().GetLevelWidth();
-    float levelHeight = GameManager::GetInstance().GetLevelHeight();
+    Rectangle bounds = {0, 0, GameManager::GetInstance().GetLevelWidth(), GameManager::GetInstance().GetLevelHeight()};
+    if (levelManager) {
+        bounds = levelManager->GetLevelBounds();
+    }
 
     // Check X axis
     currentPos.x += dashDirection.x * dashSpeed * deltaTime;
     // Keep within level bounds
-    if (currentPos.x < 0.0f) currentPos.x = 0.0f;
-    if (currentPos.x > levelWidth) currentPos.x = levelWidth;
+    if (bounds.width > 0) {
+        if (currentPos.x < bounds.x) currentPos.x = bounds.x;
+        if (currentPos.x > bounds.x + bounds.width) currentPos.x = bounds.x + bounds.width;
+    }
     
     player->SetPosition(currentPos);
     if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
@@ -77,8 +81,10 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
     // Check Y axis
     currentPos.y += dashDirection.y * dashSpeed * deltaTime;
     // Keep within level bounds
-    if (currentPos.y < 0.0f) currentPos.y = 0.0f;
-    if (currentPos.y > levelHeight) currentPos.y = levelHeight;
+    if (bounds.height > 0) {
+        if (currentPos.y < bounds.y) currentPos.y = bounds.y;
+        if (currentPos.y > bounds.y + bounds.height) currentPos.y = bounds.y + bounds.height;
+    }
     
     player->SetPosition(currentPos);
     if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {

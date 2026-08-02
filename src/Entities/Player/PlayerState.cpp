@@ -4,6 +4,7 @@
 #include "raymath.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/TeamManager.h"
+#include <cstdio>
 
 // --- PlayerIdleState ---
 void PlayerIdleState::Enter(Paladin* player) {
@@ -100,14 +101,20 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
     float speed = player->GetSpeed();
     
     // Get level bounds
-    float levelWidth = GameManager::GetInstance().GetLevelWidth();
-    float levelHeight = GameManager::GetInstance().GetLevelHeight();
+    Rectangle bounds = {0, 0, GameManager::GetInstance().GetLevelWidth(), GameManager::GetInstance().GetLevelHeight()};
+    if (levelManager) {
+        bounds = levelManager->GetLevelBounds();
+    }
 
     // Check X axis
     currentPos.x += moveDir.x * speed * deltaTime;
     // Keep within level bounds
-    if (currentPos.x < 0.0f) currentPos.x = 0.0f;
-    if (currentPos.x > levelWidth) currentPos.x = levelWidth;
+    if (bounds.width > 0) {
+        if (currentPos.x < bounds.x) currentPos.x = bounds.x;
+        if (currentPos.x > bounds.x + bounds.width) currentPos.x = bounds.x + bounds.width;
+    }
+    
+
     
     player->SetPosition(currentPos);
     if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
@@ -118,8 +125,10 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
     // Check Y axis
     currentPos.y += moveDir.y * speed * deltaTime;
     // Keep within level bounds
-    if (currentPos.y < 0.0f) currentPos.y = 0.0f;
-    if (currentPos.y > levelHeight) currentPos.y = levelHeight;
+    if (bounds.height > 0) {
+        if (currentPos.y < bounds.y) currentPos.y = bounds.y;
+        if (currentPos.y > bounds.y + bounds.height) currentPos.y = bounds.y + bounds.height;
+    }
 
     player->SetPosition(currentPos);
     if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {

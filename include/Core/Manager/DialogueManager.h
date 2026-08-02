@@ -21,6 +21,7 @@ private:
     int currentNode;
     int selectedOption;
     bool missionRequested;
+    int requestedMissionId;
 
     // Typewriter effect
     float typewriterTimer;
@@ -46,5 +47,6 @@ public:
     
     bool IsActive() const { return isDialogueActive; }
     bool IsMissionRequested() const { return missionRequested; }
+    int GetRequestedMissionId() const { return requestedMissionId; }
     void ClearMissionRequest() { missionRequested = false; }
 };

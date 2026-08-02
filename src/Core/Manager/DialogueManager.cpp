@@ -137,9 +137,10 @@ void DialogueManager::Update(float deltaTime) {
                 int next = -1;
                 if (!node.nextNodeIndices.empty()) next = node.nextNodeIndices[0];
                 
-                if (next == -1) {
+                if (next < 0) { // e.g., -1 or -2
                     isDialogueActive = false;
                     missionRequested = true;
+                    requestedMissionId = next;
                 } else {
                     currentNode = next;
                     selectedOption = 0;
