@@ -3,8 +3,9 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "raymath.h"
-#include <cstdlib>
+
 #include <algorithm>
+#include <cmath>
 
 MainMenu::MainMenu() : currentSlideIndex(0), slideTimer(0.0f), panTimer(0.0f), switchedIndex(false) {
     logoTex.id = 0;
@@ -89,6 +90,12 @@ void MainMenu::Update(float deltaTime) {
         }
     } else if (currentState == MenuState::ACTIVE) {
         uiAlpha = 1.0f;
+
+        if (IsKeyPressed(KEY_ENTER)) {
+            AudioManager::GetInstance().PlayRandomClick();
+            GameManager::GetInstance().SetState(GameState::HUB);
+            return;
+        }
         
         // Update buttons
         Vector2 mousePos = GetMousePosition();
@@ -113,7 +120,7 @@ void MainMenu::Update(float deltaTime) {
                         GameManager::GetInstance().SetState(GameState::SETTINGS);
                     } else if (btn.text == "About us") {
                     } else if (btn.text == "Exit Game") {
-                        exit(0);
+                        quitRequested = true;
                     }
                 }
             } else {
@@ -128,6 +135,13 @@ void MainMenu::Update(float deltaTime) {
         }
     }
 }
+
+bool MainMenu::ConsumeQuitRequest() {
+    bool requested = quitRequested;
+    quitRequested = false;
+    return requested;
+}
+
 void MainMenu::Draw(int screenWidth, int screenHeight) {
     // 1. Draw Slideshow Background with Pan
     if (!bgSlides.empty()) {

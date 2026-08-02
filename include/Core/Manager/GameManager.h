@@ -29,6 +29,7 @@ class GameObject; // Forward declaration
 class GameManager {
 private:
     GameState currentState;
+    GameState previousGameState;
     std::vector<GameObject*> levelEntities;
     std::vector<Projectile*> activeProjectiles;
     std::vector<ImpactEffect> activeEffects;
@@ -61,6 +62,11 @@ public:
 
     GameState GetState() const { return currentState; }
     void SetState(GameState newState) { currentState = newState; }
+    bool PauseGame();
+    bool ResumeGame();
+    bool IsPaused() const;
+    GameState GetPreviousGameState() const;
+    GameState GetRenderState() const;
 
     void SetLevelBounds(float w, float h) { levelWidth = w; levelHeight = h; }
     float GetLevelWidth() const { return levelWidth; }

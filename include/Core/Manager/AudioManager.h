@@ -14,6 +14,8 @@ private:
     std::vector<Sound> clickSounds;
 
     int currentFootstepIndex = 0;
+    float soundEffectsVolume = 1.0f;
+    float musicVolume = 0.5f;
 
     AudioManager(); // Private constructor (Initializes Raylib Audio)
     ~AudioManager(); // Private destructor (Closes Raylib Audio)
@@ -36,7 +38,20 @@ public:
     void PlaySoundEffect(const std::string& name);
     void PlaySoundEffectPitch(const std::string& name, float pitch);
     
+    enum class MusicFadeState { NONE, FADING_OUT, FADING_IN };
+    MusicFadeState currentFadeState = MusicFadeState::NONE;
+    std::string currentMusicName = "";
+    std::string nextMusicName = "";
+    float fadeTimer = 0.0f;
+    float fadeDuration = 1.0f;
+    float currentTrackVolume = 1.0f;
+
     void LoadMusic(const std::string& name, const std::string& filepath);
-    void PlayMusicTrack(const std::string& name);
+    void PlayMusicTrack(const std::string& name, float fadeTime = 1.0f);
     void UpdateMusicStream();
+
+    void SetSoundEffectsVolume(float volume);
+    void SetMusicVolumeLevel(float volume);
+    float GetSoundEffectsVolume() const;
+    float GetMusicVolumeLevel() const;
 };
