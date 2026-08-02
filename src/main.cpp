@@ -17,11 +17,38 @@
 #include "Entities/Player/Lance.h"
 #include "UI/MainMenu.h"
 #include "UI/PauseMenu.h"
+#include "UI/SettingsMenu.h"
 #include "UI/UIManager.h"
 
 #include <algorithm>
 
 namespace {
+    constexpr float MAX_MODAL_SCALE = 1.35f;
+
+    Camera2D CreateCenteredUICamera(float scale) {
+        Camera2D camera = {};
+        camera.zoom = scale;
+        camera.offset = {
+            (GetScreenWidth() - Constants::GAME_WIDTH * scale) * 0.5f,
+            (GetScreenHeight() - Constants::GAME_HEIGHT * scale) * 0.5f
+        };
+        return camera;
+    }
+
+    Vector2 GetVirtualMousePosition(const Camera2D& camera) {
+        Vector2 mousePosition = GetScreenToWorld2D(
+            GetMousePosition(),
+            camera
+        );
+        if (mousePosition.x < 0.0f ||
+            mousePosition.x > Constants::GAME_WIDTH ||
+            mousePosition.y < 0.0f ||
+            mousePosition.y > Constants::GAME_HEIGHT) {
+            return {-1.0f, -1.0f};
+        }
+        return mousePosition;
+    }
+
     void ResetGame(
         TeamManager* teamManager,
         LevelManager* levelManager,
@@ -87,6 +114,7 @@ int main() {
     AssetManager::GetInstance().QueueCharacterAssets();
 
     PauseMenu pauseMenu;
+    SettingsMenu settingsMenu;
     bool quitRequested = false;
 
     TeamManager* teamManager = nullptr;
@@ -103,17 +131,16 @@ int main() {
 
     while (!WindowShouldClose() && !quitRequested) {
         float deltaTime = GetFrameTime();
-        float scale = std::min(
+        const float viewportScale = std::min(
             (float)GetScreenWidth() / Constants::GAME_WIDTH,
             (float)GetScreenHeight() / Constants::GAME_HEIGHT
         );
-
-        Camera2D uiCamera = {};
-        uiCamera.zoom = scale;
-        uiCamera.offset = {
-            (GetScreenWidth() - Constants::GAME_WIDTH * scale) / 2.0f,
-            (GetScreenHeight() - Constants::GAME_HEIGHT * scale) / 2.0f
-        };
+        const float modalScale = std::min(
+            viewportScale,
+            MAX_MODAL_SCALE
+        );
+        const Camera2D uiCamera = CreateCenteredUICamera(viewportScale);
+        const Camera2D modalCamera = CreateCenteredUICamera(modalScale);
 
         AudioManager::GetInstance().UpdateMusicStream();
 
@@ -121,34 +148,10 @@ int main() {
             GetMousePosition(),
             CameraManager::GetInstance().GetCamera()
         );
-        Vector2 uiMousePosition = GetScreenToWorld2D(
-            GetMousePosition(),
-            uiCamera
-        );
-        if (uiMousePosition.x < 0.0f ||
-            uiMousePosition.x > Constants::GAME_WIDTH ||
-            uiMousePosition.y < 0.0f ||
-            uiMousePosition.y > Constants::GAME_HEIGHT) {
-            uiMousePosition = {-1.0f, -1.0f};
-        }
+        Vector2 uiMousePosition = GetVirtualMousePosition(uiCamera);
+        Vector2 modalMousePosition = GetVirtualMousePosition(modalCamera);
 
         GameState state = gameManager.GetState();
-        static GameState lastFrameState = (GameState)-1;
-
-        if (state != lastFrameState) {
-            if (state == GameState::MAIN_MENU || state == GameState::GAME_OVER || state == GameState::VICTORY) {
-                AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.5f);
-            } else if (state == GameState::HUB) {
-                AudioManager::GetInstance().PlayMusicTrack("bgm_story_mode", 1.5f);
-            } else if (state == GameState::GAMEPLAY) {
-                if (waveManager.GetCurrentWave() == 5) {
-                    AudioManager::GetInstance().PlayMusicTrack("bgm_boss_theme", 1.5f);
-                } else {
-                    AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.5f);
-                }
-            }
-            lastFrameState = state;
-        }
 
         if (state == GameState::MAIN_MENU &&
             mainMenu.IsReady() &&
@@ -284,9 +287,13 @@ int main() {
                 );
                 break;
             case GameState::PAUSE:
-                switch (pauseMenu.Update(uiMousePosition)) {
+                switch (pauseMenu.Update(modalMousePosition)) {
                     case PauseMenuAction::Resume:
                         gameManager.ResumeGame();
+                        break;
+                    case PauseMenuAction::Settings:
+                        settingsReturnState = GameState::PAUSE;
+                        gameManager.SetState(GameState::SETTINGS);
                         break;
                     case PauseMenuAction::BackToMainMenu:
                         ReturnToMainMenu(teamManager, &levelManager);
@@ -299,16 +306,13 @@ int main() {
                 }
                 break;
             case GameState::SETTINGS: {
-                Rectangle backButton = {
-                    GetScreenWidth() / 2.0f - 60.0f,
-                    GetScreenHeight() / 2.0f + 70.0f,
-                    120.0f,
-                    40.0f
-                };
-                if (IsKeyPressed(KEY_ESCAPE) ||
-                    (CheckCollisionPointRec(GetMousePosition(), backButton) &&
-                     IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) {
+                bool backRequested =
+                    settingsMenu.Update(modalMousePosition);
+                if (!backRequested && IsKeyPressed(KEY_ESCAPE)) {
                     AudioManager::GetInstance().PlayRandomClick();
+                    backRequested = true;
+                }
+                if (backRequested) {
                     gameManager.SetState(settingsReturnState);
                 }
                 break;
@@ -327,6 +331,10 @@ int main() {
 
         state = gameManager.GetState();
         GameState renderState = gameManager.GetRenderState();
+        if (state == GameState::SETTINGS &&
+            settingsReturnState == GameState::PAUSE) {
+            renderState = gameManager.GetPreviousGameState();
+        }
 
         BeginDrawing();
         ClearBackground(BLACK);
@@ -353,7 +361,8 @@ int main() {
                 Constants::GAME_HEIGHT,
                 uiMousePosition
             );
-            if (renderState == GameState::HUB) {
+            if (renderState == GameState::HUB &&
+                DialogueManager::GetInstance().IsActive()) {
                 DialogueManager::GetInstance().Draw(
                     Constants::GAME_WIDTH,
                     Constants::GAME_HEIGHT
@@ -386,50 +395,14 @@ int main() {
 
         if (state == GameState::PAUSE) {
             UIManager::DrawModalOverlay();
-            BeginMode2D(uiCamera);
-            pauseMenu.Draw(uiMousePosition);
+            BeginMode2D(modalCamera);
+            pauseMenu.Draw(modalMousePosition);
             EndMode2D();
         } else if (state == GameState::SETTINGS) {
             UIManager::DrawModalOverlay();
-            Rectangle popupBounds = {
-                GetScreenWidth() / 2.0f - 200.0f,
-                GetScreenHeight() / 2.0f - 150.0f,
-                400.0f,
-                300.0f
-            };
-            UIManager::DrawPopupFrame(popupBounds, "SETTINGS");
-
-            Rectangle backButton = {
-                GetScreenWidth() / 2.0f - 60.0f,
-                GetScreenHeight() / 2.0f + 70.0f,
-                120.0f,
-                40.0f
-            };
-            bool hovered = CheckCollisionPointRec(
-                GetMousePosition(),
-                backButton
-            );
-            DrawRectangleRounded(
-                backButton,
-                0.2f,
-                10,
-                hovered ? LIGHTGRAY : DARKGRAY
-            );
-            DrawRectangleRoundedLinesEx(
-                backButton,
-                0.2f,
-                10,
-                2.0f,
-                BLACK
-            );
-            int textWidth = MeasureText("BACK", 20);
-            DrawText(
-                "BACK",
-                (int)(backButton.x + (backButton.width - textWidth) / 2.0f),
-                (int)(backButton.y + 10.0f),
-                20,
-                hovered ? BLACK : WHITE
-            );
+            BeginMode2D(modalCamera);
+            settingsMenu.Draw(modalMousePosition);
+            EndMode2D();
         }
 
         EndDrawing();
