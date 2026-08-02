@@ -23,4 +23,5 @@ public:
         int startingDiverEnemies = 0
     );
     void DrawHUD();
+    int GetCurrentWave() const { return currentWave; }
 };

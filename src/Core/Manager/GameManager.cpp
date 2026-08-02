@@ -4,7 +4,13 @@
 #include "Core/Manager/ParticleManager.h"
 #include "raymath.h"
 
-GameManager::GameManager() : currentState(GameState::MAIN_MENU), levelManager(nullptr) {
+GameManager::GameManager()
+    : currentState(GameState::MAIN_MENU),
+      previousGameState(GameState::MAIN_MENU),
+      bulletImpactTex{},
+      targetFPS(0),
+      hitstopTimer(0.0f),
+      levelManager(nullptr) {
     // Starts in MAIN_MENU state by default
 }
 
@@ -20,6 +26,38 @@ GameManager& GameManager::GetInstance() {
     // Thread-safe in C++11+ (Meyers' Singleton)
     static GameManager instance;
     return instance;
+}
+
+bool GameManager::PauseGame() {
+    if (currentState != GameState::HUB &&
+        currentState != GameState::GAMEPLAY) {
+        return false;
+    }
+
+    previousGameState = currentState;
+    currentState = GameState::PAUSE;
+    return true;
+}
+
+bool GameManager::ResumeGame() {
+    if (currentState != GameState::PAUSE) {
+        return false;
+    }
+
+    currentState = previousGameState;
+    return true;
+}
+
+bool GameManager::IsPaused() const {
+    return currentState == GameState::PAUSE;
+}
+
+GameState GameManager::GetPreviousGameState() const {
+    return previousGameState;
+}
+
+GameState GameManager::GetRenderState() const {
+    return IsPaused() ? previousGameState : currentState;
 }
 
 const std::vector<GameObject*>& GameManager::GetLevelEntities() const {

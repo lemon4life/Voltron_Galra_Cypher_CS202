@@ -5,6 +5,7 @@
 #include "Entities/Player/Paladin.h"
 #include "Entities/Enemy.h"
 #include "Core/Manager/GameManager.h"
+#include "Core/Manager/AudioManager.h"
 #include "raymath.h"
 #include <algorithm>
 #include <cstdlib>
@@ -112,6 +113,7 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
                 currentWave++;
                 if (currentWave == 5) {
                     enemiesToSpawn = 1; // Only 1 Boss
+                    AudioManager::GetInstance().PlayMusicTrack("bgm_boss_theme", 1.5f);
                 } else {
                     enemiesToSpawn = currentWave;
                 }

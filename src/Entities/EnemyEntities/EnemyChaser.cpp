@@ -6,16 +6,28 @@
 #include "raymath.h"
 #include "Core/Constants.h"
 
+#include <algorithm>
+
 namespace {
     constexpr int CHASER_MAX_HEALTH = 80;
     constexpr float CHASER_SPEED = 150.0f;
     constexpr int CHASER_DAMAGE = 15;
     constexpr float CHASER_ATTACK_COOLDOWN = 1.f;
     constexpr float CHASER_SIGHT_DISTANCE = 40000.0f;
+    constexpr float CHASER_AGGRO_RANGE = 40.0f;
     constexpr float CHASER_STOP_PATH_FINDING_DISTANCE = 30.0f;
     constexpr float CHASER_DAMAGE_CHARGE_DISTANCE = 64.0f;
-    constexpr float CHASER_DAMAGE_CHARGE_DURATION = 0.5f; // DEBUG SLOW
+    constexpr float CHASER_DAMAGE_CHARGE_DURATION = 0.25f;
+    constexpr int CHASER_MIN_AGGRO_MILLISECONDS = 200;
+    constexpr int CHASER_MAX_AGGRO_MILLISECONDS = 700;
     constexpr Vector2 CHASER_SIZE = { 20.0f, 20.0f };
+
+    float RollAggroDuration() {
+        return (float)GetRandomValue(
+            CHASER_MIN_AGGRO_MILLISECONDS,
+            CHASER_MAX_AGGRO_MILLISECONDS
+        ) / 1000.0f;
+    }
 }
 
 EnemyChaser::EnemyChaser(
@@ -40,6 +52,7 @@ EnemyChaser::EnemyChaser(
     damageState = std::make_unique<EnemyChaserDamageState>();
     enemyType = EnemyType::Chaser;
     size = CHASER_SIZE;
+    ResetAggroMeter();
 
     SetEnemySprites(AssetManager::GetInstance().GetChaserSprites());
     ChangeState(GetIdleState());
@@ -58,7 +71,7 @@ void EnemyChaser::Update(float deltaTime) {
     IEnemyState* lastState = currentState;
     if (currentState) {
         currentState->Update(this, deltaTime);
-    kinematics.Update(deltaTime);
+        kinematics.Update(deltaTime);
     }
     
     if (health <= 0) return;
@@ -184,6 +197,10 @@ bool EnemyChaser::IsBeyondDisengageDistance(Vector2 targetPosition) const {
     return Vector2Distance(position, targetPosition) > CHASER_SIGHT_DISTANCE;
 }
 
+bool EnemyChaser::IsWithinAggroRange(Vector2 targetPosition) const {
+    return Vector2Distance(position, targetPosition) <= CHASER_AGGRO_RANGE;
+}
+
 bool EnemyChaser::IsWithinStopPathFindingDistance(
     Vector2 targetPosition
 ) const {
@@ -197,4 +214,27 @@ float EnemyChaser::GetDamageChargeDistance() const {
 
 float EnemyChaser::GetDamageChargeDuration() const {
     return CHASER_DAMAGE_CHARGE_DURATION;
+}
+
+void EnemyChaser::UpdateAggroMeter(
+    bool isNearPlayer,
+    float deltaTime
+) {
+    if (!isNearPlayer) {
+        return;
+    }
+
+    aggroMeter = std::min(
+        requiredAggroDuration,
+        aggroMeter + std::max(0.0f, deltaTime)
+    );
+}
+
+bool EnemyChaser::IsAggroReady() const {
+    return aggroMeter >= requiredAggroDuration;
+}
+
+void EnemyChaser::ResetAggroMeter() {
+    aggroMeter = 0.0f;
+    requiredAggroDuration = RollAggroDuration();
 }
