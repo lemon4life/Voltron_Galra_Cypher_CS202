@@ -18,7 +18,6 @@ namespace {
     constexpr float RANGE_PROJECTILE_SPEED = 320.0f;
     constexpr float RANGE_PROJECTILE_LIFETIME = 2.0f;
     constexpr float RANGE_PROJECTILE_RADIUS = 5.0f;
-    constexpr float RANGE_MAX_PREDICTION_TIME = 1.0f;
     constexpr Vector2 RANGE_SIZE = { 24.0f, 24.0f };
 }
 
@@ -161,6 +160,7 @@ void EnemyRange::Draw() {
         4,
         RED
     );
+
 }
 
 
@@ -188,6 +188,10 @@ float EnemyRange::GetProjectileRadius() const {
     return RANGE_PROJECTILE_RADIUS;
 }
 
-float EnemyRange::GetMaxPredictionTime() const {
-    return RANGE_MAX_PREDICTION_TIME;
+EnemyPathGoal EnemyRange::GetPathGoal() const {
+    return {
+        EnemyPathGoalMode::ClearLineOfSight,
+        RANGE_SHOOTING_DISTANCE,
+        RANGE_PROJECTILE_RADIUS
+    };
 }

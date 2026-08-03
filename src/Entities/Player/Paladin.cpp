@@ -8,22 +8,27 @@
 #include <cmath>
 #include <iostream>
 
-Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
-    : Character(pos, 150.0f, maxHp, sprites.idle),
+Paladin::Paladin(
+    Vector2 pos,
+    CharacterSprites sprites,
+    const PaladinDefinition& definition
+)
+    : Character(pos, definition.speed, definition.maxHealth, sprites.idle),
+      currentWeapon(nullptr),
       sprites(sprites),
       teamManager(nullptr),
-      currentWeapon(nullptr),
+      paladinId(definition.id),
       currentFrame(0),
       frameTimer(0.0f),
       frameDuration(0.1f), // 10 fps animation speed
       facingLeft(false),
       numFrames(4),
-      maxHealth(maxHp),
-      ghostHp(maxHp),
+      maxHealth(definition.maxHealth),
+      ghostHp(definition.maxHealth),
       exEnergy(0.0f),
-      maxExEnergy(maxEx),
+      maxExEnergy(definition.maxExEnergy),
       dashCooldown(0.0f),
-      attackCooldown(0.2f),
+      attackCooldown(definition.attackCooldown),
       dashTimer(0.0f),
       isInvincible(false),
       isParrying(false),

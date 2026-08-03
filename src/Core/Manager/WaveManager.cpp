@@ -31,7 +31,7 @@ void WaveManager::Reset(
     spawnTimer = 0.0f;
     timeBetweenWaves = 3.0f;
     showWaveTextTimer = 2.0f;
-    
+
     // Dungeon room state
     dungeonTotalWaves = 0;
     dungeonCurrentWave = 0;
@@ -40,12 +40,12 @@ void WaveManager::Reset(
 
 void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager* levelManager) {
     // --- Procedural dungeon room combat ---
-    if (!levelManager->IsLegacyMap()) {
+    if (levelManager->IsProceduralDungeon()) {
         UpdateDungeonRoom(deltaTime, teamManager, levelManager);
         return;
     }
-    
-    // --- Legacy map combat (unchanged) ---
+
+    // --- Layered static-map combat ---
     int activeEnemies = 0;
     for (auto* entity : levelManager->GetEntities()) {
         if (entity->GetObjectType() == GameObjectType::Enemy) {
@@ -61,7 +61,7 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
         timeBetweenWaves -= deltaTime;
     } else {
         if (enemiesToSpawn > 0) {
-            SpawnEnemy(teamManager, levelManager);
+            SpawnEnemy(deltaTime, teamManager, levelManager);
         } else if (activeEnemies == 0) {
             if (currentWave == 5) {
                 GameManager::GetInstance().SetState(GameState::VICTORY);
@@ -88,8 +88,8 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
         }
         return;
     }
-    
-    // Room just locked — initialize waves if we haven't yet
+
+    // Room just locked â€” initialize waves if we haven't yet
     if (dungeonTotalWaves == 0) {
         // Check if this is a boss room
         for (const auto& node : levelManager->GetLevelMap().generatedNodes) {
@@ -98,7 +98,7 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
                 break;
             }
         }
-        
+
         if (isBossRoom) {
             // Boss room: 1 wave with 1 boss
             dungeonTotalWaves = 1;
@@ -115,13 +115,13 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
             rangeEnemiesToSpawn = enemiesToSpawn / 3;
             diverEnemiesToSpawn = enemiesToSpawn / 4;
         }
-        
+
         currentWave = 1;
         timeBetweenWaves = 1.5f;
         showWaveTextTimer = 2.0f;
         return;
     }
-    
+
     // Count active enemies
     int activeEnemies = 0;
     for (auto* entity : levelManager->GetEntities()) {
@@ -129,26 +129,26 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
             activeEnemies++;
         }
     }
-    
+
     if (showWaveTextTimer > 0.0f) {
         showWaveTextTimer -= deltaTime;
     }
-    
+
     if (timeBetweenWaves > 0.0f) {
         timeBetweenWaves -= deltaTime;
     } else {
         if (enemiesToSpawn > 0) {
-            SpawnEnemy(teamManager, levelManager);
+            SpawnEnemy(deltaTime, teamManager, levelManager);
         } else if (activeEnemies == 0) {
             // Wave cleared
             if (dungeonCurrentWave >= dungeonTotalWaves) {
-                // All waves done — room cleared!
+                // All waves done â€” room cleared!
                 levelManager->SetActiveRoomState(RoomState::CLEARED);
-                
+
                 if (isBossRoom) {
                     GameManager::GetInstance().SetState(GameState::VICTORY);
                 }
-                
+
                 // Reset for next room
                 dungeonTotalWaves = 0;
                 dungeonCurrentWave = 0;
@@ -159,7 +159,7 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
                 // Next wave
                 dungeonCurrentWave++;
                 currentWave = dungeonCurrentWave;
-                
+
                 if (isBossRoom) {
                     enemiesToSpawn = 1;
                 } else {
@@ -167,7 +167,7 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
                     rangeEnemiesToSpawn = enemiesToSpawn / 3;
                     diverEnemiesToSpawn = enemiesToSpawn / 4;
                 }
-                
+
                 timeBetweenWaves = 2.0f;
                 showWaveTextTimer = 2.0f;
             }
@@ -175,10 +175,16 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
     }
 }
 
-void WaveManager::SpawnEnemy(TeamManager* teamManager, LevelManager* levelManager) {
-    spawnTimer -= GetFrameTime();
-    if (spawnTimer > 0.0f) return;
-    
+void WaveManager::SpawnEnemy(
+    float deltaTime,
+    TeamManager* teamManager,
+    LevelManager* levelManager
+) {
+    spawnTimer -= deltaTime;
+    if (spawnTimer > 0.0f) {
+        return;
+    }
+
     bool spawned = false;
     int attempts = 0;
     while (!spawned && attempts < 50) {
@@ -187,28 +193,47 @@ void WaveManager::SpawnEnemy(TeamManager* teamManager, LevelManager* levelManage
         float randY = bounds.y + 32.0f + (float)(rand() % (int)std::max(1.0f, bounds.height - 64.0f));
         Vector2 spawnPos = { randX, randY };
 
-        if (Vector2Distance(spawnPos, teamManager->GetActivePaladin()->GetPosition()) > 100.0f) {
-            char spawnType = 'E';
-            
-            if (isBossRoom) {
-                spawnType = 'B';
+        if (Vector2Distance(
+                spawnPos,
+                teamManager->GetActivePaladin()->GetPosition()
+            ) > 150.0f) {
+            MapObjectId spawnType = MapObjectId::Chaser;
+
+            if (isBossRoom ||
+                (!levelManager->IsProceduralDungeon() && currentWave == 5)) {
+                spawnType = MapObjectId::Boss;
             } else if (rangeEnemiesToSpawn > 0) {
-                spawnType = 'R';
+                spawnType = MapObjectId::Range;
             } else if (diverEnemiesToSpawn > 0) {
-                spawnType = 'D';
+                spawnType = MapObjectId::Diver;
+            } else if (!levelManager->IsProceduralDungeon() &&
+                       currentWave >= 2 && currentWave <= 4 &&
+                       enemiesToSpawn == currentWave) {
+                spawnType = MapObjectId::Range;
+            } else if (!levelManager->IsProceduralDungeon() &&
+                       currentWave >= 3 && currentWave <= 4 &&
+                       enemiesToSpawn == currentWave - 1) {
+                spawnType = MapObjectId::Diver;
             }
-            
+
             GameObject* newEnemy = EntityFactory::CreateEntity(
                 spawnType,
                 spawnPos,
+                {-1, -1},
                 teamManager,
                 levelManager->GetLevelAccessBundle()
             );
             if (newEnemy) {
                 if (levelManager->IsValidSpawnLocation(newEnemy)) {
                     levelManager->AddEntity(newEnemy);
-                    if (spawnType == 'R' && rangeEnemiesToSpawn > 0) rangeEnemiesToSpawn--;
-                    if (spawnType == 'D' && diverEnemiesToSpawn > 0) diverEnemiesToSpawn--;
+                    if (spawnType == MapObjectId::Range &&
+                        rangeEnemiesToSpawn > 0) {
+                        rangeEnemiesToSpawn--;
+                    }
+                    if (spawnType == MapObjectId::Diver &&
+                        diverEnemiesToSpawn > 0) {
+                        diverEnemiesToSpawn--;
+                    }
                     enemiesToSpawn--;
                     spawnTimer = 0.07f;
                     spawned = true;
@@ -223,8 +248,8 @@ void WaveManager::SpawnEnemy(TeamManager* teamManager, LevelManager* levelManage
 
 void WaveManager::DrawHUD() {
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-    
-    if (!levelManager->IsLegacyMap()) {
+
+    if (levelManager->IsProceduralDungeon()) {
         // Dungeon room HUD
         if (levelManager->GetActiveRoomState() == RoomState::LOCKED && dungeonTotalWaves > 0) {
             if (isBossRoom) {
@@ -232,7 +257,7 @@ void WaveManager::DrawHUD() {
             } else {
                 DrawText(TextFormat("WAVE %d / %d", dungeonCurrentWave, dungeonTotalWaves), 260, 10, 18, WHITE);
             }
-            
+
             if (showWaveTextTimer > 0.0f) {
                 if (isBossRoom) {
                     DrawText("BOSS WARNING!", 200, 240, 28, RED);
@@ -247,8 +272,8 @@ void WaveManager::DrawHUD() {
         }
         return;
     }
-    
-    // Legacy map HUD
+
+    // Layered static-map HUD
     if (currentWave == 0) return;
     DrawText(TextFormat("WAVE: %d / 5", currentWave), 360, 10, 20, WHITE);
     if (showWaveTextTimer > 0.0f) {

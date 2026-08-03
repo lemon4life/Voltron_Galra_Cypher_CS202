@@ -1,6 +1,8 @@
 #pragma once
+#include <cstddef>
 #include <vector>
 #include "Core/ISubject.h"
+#include "Entities/Player/PaladinDefinition.h"
 
 class Paladin;
 
@@ -26,6 +28,8 @@ public:
 
     void SwapCharacter();
     void SwapDueToDeath();
+    int FindMemberIndex(PaladinId id) const;
+    bool MovePaladinToSlot(PaladinId id, std::size_t targetIndex);
     Paladin* GetActivePaladin() const;
 
     int TakeArmorDamage(int amount);

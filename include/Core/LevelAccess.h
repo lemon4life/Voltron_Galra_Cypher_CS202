@@ -2,6 +2,8 @@
 
 #include "raylib.h"
 
+#include <optional>
+
 class GameObject;
 class Enemy;
 
@@ -12,7 +14,10 @@ enum class MapObjectId : int {
     Range = 3,
     Diver = 4,
     Boss = 5,
-    NPC = 6
+    NPC = 6,
+    HubLanceStand = 7,
+    HubKeithStand = 8,
+    HubHunkStand = 9
 };
 
 struct GameObjectCell {
@@ -58,9 +63,8 @@ public:
     virtual bool IsBlocked(Rectangle bounds) const = 0;
     virtual Rectangle GetLevelBounds() const = 0;
 
-    virtual Vector2 GetNextMoveTarget(
-        Enemy& enemy,
-        Vector2 fallbackTarget
+    virtual std::optional<Vector2> GetNextMoveTarget(
+        Enemy& enemy
     ) = 0;
 
     virtual Vector2 GetLocalDirection(

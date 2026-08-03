@@ -3,6 +3,7 @@
 #include "Entities/Player/PlayerState.h"
 #include "Entities/Player/PlayerDashState.h"
 #include "Entities/Player/PlayerAttackState.h"
+#include "Entities/Player/PaladinDefinition.h"
 #include "Combat/IAttackStrategy.h"
 #include <vector>
 
@@ -30,6 +31,7 @@ protected:
     
     CharacterSprites sprites;
     TeamManager* teamManager;
+    PaladinId paladinId;
 
     // Animation specific
     int currentFrame;
@@ -72,7 +74,11 @@ protected:
     Vector2 aimTarget;
 
 public:
-    Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx);
+    Paladin(
+        Vector2 pos,
+        CharacterSprites sprites,
+        const PaladinDefinition& definition
+    );
     virtual ~Paladin();
 
     void Update(float deltaTime) override;
@@ -115,6 +121,7 @@ public:
     // Getters
     int GetHealth() const { return health; }
     int GetMaxHealth() const { return maxHealth; }
+    PaladinId GetPaladinId() const { return paladinId; }
     float GetGhostHp() const { return ghostHp; }
     float GetExEnergy() const { return exEnergy; }
     float GetMaxExEnergy() const { return maxExEnergy; }

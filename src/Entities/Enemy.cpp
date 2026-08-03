@@ -1,8 +1,21 @@
 #include "Entities/Enemy.h"
 #include "AI/EnemyCollision.h"
+#include "Core/Constants.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "raymath.h"
+
+namespace {
+    constexpr float DEBUG_PATH_THICKNESS = 2.0f;
+    constexpr float DEBUG_WAYPOINT_RADIUS = 4.0f;
+    constexpr float DEBUG_CURRENT_TARGET_RADIUS = 6.0f;
+    constexpr float DEBUG_STATUS_OFFSET_Y = 22.0f;
+    constexpr Color DEBUG_PATH_COLOR = { 255, 140, 0, 220 };
+    constexpr Color DEBUG_WAYPOINT_COLOR = { 255, 230, 40, 255 };
+    constexpr Color DEBUG_CURRENT_TARGET_COLOR = { 80, 255, 100, 255 };
+    constexpr Color DEBUG_PENDING_COLOR = { 40, 220, 255, 255 };
+    constexpr Color DEBUG_UNREACHABLE_COLOR = { 255, 60, 60, 255 };
+}
 
 Enemy::Enemy(
     Vector2 pos,
@@ -110,6 +123,7 @@ void Enemy::StartPathFinding() {
     if (usePathFinding) return;
 
     usePathFinding = true;
+    pathStatus = EnemyPathStatus::Pending;
     pathAccess.BeginPathFinding(*this);
 }
 
@@ -119,6 +133,67 @@ void Enemy::EndPathFinding() {
     pathAccess.EndPathFinding(*this);
     usePathFinding = false;
     ClearTargetPosition();
+    pathStatus = EnemyPathStatus::Pending;
+}
+
+void Enemy::DrawPathDebug() const {
+    if (!Constants::DEBUG_DRAW_ENEMY_PATHS ||
+        !usePathFinding ||
+        health <= 0) {
+        return;
+    }
+
+    Vector2 segmentStart = position;
+    bool isCurrentTarget = true;
+    for (Vector2 targetPosition : targetPositions) {
+        DrawLineEx(
+            segmentStart,
+            targetPosition,
+            DEBUG_PATH_THICKNESS,
+            DEBUG_PATH_COLOR
+        );
+        DrawCircleV(
+            targetPosition,
+            isCurrentTarget
+                ? DEBUG_CURRENT_TARGET_RADIUS
+                : DEBUG_WAYPOINT_RADIUS,
+            isCurrentTarget
+                ? DEBUG_CURRENT_TARGET_COLOR
+                : DEBUG_WAYPOINT_COLOR
+        );
+
+        segmentStart = targetPosition;
+        isCurrentTarget = false;
+    }
+
+    Vector2 statusPosition = {
+        position.x,
+        position.y - DEBUG_STATUS_OFFSET_Y
+    };
+    if (pathStatus == EnemyPathStatus::Pending) {
+        DrawCircleV(statusPosition, DEBUG_WAYPOINT_RADIUS, DEBUG_PENDING_COLOR);
+    } else if (pathStatus == EnemyPathStatus::Unreachable) {
+        constexpr float CROSS_RADIUS = 5.0f;
+        DrawLineEx(
+            { statusPosition.x - CROSS_RADIUS, statusPosition.y - CROSS_RADIUS },
+            { statusPosition.x + CROSS_RADIUS, statusPosition.y + CROSS_RADIUS },
+            DEBUG_PATH_THICKNESS,
+            DEBUG_UNREACHABLE_COLOR
+        );
+        DrawLineEx(
+            { statusPosition.x - CROSS_RADIUS, statusPosition.y + CROSS_RADIUS },
+            { statusPosition.x + CROSS_RADIUS, statusPosition.y - CROSS_RADIUS },
+            DEBUG_PATH_THICKNESS,
+            DEBUG_UNREACHABLE_COLOR
+        );
+    } else if (pathStatus == EnemyPathStatus::AtGoal) {
+        DrawCircleLines(
+            (int)statusPosition.x,
+            (int)statusPosition.y,
+            DEBUG_CURRENT_TARGET_RADIUS,
+            DEBUG_CURRENT_TARGET_COLOR
+        );
+    }
 }
 
 void Enemy::ApplyKnockback(Vector2 dir, float force) {

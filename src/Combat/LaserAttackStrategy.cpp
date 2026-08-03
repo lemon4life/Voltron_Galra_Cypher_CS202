@@ -8,10 +8,23 @@
 #include <cmath>
 #include <iostream>
 
-LaserAttackStrategy::LaserAttackStrategy(Texture2D weapon, Texture2D muzzle, Texture2D beam, Texture2D impact)
-    : weaponTex(weapon), muzzleTex(muzzle), beamTex(beam), impactTex(impact), laserTimer(0.0f), maxLaserTime(0.15f) {
+LaserAttackStrategy::LaserAttackStrategy(
+    Texture2D weapon,
+    Texture2D muzzle,
+    Texture2D beam,
+    Texture2D impact,
+    int damage,
+    float recoilStrength
+)
+    : weaponTex(weapon),
+      muzzleTex(muzzle),
+      beamTex(beam),
+      impactTex(impact),
+      laserTimer(0.0f),
+      maxLaserTime(0.15f),
+      recoilStrength(recoilStrength),
+      damage(damage) {
     recoilOffset = {0.0f, 0.0f};
-    recoilStrength = 30.0f; // Heavy impulse recoil
     aimDir = {1.0f, 0.0f};
     aimAngle = 0.0f;
 }
@@ -65,7 +78,7 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
         if (entity->GetObjectType() == GameObjectType::Enemy) {
             Enemy* e = static_cast<Enemy*>(entity);
             if (CheckCollisionSegmentRec(barrelTip, laserEndPoint, e->GetBoundingBox())) {
-                e->TakeDamage(50); // Piercing laser damage
+                e->TakeDamage(damage); // Piercing laser damage
                 // Add Impact Effect visually
                 GameManager::GetInstance().AddImpactEffect({e->GetPosition().x, e->GetPosition().y});
                 // Add EX Energy

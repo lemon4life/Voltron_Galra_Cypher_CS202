@@ -45,7 +45,7 @@ void AssetManager::QueueCharacterAssets() {
     };
 
     // Lance
-    add("Lance_Idle", "assets/sprites/Lance/Idle_Sheet.png");
+    add("Lance_Idle", "assets/sprites/Lance/Idle_Sheet.png", true);
     add("Lance_Run", "assets/sprites/Lance/Run_Sheet.png");
     add("Lance_DashFront", "assets/sprites/Lance/Dash_front.png");
     add("Lance_DashBack", "assets/sprites/Lance/Dash_back.png");
@@ -56,7 +56,7 @@ void AssetManager::QueueCharacterAssets() {
     add("Lance_Parry", "assets/sprites/Lance/Parry.png", true);
 
     // Keith
-    add("Keith_Idle", "assets/sprites/Keith/Idle_Sheet.png");
+    add("Keith_Idle", "assets/sprites/Keith/Idle_Sheet.png", true);
     add("Keith_Run", "assets/sprites/Keith/Run_Sheet.png");
     add("Keith_Weapon", "assets/sprites/Keith/Weapon_Static.png", true);
     add("Keith_Attack1", "assets/sprites/Keith/Attack_1.png", true);
@@ -66,7 +66,7 @@ void AssetManager::QueueCharacterAssets() {
     add("Keith_Parry", "assets/sprites/Keith/Parry.png", true);
 
     // Hunk
-    add("Hunk_Idle", "assets/sprites/Hunk/Idle_Sheet.png");
+    add("Hunk_Idle", "assets/sprites/Hunk/Idle_Sheet.png", true);
     add("Hunk_Run", "assets/sprites/Hunk/Run_Sheet.png");
     add("Hunk_Weapon", "assets/sprites/Hunk/Weapon_Static.png", true);
     add("Hunk_Muzzle", "assets/sprites/Hunk/Muzzle.png", true);

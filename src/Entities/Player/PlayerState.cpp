@@ -99,7 +99,7 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
     Vector2 currentPos = player->GetPosition();
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
     float speed = player->GetSpeed();
-    
+
     // Get level bounds
     Rectangle bounds = {0, 0, GameManager::GetInstance().GetLevelWidth(), GameManager::GetInstance().GetLevelHeight()};
     if (levelManager) {
@@ -113,9 +113,9 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
         if (currentPos.x < bounds.x) currentPos.x = bounds.x;
         if (currentPos.x > bounds.x + bounds.width) currentPos.x = bounds.x + bounds.width;
     }
-    
 
-    
+
+
     player->SetPosition(currentPos);
     if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
         currentPos.x -= moveDir.x * speed * deltaTime;
@@ -159,7 +159,7 @@ void PlayerParryState::Update(Paladin* player, float deltaTime) {
             return;
         }
         // Break out if movement, attack, or dash is pressed explicitly
-        if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_A) || IsKeyPressed(KEY_S) || IsKeyPressed(KEY_D) || 
+        if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_A) || IsKeyPressed(KEY_S) || IsKeyPressed(KEY_D) ||
             IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_SPACE)) {
             player->ChangeState(player->GetIdleState());
             return;
@@ -190,18 +190,18 @@ void PlayerDownState::Enter(Paladin* player) {
 void PlayerDownState::Update(Paladin* player, float deltaTime) {
     if (bounceTimer > 0.0f) {
         bounceTimer -= deltaTime;
-        
+
         float yOffset = 0.0f;
         if (bounceTimer > 0.2f) {
             float progress = (bounceTimer - 0.2f) / 0.2f; // 1.0 to 0.0
-            yOffset = -15.0f * progress; 
+            yOffset = -15.0f * progress;
         }
-        
+
         player->SetRenderOffsetY(yOffset);
-        
+
         if (bounceTimer <= 0.0f) {
             player->SetRenderOffsetY(0.0f);
-            
+
             TeamManager* teamManager = player->GetTeamManager();
             if (teamManager) {
                 if (teamManager->IsTeamDead()) {

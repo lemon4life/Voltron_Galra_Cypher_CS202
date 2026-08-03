@@ -1,11 +1,19 @@
 #include "Entities/Player/Hunk.h"
 #include "Combat/LaserAttackStrategy.h"
+#include "Entities/Player/PaladinDefinition.h"
 
 Hunk::Hunk(Vector2 pos, CharacterSprites sprites)
-    : Paladin(pos, sprites, 300, 150.0f) // Hunk is tankier: 300 HP, 150 Max Ex
+    : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Hunk))
 {
-    speed = 150.0f;
-    attackCooldown = 0.5f; // Slower movement
-    currentWeapon = new LaserAttackStrategy(sprites.weapon, sprites.muzzleFlash, sprites.bullet, sprites.impact);
+    const WeaponDefinition& weapon =
+        PaladinCatalog::Get(PaladinId::Hunk).weapon;
+    currentWeapon = new LaserAttackStrategy(
+        sprites.weapon,
+        sprites.muzzleFlash,
+        sprites.bullet,
+        sprites.impact,
+        weapon.maximumDamage,
+        weapon.recoil
+    );
     texture = GetIdleTexture();
 }

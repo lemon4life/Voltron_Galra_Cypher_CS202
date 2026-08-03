@@ -17,7 +17,7 @@ public:
         layer0_tiles.resize(h, std::vector<int>(w, 0));
         layer1_objects.resize(h, std::vector<int>(w, 0));
     }
-    
+
     // Generate absolute world coordinate bounding boxes for physics
     std::vector<Rectangle> GenerateWallColliders(Vector2 offsetWorldPos, float tileSize, float scale) const;
 };

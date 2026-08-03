@@ -9,6 +9,7 @@ namespace {
     constexpr float BOSS_ATTACK_COOLDOWN = 0.8f;
     constexpr float BOSS_SIGHT_DISTANCE = 900.0f;
     constexpr float BOSS_OFF_SIGHT_DISTANCE = 1200.0f;
+    constexpr float BOSS_PATH_APPROACH_DISTANCE = 32.0f;
     constexpr Vector2 BOSS_SIZE = Vector2{64.f,72.f};
 }
 
@@ -64,6 +65,14 @@ void Boss::Draw() {
     // Draw Health Bar
     float hpPercent = (float)health / maxHealth;
     DrawRectangle(position.x - size.x/2.f, position.y - size.y/2.f, size.x * hpPercent, 4, RED);
+}
+
+EnemyPathGoal Boss::GetPathGoal() const {
+    return {
+        EnemyPathGoalMode::BodyApproach,
+        BOSS_PATH_APPROACH_DISTANCE,
+        0.0f
+    };
 }
 
 bool Boss::IsBeyondDisengageDistance(Vector2 targetPosition) const {

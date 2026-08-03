@@ -33,18 +33,18 @@ private:
 
 public:
     static DialogueManager& GetInstance();
-    
+
     // Delete copy and assignment operators
     DialogueManager(const DialogueManager&) = delete;
     DialogueManager& operator=(const DialogueManager&) = delete;
 
     void InitializeAssets();
     void LoadDialogueTree(const std::string& filepath);
-    
+
     void StartDialogue();
     void Update(float deltaTime);
     void Draw(int screenWidth, int screenHeight);
-    
+
     bool IsActive() const { return isDialogueActive; }
     bool IsMissionRequested() const { return missionRequested; }
     int GetRequestedMissionId() const { return requestedMissionId; }

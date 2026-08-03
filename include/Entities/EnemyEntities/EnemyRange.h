@@ -23,6 +23,7 @@ public:
 
     void Update(float deltaTime) override;
     void Draw() override;
+    EnemyPathGoal GetPathGoal() const override;
 
     EnemyRangeShootingState* GetShootingState();
 
@@ -31,7 +32,6 @@ public:
     float GetProjectileSpeed() const;
     float GetProjectileLifetime() const;
     float GetProjectileRadius() const;
-    float GetMaxPredictionTime() const;
     const ILevelLineOfSightQuery& GetLineOfSightQuery() const { return lineOfSightQuery; }
 
 };

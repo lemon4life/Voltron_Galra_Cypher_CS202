@@ -31,6 +31,24 @@ enum class EnemyType {
     DIVER
 };
 
+enum class EnemyPathGoalMode {
+    BodyApproach,
+    ClearLineOfSight
+};
+
+struct EnemyPathGoal {
+    EnemyPathGoalMode mode = EnemyPathGoalMode::BodyApproach;
+    float acceptanceDistance = 0.0f;
+    float clearanceRadius = 0.0f;
+};
+
+enum class EnemyPathStatus {
+    Pending,
+    Ready,
+    AtGoal,
+    Unreachable
+};
+
 class Enemy : public GameObject {
 protected:
     int health;
@@ -73,6 +91,7 @@ protected:
 private:
     bool usePathFinding = false;
     std::deque<Vector2> targetPositions;
+    EnemyPathStatus pathStatus = EnemyPathStatus::Pending;
 
 public:
     Enemy(
@@ -95,6 +114,8 @@ public:
 
     virtual void Update(float deltaTime) override = 0;
     void Draw() override {};
+    virtual EnemyPathGoal GetPathGoal() const = 0;
+    void DrawPathDebug() const;
 
     IEnemyState* GetCurrentState() { return currentState; }
     IEnemyState* GetIdleState() { return idleState.get(); }
@@ -144,12 +165,20 @@ public:
     void AddTargetPosition(Vector2 targetPosition) {
         targetPositions.push_back(targetPosition);
     }
+    void SetTargetPositions(const std::vector<Vector2>& positions) {
+        targetPositions.assign(positions.begin(), positions.end());
+    }
     Vector2 FirstTargetPosition() const {
         return targetPositions.empty()
             ? Vector2{ -1.0f, -1.0f }
             : targetPositions.front();
     }
+    const std::deque<Vector2>& GetTargetPositions() const {
+        return targetPositions;
+    }
     bool HasTargetPosition() const { return !targetPositions.empty(); }
+    EnemyPathStatus GetPathStatus() const { return pathStatus; }
+    void SetPathStatus(EnemyPathStatus status) { pathStatus = status; }
 
     TeamManager* GetTargetTeam() const { return targetTeam; }
 };
