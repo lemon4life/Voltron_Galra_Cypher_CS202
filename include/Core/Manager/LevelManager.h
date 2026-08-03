@@ -5,6 +5,7 @@
 #include "Core/LevelAccess.h"
 #include "Entities/GameObject.h"
 #include "Core/Manager/EnemyPathManager.h"
+#include "Core/Level/Tilemap.h"
 
 class TeamManager;
 
@@ -14,6 +15,11 @@ class LevelManager
       public ILevelLineOfSightQuery,
       public IMapObjectDestroyAccess {
 private:
+    enum class LevelMode {
+        Layered,
+        Procedural
+    };
+
     struct PendingMapObjectDestruction {
         GameObject* object;
         GameObjectCell cell;
@@ -28,6 +34,17 @@ private:
     std::vector<std::vector<int>> mapGridLayer2;
     std::vector<std::vector<MapObjectId>> mapObjectGrid;
     Texture2D tileset;
+
+    LevelMode levelMode = LevelMode::Layered;
+    std::shared_ptr<RoomTemplate> activeRoom;
+    LevelMap levelMap;
+    std::vector<Rectangle> currentRoomWalls;
+    std::vector<Rectangle> doorColliders;
+    std::shared_ptr<RoomNode> currentlyLockedRoom;
+    Vector2 roomOffset = {0.0f, 0.0f};
+    Vector2 nudgePosition = {0.0f, 0.0f};
+    bool needsNudge = false;
+
 
     bool LoadObjectGrid(const std::string& filepath);
     void SpawnGameObjects(TeamManager* teamManager);
@@ -45,8 +62,19 @@ public:
     ~LevelManager();
 
     void LoadLevel(const std::string& filepath, TeamManager* teamManager);
+
+    const LevelMap& GetLevelMap() const { return levelMap; }
+    RoomState GetActiveRoomState() const { return (currentlyLockedRoom) ? currentlyLockedRoom->state : RoomState::IDLE; }
+    void SetActiveRoomState(RoomState s) { if(currentlyLockedRoom) currentlyLockedRoom->state = s; }
+    bool IsProceduralDungeon() const {
+        return levelMode == LevelMode::Procedural;
+    }
+    bool NeedsPlayerNudge() const { return needsNudge; }
+    Vector2 ConsumeNudge() { needsNudge = false; return nudgePosition; }
+    void GenerateDungeon(TeamManager* teamManager);
+
     void DrawLevel();
-    void UpdateLevel(float deltaTime);
+    void UpdateLevel(float deltaTime, Vector2 playerPos = {0,0});
     void ClearLevel();
     void AddEntity(GameObject* entity);
     bool IsValidSpawnLocation(const GameObject* entity) const;
@@ -78,6 +106,7 @@ public:
     std::optional<Vector2> GetNextMoveTarget(
         Enemy& enemy
     ) override;
+    Rectangle GetCurrentRoomBounds() const;
     Vector2 GetLocalDirection(
         Enemy& enemy,
         Vector2 desiredDirection

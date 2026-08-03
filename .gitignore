@@ -76,3 +76,4 @@ cmake-build-debug/
 
 #locoal AGENTS.md
 AGENTS.md
+.vscode/settings.json

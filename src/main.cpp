@@ -21,6 +21,7 @@
 #include "UI/PaladinSelectionMenu.h"
 #include "UI/SettingsMenu.h"
 #include "UI/UIManager.h"
+#include "UI/MinimapRenderer.h"
 
 #include <algorithm>
 #include <limits>
@@ -160,6 +161,23 @@ namespace {
             teamManager
         );
         waveManager->Reset(10, 0, 5);
+        AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
+        GameManager::GetInstance().SetState(GameState::GAMEPLAY);
+    }
+
+    void ResetGameModular(
+        TeamManager* teamManager,
+        LevelManager* levelManager,
+        WaveManager* waveManager
+    ) {
+        teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
+        for (auto* paladin : teamManager->GetTeam()) {
+            paladin->ResetStats();
+        }
+        GameManager::GetInstance().ClearProjectiles();
+        levelManager->GenerateDungeon(teamManager);
+        waveManager->Reset(0, 0, 0);
+        AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
         GameManager::GetInstance().SetState(GameState::GAMEPLAY);
     }
 
@@ -176,6 +194,7 @@ namespace {
             "assets/map/hub_Tile Layer 1.csv",
             teamManager
         );
+        AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
         GameManager::GetInstance().SetState(GameState::MAIN_MENU);
     }
 }
@@ -271,6 +290,7 @@ int main() {
                 teamManager
             );
             gameManager.SetLevelManager(&levelManager);
+            AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
             systemInitialized = true;
         }
 
@@ -283,15 +303,19 @@ int main() {
             bool selectionOpen =
                 state == GameState::HUB &&
                 paladinSelectionMenu.IsOpen();
-            if (!selectionOpen) {
+            bool dialogueOpen =
+                state == GameState::HUB &&
+                DialogueManager::GetInstance().IsActive();
+            bool hubModalOpen = selectionOpen || dialogueOpen;
+            if (!hubModalOpen) {
                 teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
             }
 
             bool keyboardPauseRequested =
-                !selectionOpen &&
+                !hubModalOpen &&
                 (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE));
             bool hudPauseRequested =
-                !selectionOpen &&
+                !hubModalOpen &&
                 (state == GameState::HUB ||
                  state == GameState::GAMEPLAY) &&
                 uiManager.IsPauseButtonPressed(uiMousePosition);
@@ -335,13 +359,19 @@ int main() {
                     DialogueManager::GetInstance().Update(deltaTime);
                 } else {
                     if (DialogueManager::GetInstance().IsMissionRequested()) {
+                        int missionId = DialogueManager::GetInstance().GetRequestedMissionId();
                         DialogueManager::GetInstance().ClearMissionRequest();
                         paladinSelectionMenu.Close();
-                        ResetGame(teamManager, &levelManager, &waveManager);
+
+                        if (missionId == -2) {
+                            ResetGameModular(teamManager, &levelManager, &waveManager);
+                        } else {
+                            ResetGame(teamManager, &levelManager, &waveManager);
+                        }
                         break;
                     }
 
-                    levelManager.UpdateLevel(deltaTime);
+                    levelManager.UpdateLevel(deltaTime, teamManager->GetActivePaladin()->GetPosition());
                     teamManager->Update(deltaTime);
 
                     if (IsKeyPressed(KEY_E)) {
@@ -385,7 +415,10 @@ int main() {
                 if (gameManager.GetHitstopTimer() > 0.0f) {
                     gameManager.UpdateHitstop(deltaTime);
                 } else {
-                    levelManager.UpdateLevel(deltaTime);
+                    levelManager.UpdateLevel(deltaTime, teamManager->GetActivePaladin()->GetPosition());
+                    if (levelManager.NeedsPlayerNudge()) {
+                        teamManager->GetActivePaladin()->SetPosition(levelManager.ConsumeNudge());
+                    }
                     teamManager->Update(deltaTime);
                     gameManager.UpdateProjectiles(deltaTime, teamManager);
                     waveManager.Update(deltaTime, teamManager, &levelManager);
@@ -485,8 +518,25 @@ int main() {
                     Constants::GAME_WIDTH,
                     Constants::GAME_HEIGHT
                 );
-            } else if (state == GameState::GAMEPLAY) {
+            } else if (renderState == GameState::GAMEPLAY) {
                 waveManager.DrawHUD();
+
+                if (levelManager.IsProceduralDungeon()) {
+                    int currentGridX = 3;
+                    int currentGridY = 3;
+                    auto paladin = teamManager->GetActivePaladin();
+                    if (paladin) {
+                        float tileW = Constants::TILE_SIZE * Constants::GLOBAL_SCALE;
+                        int roomOuterSize = Constants::ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
+                        currentGridX = (int)(paladin->GetPosition().x / (roomOuterSize * tileW));
+                        currentGridY = (int)(paladin->GetPosition().y / (roomOuterSize * tileW));
+                    }
+                    MinimapRenderer::Draw(
+                        levelManager.GetLevelMap(),
+                        currentGridX,
+                        currentGridY
+                    );
+                }
             } else if (renderState == GameState::HUB &&
                        !paladinSelectionMenu.IsOpen()) {
                 DrawHubInteractionPrompt(FindNearestHubInteractable(

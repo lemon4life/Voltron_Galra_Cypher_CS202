@@ -14,6 +14,18 @@ private:
     float timeBetweenWaves;
     float showWaveTextTimer;
 
+    // Dungeon room wave state
+    int dungeonTotalWaves;
+    int dungeonCurrentWave;
+    bool isBossRoom;
+
+    void UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, LevelManager* levelManager);
+    void SpawnEnemy(
+        float deltaTime,
+        TeamManager* teamManager,
+        LevelManager* levelManager
+    );
+
 public:
     WaveManager();
     void Update(float deltaTime, TeamManager* teamManager, LevelManager* levelManager);
@@ -23,4 +35,7 @@ public:
         int startingDiverEnemies = 0
     );
     void DrawHUD();
+    int GetCurrentWave() const { return currentWave; }
+    void StartRoomWaves(int totalEnemies);
+    bool IsRoomCleared() const;
 };

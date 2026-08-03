@@ -53,8 +53,16 @@ void AudioManager::Initialize() {
             ("assets/audio/UI/Button/click_" + num + ".ogg").c_str()
         ));
     }
+
+    // Load BGM Tracks
+    LoadMusic("bgm_starter_menu", "assets/audio/BGM/bgm_starter_menu.mp3");
+    LoadMusic("bgm_story_mode", "assets/audio/BGM/bgm_story_mode.mp3");
+    LoadMusic("bgm_battle", "assets/audio/BGM/bgm_battle.mp3");
+    LoadMusic("bgm_boss_theme", "assets/audio/BGM/bgm_boss_theme.mp3");
+
     currentFootstepIndex = 0;
     SetSoundEffectsVolume(soundEffectsVolume);
+    SetMusicVolumeLevel(musicVolume);
 }
 
 void AudioManager::PlayRandomLaser() {
@@ -70,7 +78,7 @@ void AudioManager::PlaySequentialFootstep() {
     float pitch = GetRandomValue(95, 105) / 100.0f;
     SetSoundPitch(footstepSounds[currentFootstepIndex], pitch);
     ::PlaySound(footstepSounds[currentFootstepIndex]);
-    
+
     currentFootstepIndex = (currentFootstepIndex + 1) % footstepSounds.size();
 }
 
@@ -110,13 +118,67 @@ void AudioManager::LoadMusic(const std::string& name, const std::string& filepat
     }
 }
 
-void AudioManager::PlayMusicTrack(const std::string& name) {
-    if (music.find(name) != music.end()) {
-        PlayMusicStream(music[name]);
+void AudioManager::PlayMusicTrack(const std::string& name, float fadeTime) {
+    if (music.find(name) == music.end()) return; // Track not found
+    if (name == currentMusicName && currentFadeState != MusicFadeState::FADING_OUT) return; // Already playing
+
+    if (currentMusicName.empty()) {
+        // No music currently playing, start immediately
+        currentMusicName = name;
+        currentTrackVolume = 1.0f;
+        currentFadeState = MusicFadeState::NONE;
+        ::SetMusicVolume(music[currentMusicName], currentTrackVolume * musicVolume);
+        ::PlayMusicStream(music[currentMusicName]);
+    } else {
+        // Fade out current track, queue next
+        nextMusicName = name;
+        fadeDuration = (fadeTime > 0.0f) ? fadeTime : 0.001f;
+        fadeTimer = fadeDuration;
+        currentFadeState = MusicFadeState::FADING_OUT;
     }
 }
 
 void AudioManager::UpdateMusicStream() {
+    float dt = GetFrameTime();
+
+    if (currentFadeState == MusicFadeState::FADING_OUT) {
+        fadeTimer -= dt;
+        if (fadeTimer <= 0.0f) {
+            // Fade out complete, switch tracks
+            if (!currentMusicName.empty()) {
+                ::StopMusicStream(music[currentMusicName]);
+            }
+            currentMusicName = nextMusicName;
+            nextMusicName = "";
+            currentTrackVolume = 0.0f;
+            currentFadeState = MusicFadeState::FADING_IN;
+            fadeTimer = fadeDuration;
+
+            if (!currentMusicName.empty()) {
+                ::SetMusicVolume(music[currentMusicName], 0.0f);
+                ::PlayMusicStream(music[currentMusicName]);
+            }
+        } else {
+            currentTrackVolume = fadeTimer / fadeDuration;
+            if (!currentMusicName.empty()) {
+                ::SetMusicVolume(music[currentMusicName], currentTrackVolume * musicVolume);
+            }
+        }
+    } else if (currentFadeState == MusicFadeState::FADING_IN) {
+        fadeTimer -= dt;
+        if (fadeTimer <= 0.0f) {
+            // Fade in complete
+            currentTrackVolume = 1.0f;
+            currentFadeState = MusicFadeState::NONE;
+        } else {
+            currentTrackVolume = 1.0f - (fadeTimer / fadeDuration);
+        }
+        if (!currentMusicName.empty()) {
+            ::SetMusicVolume(music[currentMusicName], currentTrackVolume * musicVolume);
+        }
+    }
+
+    // Always update playing streams
     for (auto& pair : music) {
         if (IsMusicStreamPlaying(pair.second)) {
             ::UpdateMusicStream(pair.second);
@@ -144,8 +206,10 @@ void AudioManager::SetSoundEffectsVolume(float volume) {
 void AudioManager::SetMusicVolumeLevel(float volume) {
     musicVolume = std::clamp(volume, 0.0f, 1.0f);
 
-    for (auto& pair : music) {
-        ::SetMusicVolume(pair.second, musicVolume);
+    // Only update the currently active track's volume according to its fade state.
+    // Inactive tracks remain at 0 volume so they don't unexpectedly play.
+    if (!currentMusicName.empty() && music.find(currentMusicName) != music.end()) {
+        ::SetMusicVolume(music[currentMusicName], currentTrackVolume * musicVolume);
     }
 }
 

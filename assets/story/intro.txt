@@ -7,7 +7,8 @@ OPTION: Let's go! | 2
 NODE: 1
 SPEAKER: Allura
 TEXT: Clear out the enemy strongholds immediately.
-OPTION: Understood. (Start Mission) | -1
+OPTION: I will check their ship (Start mission with Generated Dungeon) | -2
+OPTION: I will go check the Hall (Start mission in the old way) | -1
 
 NODE: 2
 SPEAKER: Allura

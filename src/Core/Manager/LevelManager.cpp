@@ -1,8 +1,9 @@
 #include "Core/Manager/LevelManager.h"
 #include "Core/Constants.h"
 #include "Core/Manager/GameManager.h"
+#include "Core/Manager/TeamManager.h"
+#include "Entities/Player/Paladin.h"
 #include "Core/EntityFactory.h"
-
 #include "Entities/Enemy.h"
 #include "Entities/Items/DestructibleBox.h"
 
@@ -187,6 +188,7 @@ void LevelManager::SpawnGameObjects(TeamManager* teamManager) {
 
 void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManager) {
     ClearLevel();
+    levelMode = LevelMode::Layered;
     levelWidth = 0.0f;
     levelHeight = 0.0f;
     gridRows = 0;
@@ -235,10 +237,75 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
     GameManager::GetInstance().SetLevelBounds(levelWidth, levelHeight);
 }
 
-void LevelManager::UpdateLevel(float deltaTime) {
-    ProcessPendingMapObjectDestructions();
-    ProcessPendingRemovals();
+void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
+    if (IsProceduralDungeon()) {
+        if (currentlyLockedRoom && currentlyLockedRoom->state == RoomState::CLEARED) {
+            doorColliders.clear();
+            currentlyLockedRoom = nullptr;
+        }
 
+        if (!currentlyLockedRoom) {
+            // Build a small collision rect from the player position
+            Rectangle playerBox = { playerPos.x - 8, playerPos.y - 8, 16, 16 };
+
+            if (playerBox.width > 0) {
+                for (auto& node : levelMap.generatedNodes) {
+                    bool playerInside = CheckCollisionRecs(playerBox, node->triggerBounds);
+
+                    if (playerInside) {
+                        node->isDiscovered = true;
+                    }
+
+                    if (playerInside && (node->type == RoomType::BATTLE || node->type == RoomType::BOSS) && node->state == RoomState::IDLE) {
+                        node->state = RoomState::LOCKED;
+                        currentlyLockedRoom = node;
+
+                        // Generate dynamic doors blocking exits
+                        doorColliders.clear();
+                        float tileW = TILE_SIZE * Constants::GLOBAL_SCALE;
+                        int roomOuterSize = Constants::ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
+                        int startX = node->gridX * roomOuterSize;
+                        int startY = node->gridY * roomOuterSize;
+
+                        for (int y = 0; y < Constants::ROOM_TILE_SIZE; ++y) {
+                            for (int x = 0; x < Constants::ROOM_TILE_SIZE; ++x) {
+                                if (activeRoom->layer1_objects[startY + y][startX + x] == 20) {
+                                    doorColliders.push_back({
+                                        (startX + x) * tileW,
+                                        (startY + y) * tileW,
+                                        tileW,
+                                        tileW
+                                    });
+                                }
+                            }
+                        }
+
+                        // Nudge player to room center so they don't get stuck inside a door collider
+                        float roomCenterX = (startX + Constants::ROOM_TILE_SIZE / 2.0f) * tileW;
+                        float roomCenterY = (startY + Constants::ROOM_TILE_SIZE / 2.0f) * tileW;
+                        // Move toward center, but only if currently overlapping a door
+                        Rectangle pBox = playerBox;
+                        bool overlappingDoor = false;
+                        for (const auto& door : doorColliders) {
+                            if (CheckCollisionRecs(pBox, door)) {
+                                overlappingDoor = true;
+                                break;
+                            }
+                        }
+                        if (overlappingDoor) {
+                            // Store the nudge position for the caller to apply
+                            nudgePosition = { roomCenterX, roomCenterY };
+                            needsNudge = true;
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Always update entities!
     enemyPathManager.Update(*this, deltaTime);
 
     for (auto it = levelEntities.begin(); it != levelEntities.end(); it++) {
@@ -257,10 +324,15 @@ void LevelManager::UpdateLevel(float deltaTime) {
 }
 
 void LevelManager::DrawLevel() {
-    int tilesetCols = tileset.width / TILE_SIZE_PIXELS;
-    if (tilesetCols <= 0) tilesetCols = 1; // Fallback to avoid division by zero
+    if (IsProceduralDungeon()) {
+        if (activeRoom) {
+            TilemapRenderer::DrawRoom(*activeRoom, roomOffset, tileset);
+        }
+    } else {
+        int tilesetCols = tileset.width / TILE_SIZE_PIXELS;
+        if (tilesetCols <= 0) tilesetCols = 1; // Fallback to avoid division by zero
 
-    for (int layer = 1; layer <= 2; ++layer) {
+        for (int layer = 1; layer <= 2; ++layer) {
         const auto& currentGrid = (layer == 1) ? mapGridLayer1 : mapGridLayer2;
         if (currentGrid.empty()) continue;
 
@@ -294,6 +366,7 @@ void LevelManager::DrawLevel() {
             }
         }
     }
+    }
 
     for (auto* entity : levelEntities) {
         entity->Draw();
@@ -320,6 +393,13 @@ void LevelManager::ClearLevel() {
     mapGridLayer1.clear();
     mapGridLayer2.clear();
     mapObjectGrid.clear();
+    activeRoom = nullptr;
+    currentRoomWalls.clear();
+    doorColliders.clear();
+    currentlyLockedRoom = nullptr;
+    roomOffset = {0.0f, 0.0f};
+    nudgePosition = {0.0f, 0.0f};
+    needsNudge = false;
 }
 
 void LevelManager::AddEntity(GameObject* entity) {
@@ -329,6 +409,20 @@ void LevelManager::AddEntity(GameObject* entity) {
 }
 
 bool LevelManager::IsSolidCollision(Rectangle box) const {
+    if (IsProceduralDungeon()) {
+        for (const auto& wallRect : currentRoomWalls) {
+            if (CheckCollisionRecs(box, wallRect)) {
+                return true;
+            }
+        }
+        for (const auto& doorRect : doorColliders) {
+            if (CheckCollisionRecs(box, doorRect)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Find min and max tile indices that overlap with the box
     // Box might have negative coords if outside, so use floor
     int minCol = (int)std::floor((box.x + COLLISION_EDGE_PADDING) / TILE_SIZE);
@@ -533,6 +627,22 @@ Rectangle LevelManager::GetLevelBounds() const {
     return { 0.0f, 0.0f, levelWidth, levelHeight };
 }
 
+Rectangle LevelManager::GetCurrentRoomBounds() const {
+    if (IsProceduralDungeon() &&
+        currentlyLockedRoom &&
+        currentlyLockedRoom->state == RoomState::LOCKED) {
+        float tileW = TILE_SIZE * Constants::GLOBAL_SCALE;
+        int roomOuterSize = Constants::ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
+        float startX = currentlyLockedRoom->gridX * roomOuterSize * tileW;
+        float startY = currentlyLockedRoom->gridY * roomOuterSize * tileW;
+        float roomW = Constants::ROOM_TILE_SIZE * tileW;
+        float roomH = Constants::ROOM_TILE_SIZE * tileW;
+
+        return { startX + tileW, startY + tileW, roomW - 2 * tileW, roomH - 2 * tileW };
+    }
+    return { 0.0f, 0.0f, levelWidth, levelHeight };
+}
+
 std::optional<Vector2> LevelManager::GetNextMoveTarget(
     Enemy& enemy
 ) {
@@ -598,5 +708,34 @@ void LevelManager::QueueMapObjectDestruction(
     );
     if (duplicate == pendingMapObjectDestructions.end()) {
         pendingMapObjectDestructions.push_back({ &object, cell });
+    }
+}
+
+void LevelManager::GenerateDungeon(TeamManager* teamManager) {
+    ClearLevel();
+    levelMode = LevelMode::Procedural;
+    currentlyLockedRoom = nullptr;
+
+    levelMap.Generate(7, 7);
+    activeRoom = levelMap.BakeLevel();
+    roomOffset = {0.0f, 0.0f};
+
+    currentRoomWalls = activeRoom->GenerateWallColliders(roomOffset, TILE_SIZE, Constants::GLOBAL_SCALE);
+
+    levelWidth = activeRoom->width * TILE_SIZE * Constants::GLOBAL_SCALE;
+    levelHeight = activeRoom->height * TILE_SIZE * Constants::GLOBAL_SCALE;
+    GameManager::GetInstance().SetLevelBounds(levelWidth, levelHeight);
+
+    // Teleport player to spawn room center
+    if (levelMap.spawnRoom) {
+        float tileW = TILE_SIZE * Constants::GLOBAL_SCALE;
+        int roomOuterSize = Constants::ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
+        float spawnWorldX = (levelMap.spawnRoom->gridX * roomOuterSize + Constants::ROOM_TILE_SIZE / 2.0f) * tileW;
+        float spawnWorldY = (levelMap.spawnRoom->gridY * roomOuterSize + Constants::ROOM_TILE_SIZE / 2.0f) * tileW;
+        teamManager->GetActivePaladin()->SetPosition({spawnWorldX, spawnWorldY});
+
+        // Auto-discover spawn room and mark it cleared (no combat in spawn)
+        levelMap.spawnRoom->isDiscovered = true;
+        levelMap.spawnRoom->state = RoomState::CLEARED;
     }
 }

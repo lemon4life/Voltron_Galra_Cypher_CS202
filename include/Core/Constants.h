@@ -14,6 +14,12 @@ namespace Constants {
     constexpr bool DEBUG_DRAW_ENEMY_PATHS = true;
 
     // Scale & Transformation Constants
-    constexpr float GLOBAL_SCALE = 1.5f; 
+    constexpr float GLOBAL_SCALE = 1.5f;
     constexpr Vector2 KNIGHT_PROJECTILE_OFFSET = { 27.0f, 4.0f };
+
+    // Dungeon Generation Constants
+    constexpr int ROOM_TILE_SIZE = 15;
+    constexpr int CORRIDOR_LENGTH = 5;
+    constexpr int CORRIDOR_WIDTH = 3;
+    constexpr float TILE_SIZE = 32.0f;
 }

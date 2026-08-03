@@ -27,7 +27,7 @@ void DialogueManager::InitializeAssets() {
     portraits["Shiro"] = LoadTexture("assets/img/Shiro.PNG");
     portraits["Allura"] = LoadTexture("assets/img/Allura.PNG");
     portraits["Pidge"] = LoadTexture("assets/img/Pidge.PNG");
-    
+
     for (auto& pair : portraits) {
         SetTextureFilter(pair.second, TEXTURE_FILTER_BILINEAR); // High HD filtering
     }
@@ -66,16 +66,16 @@ void DialogueManager::LoadDialogueTree(const std::string& filepath) {
         } else if (line.rfind("OPTION:", 0) == 0) {
             std::string optData = line.substr(7);
             while (!optData.empty() && optData[0] == ' ') optData = optData.substr(1);
-            
+
             size_t delim = optData.find('|');
             if (delim != std::string::npos) {
                 std::string optText = optData.substr(0, delim);
                 while (!optText.empty() && optText.back() == ' ') optText.pop_back();
-                
+
                 std::string optIdxStr = optData.substr(delim + 1);
                 while (!optIdxStr.empty() && optIdxStr[0] == ' ') optIdxStr = optIdxStr.substr(1);
                 while (!optIdxStr.empty() && (optIdxStr.back() == ' ' || optIdxStr.back() == '\r')) optIdxStr.pop_back();
-                
+
                 tempNode.options.push_back(optText);
                 tempNode.nextNodeIndices.push_back(std::stoi(optIdxStr));
             }
@@ -136,10 +136,11 @@ void DialogueManager::Update(float deltaTime) {
                 // End dialogue if no options
                 int next = -1;
                 if (!node.nextNodeIndices.empty()) next = node.nextNodeIndices[0];
-                
-                if (next == -1) {
+
+                if (next < 0) { // e.g., -1 or -2
                     isDialogueActive = false;
                     missionRequested = true;
+                    requestedMissionId = next;
                 } else {
                     currentNode = next;
                     selectedOption = 0;
@@ -148,7 +149,7 @@ void DialogueManager::Update(float deltaTime) {
                 }
             } else {
                 int next = node.nextNodeIndices[selectedOption];
-                
+
                 // Determine player name dynamically
                 std::string playerName = "Lance";
                 for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
@@ -160,16 +161,16 @@ void DialogueManager::Update(float deltaTime) {
                         break;
                     }
                 }
-                
+
                 // Inject the player's response as a new temporary node
                 DialogueNode tempNode;
                 tempNode.speakerName = playerName;
                 tempNode.text = node.options[selectedOption];
                 tempNode.nextNodeIndices.push_back(next);
-                
+
                 int tempIdx = currentTree.size();
                 currentTree.push_back(tempNode);
-                
+
                 currentNode = tempIdx;
                 selectedOption = 0;
                 visibleCharCount = 0;
@@ -194,23 +195,23 @@ void DialogueManager::Draw(int screenWidth, int screenHeight) {
     // Render portrait
     if (portraits.find(node.speakerName) != portraits.end()) {
         Texture2D port = portraits[node.speakerName];
-        
+
         float targetHeight = PORTRAIT_HEIGHT;
         float scale = targetHeight / (float)port.height;
         float scaledWidth = (float)port.width * scale;
-        
+
         bool isLeft = (node.speakerName == "Lance" || node.speakerName == "Keith");
-        
+
         float portX = isLeft
             ? MARGIN
             : logicalWidth - scaledWidth - MARGIN;
         float portY =
             logicalHeight - PORTRAIT_BOTTOM_OFFSET - targetHeight;
-        
+
         Rectangle source = { 0, 0, (float)port.width, (float)port.height };
-        
+
         Rectangle dest = { portX, portY, scaledWidth, targetHeight };
-        
+
         DrawTexturePro(port, source, dest, {0,0}, 0.0f, WHITE);
     }
 
