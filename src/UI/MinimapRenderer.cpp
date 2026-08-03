@@ -1,5 +1,6 @@
 #include "UI/MinimapRenderer.h"
 #include "Core/Constants.h"
+#include <cmath>
 
 void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int currentGridY) {
     if (levelMap.grid.empty() || levelMap.generatedNodes.empty()) return;
