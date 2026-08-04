@@ -543,6 +543,14 @@ bool LevelManager::HasClearLineOfSight(
 
 bool LevelManager::IsValidSpawnLocation(const GameObject* entity) const {
     if (!entity) return false;
+
+    if (entity->GetObjectType() == GameObjectType::Enemy) {
+        const Enemy* enemy = static_cast<const Enemy*>(entity);
+        return !IsSolidCollision(enemy->GetNavigationFootprintAt(
+            enemy->GetPosition()
+        ));
+    }
+
     return !IsSolidCollision(entity->GetBoundingBox());
 }
 

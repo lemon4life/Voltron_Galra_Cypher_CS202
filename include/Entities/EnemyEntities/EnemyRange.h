@@ -32,6 +32,11 @@ public:
     float GetProjectileSpeed() const;
     float GetProjectileLifetime() const;
     float GetProjectileRadius() const;
+    float GetPreferredPathGoalDistance() const override;
+    bool IsValidPathGoalPosition(
+        Vector2 candidatePosition,
+        const Paladin& target
+    ) const override;
     const ILevelLineOfSightQuery& GetLineOfSightQuery() const { return lineOfSightQuery; }
 
 };

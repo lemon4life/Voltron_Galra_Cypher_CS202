@@ -8,6 +8,7 @@
 
 #include <deque>
 #include <memory>
+#include <utility>
 #include <vector>
 
 
@@ -21,6 +22,7 @@ struct EnemySprites {
 };
 
 class TeamManager;
+class Paladin;
 
 
 enum class EnemyType {
@@ -42,11 +44,14 @@ struct EnemyPathGoal {
     float clearanceRadius = 0.0f;
 };
 
-enum class EnemyPathStatus {
-    Pending,
-    Ready,
-    AtGoal,
-    Unreachable
+struct EnemyCollisionProfile {
+    Vector2 navigationSize = { 16.0f, 8.0f };
+    Vector2 navigationCenterOffset = { 0.0f, 8.0f };
+};
+
+struct EnemyPathDebugPoint {
+    Vector2 position;
+    bool valid;
 };
 
 class Enemy : public GameObject {
@@ -59,6 +64,7 @@ protected:
     const float baseAttackCooldown;
     float dazeDuration;
     Vector2 size;
+    EnemyCollisionProfile collisionProfile;
     Vector2 knockbackVelocity;
     Vector2 currentVelocity = {0.0f, 0.0f};
 
@@ -88,10 +94,17 @@ protected:
     IEntityRemovalAccess& removalAccess;
     IEnemyPathAccess& pathAccess;
 
+    void SetCollisionProfile(EnemyCollisionProfile profile) {
+        collisionProfile = profile;
+    }
+
 private:
     bool usePathFinding = false;
     std::deque<Vector2> targetPositions;
     EnemyPathStatus pathStatus = EnemyPathStatus::Pending;
+    std::vector<EnemyPathDebugPoint> pathDebugPoints;
+    Vector2 selectedPathGoal = { 0.0f, 0.0f };
+    bool hasSelectedPathGoal = false;
 
 public:
     Enemy(
@@ -132,6 +145,13 @@ public:
 
     Rectangle GetBoundingBox() const override;
     Rectangle GetCollisionBox() const override;
+    Rectangle GetNavigationFootprintAt(Vector2 entityPosition) const;
+    Rectangle GetContactAttackBoxAt(Vector2 entityPosition) const;
+    virtual float GetPreferredPathGoalDistance() const { return 0.0f; }
+    virtual bool IsValidPathGoalPosition(
+        Vector2 candidatePosition,
+        const Paladin& target
+    ) const;
 
     void SetEnemySprites(EnemySprites s) { sprites = s; }
     WeaponKinematics& GetKinematics() { return kinematics; }
@@ -177,8 +197,16 @@ public:
         return targetPositions;
     }
     bool HasTargetPosition() const { return !targetPositions.empty(); }
-    EnemyPathStatus GetPathStatus() const { return pathStatus; }
     void SetPathStatus(EnemyPathStatus status) { pathStatus = status; }
+    EnemyPathStatus GetPathStatus() const { return pathStatus; }
+    void SetPathDebugPoints(std::vector<EnemyPathDebugPoint> points) {
+        pathDebugPoints = std::move(points);
+    }
+    void SetSelectedPathGoal(Vector2 goal) {
+        selectedPathGoal = goal;
+        hasSelectedPathGoal = true;
+    }
+    void ClearSelectedPathGoal() { hasSelectedPathGoal = false; }
 
     TeamManager* GetTargetTeam() const { return targetTeam; }
 };

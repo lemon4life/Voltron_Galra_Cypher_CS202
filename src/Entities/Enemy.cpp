@@ -3,6 +3,7 @@
 #include "Core/Constants.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/AudioManager.h"
+#include "Entities/Player/Paladin.h"
 #include "raymath.h"
 
 namespace {
@@ -112,31 +113,59 @@ Rectangle Enemy::GetBoundingBox() const {
 }
 
 Rectangle Enemy::GetCollisionBox() const {
-    return { position.x - size.x/2.f, position.y + size.y * 0.2f, size.x, size.y * 0.3f };
+    return GetNavigationFootprintAt(position);
 }
 
-bool Enemy::CheckCollision(const std::vector<GameObject*>& entities) const {
-    return EnemyCollision::CheckAnyEnemyCollision(*this, entities);
+Rectangle Enemy::GetNavigationFootprintAt(Vector2 entityPosition) const {
+    return {
+        entityPosition.x + collisionProfile.navigationCenterOffset.x -
+            collisionProfile.navigationSize.x / 2.0f,
+        entityPosition.y + collisionProfile.navigationCenterOffset.y -
+            collisionProfile.navigationSize.y / 2.0f,
+        collisionProfile.navigationSize.x,
+        collisionProfile.navigationSize.y
+    };
 }
 
-void Enemy::StartPathFinding() {
-    if (usePathFinding) return;
-
-    usePathFinding = true;
-    pathStatus = EnemyPathStatus::Pending;
-    pathAccess.BeginPathFinding(*this);
+Rectangle Enemy::GetContactAttackBoxAt(Vector2 entityPosition) const {
+    return {
+        entityPosition.x - size.x / 2.0f,
+        entityPosition.y - size.y / 2.0f,
+        size.x,
+        size.y
+    };
 }
 
-void Enemy::EndPathFinding() {
-    if (!usePathFinding) return;
-
-    pathAccess.EndPathFinding(*this);
-    usePathFinding = false;
-    ClearTargetPosition();
-    pathStatus = EnemyPathStatus::Pending;
+bool Enemy::IsValidPathGoalPosition(
+    Vector2 candidatePosition,
+    const Paladin& target
+) const {
+    return CheckCollisionRecs(
+        GetContactAttackBoxAt(candidatePosition),
+        target.GetCollisionBox()
+    );
 }
 
 void Enemy::DrawPathDebug() const {
+    if (Constants::DEBUG_DRAW_ENEMY_COLLISION_BOXES) {
+        DrawRectangleLinesEx(GetBoundingBox(), 1.0f, RED);
+        DrawRectangleLinesEx(GetCollisionBox(), 1.0f, SKYBLUE);
+        DrawRectangleLinesEx(GetContactAttackBoxAt(position), 1.0f, YELLOW);
+
+        for (const EnemyPathDebugPoint& point : pathDebugPoints) {
+            DrawCircleV(point.position, 2.5f, point.valid ? GREEN : RED);
+        }
+
+        if (hasSelectedPathGoal) {
+            DrawCircleLines(
+                (int)selectedPathGoal.x,
+                (int)selectedPathGoal.y,
+                5.0f,
+                LIME
+            );
+        }
+    }
+
     if (!Constants::DEBUG_DRAW_ENEMY_PATHS ||
         !usePathFinding ||
         health <= 0) {
@@ -194,6 +223,27 @@ void Enemy::DrawPathDebug() const {
             DEBUG_CURRENT_TARGET_COLOR
         );
     }
+}
+
+bool Enemy::CheckCollision(const std::vector<GameObject*>& entities) const {
+    return EnemyCollision::CheckAnyEnemyCollision(*this, entities);
+}
+
+void Enemy::StartPathFinding() {
+    if (usePathFinding) return;
+
+    usePathFinding = true;
+    pathStatus = EnemyPathStatus::Pending;
+    pathAccess.BeginPathFinding(*this);
+}
+
+void Enemy::EndPathFinding() {
+    if (!usePathFinding) return;
+
+    pathAccess.EndPathFinding(*this);
+    usePathFinding = false;
+    ClearTargetPosition();
+    pathStatus = EnemyPathStatus::Pending;
 }
 
 void Enemy::ApplyKnockback(Vector2 dir, float force) {

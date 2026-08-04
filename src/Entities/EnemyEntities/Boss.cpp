@@ -11,6 +11,10 @@ namespace {
     constexpr float BOSS_OFF_SIGHT_DISTANCE = 1200.0f;
     constexpr float BOSS_PATH_APPROACH_DISTANCE = 32.0f;
     constexpr Vector2 BOSS_SIZE = Vector2{64.f,72.f};
+    constexpr EnemyCollisionProfile BOSS_COLLISION_PROFILE = {
+        { 32.0f, 14.0f },
+        { 0.0f, 24.0f }
+    };
 }
 
 Boss::Boss(
@@ -36,6 +40,7 @@ Boss::Boss(
 
     enemyType = EnemyType::BOSS;
     size = BOSS_SIZE;
+    SetCollisionProfile(BOSS_COLLISION_PROFILE);
 
     idleState = std::make_unique<EnemyIdleState>(BOSS_SIGHT_DISTANCE);
     chaseState = std::make_unique<BossChaseState>();
@@ -65,6 +70,7 @@ void Boss::Draw() {
     // Draw Health Bar
     float hpPercent = (float)health / maxHealth;
     DrawRectangle(position.x - size.x/2.f, position.y - size.y/2.f, size.x * hpPercent, 4, RED);
+    DrawPathDebug();
 }
 
 EnemyPathGoal Boss::GetPathGoal() const {
