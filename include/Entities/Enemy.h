@@ -49,7 +49,7 @@ protected:
     float speed;
     int damage;
     float attackCooldown;
-    const float baseAttackCooldown;
+    float baseAttackCooldown;
     float dazeDuration;
     Vector2 size;
     EnemyCollisionProfile collisionProfile;
@@ -81,10 +81,6 @@ protected:
     bool deathNotified = false;
     IEntityRemovalAccess& removalAccess;
     IEnemyPathAccess& pathAccess;
-
-    void SetCollisionProfile(EnemyCollisionProfile profile) {
-        collisionProfile = profile;
-    }
 
 private:
     bool usePathFinding = false;
@@ -141,18 +137,30 @@ public:
     EnemySprites GetSprites() const { return sprites; }
 
     int GetHealth() const { return health; }
-    void SetMaxHealth(int h) { maxHealth = h; health = h; }
+    void SetHealth(int h);
+    void SetMaxHealth(int h);
     int GetMaxHealth() const { return maxHealth; }
     float GetSpeed() const { return speed; }
     void SetSpeed(float s) { speed = s; }
     int GetDamage() const { return damage; }
+    void SetDamage(int value) { damage = value; }
     float GetAttackCooldown() const { return attackCooldown; }
     void SetAttackCooldown(float cd) { attackCooldown = cd; }
+    float GetBaseAttackCooldown() const { return baseAttackCooldown; }
+    void SetBaseAttackCooldown(float cd) { baseAttackCooldown = cd; }
     void ResetAttackCooldown();
     float GetDazeDuration() const { return dazeDuration; }
     void SetDazeDuration(float duration) { dazeDuration = duration; }
     float GetDazeTimeRemaining() const {
         return dazeState ? dazeState->GetRemainingTime() : 0.0f;
+    }
+    Vector2 GetSize() const { return size; }
+    void SetSize(Vector2 value) { size = value; }
+    EnemyCollisionProfile GetCollisionProfile() const {
+        return collisionProfile;
+    }
+    void SetCollisionProfile(EnemyCollisionProfile profile) {
+        collisionProfile = profile;
     }
 
     IEnemyPathAccess& GetPathAccess() const { return pathAccess; }

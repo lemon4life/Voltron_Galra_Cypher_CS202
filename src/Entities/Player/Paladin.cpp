@@ -89,7 +89,7 @@ void Paladin::ChangeState(IPlayerState* newState) {
 }
 
 void Paladin::TakeDamage(int amount) {
-    if (isInvincible) return; // Ignore damage if invincible
+    if (isInvincible || Constants::DEBUG_PLAYER_IMMUNITY) return;
     
     exEnergy = 0.0f; // Clear EX on damage
     

@@ -5,6 +5,8 @@
 #include "Core/Manager/AudioManager.h"
 #include "raymath.h"
 
+#include <algorithm>
+
 namespace {
     constexpr float DEBUG_PATH_THICKNESS = 2.0f;
     constexpr float DEBUG_WAYPOINT_RADIUS = 4.0f;
@@ -92,6 +94,15 @@ void Enemy::ChangeState(IEnemyState* newState) {
 
 void Enemy::ResetAttackCooldown() {
     attackCooldown = baseAttackCooldown;
+}
+
+void Enemy::SetHealth(int value) {
+    health = std::clamp(value, 0, maxHealth);
+}
+
+void Enemy::SetMaxHealth(int value) {
+    maxHealth = std::max(1, value);
+    health = std::min(health, maxHealth);
 }
 
 void Enemy::TakeDamage(int amount) {
