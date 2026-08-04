@@ -4,6 +4,7 @@
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/AssetManager.h"
+#include "Core/Constants.h"
 
 #include <cmath>
 #include <iostream>
@@ -34,7 +35,10 @@ Paladin::Paladin(Vector2 pos, CharacterSprites sprites, int maxHp, float maxEx)
       knockbackVelocity{0.0f, 0.0f}, // Initialize pointing right
       footstepTimer(0.0f),
       renderOffsetY(0.0f),
-      swapParryWindowTimer(0.0f), autoParryDurationTimer(0.0f), isAutoParry(false)
+      swapParryWindowTimer(0.0f), autoParryDurationTimer(0.0f), isAutoParry(false),
+      lockedEnemy(nullptr),
+      currentAimAngle(0.0f),
+      targetAimAngle(0.0f)
 {
     currentState = &idleState;
     currentState->Enter(this);
@@ -111,21 +115,48 @@ void Paladin::Update(float deltaTime) {
         ghostHp = health; // Instant catch up on heal
     }
 
-    Vector2 dir = Vector2Subtract(aimTarget, position);
-    float distance = Vector2Length(dir);
-    if (distance > 0.0f) {
-        dir = Vector2Normalize(dir);
+    if (!Constants::isAutoAimEnabled) {
+        Vector2 aimDir = Vector2Subtract(aimTarget, position);
+        if (Vector2Length(aimDir) > 0.1f) {
+            targetAimAngle = atan2f(aimDir.y, aimDir.x);
+        }
     } else {
-        dir = {1.0f, 0.0f};
+        if (lockedEnemy) {
+            Vector2 aimDir = Vector2Subtract(lockedEnemy->GetPosition(), position);
+            targetAimAngle = atan2f(aimDir.y, aimDir.x);
+        } else {
+            Vector2 moveDir = { 0.0f, 0.0f };
+            if (IsKeyDown(KEY_D)) moveDir.x += 1.0f;
+            if (IsKeyDown(KEY_A)) moveDir.x -= 1.0f;
+            if (IsKeyDown(KEY_W)) moveDir.y -= 1.0f;
+            if (IsKeyDown(KEY_S)) moveDir.y += 1.0f;
+            
+            if (Vector2Length(moveDir) > 0.1f) {
+                targetAimAngle = atan2f(moveDir.y, moveDir.x);
+            }
+        }
     }
-    float angle = atan2f(dir.y, dir.x) * (180.0f / PI);
+
+    // Smooth shortest-path angular interpolation
+    float diff = targetAimAngle - currentAimAngle;
+    while (diff > PI) diff -= 2.0f * PI;
+    while (diff < -PI) diff += 2.0f * PI;
+    
+    float lerpSpeed = 15.0f;
+    currentAimAngle += diff * lerpSpeed * deltaTime;
+    
+    while (currentAimAngle > PI) currentAimAngle -= 2.0f * PI;
+    while (currentAimAngle < -PI) currentAimAngle += 2.0f * PI;
+
+    Vector2 dir = { cosf(currentAimAngle), sinf(currentAimAngle) };
+    float angle = currentAimAngle * (180.0f / PI);
     
     if (!isParrying) {
         if (GameManager::GetInstance().GetState() == GameState::HUB || GameManager::GetInstance().GetState() == GameState::MAIN_MENU) {
             if (lastMoveDir.x < 0.0f) facingLeft = true;
             else if (lastMoveDir.x > 0.0f) facingLeft = false;
         } else {
-            facingLeft = (aimTarget.x < position.x);
+            facingLeft = (cosf(currentAimAngle) < 0.0f);
         }
     }
 
@@ -157,24 +188,28 @@ void Paladin::Update(float deltaTime) {
         float levelWidth = GameManager::GetInstance().GetLevelWidth();
         float levelHeight = GameManager::GetInstance().GetLevelHeight();
         
+        Vector2 prevPos = currentPos;
+
         // X Movement
         currentPos.x += knockbackVelocity.x * deltaTime;
         if (currentPos.x < 0.0f) currentPos.x = 0.0f;
         if (currentPos.x > levelWidth) currentPos.x = levelWidth;
         SetPosition(currentPos);
         if (levelManager && levelManager->IsSolidCollision(GetCollisionBox())) {
-            currentPos.x -= knockbackVelocity.x * deltaTime;
+            currentPos.x = prevPos.x;
             SetPosition(currentPos);
             knockbackVelocity.x = 0.0f;
         }
-        
+
+        prevPos = GetPosition();
+
         // Y Movement
         currentPos.y += knockbackVelocity.y * deltaTime;
         if (currentPos.y < 0.0f) currentPos.y = 0.0f;
         if (currentPos.y > levelHeight) currentPos.y = levelHeight;
         SetPosition(currentPos);
         if (levelManager && levelManager->IsSolidCollision(GetCollisionBox())) {
-            currentPos.y -= knockbackVelocity.y * deltaTime;
+            currentPos.y = prevPos.y;
             SetPosition(currentPos);
             knockbackVelocity.y = 0.0f;
         }

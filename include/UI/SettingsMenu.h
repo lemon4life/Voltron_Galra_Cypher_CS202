@@ -8,6 +8,7 @@ private:
     Rectangle containerBounds;
     GUISlider soundEffectsSlider;
     GUISlider musicSlider;
+    Rectangle autoAimToggleBounds;
     GUIButton backButton;
 
 public:

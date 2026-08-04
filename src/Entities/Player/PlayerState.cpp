@@ -97,6 +97,7 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
 
     // Update position with axis-separated collision logic
     Vector2 currentPos = player->GetPosition();
+    Vector2 prevPos = currentPos;
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
     float speed = player->GetSpeed();
     
@@ -114,13 +115,13 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
         if (currentPos.x > bounds.x + bounds.width) currentPos.x = bounds.x + bounds.width;
     }
     
-
-    
     player->SetPosition(currentPos);
     if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
-        currentPos.x -= moveDir.x * speed * deltaTime;
+        currentPos.x = prevPos.x;
         player->SetPosition(currentPos);
     }
+
+    prevPos = player->GetPosition(); // update prevPos for Y check
 
     // Check Y axis
     currentPos.y += moveDir.y * speed * deltaTime;
@@ -132,7 +133,7 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
 
     player->SetPosition(currentPos);
     if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
-        currentPos.y -= moveDir.y * speed * deltaTime;
+        currentPos.y = prevPos.y;
         player->SetPosition(currentPos);
     }
 
