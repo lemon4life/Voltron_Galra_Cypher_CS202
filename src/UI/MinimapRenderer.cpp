@@ -20,9 +20,19 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
     // Center the minimap view on the player's current room
     Vector2 centerMap = { anchor.x + minimapSize / 2.0f, anchor.y + minimapSize / 2.0f };
     
+    auto checkRevealed = [](const std::shared_ptr<RoomNode>& n) {
+        if (!n) return false;
+        if (n->isDiscovered) return true;
+        if (n->north && n->north->isDiscovered) return true;
+        if (n->south && n->south->isDiscovered) return true;
+        if (n->east && n->east->isDiscovered) return true;
+        if (n->west && n->west->isDiscovered) return true;
+        return false;
+    };
+    
     // --- PASS 1: Draw corridors (connections) behind rooms ---
     for (const auto& node : levelMap.generatedNodes) {
-        if (!node->isDiscovered) continue;
+        if (!checkRevealed(node)) continue;
         
         int dx = node->gridX - currentGridX;
         int dy = node->gridY - currentGridY;
@@ -31,7 +41,7 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
         float nodeDrawY = centerMap.y + dy * spacing;
         
         // Draw corridor to the EAST neighbor
-        if (node->east && node->east->isDiscovered) {
+        if (node->east && checkRevealed(node->east)) {
             float neighborDrawX = centerMap.x + (node->east->gridX - currentGridX) * spacing;
             float neighborDrawY = centerMap.y + (node->east->gridY - currentGridY) * spacing;
             
@@ -48,7 +58,7 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
         }
         
         // Draw corridor to the SOUTH neighbor
-        if (node->south && node->south->isDiscovered) {
+        if (node->south && checkRevealed(node->south)) {
             float neighborDrawX = centerMap.x + (node->south->gridX - currentGridX) * spacing;
             float neighborDrawY = centerMap.y + (node->south->gridY - currentGridY) * spacing;
             
@@ -66,7 +76,7 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
     
     // --- PASS 2: Draw room squares on top ---
     for (const auto& node : levelMap.generatedNodes) {
-        if (!node->isDiscovered) continue;
+        if (!checkRevealed(node)) continue;
         
         int dx = node->gridX - currentGridX;
         int dy = node->gridY - currentGridY;
@@ -88,6 +98,9 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
         if (isCurrent) {
             roomColor = WHITE;
             borderColor = WHITE;
+        } else if (!node->isDiscovered) {
+            roomColor = Fade(DARKGRAY, 0.9f);
+            borderColor = DARKGRAY;
         } else if (node->state == RoomState::CLEARED) {
             roomColor = Fade(GRAY, 0.6f);
             borderColor = GRAY;
@@ -112,6 +125,10 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
         } else if (node->type == RoomType::CHEST) {
             // Gold inner square for chest
             DrawRectangle(drawX + iconPad, drawY + iconPad, iconSize, iconSize, GOLD);
+        } else if (node->type == RoomType::BATTLE) {
+            // Yellow ! for battle
+            DrawRectangle(drawX + roomSize/2.0f - 1.0f, drawY + iconPad, 2.0f, iconSize - 3.0f, YELLOW);
+            DrawRectangle(drawX + roomSize/2.0f - 1.0f, drawY + roomSize - iconPad - 1.0f, 2.0f, 2.0f, YELLOW);
         }
         
         // Pulsing indicator on the current room

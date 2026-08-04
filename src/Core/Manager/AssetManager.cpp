@@ -45,10 +45,10 @@ void AssetManager::QueueCharacterAssets() {
     };
 
     // Lance
-    add("Lance_Idle", "assets/sprites/Lance/Idle_Sheet.png");
-    add("Lance_Run", "assets/sprites/Lance/Run_Sheet.png");
-    add("Lance_DashFront", "assets/sprites/Lance/Dash_front.png");
-    add("Lance_DashBack", "assets/sprites/Lance/Dash_back.png");
+    add("Lance_Idle", "assets/sprites/Lance/Idle_Sheet.png", true);
+    add("Lance_Run", "assets/sprites/Lance/Run_Sheet.png", true);
+    add("Lance_DashFront", "assets/sprites/Lance/Dash_front.png", true);
+    add("Lance_DashBack", "assets/sprites/Lance/Dash_back.png", true);
     add("Lance_Weapon", "assets/sprites/Lance/Weapon_Static.png", true);
     add("Lance_Muzzle", "assets/sprites/Lance/Muzzle_Flash.png", true);
     add("Lance_Bullet", "assets/sprites/Lance/Bullet.png", true);
@@ -56,24 +56,24 @@ void AssetManager::QueueCharacterAssets() {
     add("Lance_Parry", "assets/sprites/Lance/Parry.png", true);
 
     // Keith
-    add("Keith_Idle", "assets/sprites/Keith/Idle_Sheet.png");
-    add("Keith_Run", "assets/sprites/Keith/Run_Sheet.png");
+    add("Keith_Idle", "assets/sprites/Keith/Idle_Sheet.png", true);
+    add("Keith_Run", "assets/sprites/Keith/Run_Sheet.png", true);
     add("Keith_Weapon", "assets/sprites/Keith/Weapon_Static.png", true);
     add("Keith_Attack1", "assets/sprites/Keith/Attack_1.png", true);
     add("Keith_Attack2", "assets/sprites/Keith/Attack_2.png", true);
-    add("Keith_DashFront", "assets/sprites/Keith/Dash_front.png");
-    add("Keith_DashBack", "assets/sprites/Keith/Dash_back.png");
+    add("Keith_DashFront", "assets/sprites/Keith/Dash_front.png", true);
+    add("Keith_DashBack", "assets/sprites/Keith/Dash_back.png", true);
     add("Keith_Parry", "assets/sprites/Keith/Parry.png", true);
 
     // Hunk
-    add("Hunk_Idle", "assets/sprites/Hunk/Idle_Sheet.png");
-    add("Hunk_Run", "assets/sprites/Hunk/Run_Sheet.png");
+    add("Hunk_Idle", "assets/sprites/Hunk/Idle_Sheet.png", true);
+    add("Hunk_Run", "assets/sprites/Hunk/Run_Sheet.png", true);
     add("Hunk_Weapon", "assets/sprites/Hunk/Weapon_Static.png", true);
     add("Hunk_Muzzle", "assets/sprites/Hunk/Muzzle.png", true);
     add("Hunk_Bullet", "assets/sprites/Hunk/Beam.png", true);
     add("Hunk_Impact", "assets/sprites/Hunk/Beam_Impact.png", true);
-    add("Hunk_DashFront", "assets/sprites/Hunk/Dash_front.png");
-    add("Hunk_DashBack", "assets/sprites/Hunk/Dash_back.png");
+    add("Hunk_DashFront", "assets/sprites/Hunk/Dash_front.png", true);
+    add("Hunk_DashBack", "assets/sprites/Hunk/Dash_back.png", true);
     add("Hunk_Parry", "assets/sprites/Hunk/Parry.png", true);
     
     // Down Sprites
@@ -83,7 +83,7 @@ void AssetManager::QueueCharacterAssets() {
 
     // UI and Effects
     add("Player_Circle", "assets/UI/Player_Circle.png");
-    add("box", "assets/sprites/Objects/box.png", true);
+    add("box", "assets/Objects/box.png", true);
     add("Run_Dust", "assets/UI/Run_Dust.png");
 
     add("Knight_Idle", "assets/sprites/Enemy/Knight.png", true);

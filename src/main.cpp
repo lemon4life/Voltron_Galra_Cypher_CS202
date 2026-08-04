@@ -55,7 +55,7 @@ namespace {
         LevelManager* levelManager,
         WaveManager* waveManager
     ) {
-        teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
+        teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
         for (auto* paladin : teamManager->GetTeam()) {
             paladin->ResetStats();
         }
@@ -73,7 +73,7 @@ namespace {
         LevelManager* levelManager,
         WaveManager* waveManager
     ) {
-        teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
+        teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
         for (auto* paladin : teamManager->GetTeam()) {
             paladin->ResetStats();
         }
@@ -89,7 +89,7 @@ namespace {
         LevelManager* levelManager,
         WaveManager* waveManager
     ) {
-        teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
+        teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
         for (auto* paladin : teamManager->GetTeam()) {
             paladin->ResetStats();
         }
@@ -108,10 +108,24 @@ namespace {
         for (auto* paladin : teamManager->GetTeam()) {
             paladin->ResetStats();
         }
-        teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
+        teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
         levelManager->LoadLevel("assets/levels/hub.txt", teamManager);
         AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
         GameManager::GetInstance().SetState(GameState::MAIN_MENU);
+    }
+
+    void ReturnToHub(
+        TeamManager* teamManager,
+        LevelManager* levelManager
+    ) {
+        GameManager::GetInstance().ClearProjectiles();
+        for (auto* paladin : teamManager->GetTeam()) {
+            paladin->ResetStats();
+        }
+        teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
+        levelManager->LoadLevel("assets/levels/hub.txt", teamManager);
+        AudioManager::GetInstance().PlayMusicTrack("bgm_story_mode", 1.0f);
+        GameManager::GetInstance().SetState(GameState::HUB);
     }
 }
 
@@ -163,10 +177,6 @@ int main() {
 
         AudioManager::GetInstance().UpdateMusicStream();
 
-        Vector2 mouseWorld = GetScreenToWorld2D(
-            GetMousePosition(),
-            CameraManager::GetInstance().GetCamera()
-        );
         Vector2 uiMousePosition = GetVirtualMousePosition(uiCamera);
         Vector2 modalMousePosition = GetVirtualMousePosition(modalCamera);
 
@@ -179,9 +189,10 @@ int main() {
                 AssetManager::GetInstance().GetTexture("Lance_Impact")
             );
 
+            // Spawn at center of the 20x20 tile map (10 * RENDER_TILE_SIZE)
             Vector2 startPosition = {
-                (float)Constants::GAME_WIDTH / 2.0f,
-                (float)Constants::GAME_HEIGHT / 2.0f
+                10.0f * Constants::RENDER_TILE_SIZE,
+                10.0f * Constants::RENDER_TILE_SIZE
             };
             teamManager = new TeamManager();
             teamManager->AddMember(new Lance(
@@ -206,8 +217,52 @@ int main() {
             systemInitialized = true;
         }
 
+        Vector2 mouseWorld = {0.0f, 0.0f};
         if (systemInitialized) {
-            teamManager->GetActivePaladin()->SetAimTarget(mouseWorld);
+            Paladin* activePaladin = teamManager->GetActivePaladin();
+            Vector2 playerPos = activePaladin->GetPosition();
+            Vector2 unifiedAimTarget = playerPos;
+            
+            if (Constants::isAutoAimEnabled) {
+                float bestDist = 400.0f; // Targeting range
+                Enemy* bestTarget = nullptr;
+                
+                for (auto* entity : gameManager.GetLevelEntities()) {
+                    if (entity->GetObjectType() == GameObjectType::Enemy) {
+                        Enemy* enemy = static_cast<Enemy*>(entity);
+                        if (enemy->IsDead()) continue;
+                        
+                        Vector2 toEnemy = {enemy->GetPosition().x - playerPos.x, enemy->GetPosition().y - playerPos.y};
+                        float dist = Vector2Length(toEnemy);
+                        
+                        // 360 degree search, closest enemy priority
+                        if (dist < bestDist) {
+                            bestDist = dist;
+                            bestTarget = enemy;
+                        }
+                    }
+                }
+                
+                if (bestTarget) {
+                    activePaladin->SetLockedEnemy(bestTarget);
+                } else {
+                    activePaladin->SetLockedEnemy(nullptr);
+                }
+                
+                // Camera will track the interpolated aim vector directly to decouple from raw mouse coords
+                Vector2 aimVec = { cosf(activePaladin->GetCurrentAimAngle()), sinf(activePaladin->GetCurrentAimAngle()) };
+                mouseWorld = { playerPos.x + aimVec.x * 100.0f, playerPos.y + aimVec.y * 100.0f };
+            } else {
+                // Manual Aim OFF: Compute screen-to-world mouse coordinates
+                mouseWorld = GetScreenToWorld2D(
+                    GetMousePosition(),
+                    CameraManager::GetInstance().GetCamera()
+                );
+                unifiedAimTarget = mouseWorld;
+                activePaladin->SetLockedEnemy(nullptr);
+            }
+            
+            activePaladin->SetAimTarget(unifiedAimTarget);
 
             bool keyboardPauseRequested =
                 IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE);
@@ -302,6 +357,14 @@ int main() {
                         teamManager->GetActivePaladin()->SetPosition(levelManager.ConsumeNudge());
                     }
                     teamManager->Update(deltaTime);
+                    
+                    if (IsKeyPressed(KEY_E)) {
+                        if (levelManager.IsPlayerInExitRoom(teamManager->GetActivePaladin()->GetPosition())) {
+                            ReturnToHub(teamManager, &levelManager);
+                            break;
+                        }
+                    }
+                    
                     gameManager.UpdateProjectiles(deltaTime, teamManager);
                     waveManager.Update(deltaTime, teamManager, &levelManager);
                 }
@@ -371,9 +434,7 @@ int main() {
         if (renderState == GameState::HUB ||
             renderState == GameState::GAMEPLAY) {
             BeginMode2D(CameraManager::GetInstance().GetCamera());
-            ClearBackground(
-                renderState == GameState::HUB ? DARKGREEN : DARKGRAY
-            );
+            ClearBackground(BLACK);
             levelManager.DrawLevel();
             gameManager.DrawEffects(true);
             teamManager->Draw();
@@ -382,6 +443,26 @@ int main() {
             }
             ParticleManager::GetInstance().Draw();
             gameManager.DrawEffects(false);
+            
+            // Draw Target Indicator / Crosshair
+            if (renderState == GameState::GAMEPLAY && systemInitialized) {
+                if (Constants::isAutoAimEnabled) {
+                    Paladin* activePaladin = teamManager->GetActivePaladin();
+                    if (activePaladin && activePaladin->GetLockedEnemy()) {
+                        Vector2 targetPos = activePaladin->GetLockedEnemy()->GetPosition();
+                        DrawCircleLines(static_cast<int>(targetPos.x), static_cast<int>(targetPos.y), 20.0f, RED);
+                        DrawLine(targetPos.x - 25, targetPos.y, targetPos.x + 25, targetPos.y, RED);
+                        DrawLine(targetPos.x, targetPos.y - 25, targetPos.x, targetPos.y + 25, RED);
+                    }
+                } else {
+                    // Manual Aim Crosshair
+                    DrawCircleLines(static_cast<int>(mouseWorld.x), static_cast<int>(mouseWorld.y), 10.0f, GREEN);
+                    DrawLine(mouseWorld.x - 15, mouseWorld.y, mouseWorld.x + 15, mouseWorld.y, GREEN);
+                    DrawLine(mouseWorld.x, mouseWorld.y - 15, mouseWorld.x, mouseWorld.y + 15, GREEN);
+                    DrawCircle(static_cast<int>(mouseWorld.x), static_cast<int>(mouseWorld.y), 2.0f, GREEN);
+                }
+            }
+            
             EndMode2D();
 
             BeginMode2D(uiCamera);
@@ -405,7 +486,7 @@ int main() {
                     auto paladin = teamManager->GetActivePaladin();
                     if (paladin) {
                         float tileW = Constants::TILE_SIZE * Constants::GLOBAL_SCALE;
-                        int roomOuterSize = Constants::ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
+                        int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
                         currentGridX = (int)(paladin->GetPosition().x / (roomOuterSize * tileW));
                         currentGridY = (int)(paladin->GetPosition().y / (roomOuterSize * tileW));
                     }
