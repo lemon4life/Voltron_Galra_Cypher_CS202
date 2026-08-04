@@ -27,7 +27,6 @@ public:
 
     void Update(float deltaTime) override;
     void Draw() override;
-    EnemyPathGoal GetPathGoal() const override;
 
     EnemyDiverReadyState* GetReadyState();
     EnemyDiverLungingState* GetLungingState();
@@ -43,11 +42,6 @@ public:
     float GetDiveSpeed() const;
     float GetDiveRecoveryDuration() const;
     float GetCollisionClearanceRadius() const;
-    float GetPreferredPathGoalDistance() const override;
-    bool IsValidPathGoalPosition(
-        Vector2 candidatePosition,
-        const Paladin& target
-    ) const override;
     const ILevelLineOfSightQuery& GetLineOfSightQuery() const { return lineOfSightQuery; }
 
 };

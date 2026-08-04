@@ -4,6 +4,7 @@
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/AssetManager.h"
+#include "Core/Constants.h"
 
 #include <cmath>
 #include <iostream>
@@ -280,6 +281,19 @@ void Paladin::Draw() {
             pivot.y += dir.y * 12.0f;
         }
         currentWeapon->Draw(pivot, facingLeft);
+    }
+
+    if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
+        DrawRectangleLinesEx(
+            GetBoundingBox(),
+            Constants::DEBUG_COLLISION_LINE_THICKNESS,
+            BLUE
+        );
+        DrawRectangleLinesEx(
+            GetCollisionBox(),
+            Constants::DEBUG_COLLISION_LINE_THICKNESS,
+            GREEN
+        );
     }
 }
 

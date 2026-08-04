@@ -20,7 +20,6 @@ public:
 
     void Update(float deltaTime) override;
     void Draw() override;
-    EnemyPathGoal GetPathGoal() const override;
 
     float GetBossSkillCooldown() const { return bossSkillCooldown; }
     void SetBossSkillCooldown(float cd) { bossSkillCooldown = cd; }

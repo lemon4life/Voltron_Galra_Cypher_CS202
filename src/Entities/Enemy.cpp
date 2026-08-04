@@ -3,7 +3,6 @@
 #include "Core/Constants.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/AudioManager.h"
-#include "Entities/Player/Paladin.h"
 #include "raymath.h"
 
 namespace {
@@ -136,24 +135,25 @@ Rectangle Enemy::GetContactAttackBoxAt(Vector2 entityPosition) const {
     };
 }
 
-bool Enemy::IsValidPathGoalPosition(
-    Vector2 candidatePosition,
-    const Paladin& target
-) const {
-    return CheckCollisionRecs(
-        GetContactAttackBoxAt(candidatePosition),
-        target.GetCollisionBox()
-    );
-}
-
 void Enemy::DrawPathDebug() const {
-    if (Constants::DEBUG_DRAW_ENEMY_COLLISION_BOXES) {
-        DrawRectangleLinesEx(GetBoundingBox(), 1.0f, RED);
-        DrawRectangleLinesEx(GetCollisionBox(), 1.0f, SKYBLUE);
-        DrawRectangleLinesEx(GetContactAttackBoxAt(position), 1.0f, YELLOW);
+    if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
+        DrawRectangleLinesEx(
+            GetBoundingBox(),
+            Constants::DEBUG_COLLISION_LINE_THICKNESS,
+            RED
+        );
+        DrawRectangleLinesEx(
+            GetCollisionBox(),
+            Constants::DEBUG_COLLISION_LINE_THICKNESS,
+            ORANGE
+        );
 
         for (const EnemyPathDebugPoint& point : pathDebugPoints) {
-            DrawCircleV(point.position, 2.5f, point.valid ? GREEN : RED);
+            DrawCircleV(
+                point.position,
+                2.5f,
+                point.hasLineOfSight ? GREEN : RED
+            );
         }
 
         if (hasSelectedPathGoal) {

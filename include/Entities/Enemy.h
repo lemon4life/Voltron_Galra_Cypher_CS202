@@ -22,7 +22,6 @@ struct EnemySprites {
 };
 
 class TeamManager;
-class Paladin;
 
 
 enum class EnemyType {
@@ -33,17 +32,6 @@ enum class EnemyType {
     DIVER
 };
 
-enum class EnemyPathGoalMode {
-    BodyApproach,
-    ClearLineOfSight
-};
-
-struct EnemyPathGoal {
-    EnemyPathGoalMode mode = EnemyPathGoalMode::BodyApproach;
-    float acceptanceDistance = 0.0f;
-    float clearanceRadius = 0.0f;
-};
-
 struct EnemyCollisionProfile {
     Vector2 navigationSize = { 16.0f, 8.0f };
     Vector2 navigationCenterOffset = { 0.0f, 8.0f };
@@ -51,7 +39,7 @@ struct EnemyCollisionProfile {
 
 struct EnemyPathDebugPoint {
     Vector2 position;
-    bool valid;
+    bool hasLineOfSight;
 };
 
 class Enemy : public GameObject {
@@ -127,7 +115,6 @@ public:
 
     virtual void Update(float deltaTime) override = 0;
     void Draw() override {};
-    virtual EnemyPathGoal GetPathGoal() const = 0;
     void DrawPathDebug() const;
 
     IEnemyState* GetCurrentState() { return currentState; }
@@ -147,11 +134,6 @@ public:
     Rectangle GetCollisionBox() const override;
     Rectangle GetNavigationFootprintAt(Vector2 entityPosition) const;
     Rectangle GetContactAttackBoxAt(Vector2 entityPosition) const;
-    virtual float GetPreferredPathGoalDistance() const { return 0.0f; }
-    virtual bool IsValidPathGoalPosition(
-        Vector2 candidatePosition,
-        const Paladin& target
-    ) const;
 
     void SetEnemySprites(EnemySprites s) { sprites = s; }
     WeaponKinematics& GetKinematics() { return kinematics; }
@@ -185,16 +167,10 @@ public:
     void AddTargetPosition(Vector2 targetPosition) {
         targetPositions.push_back(targetPosition);
     }
-    void SetTargetPositions(const std::vector<Vector2>& positions) {
-        targetPositions.assign(positions.begin(), positions.end());
-    }
     Vector2 FirstTargetPosition() const {
         return targetPositions.empty()
             ? Vector2{ -1.0f, -1.0f }
             : targetPositions.front();
-    }
-    const std::deque<Vector2>& GetTargetPositions() const {
-        return targetPositions;
     }
     bool HasTargetPosition() const { return !targetPositions.empty(); }
     void SetPathStatus(EnemyPathStatus status) { pathStatus = status; }

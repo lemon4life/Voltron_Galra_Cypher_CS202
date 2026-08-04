@@ -23,7 +23,6 @@ namespace {
         { 18.0f, 8.0f },
         { 0.0f, 8.0f }
     };
-    constexpr float RANGE_PATH_GOAL_DISTANCE = 170.0f;
 }
 
 EnemyRange::EnemyRange(
@@ -166,7 +165,6 @@ void EnemyRange::Draw() {
         4,
         RED
     );
-    DrawPathDebug();
 }
 
 
@@ -192,32 +190,4 @@ float EnemyRange::GetProjectileLifetime() const {
 
 float EnemyRange::GetProjectileRadius() const {
     return RANGE_PROJECTILE_RADIUS;
-}
-
-EnemyPathGoal EnemyRange::GetPathGoal() const {
-    return {
-        EnemyPathGoalMode::ClearLineOfSight,
-        RANGE_SHOOTING_DISTANCE,
-        RANGE_PROJECTILE_RADIUS
-    };
-}
-
-float EnemyRange::GetPreferredPathGoalDistance() const {
-    return RANGE_PATH_GOAL_DISTANCE;
-}
-
-bool EnemyRange::IsValidPathGoalPosition(
-    Vector2 candidatePosition,
-    const Paladin& target
-) const {
-    if (Vector2Distance(candidatePosition, target.GetPosition()) >
-        RANGE_SHOOTING_DISTANCE) {
-        return false;
-    }
-
-    return lineOfSightQuery.HasClearLineOfSight(
-        candidatePosition,
-        target.GetPosition(),
-        RANGE_PROJECTILE_RADIUS
-    );
 }

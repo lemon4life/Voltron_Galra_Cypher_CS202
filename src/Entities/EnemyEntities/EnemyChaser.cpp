@@ -191,7 +191,6 @@ void EnemyChaser::Draw() {
         4,
         RED
     );
-    DrawPathDebug();
 }
 
 
@@ -201,14 +200,6 @@ EnemyChaserDamageState* EnemyChaser::GetDamageState() {
 
 bool EnemyChaser::IsBeyondDisengageDistance(Vector2 targetPosition) const {
     return Vector2Distance(position, targetPosition) > CHASER_SIGHT_DISTANCE;
-}
-
-EnemyPathGoal EnemyChaser::GetPathGoal() const {
-    return {
-        EnemyPathGoalMode::BodyApproach,
-        CHASER_STOP_PATH_FINDING_DISTANCE,
-        0.0f
-    };
 }
 
 bool EnemyChaser::IsWithinAggroRange(Vector2 targetPosition) const {

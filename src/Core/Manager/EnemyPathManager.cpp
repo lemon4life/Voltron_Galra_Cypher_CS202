@@ -21,7 +21,7 @@ namespace {
     constexpr float TARGET_LOOP_ALL_INTERVAL = 0.2f;
     constexpr float BODY_PATH_SAMPLE_SPACING = 4.0f;
     constexpr float POSITION_EPSILON_SQUARED = 4.0f;
-    constexpr float BODY_GOAL_OVERLAP = 1.0f;
+    constexpr float PLAYER_GOAL_RADIUS = 30.0f;
     constexpr float QUARTER_TILE_OFFSET = 8.0f;
     constexpr int MAX_SEARCH_STEPS = 500;
     constexpr int MAX_TARGET_POSITIONS = 10;
@@ -111,6 +111,21 @@ namespace {
 
     bool AlmostSamePosition(Vector2 first, Vector2 second) {
         return DistanceSquared(first, second) < POSITION_EPSILON_SQUARED;
+    }
+
+    Vector2 ClosestPointOnRectangle(Vector2 point, Rectangle rectangle) {
+        return {
+            std::clamp(
+                point.x,
+                rectangle.x,
+                rectangle.x + rectangle.width
+            ),
+            std::clamp(
+                point.y,
+                rectangle.y,
+                rectangle.y + rectangle.height
+            )
+        };
     }
 
     float ConnectionLength(Vector2 start, const std::vector<Vector2>& points) {
@@ -383,10 +398,7 @@ namespace {
         return best;
     }
 
-    std::vector<Vector2> GenerateGoalCandidates(
-        const Enemy& enemy,
-        const Paladin& target
-    ) {
+    std::vector<Vector2> GenerateGoalCandidates(const Paladin& target) {
         constexpr std::array<Vector2, 8> DIRECTIONS = {
             Vector2{ -1.0f, 0.0f },
             Vector2{ 1.0f, 0.0f },
@@ -400,50 +412,14 @@ namespace {
 
         std::vector<Vector2> candidates;
         candidates.reserve(DIRECTIONS.size());
-        float preferredDistance = enemy.GetPreferredPathGoalDistance();
-
-        if (preferredDistance > 0.0f) {
-            for (Vector2 direction : DIRECTIONS) {
-                Vector2 normalized = Vector2Normalize(direction);
-                candidates.push_back(Vector2Add(
-                    target.GetPosition(),
-                    Vector2Scale(normalized, preferredDistance)
-                ));
-            }
-            return candidates;
-        }
-
-        Rectangle targetBody = target.GetCollisionBox();
-        Rectangle footprintAtOrigin = enemy.GetNavigationFootprintAt({ 0.0f, 0.0f });
-        Vector2 footprintCenterOffset = {
-            footprintAtOrigin.x + footprintAtOrigin.width / 2.0f,
-            footprintAtOrigin.y + footprintAtOrigin.height / 2.0f
-        };
-        Vector2 targetCenter = {
-            targetBody.x + targetBody.width / 2.0f,
-            targetBody.y + targetBody.height / 2.0f
-        };
 
         for (Vector2 direction : DIRECTIONS) {
-            Vector2 footprintCenter = targetCenter;
-            if (direction.x != 0.0f) {
-                footprintCenter.x += direction.x * (
-                    targetBody.width / 2.0f +
-                    footprintAtOrigin.width / 2.0f -
-                    BODY_GOAL_OVERLAP
-                );
-            }
-            if (direction.y != 0.0f) {
-                footprintCenter.y += direction.y * (
-                    targetBody.height / 2.0f +
-                    footprintAtOrigin.height / 2.0f -
-                    BODY_GOAL_OVERLAP
-                );
-            }
-
-            candidates.push_back(Vector2Subtract(
-                footprintCenter,
-                footprintCenterOffset
+            candidates.push_back(Vector2Add(
+                target.GetPosition(),
+                Vector2Scale(
+                    Vector2Normalize(direction),
+                    PLAYER_GOAL_RADIUS
+                )
             ));
         }
 
@@ -458,43 +434,45 @@ namespace {
         std::vector<EnemyPathDebugPoint>& debugGoals
     ) {
         std::vector<GoalAnchor> anchors;
-        std::vector<Vector2> candidates = GenerateGoalCandidates(enemy, target);
+        std::vector<Vector2> candidates = GenerateGoalCandidates(target);
         debugGoals.reserve(candidates.size());
 
         for (Vector2 candidate : candidates) {
-            bool validCandidate =
-                IsBodyClearAtWorldPosition(levelManager, enemy, candidate) &&
-                enemy.IsValidPathGoalPosition(candidate, target);
-            bool hasAnchor = false;
+            Vector2 closestHitboxPoint = ClosestPointOnRectangle(
+                candidate,
+                target.GetBoundingBox()
+            );
+            bool hasLineOfSight = levelManager.HasClearLineOfSight(
+                candidate,
+                closestHitboxPoint,
+                0.0f
+            );
+            debugGoals.push_back({ candidate, hasLineOfSight });
+            if (!hasLineOfSight) continue;
 
-            if (validCandidate) {
-                Tile candidateTile = WorldTile(levelManager, candidate);
-                for (Tile graphTile : NearbyTiles(candidateTile)) {
-                    if (!cache.IsTileClear(graphTile)) continue;
+            Tile candidateTile = WorldTile(levelManager, candidate);
+            for (Tile graphTile : NearbyTiles(candidateTile)) {
+                if (!cache.IsTileClear(graphTile)) continue;
 
-                    Vector2 graphCenter = levelManager.TileToWorld(
-                        graphTile.x,
-                        graphTile.y
-                    );
-                    auto connection = ConnectPositions(
-                        levelManager,
-                        enemy,
-                        graphCenter,
-                        candidate
-                    );
-                    if (!connection) continue;
+                Vector2 graphCenter = levelManager.TileToWorld(
+                    graphTile.x,
+                    graphTile.y
+                );
+                auto connection = ConnectPositions(
+                    levelManager,
+                    enemy,
+                    graphCenter,
+                    candidate
+                );
+                if (!connection) continue;
 
-                    anchors.push_back({
-                        graphTile,
-                        candidate,
-                        *connection,
-                        ConnectionLength(graphCenter, *connection)
-                    });
-                    hasAnchor = true;
-                }
+                anchors.push_back({
+                    graphTile,
+                    candidate,
+                    *connection,
+                    ConnectionLength(graphCenter, *connection)
+                });
             }
-
-            debugGoals.push_back({ candidate, validCandidate && hasAnchor });
         }
 
         return anchors;
@@ -574,12 +552,6 @@ namespace {
             return result;
         }
 
-        if (enemy.IsValidPathGoalPosition(enemy.GetPosition(), target)) {
-            result.status = EnemyPathStatus::AtGoal;
-            result.selectedGoal = enemy.GetPosition();
-            return result;
-        }
-
         SearchCollisionCache cache(levelManager, enemy);
         std::optional<PositionConnection> start = FindStartConnection(
             levelManager,
@@ -593,6 +565,17 @@ namespace {
             cache,
             result.debugGoals
         );
+
+        for (const EnemyPathDebugPoint& candidate : result.debugGoals) {
+            if (candidate.hasLineOfSight &&
+                DistanceSquared(enemy.GetPosition(), candidate.position) <=
+                    POSITION_EPSILON_SQUARED) {
+                result.status = EnemyPathStatus::AtGoal;
+                result.selectedGoal = candidate.position;
+                return result;
+            }
+        }
+
         if (!start || goals.empty()) {
             return result;
         }

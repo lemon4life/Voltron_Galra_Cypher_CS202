@@ -372,7 +372,8 @@ void LevelManager::DrawLevel() {
         entity->Draw();
     }
 
-    if (Constants::DEBUG_DRAW_ENEMY_PATHS) {
+    if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES ||
+        Constants::DEBUG_DRAW_ENEMY_PATHS) {
         for (GameObject* entity : levelEntities) {
             if (entity->GetObjectType() == GameObjectType::Enemy) {
                 static_cast<Enemy*>(entity)->DrawPathDebug();

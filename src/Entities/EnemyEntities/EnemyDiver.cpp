@@ -199,7 +199,6 @@ void EnemyDiver::Draw() {
         4,
         RED
     );
-    DrawPathDebug();
 }
 
 
@@ -213,14 +212,6 @@ EnemyDiverLungingState* EnemyDiver::GetLungingState() {
 
 bool EnemyDiver::CanEnterReadyState() const {
     return attackCooldown <= 0.0f && IsWithinClearDiveRange();
-}
-
-EnemyPathGoal EnemyDiver::GetPathGoal() const {
-    return {
-        EnemyPathGoalMode::ClearLineOfSight,
-        DIVE_STOP_DISTANCE,
-        GetCollisionClearanceRadius()
-    };
 }
 
 bool EnemyDiver::IsWithinClearDiveRange() const {
@@ -268,24 +259,4 @@ float EnemyDiver::GetDiveRecoveryDuration() const {
 
 float EnemyDiver::GetCollisionClearanceRadius() const {
     return std::max(size.x, size.y) / 2.0f;
-}
-
-float EnemyDiver::GetPreferredPathGoalDistance() const {
-    return DIVE_STOP_DISTANCE * 0.85f;
-}
-
-bool EnemyDiver::IsValidPathGoalPosition(
-    Vector2 candidatePosition,
-    const Paladin& target
-) const {
-    if (Vector2Distance(candidatePosition, target.GetPosition()) >
-        DIVE_STOP_DISTANCE) {
-        return false;
-    }
-
-    return lineOfSightQuery.HasClearLineOfSight(
-        candidatePosition,
-        target.GetPosition(),
-        GetCollisionClearanceRadius()
-    );
 }

@@ -160,7 +160,7 @@ namespace {
             "assets/map/demo-big_Tile Layer 1.csv",
             teamManager
         );
-        waveManager->Reset(10, 0, 5);
+        waveManager->Reset(10, 3, 5);
         AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
         GameManager::GetInstance().SetState(GameState::GAMEPLAY);
     }
