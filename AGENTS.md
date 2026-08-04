@@ -26,7 +26,7 @@ Recent history uses short imperative messages with optional prefixes, for exampl
 
 
 ## Implementation Plans & AI Usage Notes
-Whenever an implementation plan is created, you MUST automatically copy it to the project's physical `tmp/implementation_plan/` directory in numbered order (e.g., `plan_9_...`), in addition to creating the standard artifact. You can modify old plan with I tell you to. Additionally, automatically update the AI Usage Note for the corresponding week in the `AI Usage Note/` folder with the prompts used, purpose, and content generated for that feature. Each week X is followed by a file declaration named `AI Usage Notes - Week X.md`
+Whenever an implementation plan is created, you MUST automatically copy it to the project's physical `implementation_plan/` directory in numbered order (e.g., `plan_9_...`), in addition to creating the standard artifact. You can modify old plan with I tell you to. Additionally, automatically update the AI Usage Note for the corresponding week in the `AI Usage Note/` folder with the prompts used, purpose, and content generated for that feature. Each week X is followed by a file declaration named `AI Usage Notes - Week X.md`
 
 Note that week 7 starts from 20 July, 2026
 
