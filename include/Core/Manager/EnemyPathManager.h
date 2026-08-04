@@ -1,6 +1,7 @@
 #pragma once
 #include "raylib.h"
 
+#include <optional>
 #include <vector>
 
 class LevelManager;
@@ -16,10 +17,9 @@ public:
     void RemoveEnemy(Enemy& enemy);
     void Clear();
 
-    Vector2 GetNextMoveTarget(
+    std::optional<Vector2> GetNextMoveTarget(
         LevelManager& levelManager,
-        Enemy& enemy,
-        Vector2 fallbackTarget
+        Enemy& enemy
     );
 
     Vector2 GetLocalAvoidanceDirection(

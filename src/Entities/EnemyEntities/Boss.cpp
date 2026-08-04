@@ -10,6 +10,10 @@ namespace {
     constexpr float BOSS_SIGHT_DISTANCE = 900.0f;
     constexpr float BOSS_OFF_SIGHT_DISTANCE = 1200.0f;
     constexpr Vector2 BOSS_SIZE = Vector2{64.f,72.f};
+    constexpr EnemyCollisionProfile BOSS_COLLISION_PROFILE = {
+        { 32.0f, 14.0f },
+        { 0.0f, 24.0f }
+    };
 }
 
 Boss::Boss(
@@ -35,6 +39,7 @@ Boss::Boss(
 
     enemyType = EnemyType::BOSS;
     size = BOSS_SIZE;
+    SetCollisionProfile(BOSS_COLLISION_PROFILE);
 
     idleState = std::make_unique<EnemyIdleState>(BOSS_SIGHT_DISTANCE);
     chaseState = std::make_unique<BossChaseState>();

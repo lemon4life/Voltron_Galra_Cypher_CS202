@@ -28,6 +28,10 @@ namespace {
     constexpr float DIVE_RECOVERY_DURATION = 0.2f;
 
     constexpr Vector2 DIVER_SIZE = { 24.0f, 24.0f };
+    constexpr EnemyCollisionProfile DIVER_COLLISION_PROFILE = {
+        { 18.0f, 8.0f },
+        { 0.0f, 8.0f }
+    };
 }
 
 EnemyDiver::EnemyDiver(
@@ -55,6 +59,7 @@ EnemyDiver::EnemyDiver(
     lungingState = std::make_unique<EnemyDiverLungingState>();
     enemyType = EnemyType::DIVER;
     size = DIVER_SIZE;
+    SetCollisionProfile(DIVER_COLLISION_PROFILE);
 
     SetEnemySprites(AssetManager::GetInstance().GetDiverSprites());
     ChangeState(GetIdleState());

@@ -11,8 +11,24 @@ namespace {
     constexpr float MELEE_KNOCKBACK_FORCE = 350.0f;
 }
 
-MeleeAttackStrategy::MeleeAttackStrategy(Texture2D weapon, Texture2D att1, Texture2D att2) 
-    : weaponTex(weapon), attack1Tex(att1), attack2Tex(att2), comboStep(0), nextComboStep(1), frameTimer(0.0f), currentFrame(0), inputBuffered(false), kinematics(WeaponKinematicsType::Melee) 
+MeleeAttackStrategy::MeleeAttackStrategy(
+    Texture2D weapon,
+    Texture2D att1,
+    Texture2D att2,
+    int lightDamage,
+    int heavyDamage
+)
+    : weaponTex(weapon),
+      attack1Tex(att1),
+      attack2Tex(att2),
+      comboStep(0),
+      nextComboStep(1),
+      frameTimer(0.0f),
+      currentFrame(0),
+      inputBuffered(false),
+      kinematics(WeaponKinematicsType::Melee),
+      lightDamage(lightDamage),
+      heavyDamage(heavyDamage)
 {
     aimDir = {1.0f, 0.0f};
     aimAngle = 0.0f;
@@ -69,7 +85,8 @@ void MeleeAttackStrategy::Update(float deltaTime) {
                     continue;
                 }
 
-                int damage = (comboStep == 1) ? 50 : 80;
+                int damage =
+                    (comboStep == 1) ? lightDamage : heavyDamage;
                 bool damagedObject = false;
 
                 if (entity->GetObjectType() == GameObjectType::Enemy) {

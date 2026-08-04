@@ -1,6 +1,7 @@
 #include "UI/UIManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
+#include "UI/PaladinPortrait.h"
 #include <string>
 #include <vector>
 
@@ -39,46 +40,6 @@ void UIManager::DrawHUD(
 ) {
     if (!teamManager) return;
     DrawTeamHUD(teamManager, screenWidth, screenHeight, mousePosition);
-}
-
-void DrawPortrait(Paladin* p, Rectangle destRec) {
-    if (!p) return;
-    Texture2D texture = p->GetIdleTexture();
-    if (texture.id == 0) return;
-    
-    // Idle sprite has 4 frames
-    float frameWidth = (float)texture.width / 4.0f;
-    float frameHeight = (float)texture.height;
-    
-    // We only want the top half of the first frame
-    Rectangle baseSourceRec = { 0.0f, 2.0f, frameWidth, frameHeight / 2.0f + 2 };
-    
-    float destAspect = destRec.width / destRec.height;
-    float srcAspect = baseSourceRec.width / baseSourceRec.height;
-    
-    Rectangle sourceRec;
-    if (destAspect > srcAspect) {
-        // Dest is wider than source. Crop top/bottom.
-        float cropHeight = baseSourceRec.width / destAspect;
-        sourceRec = { 
-            baseSourceRec.x, 
-            baseSourceRec.y + (baseSourceRec.height - cropHeight) / 2.0f, 
-            baseSourceRec.width, 
-            cropHeight 
-        };
-    } else {
-        // Dest is taller than source. Crop left/right.
-        float cropWidth = baseSourceRec.height * destAspect;
-        sourceRec = { 
-            baseSourceRec.x + (baseSourceRec.width - cropWidth) / 2.0f, 
-            baseSourceRec.y, 
-            cropWidth, 
-            baseSourceRec.height 
-        };
-    }
-    
-    Color tint = p->GetHealth() <= 0 ? DARKGRAY : WHITE;
-    DrawTexturePro(texture, sourceRec, destRec, {0,0}, 0.0f, tint);
 }
 
 void UIManager::DrawTeamHUD(
@@ -131,13 +92,13 @@ void UIManager::DrawTeamHUD(
     }
 
     // --- Layer 1: Portraits ---
-    DrawPortrait(active, {startX + 4, startY + 4, 90, 42});
+    DrawPaladinPortrait(active, {startX + 4, startY + 4, 90, 42});
 
     if (offField1) {
-        DrawPortrait(offField1, {startX + 226, startY + 4, 60, 28});
+        DrawPaladinPortrait(offField1, {startX + 226, startY + 4, 60, 28});
     }
     if (offField2) {
-        DrawPortrait(offField2, {startX + 354, startY + 4, 60, 28});
+        DrawPaladinPortrait(offField2, {startX + 354, startY + 4, 60, 28});
     }
 
     // Helper lambda for HP

@@ -1,8 +1,21 @@
 #include "Entities/Enemy.h"
 #include "AI/EnemyCollision.h"
+#include "Core/Constants.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "raymath.h"
+
+namespace {
+    constexpr float DEBUG_PATH_THICKNESS = 2.0f;
+    constexpr float DEBUG_WAYPOINT_RADIUS = 4.0f;
+    constexpr float DEBUG_CURRENT_TARGET_RADIUS = 6.0f;
+    constexpr float DEBUG_STATUS_OFFSET_Y = 22.0f;
+    constexpr Color DEBUG_PATH_COLOR = { 255, 140, 0, 220 };
+    constexpr Color DEBUG_WAYPOINT_COLOR = { 255, 230, 40, 255 };
+    constexpr Color DEBUG_CURRENT_TARGET_COLOR = { 80, 255, 100, 255 };
+    constexpr Color DEBUG_PENDING_COLOR = { 40, 220, 255, 255 };
+    constexpr Color DEBUG_UNREACHABLE_COLOR = { 255, 60, 60, 255 };
+}
 
 Enemy::Enemy(
     Vector2 pos,
@@ -99,7 +112,117 @@ Rectangle Enemy::GetBoundingBox() const {
 }
 
 Rectangle Enemy::GetCollisionBox() const {
-    return { position.x - size.x/2.f, position.y + size.y * 0.2f, size.x, size.y * 0.3f };
+    return GetNavigationFootprintAt(position);
+}
+
+Rectangle Enemy::GetNavigationFootprintAt(Vector2 entityPosition) const {
+    return {
+        entityPosition.x + collisionProfile.navigationCenterOffset.x -
+            collisionProfile.navigationSize.x / 2.0f,
+        entityPosition.y + collisionProfile.navigationCenterOffset.y -
+            collisionProfile.navigationSize.y / 2.0f,
+        collisionProfile.navigationSize.x,
+        collisionProfile.navigationSize.y
+    };
+}
+
+Rectangle Enemy::GetContactAttackBoxAt(Vector2 entityPosition) const {
+    return {
+        entityPosition.x - size.x / 2.0f,
+        entityPosition.y - size.y / 2.0f,
+        size.x,
+        size.y
+    };
+}
+
+void Enemy::DrawPathDebug() const {
+    if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
+        DrawRectangleLinesEx(
+            GetBoundingBox(),
+            Constants::DEBUG_COLLISION_LINE_THICKNESS,
+            RED
+        );
+        DrawRectangleLinesEx(
+            GetCollisionBox(),
+            Constants::DEBUG_COLLISION_LINE_THICKNESS,
+            ORANGE
+        );
+
+        for (const EnemyPathDebugPoint& point : pathDebugPoints) {
+            DrawCircleV(
+                point.position,
+                2.5f,
+                point.hasLineOfSight ? GREEN : RED
+            );
+        }
+
+        if (hasSelectedPathGoal) {
+            DrawCircleLines(
+                (int)selectedPathGoal.x,
+                (int)selectedPathGoal.y,
+                5.0f,
+                LIME
+            );
+        }
+    }
+
+    if (!Constants::DEBUG_DRAW_ENEMY_PATHS ||
+        !usePathFinding ||
+        health <= 0) {
+        return;
+    }
+
+    Vector2 segmentStart = position;
+    bool isCurrentTarget = true;
+    for (Vector2 targetPosition : targetPositions) {
+        DrawLineEx(
+            segmentStart,
+            targetPosition,
+            DEBUG_PATH_THICKNESS,
+            DEBUG_PATH_COLOR
+        );
+        DrawCircleV(
+            targetPosition,
+            isCurrentTarget
+                ? DEBUG_CURRENT_TARGET_RADIUS
+                : DEBUG_WAYPOINT_RADIUS,
+            isCurrentTarget
+                ? DEBUG_CURRENT_TARGET_COLOR
+                : DEBUG_WAYPOINT_COLOR
+        );
+
+        segmentStart = targetPosition;
+        isCurrentTarget = false;
+    }
+
+    Vector2 statusPosition = {
+        position.x,
+        position.y - DEBUG_STATUS_OFFSET_Y
+    };
+    if (pathStatus == EnemyPathStatus::Pending) {
+        DrawCircleV(statusPosition, DEBUG_WAYPOINT_RADIUS, DEBUG_PENDING_COLOR);
+    } else if (pathStatus == EnemyPathStatus::Unreachable) {
+        constexpr float CROSS_RADIUS = 5.0f;
+        DrawLineEx(
+            { statusPosition.x - CROSS_RADIUS, statusPosition.y - CROSS_RADIUS },
+            { statusPosition.x + CROSS_RADIUS, statusPosition.y + CROSS_RADIUS },
+            DEBUG_PATH_THICKNESS,
+            DEBUG_UNREACHABLE_COLOR
+        );
+        DrawLineEx(
+            { statusPosition.x - CROSS_RADIUS, statusPosition.y + CROSS_RADIUS },
+            { statusPosition.x + CROSS_RADIUS, statusPosition.y - CROSS_RADIUS },
+            DEBUG_PATH_THICKNESS,
+            DEBUG_UNREACHABLE_COLOR
+        );
+    } else if (pathStatus == EnemyPathStatus::AtGoal) {
+        DrawCircleLines(
+            (int)statusPosition.x,
+            (int)statusPosition.y,
+            DEBUG_CURRENT_TARGET_RADIUS,
+            DEBUG_CURRENT_TARGET_COLOR
+        );
+    }
 }
 
 bool Enemy::CheckCollision(const std::vector<GameObject*>& entities) const {
@@ -110,6 +233,7 @@ void Enemy::StartPathFinding() {
     if (usePathFinding) return;
 
     usePathFinding = true;
+    pathStatus = EnemyPathStatus::Pending;
     pathAccess.BeginPathFinding(*this);
 }
 
@@ -119,6 +243,7 @@ void Enemy::EndPathFinding() {
     pathAccess.EndPathFinding(*this);
     usePathFinding = false;
     ClearTargetPosition();
+    pathStatus = EnemyPathStatus::Pending;
 }
 
 void Enemy::ApplyKnockback(Vector2 dir, float force) {

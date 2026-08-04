@@ -1,8 +1,6 @@
 #include "Core/Manager/AudioManager.h"
 
 #include <algorithm>
-
-#include <algorithm>
 #include <iostream>
 
 AudioManager::AudioManager() {
@@ -54,15 +52,6 @@ void AudioManager::Initialize() {
         clickSounds.push_back(::LoadSound(
             ("assets/audio/UI/Button/click_" + num + ".ogg").c_str()
         ));
-        laserSounds.push_back(::LoadSound(
-            ("assets/audio/Weapon/Firearm/laserSmall_" + num + ".ogg").c_str()
-        ));
-        footstepSounds.push_back(::LoadSound(
-            ("assets/audio/Impact/Footstep/footstep_concrete_" + num + ".ogg").c_str()
-        ));
-        clickSounds.push_back(::LoadSound(
-            ("assets/audio/UI/Button/click_" + num + ".ogg").c_str()
-        ));
     }
 
     // Load BGM Tracks
@@ -89,7 +78,7 @@ void AudioManager::PlaySequentialFootstep() {
     float pitch = GetRandomValue(95, 105) / 100.0f;
     SetSoundPitch(footstepSounds[currentFootstepIndex], pitch);
     ::PlaySound(footstepSounds[currentFootstepIndex]);
-    
+
     currentFootstepIndex = (currentFootstepIndex + 1) % footstepSounds.size();
 }
 
@@ -164,7 +153,7 @@ void AudioManager::UpdateMusicStream() {
             currentTrackVolume = 0.0f;
             currentFadeState = MusicFadeState::FADING_IN;
             fadeTimer = fadeDuration;
-            
+
             if (!currentMusicName.empty()) {
                 ::SetMusicVolume(music[currentMusicName], 0.0f);
                 ::PlayMusicStream(music[currentMusicName]);

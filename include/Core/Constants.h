@@ -13,7 +13,13 @@ namespace Constants {
     // Game Settings
     inline bool isAutoAimEnabled = true;
 
-    constexpr float GLOBAL_SCALE = 2.0f; 
+    // Debug Configurations
+    constexpr bool DEBUG_DRAW_ENTITY_COLLISION_BOXES = false;
+    constexpr bool DEBUG_DRAW_ENEMY_PATHS = true;
+    constexpr float DEBUG_COLLISION_LINE_THICKNESS = 0.75f;
+
+    // Scale & Transformation Constants
+    constexpr float GLOBAL_SCALE = 2.0f;
     constexpr Vector2 KNIGHT_PROJECTILE_OFFSET = { 27.0f, 4.0f };
 
     // Dungeon Generation Constants

@@ -6,6 +6,7 @@ enum class GameObjectType {
     Box,
     Player,
     NPC,
+    HubPaladinStand,
     Wall,
     Projectile
 };

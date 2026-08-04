@@ -21,6 +21,10 @@ namespace {
     constexpr int CHASER_MIN_AGGRO_MILLISECONDS = 200;
     constexpr int CHASER_MAX_AGGRO_MILLISECONDS = 700;
     constexpr Vector2 CHASER_SIZE = { 20.0f, 20.0f };
+    constexpr EnemyCollisionProfile CHASER_COLLISION_PROFILE = {
+        { 16.0f, 8.0f },
+        { 0.0f, 8.0f }
+    };
 
     float RollAggroDuration() {
         return (float)GetRandomValue(
@@ -52,6 +56,7 @@ EnemyChaser::EnemyChaser(
     damageState = std::make_unique<EnemyChaserDamageState>();
     enemyType = EnemyType::Chaser;
     size = CHASER_SIZE;
+    SetCollisionProfile(CHASER_COLLISION_PROFILE);
     ResetAggroMeter();
 
     SetEnemySprites(AssetManager::GetInstance().GetChaserSprites());

@@ -3,6 +3,8 @@
 #include "raylib.h"
 #include "Core/Manager/GameManager.h"
 
+#include <algorithm>
+
 TeamManager::TeamManager()
     : activeIndex(0),
       sharedUltimateDecibels(0.0f)
@@ -26,6 +28,43 @@ void TeamManager::AddMember(Paladin* paladin) {
 Paladin* TeamManager::GetActivePaladin() const {
     if (team.empty()) return nullptr;
     return team[activeIndex];
+}
+
+int TeamManager::FindMemberIndex(PaladinId id) const {
+    for (std::size_t index = 0; index < team.size(); ++index) {
+        if (team[index] && team[index]->GetPaladinId() == id) {
+            return static_cast<int>(index);
+        }
+    }
+    return -1;
+}
+
+bool TeamManager::MovePaladinToSlot(
+    PaladinId id,
+    std::size_t targetIndex
+) {
+    if (targetIndex >= team.size()) {
+        return false;
+    }
+
+    int sourceIndex = FindMemberIndex(id);
+    if (sourceIndex < 0) {
+        return false;
+    }
+    if (sourceIndex == static_cast<int>(targetIndex)) {
+        return true;
+    }
+
+    Paladin* activePaladin = GetActivePaladin();
+    std::swap(team[static_cast<std::size_t>(sourceIndex)], team[targetIndex]);
+
+    auto activeIt = std::find(team.begin(), team.end(), activePaladin);
+    if (activeIt != team.end()) {
+        activeIndex = static_cast<int>(activeIt - team.begin());
+    }
+
+    NotifyObservers();
+    return true;
 }
 
 void TeamManager::SwapCharacter() {

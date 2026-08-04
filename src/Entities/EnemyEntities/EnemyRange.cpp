@@ -18,8 +18,11 @@ namespace {
     constexpr float RANGE_PROJECTILE_SPEED = 320.0f;
     constexpr float RANGE_PROJECTILE_LIFETIME = 2.0f;
     constexpr float RANGE_PROJECTILE_RADIUS = 5.0f;
-    constexpr float RANGE_MAX_PREDICTION_TIME = 1.0f;
     constexpr Vector2 RANGE_SIZE = { 24.0f, 24.0f };
+    constexpr EnemyCollisionProfile RANGE_COLLISION_PROFILE = {
+        { 18.0f, 8.0f },
+        { 0.0f, 8.0f }
+    };
 }
 
 EnemyRange::EnemyRange(
@@ -46,6 +49,7 @@ EnemyRange::EnemyRange(
     enemyType = EnemyType::RANGE;
     kinematics.SetType(WeaponKinematicsType::Ranged);
     size = RANGE_SIZE;
+    SetCollisionProfile(RANGE_COLLISION_PROFILE);
 
     SetEnemySprites(AssetManager::GetInstance().GetRangeSprites());
     ChangeState(GetIdleState());
@@ -186,8 +190,4 @@ float EnemyRange::GetProjectileLifetime() const {
 
 float EnemyRange::GetProjectileRadius() const {
     return RANGE_PROJECTILE_RADIUS;
-}
-
-float EnemyRange::GetMaxPredictionTime() const {
-    return RANGE_MAX_PREDICTION_TIME;
 }

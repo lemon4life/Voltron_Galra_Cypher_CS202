@@ -15,6 +15,11 @@ class LevelManager
       public ILevelLineOfSightQuery,
       public IMapObjectDestroyAccess {
 private:
+    enum class LevelMode {
+        Layered,
+        Procedural
+    };
+
     struct PendingMapObjectDestruction {
         GameObject* object;
         GameObjectCell cell;
@@ -32,7 +37,9 @@ private:
     Texture2D wallTileset;
     Texture2D boxTexture;
     Texture2D gateTexture;
+    Texture2D tileset; // legacy from remote
     bool useLegacyMap = true;
+    LevelMode levelMode = LevelMode::Layered;
     std::shared_ptr<RoomTemplate> activeRoom;
     LevelMap levelMap;
     std::vector<Rectangle> currentRoomWalls;
@@ -44,7 +51,7 @@ private:
 
 
     bool LoadObjectGrid(const std::string& filepath);
-    void SpawnGameObjects();
+    void SpawnGameObjects(TeamManager* teamManager);
     bool IsSolidMapObject(MapObjectId objectId) const;
 
     // Enemy pathfinding and deferred object/entity removal.
@@ -59,12 +66,13 @@ public:
     ~LevelManager();
 
     void LoadLevel(const std::string& filepath, TeamManager* teamManager);
-    
-    void SetUseLegacyMap(bool legacy) { useLegacyMap = legacy; }
+
     const LevelMap& GetLevelMap() const { return levelMap; }
     RoomState GetActiveRoomState() const { return (currentlyLockedRoom) ? currentlyLockedRoom->state : RoomState::IDLE; }
     void SetActiveRoomState(RoomState s) { if(currentlyLockedRoom) currentlyLockedRoom->state = s; }
-    bool IsLegacyMap() const { return useLegacyMap; }
+    bool IsProceduralDungeon() const {
+        return levelMode == LevelMode::Procedural;
+    }
     bool NeedsPlayerNudge() const { return needsNudge; }
     Vector2 ConsumeNudge() { needsNudge = false; return nudgePosition; }
     bool IsPlayerInExitRoom(Vector2 playerPos) const;
@@ -100,11 +108,10 @@ public:
     void EndPathFinding(Enemy& enemy) override;
     bool IsBlocked(Rectangle bounds) const override;
     Rectangle GetLevelBounds() const override;
-    Rectangle GetCurrentRoomBounds() const;
-    Vector2 GetNextMoveTarget(
-        Enemy& enemy,
-        Vector2 fallbackTarget
+    std::optional<Vector2> GetNextMoveTarget(
+        Enemy& enemy
     ) override;
+    Rectangle GetCurrentRoomBounds() const;
     Vector2 GetLocalDirection(
         Enemy& enemy,
         Vector2 desiredDirection

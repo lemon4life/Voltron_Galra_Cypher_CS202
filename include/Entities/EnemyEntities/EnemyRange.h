@@ -31,7 +31,6 @@ public:
     float GetProjectileSpeed() const;
     float GetProjectileLifetime() const;
     float GetProjectileRadius() const;
-    float GetMaxPredictionTime() const;
     const ILevelLineOfSightQuery& GetLineOfSightQuery() const { return lineOfSightQuery; }
 
 };

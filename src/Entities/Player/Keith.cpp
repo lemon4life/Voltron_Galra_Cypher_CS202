@@ -1,11 +1,19 @@
 #include "Entities/Player/Keith.h"
 #include "Combat/MeleeAttackStrategy.h"
 #include "Core/Manager/AssetManager.h"
+#include "Entities/Player/PaladinDefinition.h"
 
 Keith::Keith(Vector2 pos, CharacterSprites sprites)
-    : Paladin(pos, sprites, 200, 150.0f) // 100 HP, 150 Max Ex Energy
+    : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Keith))
 {
-    speed = 220.0f;
-    currentWeapon = new MeleeAttackStrategy(sprites.weapon, AssetManager::GetInstance().GetTexture("Sword_Slash_Small"), AssetManager::GetInstance().GetTexture("Sword_Slash_Small"));
+    const WeaponDefinition& weapon =
+        PaladinCatalog::Get(PaladinId::Keith).weapon;
+    currentWeapon = new MeleeAttackStrategy(
+        sprites.weapon,
+        AssetManager::GetInstance().GetTexture("Sword_Slash_Small"),
+        AssetManager::GetInstance().GetTexture("Sword_Slash_Small"),
+        weapon.minimumDamage,
+        weapon.maximumDamage
+    );
     texture = GetIdleTexture();
 }
