@@ -28,8 +28,10 @@ private:
     std::vector<std::vector<int>> mapGridLayer1;
     std::vector<std::vector<int>> mapGridLayer2;
     std::vector<std::vector<MapObjectId>> mapObjectGrid;
-    Texture2D tileset;
-
+    Texture2D floorTileset;
+    Texture2D wallTileset;
+    Texture2D boxTexture;
+    Texture2D gateTexture;
     bool useLegacyMap = true;
     std::shared_ptr<RoomTemplate> activeRoom;
     LevelMap levelMap;
@@ -65,6 +67,7 @@ public:
     bool IsLegacyMap() const { return useLegacyMap; }
     bool NeedsPlayerNudge() const { return needsNudge; }
     Vector2 ConsumeNudge() { needsNudge = false; return nudgePosition; }
+    bool IsPlayerInExitRoom(Vector2 playerPos) const;
     void GenerateDungeon(TeamManager* teamManager);
 
     void DrawLevel();

@@ -64,7 +64,7 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
             SpawnEnemy(teamManager, levelManager);
         } else if (activeEnemies == 0) {
             if (currentWave == 5) {
-                GameManager::GetInstance().SetState(GameState::VICTORY);
+                // Wave cleared, no victory state
             } else {
                 currentWave++;
                 if (currentWave == 5) {
@@ -143,11 +143,8 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
             // Wave cleared
             if (dungeonCurrentWave >= dungeonTotalWaves) {
                 // All waves done — room cleared!
+                // Room cleared!
                 levelManager->SetActiveRoomState(RoomState::CLEARED);
-                
-                if (isBossRoom) {
-                    GameManager::GetInstance().SetState(GameState::VICTORY);
-                }
                 
                 // Reset for next room
                 dungeonTotalWaves = 0;
