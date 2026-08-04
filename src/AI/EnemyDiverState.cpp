@@ -64,16 +64,17 @@ void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
     }
 
     IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
-    Vector2 moveTarget = pathAccess.GetNextMoveTarget(
-        *enemy,
-        playerPosition
-    );
+    std::optional<Vector2> moveTarget =
+        pathAccess.GetNextMoveTarget(*enemy);
 
-    Vector2 direction = NormalizeOrFallback(
-        Vector2Subtract(moveTarget, enemyPosition),
-        { 0.0f, 0.0f }
-    );
-    direction = pathAccess.GetLocalDirection(*enemy, direction);
+    Vector2 direction = { 0.0f, 0.0f };
+    if (moveTarget) {
+        direction = NormalizeOrFallback(
+            Vector2Subtract(*moveTarget, enemyPosition),
+            { 0.0f, 0.0f }
+        );
+        direction = pathAccess.GetLocalDirection(*enemy, direction);
+    }
 
     enemy->UpdateMovement(Vector2Scale(direction, enemy->GetSpeed()), deltaTime, EnemyWallResponse::Slide);
 

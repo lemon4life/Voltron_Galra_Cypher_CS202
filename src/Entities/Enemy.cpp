@@ -2,6 +2,8 @@
 #include "AI/EnemyCollision.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/AudioManager.h"
+#include "Core/Constants.h"
+#include "Entities/Player/Paladin.h"
 #include "raymath.h"
 
 Enemy::Enemy(
@@ -99,7 +101,83 @@ Rectangle Enemy::GetBoundingBox() const {
 }
 
 Rectangle Enemy::GetCollisionBox() const {
-    return { position.x - size.x/2.f, position.y + size.y * 0.2f, size.x, size.y * 0.3f };
+    return GetNavigationFootprintAt(position);
+}
+
+Rectangle Enemy::GetNavigationFootprintAt(Vector2 entityPosition) const {
+    return {
+        entityPosition.x + collisionProfile.navigationCenterOffset.x -
+            collisionProfile.navigationSize.x / 2.0f,
+        entityPosition.y + collisionProfile.navigationCenterOffset.y -
+            collisionProfile.navigationSize.y / 2.0f,
+        collisionProfile.navigationSize.x,
+        collisionProfile.navigationSize.y
+    };
+}
+
+Rectangle Enemy::GetContactAttackBoxAt(Vector2 entityPosition) const {
+    return {
+        entityPosition.x - size.x / 2.0f,
+        entityPosition.y - size.y / 2.0f,
+        size.x,
+        size.y
+    };
+}
+
+bool Enemy::IsValidPathGoalPosition(
+    Vector2 candidatePosition,
+    const Paladin& target
+) const {
+    return CheckCollisionRecs(
+        GetContactAttackBoxAt(candidatePosition),
+        target.GetCollisionBox()
+    );
+}
+
+void Enemy::DrawPathDebug() const {
+    if (!Constants::DEBUG_DRAW_ENEMY_COLLISION_BOXES) return;
+
+    DrawRectangleLinesEx(GetBoundingBox(), 1.0f, RED);
+    DrawRectangleLinesEx(GetCollisionBox(), 1.0f, SKYBLUE);
+    DrawRectangleLinesEx(GetContactAttackBoxAt(position), 1.0f, YELLOW);
+
+    for (const EnemyPathDebugPoint& point : pathDebugPoints) {
+        DrawCircleV(point.position, 2.5f, point.valid ? GREEN : RED);
+    }
+
+    for (Vector2 waypoint : targetPositions) {
+        DrawCircleV(waypoint, 2.0f, BLUE);
+    }
+
+    if (hasSelectedPathGoal) {
+        DrawCircleLines(
+            (int)selectedPathGoal.x,
+            (int)selectedPathGoal.y,
+            5.0f,
+            LIME
+        );
+    }
+
+    if (pathStatus == EnemyPathStatus::Unreachable ||
+        pathStatus == EnemyPathStatus::SearchLimitReached) {
+        Color markerColor = pathStatus == EnemyPathStatus::SearchLimitReached
+            ? MAGENTA
+            : RED;
+        DrawLine(
+            (int)position.x - 5,
+            (int)position.y - 5,
+            (int)position.x + 5,
+            (int)position.y + 5,
+            markerColor
+        );
+        DrawLine(
+            (int)position.x + 5,
+            (int)position.y - 5,
+            (int)position.x - 5,
+            (int)position.y + 5,
+            markerColor
+        );
+    }
 }
 
 bool Enemy::CheckCollision(const std::vector<GameObject*>& entities) const {

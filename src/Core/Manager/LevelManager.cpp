@@ -539,6 +539,14 @@ bool LevelManager::HasClearLineOfSight(
 
 bool LevelManager::IsValidSpawnLocation(const GameObject* entity) const {
     if (!entity) return false;
+
+    if (entity->GetObjectType() == GameObjectType::Enemy) {
+        const Enemy* enemy = static_cast<const Enemy*>(entity);
+        return !IsSolidCollision(enemy->GetNavigationFootprintAt(
+            enemy->GetPosition()
+        ));
+    }
+
     return !IsSolidCollision(entity->GetBoundingBox());
 }
 
@@ -637,15 +645,8 @@ Rectangle LevelManager::GetCurrentRoomBounds() const {
     return { 0.0f, 0.0f, levelWidth, levelHeight };
 }
 
-Vector2 LevelManager::GetNextMoveTarget(
-    Enemy& enemy,
-    Vector2 fallbackTarget
-) {
-    return enemyPathManager.GetNextMoveTarget(
-        *this,
-        enemy,
-        fallbackTarget
-    );
+std::optional<Vector2> LevelManager::GetNextMoveTarget(Enemy& enemy) {
+    return enemyPathManager.GetNextMoveTarget(*this, enemy);
 }
 
 Vector2 LevelManager::GetLocalDirection(

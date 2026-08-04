@@ -28,7 +28,7 @@ bool EnemyCollision::CheckPlayerCollision(
     const Paladin& player
 ) {
     return CheckCollisionRecs(
-        enemy.GetCollisionBox(),
+        enemy.GetContactAttackBoxAt(enemy.GetPosition()),
         player.GetCollisionBox()
     );
 }

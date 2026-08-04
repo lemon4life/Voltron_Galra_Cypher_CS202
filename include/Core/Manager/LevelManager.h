@@ -98,10 +98,7 @@ public:
     bool IsBlocked(Rectangle bounds) const override;
     Rectangle GetLevelBounds() const override;
     Rectangle GetCurrentRoomBounds() const;
-    Vector2 GetNextMoveTarget(
-        Enemy& enemy,
-        Vector2 fallbackTarget
-    ) override;
+    std::optional<Vector2> GetNextMoveTarget(Enemy& enemy) override;
     Vector2 GetLocalDirection(
         Enemy& enemy,
         Vector2 desiredDirection

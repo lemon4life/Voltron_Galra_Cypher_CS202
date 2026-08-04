@@ -104,19 +104,19 @@ void EnemyRangeChaseState::Update(EnemyRange* enemy, float deltaTime) {
 
     IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
 
-    Vector2 moveTarget = pathAccess.GetNextMoveTarget(
-        *enemy,
-        playerPosition
-    );
+    std::optional<Vector2> moveTarget =
+        pathAccess.GetNextMoveTarget(*enemy);
 
-    Vector2 direction = Vector2Subtract(moveTarget, enemyPosition);
-    if (Vector2Length(direction) > MIN_DIRECTION_LENGTH) {
-        direction = Vector2Normalize(direction);
-    } else {
-        direction = { 0.0f, 0.0f };
+    Vector2 direction = { 0.0f, 0.0f };
+    if (moveTarget) {
+        direction = Vector2Subtract(*moveTarget, enemyPosition);
+        if (Vector2Length(direction) > MIN_DIRECTION_LENGTH) {
+            direction = Vector2Normalize(direction);
+        } else {
+            direction = { 0.0f, 0.0f };
+        }
+        direction = pathAccess.GetLocalDirection(*enemy, direction);
     }
-
-    direction = pathAccess.GetLocalDirection(*enemy, direction);
 
     enemy->UpdateMovement(Vector2Scale(direction, enemy->GetSpeed()), deltaTime, EnemyWallResponse::Slide);
 }

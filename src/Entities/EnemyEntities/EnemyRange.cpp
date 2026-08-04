@@ -20,6 +20,11 @@ namespace {
     constexpr float RANGE_PROJECTILE_RADIUS = 5.0f;
     constexpr float RANGE_MAX_PREDICTION_TIME = 1.0f;
     constexpr Vector2 RANGE_SIZE = { 24.0f, 24.0f };
+    constexpr EnemyCollisionProfile RANGE_COLLISION_PROFILE = {
+        { 18.0f, 8.0f },
+        { 0.0f, 8.0f }
+    };
+    constexpr float RANGE_PATH_GOAL_DISTANCE = 170.0f;
 }
 
 EnemyRange::EnemyRange(
@@ -46,6 +51,7 @@ EnemyRange::EnemyRange(
     enemyType = EnemyType::RANGE;
     kinematics.SetType(WeaponKinematicsType::Ranged);
     size = RANGE_SIZE;
+    SetCollisionProfile(RANGE_COLLISION_PROFILE);
 
     SetEnemySprites(AssetManager::GetInstance().GetRangeSprites());
     ChangeState(GetIdleState());
@@ -161,6 +167,7 @@ void EnemyRange::Draw() {
         4,
         RED
     );
+    DrawPathDebug();
 }
 
 
@@ -190,4 +197,24 @@ float EnemyRange::GetProjectileRadius() const {
 
 float EnemyRange::GetMaxPredictionTime() const {
     return RANGE_MAX_PREDICTION_TIME;
+}
+
+float EnemyRange::GetPreferredPathGoalDistance() const {
+    return RANGE_PATH_GOAL_DISTANCE;
+}
+
+bool EnemyRange::IsValidPathGoalPosition(
+    Vector2 candidatePosition,
+    const Paladin& target
+) const {
+    if (Vector2Distance(candidatePosition, target.GetPosition()) >
+        RANGE_SHOOTING_DISTANCE) {
+        return false;
+    }
+
+    return lineOfSightQuery.HasClearLineOfSight(
+        candidatePosition,
+        target.GetPosition(),
+        RANGE_PROJECTILE_RADIUS
+    );
 }

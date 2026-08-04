@@ -2,8 +2,18 @@
 
 #include "raylib.h"
 
+#include <optional>
+
 class GameObject;
 class Enemy;
+
+enum class EnemyPathStatus {
+    Pending,
+    Ready,
+    AtGoal,
+    Unreachable,
+    SearchLimitReached
+};
 
 enum class MapObjectId : int {
     Empty = -1,
@@ -58,10 +68,7 @@ public:
     virtual bool IsBlocked(Rectangle bounds) const = 0;
     virtual Rectangle GetLevelBounds() const = 0;
 
-    virtual Vector2 GetNextMoveTarget(
-        Enemy& enemy,
-        Vector2 fallbackTarget
-    ) = 0;
+    virtual std::optional<Vector2> GetNextMoveTarget(Enemy& enemy) = 0;
 
     virtual Vector2 GetLocalDirection(
         Enemy& enemy,

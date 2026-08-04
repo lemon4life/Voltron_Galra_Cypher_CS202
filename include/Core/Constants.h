@@ -9,6 +9,7 @@ namespace Constants {
     constexpr int GAME_HEIGHT = 512; // Preserving internal resolution height for UI consistency
     inline const char* GAME_TITLE = "Voltron Mission - Galra Cypher";
     constexpr int TARGET_FPS = 60;
+    constexpr bool DEBUG_DRAW_ENEMY_COLLISION_BOXES = true;
 
     // Scale & Transformation Constants
     constexpr float GLOBAL_SCALE = 1.5f; 
