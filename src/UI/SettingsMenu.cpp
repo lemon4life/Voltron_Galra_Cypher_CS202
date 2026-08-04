@@ -33,6 +33,11 @@ SettingsMenu::SettingsMenu()
               7.0f},
           "Music",
           AudioManager::GetInstance().GetMusicVolumeLevel()),
+      autoAimToggleBounds{
+          (Constants::GAME_WIDTH - SLIDER_WIDTH) * 0.5f,
+          150.0f,
+          24.0f,
+          24.0f},
       backButton(
           Rectangle{
               (Constants::GAME_WIDTH - BUTTON_WIDTH) * 0.5f,
@@ -51,6 +56,11 @@ bool SettingsMenu::Update(Vector2 mousePosition) {
 
     if (musicSlider.Update(mousePosition)) {
         audioManager.SetMusicVolumeLevel(musicSlider.GetValue());
+    }
+    
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mousePosition, autoAimToggleBounds)) {
+        Constants::isAutoAimEnabled = !Constants::isAutoAimEnabled;
+        audioManager.PlayRandomClick();
     }
 
     if (backButton.Update(mousePosition)) {
@@ -90,5 +100,14 @@ void SettingsMenu::Draw(Vector2 mousePosition) const {
 
     soundEffectsSlider.Draw();
     musicSlider.Draw();
+    
+    // Draw Auto-Aim Toggle
+    DrawText("Auto-Aim", static_cast<int>(autoAimToggleBounds.x + 35.0f), static_cast<int>(autoAimToggleBounds.y + 2.0f), 20, RAYWHITE);
+    DrawRectangleLinesEx(autoAimToggleBounds, 2.0f, RAYWHITE);
+    if (Constants::isAutoAimEnabled) {
+        Rectangle fillRec = { autoAimToggleBounds.x + 4, autoAimToggleBounds.y + 4, autoAimToggleBounds.width - 8, autoAimToggleBounds.height - 8 };
+        DrawRectangleRec(fillRec, GREEN);
+    }
+    
     backButton.Draw(mousePosition);
 }

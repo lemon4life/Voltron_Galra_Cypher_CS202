@@ -72,6 +72,9 @@ protected:
     float autoParryDurationTimer;
     bool isAutoParry;
     Vector2 aimTarget;
+    class Enemy* lockedEnemy;
+    float currentAimAngle;
+    float targetAimAngle;
 
 public:
     Paladin(
@@ -99,6 +102,11 @@ public:
     
     void SetAimTarget(Vector2 target) { if (!isParrying) aimTarget = target; }
     Vector2 GetAimTarget() const { return aimTarget; }
+    
+    void SetLockedEnemy(class Enemy* target) { lockedEnemy = target; }
+    class Enemy* GetLockedEnemy() const { return lockedEnemy; }
+    
+    float GetCurrentAimAngle() const { return currentAimAngle; }
     
     void SetTeamManager(TeamManager* manager) { teamManager = manager; }
     TeamManager* GetTeamManager() const { return teamManager; }

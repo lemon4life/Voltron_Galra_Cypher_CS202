@@ -9,6 +9,9 @@ namespace Constants {
     constexpr int GAME_HEIGHT = 512; // Preserving internal resolution height for UI consistency
     inline const char* GAME_TITLE = "Voltron Mission - Galra Cypher";
     constexpr int TARGET_FPS = 60;
+    
+    // Game Settings
+    inline bool isAutoAimEnabled = true;
 
     // Debug Configurations
     inline bool ENABLE_ADMIN_GUI = true;
@@ -18,12 +21,14 @@ namespace Constants {
     constexpr float DEBUG_COLLISION_LINE_THICKNESS = 0.75f;
 
     // Scale & Transformation Constants
-    constexpr float GLOBAL_SCALE = 1.5f;
+    constexpr float GLOBAL_SCALE = 2.0f;
     constexpr Vector2 KNIGHT_PROJECTILE_OFFSET = { 27.0f, 4.0f };
 
     // Dungeon Generation Constants
-    constexpr int ROOM_TILE_SIZE = 15;
+    constexpr int MAX_ROOM_TILE_SIZE = 32;
+    constexpr int NORMAL_ROOM_TILE_SIZE = 20;
     constexpr int CORRIDOR_LENGTH = 5;
-    constexpr int CORRIDOR_WIDTH = 3;
-    constexpr float TILE_SIZE = 32.0f;
+    constexpr int CORRIDOR_WIDTH = 5;
+    constexpr float TILE_SIZE = 16.0f;
+    constexpr float RENDER_TILE_SIZE = TILE_SIZE; // Changed to match character scale
 }

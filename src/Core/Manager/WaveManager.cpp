@@ -146,7 +146,8 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
                 levelManager->SetActiveRoomState(RoomState::CLEARED);
 
                 if (isBossRoom) {
-                    GameManager::GetInstance().SetState(GameState::VICTORY);
+                    // Boss defeated — room cleared, player can continue
+                    AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
                 }
 
                 // Reset for next room

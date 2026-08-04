@@ -35,5 +35,5 @@ public:
 
 class TilemapRenderer {
 public:
-    static void DrawRoom(const RoomTemplate& room, Vector2 roomOffsetWorldPos, Texture2D tileset);
+    static void DrawRoom(const RoomTemplate& room, Vector2 roomOffsetWorldPos, Texture2D floorTileset, Texture2D wallTileset);
 };

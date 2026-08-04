@@ -14,7 +14,8 @@ enum class RoomType {
     SPAWN,
     BATTLE,
     CHEST,
-    BOSS
+    BOSS,
+    EXIT
 };
 
 struct RoomNode {

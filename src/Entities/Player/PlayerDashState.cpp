@@ -59,6 +59,7 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
 
     Vector2 currentPos = player->GetPosition();
+    Vector2 prevPos = currentPos;
     Rectangle bounds = {0, 0, GameManager::GetInstance().GetLevelWidth(), GameManager::GetInstance().GetLevelHeight()};
     if (levelManager) {
         bounds = levelManager->GetLevelBounds();
@@ -74,9 +75,11 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
 
     player->SetPosition(currentPos);
     if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
-        currentPos.x -= dashDirection.x * dashSpeed * deltaTime; // revert X
+        currentPos.x = prevPos.x;
         player->SetPosition(currentPos);
     }
+    
+    prevPos = player->GetPosition();
 
     // Check Y axis
     currentPos.y += dashDirection.y * dashSpeed * deltaTime;
@@ -88,7 +91,7 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
 
     player->SetPosition(currentPos);
     if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
-        currentPos.y -= dashDirection.y * dashSpeed * deltaTime; // revert Y
+        currentPos.y = prevPos.y;
         player->SetPosition(currentPos);
     }
 

@@ -1,11 +1,11 @@
 #include "Entities/Items/DestructibleBox.h"
 #include "Core/Manager/AssetManager.h"
+#include "Core/Constants.h"
 #include "raylib.h"
 
 #include <algorithm>
 
 namespace {
-    constexpr float BOX_SIZE = 32.0f;
     constexpr int BOX_MAX_HEALTH = 100;
     constexpr float HEALTH_BAR_HEIGHT = 3.0f;
     constexpr Color BOX_COLOR = { 139, 90, 43, 255 };
@@ -33,8 +33,21 @@ void DestructibleBox::Draw() {
     Rectangle bounds = GetBoundingBox();
     Texture2D tex = AssetManager::GetInstance().GetTexture("box");
     if (tex.id != 0) {
-        Rectangle src = { 0, 0, (float)tex.width, (float)tex.height };
-        DrawTexturePro(tex, src, bounds, {0,0}, 0.0f, WHITE);
+        Rectangle boxTopSrc = {0, 0, 16, 16};
+        Rectangle boxBottomSrc = {0, 16, 16, 16};
+        
+        // Draw bottom first for depth, or maybe top first? Wait, top is higher up.
+        // It's a single 16x32 texture? The prompt says: "Rectangle boxTopSrc = {0, 0, 16, 16}; Rectangle boxBottomSrc = {0, 16, 16, 16};"
+        // Let's just draw the top and bottom on top of each other or offset? 
+        // A standard destructible box on a 2D map might just occupy one tile in terms of collision, but the graphic is 2 tiles high (16x32).
+        // Let's draw the top part shifted up by one tile height, and bottom part at the bounds.
+        // Wait, if bounds is RENDER_TILE_SIZE (which is 48x48), drawing two 48x48 tiles means the object appears 96 pixels tall.
+        
+        Rectangle topBounds = {bounds.x, bounds.y - bounds.height, bounds.width, bounds.height};
+        Rectangle bottomBounds = bounds;
+        
+        DrawTexturePro(tex, boxTopSrc, topBounds, {0,0}, 0.0f, WHITE);
+        DrawTexturePro(tex, boxBottomSrc, bottomBounds, {0,0}, 0.0f, WHITE);
     } else {
         DrawRectangleRec(bounds, BOX_COLOR);
         DrawRectangleLinesEx(bounds, 2.0f, BOX_EDGE_COLOR);
@@ -57,10 +70,10 @@ void DestructibleBox::Draw() {
 
 Rectangle DestructibleBox::GetBoundingBox() const {
     return {
-        position.x - BOX_SIZE / 2.0f,
-        position.y - BOX_SIZE / 2.0f,
-        BOX_SIZE,
-        BOX_SIZE
+        position.x - Constants::RENDER_TILE_SIZE / 2.0f,
+        position.y - Constants::RENDER_TILE_SIZE / 2.0f,
+        Constants::RENDER_TILE_SIZE,
+        Constants::RENDER_TILE_SIZE
     };
 }
 

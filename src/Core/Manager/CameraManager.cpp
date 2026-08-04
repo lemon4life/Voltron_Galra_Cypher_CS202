@@ -28,7 +28,7 @@ void CameraManager::UpdateCamera(Vector2 playerPos, Vector2 mouseWorldPos, float
     if (!isHitstop) {
         // Assume GLOBAL_SCALE = 3.0f is passed from somewhere or we define it here.
         // Actually we can just use 3.0f since it's hardcoded for now, or use the extern.
-        camera.zoom = Lerp(camera.zoom, windowScale * hitstopZoom * Constants::GLOBAL_SCALE, 15.0f * deltaTime);
+        camera.zoom = Lerp(camera.zoom, windowScale * hitstopZoom * Constants::GLOBAL_SCALE * 0.75f, 15.0f * deltaTime);
     }
 
     // 3. Aim-Biased Tracking
