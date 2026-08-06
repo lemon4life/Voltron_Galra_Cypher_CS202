@@ -14,8 +14,10 @@ namespace Constants {
     inline bool isAutoAimEnabled = true;
 
     // Debug Configurations
-    constexpr bool DEBUG_DRAW_ENTITY_COLLISION_BOXES = false;
-    constexpr bool DEBUG_DRAW_ENEMY_PATHS = true;
+    inline bool ENABLE_ADMIN_GUI = true;
+    inline bool DEBUG_DRAW_ENTITY_COLLISION_BOXES = false;
+    inline bool DEBUG_DRAW_ENEMY_PATHS = false;
+    inline bool DEBUG_PLAYER_IMMUNITY = false;
     constexpr float DEBUG_COLLISION_LINE_THICKNESS = 0.75f;
 
     // Scale & Transformation Constants

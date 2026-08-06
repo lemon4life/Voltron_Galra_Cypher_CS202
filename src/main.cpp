@@ -22,6 +22,7 @@
 #include "UI/SettingsMenu.h"
 #include "UI/UIManager.h"
 #include "UI/MinimapRenderer.h"
+#include "UI/adminGUI/AdminPanel.h"
 
 #include <algorithm>
 #include <limits>
@@ -160,7 +161,7 @@ namespace {
             "assets/map/demo-big_Tile Layer 1.csv",
             teamManager
         );
-        waveManager->Reset(10, 3, 5);
+        waveManager->Reset(10, 0, 0);
         AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
         GameManager::GetInstance().SetState(GameState::GAMEPLAY);
     }
@@ -233,6 +234,7 @@ int main() {
     PauseMenu pauseMenu;
     SettingsMenu settingsMenu;
     PaladinSelectionMenu paladinSelectionMenu;
+    AdminPanel adminPanel;
     bool quitRequested = false;
 
     TeamManager* teamManager = nullptr;
@@ -543,6 +545,16 @@ int main() {
                 break;
         }
 
+        adminPanel.Update(
+            GetScreenToWorld2D(
+                GetMousePosition(),
+                CameraManager::GetInstance().GetCamera()
+            ),
+            levelManager,
+            teamManager,
+            gameManager.GetState()
+        );
+
         state = gameManager.GetState();
         GameState renderState = gameManager.GetRenderState();
         if (state == GameState::SETTINGS &&
@@ -670,6 +682,8 @@ int main() {
             );
             EndMode2D();
         }
+
+        adminPanel.Draw();
 
         EndDrawing();
     }
