@@ -41,4 +41,5 @@ public:
     EnemySprites GetRangeSprites();
     EnemySprites GetDiverSprites();
     EnemySprites GetChaserSprites();
+    EnemySprites GetBossSprites();
 };

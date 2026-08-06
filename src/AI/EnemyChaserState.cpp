@@ -174,12 +174,7 @@ void EnemyChaserDamageState::Update(
                 Vector2Subtract(enemy->GetPosition(), playerPosition),
                 Vector2Negate(chargeDirection)
             );
-            EnemyCollision::MoveAgainstWalls(
-                *enemy,
-                Vector2Scale(pushDirection, 60.0f),
-                enemy->GetPathAccess(),
-                EnemyWallResponse::Slide
-            );
+            enemy->ApplyCollisionPush(pushDirection, 60.0f);
 
             enemy->ResetAttackCooldown();
             enemy->ChangeState(enemy->GetDazeState());

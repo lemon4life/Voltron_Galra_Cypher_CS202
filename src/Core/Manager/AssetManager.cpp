@@ -96,6 +96,10 @@ void AssetManager::QueueCharacterAssets() {
     add("Knight_Sword", "assets/sprites/Enemy/Knight_sword.png", true);
     add("Sword_Slash_Small", "assets/sprites/Effects/Sword_slash_small.png", true);
     add("Sword_Slash_Big", "assets/sprites/Effects/Sword_slash_big.png", true);
+
+    // Boss
+    add("Boss_Idle", "assets/sprites/Enemy/Boss/Boss-1-idle.png", true);
+    add("Boss_Run", "assets/sprites/Enemy/Boss/Boss-1-running.png", true);
 }
 
 bool AssetManager::UpdateLoading(float& outProgress) {
@@ -191,6 +195,17 @@ EnemySprites AssetManager::GetChaserSprites() {
         GetTexture("Knight_Down"),
         GetTexture("Knight_Sword"),
         GetTexture("Sword_Slash_Small"),
+        {0}
+    };
+}
+
+EnemySprites AssetManager::GetBossSprites() {
+    return EnemySprites{
+        GetTexture("Boss_Idle"),
+        GetTexture("Boss_Run"),
+        {0},
+        {0},
+        {0},
         {0}
     };
 }

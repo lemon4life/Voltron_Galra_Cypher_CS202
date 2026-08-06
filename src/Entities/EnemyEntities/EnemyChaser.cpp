@@ -20,6 +20,7 @@ namespace {
     constexpr float CHASER_DAMAGE_CHARGE_DURATION = 0.25f;
     constexpr int CHASER_MIN_AGGRO_MILLISECONDS = 200;
     constexpr int CHASER_MAX_AGGRO_MILLISECONDS = 700;
+    constexpr float CHASER_KNOCKBACK_RESISTANCE = 0.25f;
     constexpr Vector2 CHASER_SIZE = { 20.0f, 20.0f };
     constexpr EnemyCollisionProfile CHASER_COLLISION_PROFILE = {
         { 16.0f, 8.0f },
@@ -57,6 +58,7 @@ EnemyChaser::EnemyChaser(
     enemyType = EnemyType::Chaser;
     size = CHASER_SIZE;
     SetCollisionProfile(CHASER_COLLISION_PROFILE);
+    SetKnockbackResistance(CHASER_KNOCKBACK_RESISTANCE);
     ResetAggroMeter();
 
     SetEnemySprites(AssetManager::GetInstance().GetChaserSprites());

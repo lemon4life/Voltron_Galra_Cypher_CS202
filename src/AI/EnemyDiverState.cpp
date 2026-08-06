@@ -87,12 +87,7 @@ void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
         { 1.0f, 0.0f }
     );
 
-    EnemyCollision::MoveAgainstWalls(
-        *enemy,
-        Vector2Scale(pushDirection, PLAYER_SEPARATION_DISTANCE),
-        pathAccess,
-        EnemyWallResponse::Slide
-    );
+    enemy->ApplyCollisionPush(pushDirection, PLAYER_SEPARATION_DISTANCE);
 }
 
 void EnemyDiverChaseState::Exit(EnemyDiver* enemy) {
@@ -209,12 +204,7 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
                     Vector2Subtract(enemy->GetPosition(), playerPosition),
                     Vector2Negate(lockedDirection)
                 );
-                EnemyCollision::MoveAgainstWalls(
-                    *enemy,
-                    Vector2Scale(pushDirection, 60.0f),
-                    enemy->GetPathAccess(),
-                    EnemyWallResponse::Slide
-                );
+                enemy->ApplyCollisionPush(pushDirection, 60.0f);
 
                 enemy->ResetAttackCooldown();
                 enemy->ChangeState(enemy->GetDazeState());
