@@ -1,5 +1,7 @@
 #pragma once
 #include "raylib.h"
+#include <vector>
+#include "Core/DepthRenderItem.h"
 
 class TeamManager;
 class LevelManager;

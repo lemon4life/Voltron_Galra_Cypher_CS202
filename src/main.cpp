@@ -11,6 +11,7 @@
 #include "Core/Manager/ParticleManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/WaveManager.h"
+#include "Core/DepthRenderItem.h"
 #include "Entities/Hub/HubPaladinStand.h"
 #include "Entities/NPC.h"
 #include "Entities/Player/Hunk.h"
@@ -569,12 +570,25 @@ int main() {
             renderState == GameState::GAMEPLAY) {
             BeginMode2D(CameraManager::GetInstance().GetCamera());
             ClearBackground(BLACK);
-            levelManager.DrawLevel();
+            levelManager.DrawLevelBase();
             gameManager.DrawEffects(true);
-            teamManager->Draw();
+
+            std::vector<DepthRenderItem> depthItems;
+            levelManager.GetDepthRenderItems(depthItems);
+            teamManager->AddDepthRenderItems(depthItems);
+            
             if (renderState == GameState::GAMEPLAY) {
-                gameManager.DrawProjectiles();
+                gameManager.AddDepthRenderItems(depthItems);
             }
+
+            std::sort(depthItems.begin(), depthItems.end(), [](const DepthRenderItem& a, const DepthRenderItem& b) {
+                return a.ySort < b.ySort;
+            });
+
+            for (const auto& item : depthItems) {
+                item.drawFunc();
+            }
+
             ParticleManager::GetInstance().Draw();
             gameManager.DrawEffects(false);
             

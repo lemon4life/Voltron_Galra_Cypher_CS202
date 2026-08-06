@@ -2,7 +2,7 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Entities/Enemy.h"
-#include "Entities/Items/DestructibleBox.h"
+#include "Entities/Props/Prop.h"
 #include <algorithm>
 #include <cstdlib>
 #include "Core/Constants.h"
@@ -95,8 +95,8 @@ void MeleeAttackStrategy::Update(float deltaTime) {
                     enemy.ApplyKnockback(aimDir, MELEE_KNOCKBACK_FORCE);
                     damagedObject = true;
                 } else if (entity->GetObjectType() == GameObjectType::Box) {
-                    DestructibleBox& box =
-                        static_cast<DestructibleBox&>(*entity);
+                    Prop& box =
+                        static_cast<Prop&>(*entity);
                     box.TakeDamage(damage);
                     damagedObject = true;
                 }

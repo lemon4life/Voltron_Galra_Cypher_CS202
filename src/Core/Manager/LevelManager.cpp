@@ -5,7 +5,7 @@
 #include "Entities/Player/Paladin.h"
 #include "Core/EntityFactory.h"
 #include "Entities/Enemy.h"
-#include "Entities/Items/DestructibleBox.h"
+#include "Entities/Props/Prop.h"
 
 #include <fstream>
 #include <sstream>
@@ -76,12 +76,16 @@ LevelManager::LevelManager()
     tileset = LoadTexture("assets/tileset/Galra_ship_Tileset.png");
     floorTileset = LoadTexture("assets/tileset/Galra_Floors.png");
     wallTileset = LoadTexture("assets/tileset/Galra_Walls.png");
+    prop1Texture = LoadTexture("assets/Objects/tall_object_1_8.png");
+    prop2Texture = LoadTexture("assets/Objects/object_2.png");
     boxTexture = LoadTexture("assets/Objects/box.png");
     gateTexture = LoadTexture("assets/Objects/Transfer_gate.png");
     
     SetTextureFilter(tileset, TEXTURE_FILTER_POINT);
     SetTextureFilter(floorTileset, TEXTURE_FILTER_POINT);
     SetTextureFilter(wallTileset, TEXTURE_FILTER_POINT);
+    SetTextureFilter(prop1Texture, TEXTURE_FILTER_POINT);
+    SetTextureFilter(prop2Texture, TEXTURE_FILTER_POINT);
     SetTextureFilter(boxTexture, TEXTURE_FILTER_POINT);
     SetTextureFilter(gateTexture, TEXTURE_FILTER_POINT);
 }
@@ -91,6 +95,8 @@ LevelManager::~LevelManager() {
     UnloadTexture(tileset);
     UnloadTexture(floorTileset);
     UnloadTexture(wallTileset);
+    UnloadTexture(prop1Texture);
+    UnloadTexture(prop2Texture);
     UnloadTexture(boxTexture);
     UnloadTexture(gateTexture);
 }
@@ -348,10 +354,10 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
     ProcessPendingRemovals();
 }
 
-void LevelManager::DrawLevel() {
+void LevelManager::DrawLevelBase() {
     if (IsProceduralDungeon()) {
         if (activeRoom) {
-            TilemapRenderer::DrawRoom(*activeRoom, roomOffset, floorTileset, wallTileset);
+            TilemapRenderer::DrawRoomBase(*activeRoom, roomOffset, floorTileset, wallTileset, prop1Texture, prop2Texture, boxTexture);
             
             // Draw EXIT gate if this room is an EXIT room
             for (const auto& node : levelMap.generatedNodes) {
@@ -399,7 +405,7 @@ void LevelManager::DrawLevel() {
             // Draw Floors pass
             for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
                 for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
-                    if (r >= 0 && c >= 0 && r < gridRows && c < currentGrid[r].size()) {
+                    if (r >= 0 && c >= 0 && r < gridRows && c < (int)currentGrid[r].size()) {
                         int tileID = currentGrid[r][c];
                         // Floor tiles: positive IDs that are NOT wall IDs (0, 4-11)
                         bool isWallTile = (tileID == 0 || (tileID >= 4 && tileID <= 11));
@@ -421,7 +427,7 @@ void LevelManager::DrawLevel() {
             for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
                 for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
                     bool isWall = false;
-                    if (r >= 0 && c >= 0 && r < gridRows && c < currentGrid[r].size()) {
+                    if (r >= 0 && c >= 0 && r < gridRows && c < (int)currentGrid[r].size()) {
                         int tid = currentGrid[r][c];
                         // Wall tile IDs: 0 (void/border) and 4-11 (solid walls)
                         if (tid == 0 || (tid >= 4 && tid <= 11)) isWall = true;
@@ -435,11 +441,9 @@ void LevelManager::DrawLevel() {
                             Constants::RENDER_TILE_SIZE
                         };
                         int variant = std::abs(hash(c, r)) % 2;
-                        DrawTexturePro(wallTileset, wallTopSrc[variant], destRec, {0,0}, 0.0f, WHITE);
-                        
-                        // Depth logic for legacy map
+                        // Depth logic for legacy map (front faces go to base layer)
                         bool tileBelowIsFloor = true; // Always draw fronts for legacy map border walls
-                        if (r + 1 >= 0 && r + 1 < gridRows && c >= 0 && c < currentGrid[r+1].size()) {
+                        if (r + 1 >= 0 && r + 1 < gridRows && c >= 0 && c < (int)currentGrid[r+1].size()) {
                             int belowTid = currentGrid[r+1][c];
                             if (belowTid == 0 || (belowTid >= 4 && belowTid <= 11)) tileBelowIsFloor = false; // Only hide front if the tile immediately below is another wall
                         }
@@ -457,17 +461,66 @@ void LevelManager::DrawLevel() {
             }
         }
     } // End legacy map check
-
+    
+    // Draw base layer for dynamic props
     for (auto* entity : levelEntities) {
-        entity->Draw();
+        if (entity->GetObjectType() == GameObjectType::Box) {
+            static_cast<Prop*>(entity)->DrawBaseLayer();
+        }
+    }
+}
+
+void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
+    if (IsProceduralDungeon()) {
+        if (activeRoom) {
+            TilemapRenderer::GetRoomDepthRenderItems(*activeRoom, roomOffset, wallTileset, prop1Texture, prop2Texture, boxTexture, items);
+        }
+    } else {
+        auto hash = [](int x, int y) -> int {
+            unsigned int h = (unsigned int)(x * 374761393 ^ y * 668265263);
+            h = (h ^ (h >> 13)) * 1274126177;
+            return h ^ (h >> 16);
+        };
+        Rectangle wallTopSrc[2] = { {0, 0, 16, 16}, {16, 0, 16, 16} };
+        for (int layer = 1; layer <= 2; ++layer) {
+            const auto& currentGrid = (layer == 1) ? mapGridLayer1 : mapGridLayer2;
+            if (currentGrid.empty()) continue;
+            for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
+                for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
+                    bool isWall = false;
+                    if (r >= 0 && c >= 0 && r < gridRows && c < (int)currentGrid[r].size()) {
+                        int tid = currentGrid[r][c];
+                        if (tid == 0 || (tid >= 4 && tid <= 11)) isWall = true;
+                    }
+                    if (isWall) {
+                        float ySort = std::floor((float)(r + 1) * Constants::RENDER_TILE_SIZE);
+                        items.push_back({
+                            ySort,
+                            [this, c, r, hash, wallTopSrc]() {
+                                Rectangle destRec = {
+                                    std::floor((float)c * Constants::RENDER_TILE_SIZE),
+                                    std::floor((float)r * Constants::RENDER_TILE_SIZE),
+                                    Constants::RENDER_TILE_SIZE,
+                                    Constants::RENDER_TILE_SIZE
+                                };
+                                int variant = std::abs(hash(c, r)) % 2;
+                                DrawTexturePro(wallTileset, wallTopSrc[variant], destRec, {0,0}, 0.0f, WHITE);
+                            }
+                        });
+                    }
+                }
+            }
+        }
     }
 
-    if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES ||
-        Constants::DEBUG_DRAW_ENEMY_PATHS) {
-        for (GameObject* entity : levelEntities) {
-            if (entity->GetObjectType() == GameObjectType::Enemy) {
-                static_cast<Enemy*>(entity)->DrawPathDebug();
-            }
+    for (auto* entity : levelEntities) {
+        if (entity->GetObjectType() == GameObjectType::Box) {
+            static_cast<Prop*>(entity)->AddDepthRenderItems(items);
+        } else {
+            items.push_back({
+                entity->GetBoundingBox().y + entity->GetBoundingBox().height,
+                [entity]() { entity->Draw(); }
+            });
         }
     }
 }
@@ -512,6 +565,15 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
                 return true;
             }
         }
+        
+        // Check props (entities) in procedural dungeon
+        for (const auto* entity : levelEntities) {
+            if (entity->GetObjectType() == GameObjectType::Box) {
+                if (CheckCollisionRecs(box, entity->GetBoundingBox())) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -528,9 +590,9 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
             int tileID2 = -1;
             MapObjectId mapObjectId = MapObjectId::Empty;
             if (r >= 0 && c >= 0 && r < gridRows && c < gridCols) {
-                if (r < mapGridLayer1.size() && c < mapGridLayer1[r].size()) tileID1 = mapGridLayer1[r][c];
-                if (r < mapGridLayer2.size() && c < mapGridLayer2[r].size()) tileID2 = mapGridLayer2[r][c];
-                if (r < mapObjectGrid.size() && c < mapObjectGrid[r].size()) {
+                if (r < (int)mapGridLayer1.size() && c < (int)mapGridLayer1[r].size()) tileID1 = mapGridLayer1[r][c];
+                if (r < (int)mapGridLayer2.size() && c < (int)mapGridLayer2[r].size()) tileID2 = mapGridLayer2[r][c];
+                if (r < (int)mapObjectGrid.size() && c < (int)mapObjectGrid[r].size()) {
                     mapObjectId = mapObjectGrid[r][c];
                 }
             } else {
@@ -568,7 +630,10 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
                 }
             }
 
-            if (IsSolidMapObject(mapObjectId)) {
+            if (mapObjectId == MapObjectId::DestructibleBox || mapObjectId == MapObjectId::Prop1 || mapObjectId == MapObjectId::Prop2) {
+                // Props are dynamic entities, they handle their own collision or are handled in Update/Physics.
+                // Depending on implementation, you might return false here if they aren't static solid.
+            } else if (IsSolidMapObject(mapObjectId)) {
                 return true;
             }
         }
@@ -577,7 +642,7 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
 }
 
 bool LevelManager::IsSolidMapObject(MapObjectId objectId) const {
-    if (objectId == MapObjectId::DestructibleBox) {
+    if (objectId == MapObjectId::DestructibleBox || objectId == MapObjectId::Prop1 || objectId == MapObjectId::Prop2) {
         return true; // DestructibleBox occupies one solid cell.
     }
 
@@ -678,6 +743,12 @@ void LevelManager::ProcessPendingMapObjectDestructions() {
         }
 
         if (object->GetObjectType() != GameObjectType::Box) {
+            continue;
+        }
+
+        if (IsProceduralDungeon()) {
+            // In procedural dungeons, we just remove the entity. No mapObjectGrid exists to update.
+            QueueRemoval(object);
             continue;
         }
 
@@ -816,15 +887,17 @@ void LevelManager::QueueMapObjectDestruction(
         return;
     }
 
-    if (cell.row < 0 || cell.column < 0 ||
-        cell.row >= (int)mapObjectGrid.size() ||
-        cell.column >= (int)mapObjectGrid[cell.row].size()) {
-        return;
-    }
+    if (!IsProceduralDungeon()) {
+        if (cell.row < 0 || cell.column < 0 ||
+            cell.row >= (int)mapObjectGrid.size() ||
+            cell.column >= (int)mapObjectGrid[cell.row].size()) {
+            return;
+        }
 
-    if (mapObjectGrid[cell.row][cell.column]
-        != MapObjectId::DestructibleBox) {
-        return;
+        if (mapObjectGrid[cell.row][cell.column]
+            != MapObjectId::DestructibleBox) {
+            return;
+        }
     }
 
     auto duplicate = std::find_if(
@@ -865,5 +938,35 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
         // Auto-discover spawn room and mark it cleared (no combat in spawn)
         levelMap.spawnRoom->isDiscovered = true;
         levelMap.spawnRoom->state = RoomState::CLEARED;
+    }
+
+    // Instantiate procedural props as actual game entities
+    if (activeRoom) {
+        for (int y = 0; y < activeRoom->height; ++y) {
+            for (int x = 0; x < activeRoom->width; ++x) {
+                int propId = activeRoom->layer2_props[y][x];
+                if (propId > 0) {
+                    MapObjectId type = MapObjectId::Empty;
+                    if (propId == 1) type = MapObjectId::DestructibleBox;
+                    else if (propId == 2) type = MapObjectId::Prop1;
+                    else if (propId == 3) type = MapObjectId::Prop2;
+                    else if (propId == 4) type = MapObjectId::MockWall;
+
+                    if (type != MapObjectId::Empty) {
+                        Vector2 worldPos = {
+                            (float)x * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f,
+                            (float)y * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f
+                        };
+                        AddEntity(EntityFactory::CreateEntity(
+                            type,
+                            worldPos,
+                            {y, x}, // cell
+                            teamManager,
+                            GetLevelAccessBundle()
+                        ));
+                    }
+                }
+            }
+        }
     }
 }

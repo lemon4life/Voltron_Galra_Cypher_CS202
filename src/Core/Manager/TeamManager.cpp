@@ -67,6 +67,16 @@ bool TeamManager::MovePaladinToSlot(
     return true;
 }
 
+void TeamManager::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
+    if (activeIndex >= 0 && activeIndex < team.size()) {
+        Paladin* activePaladin = team[activeIndex];
+        items.push_back({
+            activePaladin->GetBoundingBox().y + activePaladin->GetBoundingBox().height,
+            [activePaladin]() { activePaladin->Draw(); }
+        });
+    }
+}
+
 void TeamManager::SwapCharacter() {
     if (team.size() <= 1) return;
     

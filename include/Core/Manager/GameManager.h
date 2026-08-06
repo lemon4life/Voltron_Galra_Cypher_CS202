@@ -1,6 +1,7 @@
 #pragma once
 #include "raylib.h"
 #include <vector>
+#include "Core/DepthRenderItem.h"
 
 enum class GameState {
     MAIN_MENU,
@@ -89,5 +90,6 @@ public:
     void AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime, bool drawBehind = false);
     void AddImpactEffect(Vector2 pos);
     void DrawProjectiles();
+    void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
     void ClearProjectiles();
 };

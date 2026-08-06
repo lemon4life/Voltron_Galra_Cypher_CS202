@@ -73,7 +73,7 @@ void GameManager::AddProjectile(Projectile* p) {
 }
 
 #include "Entities/Enemy.h"
-#include "Entities/Items/DestructibleBox.h"
+#include "Entities/Props/Prop.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 
@@ -95,7 +95,7 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
                 continue;
             }
 
-            DestructibleBox& box = static_cast<DestructibleBox&>(*entity);
+            Prop& box = static_cast<Prop&>(*entity);
             box.TakeDamage((*it)->GetDamage());
             AddImpactEffect({
                 pBox.x + pBox.width / 2.0f,
@@ -185,8 +185,17 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
 }
 
 void GameManager::DrawProjectiles() {
-    for (auto p : activeProjectiles) {
+    for (auto* p : activeProjectiles) {
         p->Draw();
+    }
+}
+
+void GameManager::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
+    for (auto* p : activeProjectiles) {
+        items.push_back({
+            p->GetBoundingBox().y + p->GetBoundingBox().height,
+            [p]() { p->Draw(); }
+        });
     }
 }
 
