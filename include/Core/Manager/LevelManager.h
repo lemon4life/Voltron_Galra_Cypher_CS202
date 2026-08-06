@@ -6,6 +6,7 @@
 #include "Entities/GameObject.h"
 #include "Core/Manager/EnemyPathManager.h"
 #include "Core/Level/Tilemap.h"
+#include "Core/DepthRenderItem.h"
 
 class TeamManager;
 
@@ -37,6 +38,8 @@ private:
     Texture2D wallTileset;
     Texture2D boxTexture;
     Texture2D gateTexture;
+    Texture2D prop1Texture;
+    Texture2D prop2Texture;
     Texture2D tileset; // legacy from remote
     bool useLegacyMap = true;
     LevelMode levelMode = LevelMode::Layered;
@@ -78,7 +81,8 @@ public:
     bool IsPlayerInExitRoom(Vector2 playerPos) const;
     void GenerateDungeon(TeamManager* teamManager);
 
-    void DrawLevel();
+    void DrawLevelBase();
+    void GetDepthRenderItems(std::vector<DepthRenderItem>& items);
     void UpdateLevel(float deltaTime, Vector2 playerPos = {0,0});
     void ClearLevel();
     void AddEntity(GameObject* entity);

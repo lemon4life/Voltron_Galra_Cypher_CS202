@@ -139,6 +139,26 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
             }
         }
         
+        // Spawn 2 to 6 random props/mock-walls in the room
+        if (node->type == RoomType::BATTLE || node->type == RoomType::BOSS) {
+            int numProps = GetRandomValue(2, 6);
+            for (int i = 0; i < numProps; ++i) {
+                int rx = GetRandomValue(2, currentRoomSize - 3);
+                int ry = GetRandomValue(2, currentRoomSize - 3);
+                
+                // Exclude a 5x5 center area to prevent player getting stuck when nudged from doors
+                if (std::abs(rx - currentRoomSize / 2) <= 2 && std::abs(ry - currentRoomSize / 2) <= 2) {
+                    continue;
+                }
+                
+                int px = startX + offset + rx;
+                int py = startY + offset + ry;
+                if (baked->layer0_tiles[py][px] == 0 && baked->layer2_props[py][px] == 0) {
+                    baked->layer2_props[py][px] = GetRandomValue(1, 4);
+                }
+            }
+        }
+        
         // Compute trigger bounds for lockdown (inset by 2 tiles)
         node->triggerBounds = {
             (startX + offset + 2.0f) * tileW,
@@ -196,10 +216,9 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
     return baked;
 }
 
-void TilemapRenderer::DrawRoom(const RoomTemplate& room, Vector2 roomOffsetWorldPos, Texture2D floorTileset, Texture2D wallTileset) {
+void TilemapRenderer::DrawRoomBase(const RoomTemplate& room, Vector2 roomOffsetWorldPos, Texture2D floorTileset, Texture2D wallTileset, Texture2D prop1Texture, Texture2D prop2Texture, Texture2D boxTexture) {
     float scaledTileSize = Constants::RENDER_TILE_SIZE;
 
-    Rectangle wallTopSrc[2] = { {0, 0, 16, 16}, {16, 0, 16, 16} };
     Rectangle wallFrontFaceSrc[2] = { {0, 16, 16, 16}, {16, 16, 16, 16} };
     
     Rectangle floorSrc[6];
@@ -232,23 +251,14 @@ void TilemapRenderer::DrawRoom(const RoomTemplate& room, Vector2 roomOffsetWorld
         }
     }
 
-    // Draw Walls and Depth
+    // Draw Wall Front Faces
     for (int y = 0; y < room.height; ++y) {
         for (int x = 0; x < room.width; ++x) {
             int tileType = room.layer0_tiles[y][x];
             int objType = room.layer1_objects[y][x];
             
             if (tileType == 1 || objType == 20) {
-                Rectangle destRec = {
-                    std::floor(roomOffsetWorldPos.x + x * scaledTileSize),
-                    std::floor(roomOffsetWorldPos.y + y * scaledTileSize),
-                    scaledTileSize,
-                    scaledTileSize
-                };
                 int variant = std::abs(hash(x, y)) % 2;
-                DrawTexturePro(wallTileset, wallTopSrc[variant], destRec, {0,0}, 0.0f, WHITE);
-                
-                // Depth logic: if tile below is floor or void
                 bool tileBelowIsFloorOrVoid = false;
                 if (y + 1 >= room.height) {
                     tileBelowIsFloorOrVoid = true;
@@ -268,6 +278,41 @@ void TilemapRenderer::DrawRoom(const RoomTemplate& room, Vector2 roomOffsetWorld
                     };
                     DrawTexturePro(wallTileset, wallFrontFaceSrc[variant], destRecFace, {0,0}, 0.0f, WHITE);
                 }
+            }
+        }
+    }
+}
+
+void TilemapRenderer::GetRoomDepthRenderItems(const RoomTemplate& room, Vector2 roomOffsetWorldPos, Texture2D wallTileset, Texture2D prop1Texture, Texture2D prop2Texture, Texture2D boxTexture, std::vector<DepthRenderItem>& items) {
+    float scaledTileSize = Constants::RENDER_TILE_SIZE;
+    Rectangle wallTopSrc[2] = { {0, 0, 16, 16}, {16, 0, 16, 16} };
+
+    auto hash = [](int x, int y) -> int {
+        unsigned int h = (unsigned int)(x * 374761393 ^ y * 668265263);
+        h = (h ^ (h >> 13)) * 1274126177;
+        return h ^ (h >> 16);
+    };
+
+    for (int y = 0; y < room.height; ++y) {
+        for (int x = 0; x < room.width; ++x) {
+            int tileType = room.layer0_tiles[y][x];
+            int objType = room.layer1_objects[y][x];
+            
+            if (tileType == 1 || objType == 20) {
+                float ySort = std::floor(roomOffsetWorldPos.y + (y + 1) * scaledTileSize);
+                items.push_back({
+                    ySort,
+                    [x, y, roomOffsetWorldPos, scaledTileSize, wallTileset, wallTopSrc, hash]() {
+                        Rectangle destRec = {
+                            std::floor(roomOffsetWorldPos.x + x * scaledTileSize),
+                            std::floor(roomOffsetWorldPos.y + y * scaledTileSize),
+                            scaledTileSize,
+                            scaledTileSize
+                        };
+                        int variant = std::abs(hash(x, y)) % 2;
+                        DrawTexturePro(wallTileset, wallTopSrc[variant], destRec, {0,0}, 0.0f, WHITE);
+                    }
+                });
             }
         }
     }

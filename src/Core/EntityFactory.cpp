@@ -3,7 +3,7 @@
 #include "Entities/Wall.h"
 #include "Entities/NPC.h"
 #include "Entities/Hub/HubPaladinStand.h"
-#include "Entities/Items/DestructibleBox.h"
+#include "Entities/Props/Prop.h"
 #include "Entities/EnemyEntities/EnemyChaser.h"
 #include "Entities/EnemyEntities/Boss.h"
 #include "Entities/EnemyEntities/EnemyDiver.h"
@@ -30,10 +30,14 @@ GameObject* EntityFactory::CreateEntity(
 ) {
     switch (type) {
         case MapObjectId::DestructibleBox:
-            return new DestructibleBox(
+        case MapObjectId::Prop1:
+        case MapObjectId::Prop2:
+        case MapObjectId::MockWall:
+            return new Prop(
                 position,
                 cell,
-                levelAccess.mapObjectDestruction
+                levelAccess.mapObjectDestruction,
+                type
             );
         case MapObjectId::NPC:
             return new NPC(position);

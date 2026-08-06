@@ -3,6 +3,7 @@
 #include <vector>
 #include "Core/ISubject.h"
 #include "Entities/Player/PaladinDefinition.h"
+#include "Core/DepthRenderItem.h"
 
 class Paladin;
 
@@ -25,6 +26,7 @@ public:
     void AddMember(Paladin* paladin);
     void Update(float deltaTime);
     void Draw();
+    void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
 
     void SwapCharacter();
     void SwapDueToDeath();
