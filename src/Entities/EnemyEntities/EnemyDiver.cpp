@@ -26,6 +26,7 @@ namespace {
     constexpr float DIVE_SPEED = 300.0f; // DEBUG SLOW
     constexpr float DIVE_DURATION = 0.2f;
     constexpr float DIVE_RECOVERY_DURATION = 0.2f;
+    constexpr float DIVER_KNOCKBACK_RESISTANCE = 0.50f;
 
     constexpr Vector2 DIVER_SIZE = { 24.0f, 24.0f };
     constexpr EnemyCollisionProfile DIVER_COLLISION_PROFILE = {
@@ -60,6 +61,7 @@ EnemyDiver::EnemyDiver(
     enemyType = EnemyType::DIVER;
     size = DIVER_SIZE;
     SetCollisionProfile(DIVER_COLLISION_PROFILE);
+    SetKnockbackResistance(DIVER_KNOCKBACK_RESISTANCE);
 
     SetEnemySprites(AssetManager::GetInstance().GetDiverSprites());
     ChangeState(GetIdleState());

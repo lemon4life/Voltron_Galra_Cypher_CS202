@@ -43,6 +43,7 @@ enum class EnemyProperty {
     BaseAttackCooldown,
     CurrentAttackCooldown,
     DazeDuration,
+    KnockbackResistance,
     HitboxWidth,
     HitboxHeight,
     NavigationWidth,
@@ -60,7 +61,7 @@ struct PropertyDefinition {
     int decimals;
 };
 
-constexpr std::array<PropertyDefinition, 13> PROPERTIES = {{
+constexpr std::array<PropertyDefinition, 14> PROPERTIES = {{
     { EnemyProperty::Health, "Spawn health", 10.0f, 1.0f, 2000.0f, 0 },
     { EnemyProperty::MaxHealth, "Maximum health", 10.0f, 1.0f, 2000.0f, 0 },
     { EnemyProperty::Speed, "Movement speed", 5.0f, 0.0f, 500.0f, 0 },
@@ -68,6 +69,7 @@ constexpr std::array<PropertyDefinition, 13> PROPERTIES = {{
     { EnemyProperty::BaseAttackCooldown, "Base attack cooldown", 0.1f, 0.0f, 10.0f, 1 },
     { EnemyProperty::CurrentAttackCooldown, "Initial attack cooldown", 0.1f, 0.0f, 10.0f, 1 },
     { EnemyProperty::DazeDuration, "Daze duration", 0.1f, 0.0f, 10.0f, 1 },
+    { EnemyProperty::KnockbackResistance, "Push resistance", 0.05f, 0.0f, 1.0f, 2 },
     { EnemyProperty::HitboxWidth, "Hitbox width", 1.0f, 1.0f, 256.0f, 0 },
     { EnemyProperty::HitboxHeight, "Hitbox height", 1.0f, 1.0f, 256.0f, 0 },
     { EnemyProperty::NavigationWidth, "Collision width", 1.0f, 1.0f, 256.0f, 0 },
@@ -76,15 +78,15 @@ constexpr std::array<PropertyDefinition, 13> PROPERTIES = {{
     { EnemyProperty::NavigationOffsetY, "Collision offset Y", 1.0f, -128.0f, 128.0f, 0 }
 }};
 
-constexpr std::array<std::array<float, 13>, 4> DEFAULT_SPAWN_VALUES = {{
-    { 80.0f, 80.0f, 150.0f, 15.0f, 1.0f, 1.0f, 2.0f,
+constexpr std::array<std::array<float, 14>, 4> DEFAULT_SPAWN_VALUES = {{
+    { 80.0f, 80.0f, 150.0f, 15.0f, 1.0f, 1.0f, 2.0f, 0.25f,
       20.0f, 20.0f, 16.0f, 8.0f, 0.0f, 8.0f },
-    { 70.0f, 70.0f, 120.0f, 12.0f, 1.0f, 1.0f, 2.0f,
+    { 70.0f, 70.0f, 120.0f, 12.0f, 1.0f, 1.0f, 2.0f, 0.10f,
       24.0f, 24.0f, 18.0f, 8.0f, 0.0f, 8.0f },
-    { 200.0f, 200.0f, 160.0f, 70.0f, 2.5f, 2.5f, 2.0f,
+    { 200.0f, 200.0f, 160.0f, 70.0f, 2.5f, 2.5f, 2.0f, 0.50f,
       24.0f, 24.0f, 18.0f, 8.0f, 0.0f, 8.0f },
-    { 500.0f, 500.0f, 75.0f, 25.0f, 0.8f, 0.8f, 2.0f,
-      64.0f, 72.0f, 32.0f, 14.0f, 0.0f, 24.0f }
+    { 500.0f, 500.0f, 75.0f, 25.0f, 0.8f, 0.8f, 2.0f, 1.0f,
+      96.0f, 124.0f, 56.0f, 18.0f, 0.0f, 53.0f }
 }};
 
 bool IsPointInside(Rectangle bounds, Vector2 point) {
@@ -249,10 +251,11 @@ void AdminPanel::SpawnSelectedType(
     enemy->SetBaseAttackCooldown(values[4]);
     enemy->SetAttackCooldown(values[5]);
     enemy->SetDazeDuration(values[6]);
-    enemy->SetSize({ values[7], values[8] });
+    enemy->SetKnockbackResistance(values[7]);
+    enemy->SetSize({ values[8], values[9] });
     enemy->SetCollisionProfile({
-        { values[9], values[10] },
-        { values[11], values[12] }
+        { values[10], values[11] },
+        { values[12], values[13] }
     });
 
     if (!levelManager.IsValidSpawnLocation(object)) {
@@ -448,7 +451,8 @@ void AdminPanel::DrawPropertyEditor() const {
         std::snprintf(
             valueText,
             sizeof(valueText),
-            definition.decimals == 0 ? "%.0f" : "%.1f",
+            definition.decimals == 0 ? "%.0f" :
+                (definition.decimals == 1 ? "%.1f" : "%.2f"),
             values[index]
         );
         int valueWidth = MeasureText(valueText, TEXT_SIZE);

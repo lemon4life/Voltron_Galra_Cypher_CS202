@@ -51,6 +51,7 @@ protected:
     float attackCooldown;
     float baseAttackCooldown;
     float dazeDuration;
+    float knockbackResistance;
     Vector2 size;
     EnemyCollisionProfile collisionProfile;
     Vector2 knockbackVelocity;
@@ -121,6 +122,7 @@ public:
 
     virtual void TakeDamage(int amount);
     void ApplyKnockback(Vector2 dir, float force);
+    void ApplyCollisionPush(Vector2 dir, float distance);
     void UpdateKnockback(float deltaTime);
     EnemyMoveResult UpdateMovement(Vector2 desiredVelocity, float deltaTime, EnemyWallResponse response = EnemyWallResponse::Slide);
     bool IsDead() const { return health <= 0; }
@@ -151,6 +153,11 @@ public:
     void ResetAttackCooldown();
     float GetDazeDuration() const { return dazeDuration; }
     void SetDazeDuration(float duration) { dazeDuration = duration; }
+    float GetKnockbackResistance() const { return knockbackResistance; }
+    void SetKnockbackResistance(float resistance);
+    float GetKnockbackMultiplier() const {
+        return 1.0f - knockbackResistance;
+    }
     float GetDazeTimeRemaining() const {
         return dazeState ? dazeState->GetRemainingTime() : 0.0f;
     }

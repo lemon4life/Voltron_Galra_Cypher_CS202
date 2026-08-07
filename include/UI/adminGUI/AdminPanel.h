@@ -28,7 +28,7 @@ public:
 
 private:
     static constexpr std::size_t SPAWN_TYPE_COUNT = 4;
-    static constexpr std::size_t SPAWN_PROPERTY_COUNT = 13;
+    static constexpr std::size_t SPAWN_PROPERTY_COUNT = 14;
 
     Rectangle GetPanelBounds() const;
     Rectangle GetPropertyViewport() const;

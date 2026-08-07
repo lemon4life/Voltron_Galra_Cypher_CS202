@@ -75,12 +75,7 @@ void BossChaseState::Update(Boss* enemy, float deltaTime) {
         if (Vector2Length(pushDir) == 0.0f) pushDir = {1.0f, 0.0f}; // Fallback if exactly on top
         pushDir = Vector2Normalize(pushDir);
 
-        EnemyCollision::MoveAgainstWalls(
-            *enemy,
-            Vector2Scale(pushDir, 20.0f),
-            pathAccess,
-            EnemyWallResponse::Slide
-        );
+        enemy->ApplyCollisionPush(pushDir, 20.0f);
     }
 }
 

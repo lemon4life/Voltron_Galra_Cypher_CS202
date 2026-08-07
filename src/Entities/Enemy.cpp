@@ -28,6 +28,7 @@ Enemy::Enemy(
     : GameObject(pos, GameObjectType::Enemy),
       health(100), maxHealth(100), speed(100.f), damage(15),
       attackCooldown(0.1f), baseAttackCooldown(0.1f), dazeDuration(2.0f),
+      knockbackResistance(0.0f),
       size({32.0f, 32.0f}),
       knockbackVelocity{0.0f, 0.0f}, enemyType(EnemyType::GRUNT),
       targetTeam(t), currentState(nullptr), removalAccess(removalAccess),
@@ -51,6 +52,7 @@ Enemy::Enemy(
       health(imaxHealth), maxHealth(imaxHealth), speed(ispeed),
       damage(idamage), attackCooldown(iattackCooldown),
       baseAttackCooldown(iattackCooldown), dazeDuration(2.0f),
+      knockbackResistance(0.0f),
       size({32.0f, 32.0f}),
       knockbackVelocity{0.0f, 0.0f}, enemyType(EnemyType::GRUNT),
       targetTeam(t), currentState(nullptr), removalAccess(removalAccess),
@@ -258,8 +260,28 @@ void Enemy::EndPathFinding() {
 }
 
 void Enemy::ApplyKnockback(Vector2 dir, float force) {
-    knockbackVelocity.x += dir.x * force;
-    knockbackVelocity.y += dir.y * force;
+    float resistedForce = std::max(0.0f, force) * GetKnockbackMultiplier();
+    if (resistedForce <= 0.0f) return;
+
+    knockbackVelocity.x += dir.x * resistedForce;
+    knockbackVelocity.y += dir.y * resistedForce;
+}
+
+void Enemy::ApplyCollisionPush(Vector2 dir, float distance) {
+    float resistedDistance = std::max(0.0f, distance) *
+        GetKnockbackMultiplier();
+    if (resistedDistance <= 0.0f) return;
+
+    EnemyCollision::MoveAgainstWalls(
+        *this,
+        Vector2Scale(dir, resistedDistance),
+        pathAccess,
+        EnemyWallResponse::Slide
+    );
+}
+
+void Enemy::SetKnockbackResistance(float resistance) {
+    knockbackResistance = std::clamp(resistance, 0.0f, 1.0f);
 }
 
 void Enemy::UpdateKnockback(float deltaTime) {
