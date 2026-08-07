@@ -5,6 +5,7 @@
 #include "Entities/Player/PlayerAttackState.h"
 #include "Entities/Player/PaladinDefinition.h"
 #include "Combat/IAttackStrategy.h"
+#include "Core/AimStrategy/IAimStrategy.h"
 #include <vector>
 
 struct CharacterSprites {
@@ -75,6 +76,9 @@ protected:
     class Enemy* lockedEnemy;
     float currentAimAngle;
     float targetAimAngle;
+    
+    Vector2 currentAimVector;
+    IAimStrategy* currentAimStrategy;
 
 public:
     Paladin(
@@ -111,6 +115,9 @@ public:
     
     float GetTargetAimAngle() const { return targetAimAngle; }
     void SetTargetAimAngle(float angle) { targetAimAngle = angle; }
+    
+    Vector2 GetCurrentAimVector() const { return currentAimVector; }
+    void SetCurrentAimStrategy(IAimStrategy* strategy) { currentAimStrategy = strategy; }
     
     void SetTeamManager(TeamManager* manager) { teamManager = manager; }
     TeamManager* GetTeamManager() const { return teamManager; }

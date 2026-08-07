@@ -25,6 +25,8 @@
 #include "UI/UIManager.h"
 #include "UI/MinimapRenderer.h"
 #include "UI/adminGUI/AdminPanel.h"
+#include "Core/AimStrategy/MouseAimStrategy.h"
+#include "Core/AimStrategy/AutoAimStrategy.h"
 
 #include <algorithm>
 #include <limits>
@@ -230,6 +232,8 @@ int main() {
     gameManager.UpdateTargetFPS(Constants::TARGET_FPS);
 
     GameState settingsReturnState = GameState::MAIN_MENU;
+    MouseAimStrategy mouseStrategy;
+    AutoAimStrategy autoStrategy;
 
     while (!WindowShouldClose() && !quitRequested) {
         InputManager::Update();
@@ -410,6 +414,12 @@ int main() {
                         break;
                     }
 
+                    if (Constants::isAutoAimEnabled || InputManager::GetMode() == InputMode::KEYBOARD_ONLY) {
+                        teamManager->GetActivePaladin()->SetCurrentAimStrategy(&autoStrategy);
+                    } else {
+                        teamManager->GetActivePaladin()->SetCurrentAimStrategy(&mouseStrategy);
+                    }
+                    
                     levelManager.UpdateLevel(deltaTime, teamManager->GetActivePaladin()->GetPosition());
                     teamManager->Update(deltaTime);
 
@@ -457,6 +467,12 @@ int main() {
                 if (gameManager.GetHitstopTimer() > 0.0f) {
                     gameManager.UpdateHitstop(deltaTime);
                 } else {
+                    if (Constants::isAutoAimEnabled || InputManager::GetMode() == InputMode::KEYBOARD_ONLY) {
+                        teamManager->GetActivePaladin()->SetCurrentAimStrategy(&autoStrategy);
+                    } else {
+                        teamManager->GetActivePaladin()->SetCurrentAimStrategy(&mouseStrategy);
+                    }
+                    
                     levelManager.UpdateLevel(deltaTime, teamManager->GetActivePaladin()->GetPosition());
                     if (levelManager.NeedsPlayerNudge()) {
                         teamManager->GetActivePaladin()->SetPosition(levelManager.ConsumeNudge());

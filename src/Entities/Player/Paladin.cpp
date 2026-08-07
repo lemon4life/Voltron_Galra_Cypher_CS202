@@ -121,29 +121,9 @@ void Paladin::Update(float deltaTime) {
         ghostHp = health; // Instant catch up on heal
     }
 
-    if (!Constants::isAutoAimEnabled) {
-        if (InputManager::GetMode() == InputMode::KEYBOARD_ONLY) {
-            Vector2 moveDir = InputManager::GetMovementVector();
-            if (Vector2Length(moveDir) > 0.1f) {
-                targetAimAngle = atan2f(moveDir.y, moveDir.x);
-            }
-        } else {
-            Vector2 aimDir = Vector2Subtract(aimTarget, position);
-            if (Vector2Length(aimDir) > 0.1f) {
-                targetAimAngle = atan2f(aimDir.y, aimDir.x);
-            }
-        }
-    } else {
-        if (lockedEnemy) {
-            Vector2 aimDir = Vector2Subtract(lockedEnemy->GetPosition(), position);
-            targetAimAngle = atan2f(aimDir.y, aimDir.x);
-        } else {
-            Vector2 moveDir = InputManager::GetMovementVector();
-            
-            if (Vector2Length(moveDir) > 0.1f) {
-                targetAimAngle = atan2f(moveDir.y, moveDir.x);
-            }
-        }
+    if (currentAimStrategy) {
+        currentAimVector = currentAimStrategy->CalculateAimVector(this);
+        targetAimAngle = atan2f(currentAimVector.y, currentAimVector.x);
     }
 
     // Smooth shortest-path angular interpolation
@@ -160,13 +140,11 @@ void Paladin::Update(float deltaTime) {
     Vector2 dir = { cosf(currentAimAngle), sinf(currentAimAngle) };
     float angle = currentAimAngle * (180.0f / PI);
     
-    if (!isParrying) {
-        if (GameManager::GetInstance().GetState() == GameState::HUB || GameManager::GetInstance().GetState() == GameState::MAIN_MENU) {
-            if (lastMoveDir.x < 0.0f) facingLeft = true;
-            else if (lastMoveDir.x > 0.0f) facingLeft = false;
-        } else {
-            facingLeft = (cosf(currentAimAngle) < 0.0f);
-        }
+    if (GameManager::GetInstance().GetState() == GameState::HUB || GameManager::GetInstance().GetState() == GameState::MAIN_MENU) {
+        if (lastMoveDir.x < 0.0f) facingLeft = true;
+        else if (lastMoveDir.x > 0.0f) facingLeft = false;
+    } else {
+        facingLeft = (dir.x < 0.0f);
     }
 
     if (currentWeapon) {
