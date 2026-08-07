@@ -311,9 +311,7 @@ void Paladin::Draw() {
     if (currentWeapon && GameManager::GetInstance().GetState() != GameState::HUB && health > 0) {
         Vector2 pivot = GetWeaponPivot();
         if (isParrying) {
-            Vector2 dir = Vector2Subtract(aimTarget, position);
-            if (Vector2Length(dir) > 0.0f) dir = Vector2Normalize(dir);
-            else dir = {1.0f, 0.0f};
+            Vector2 dir = { cosf(currentAimAngle), sinf(currentAimAngle) };
             
             pivot.x += dir.x * 12.0f;
             pivot.y += dir.y * 12.0f;
