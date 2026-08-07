@@ -140,11 +140,9 @@ namespace {
             paladin->ResetStats();
         }
         GameManager::GetInstance().ClearProjectiles();
-        levelManager->LoadLevel(
-            "assets/map/level1_Tile Layer 1.csv",
-            teamManager
-        );
-        waveManager->Reset();
+        levelManager->GenerateDungeon(teamManager);
+        waveManager->Reset(0, 0, 0);
+        AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
         GameManager::GetInstance().SetState(GameState::GAMEPLAY);
     }
 
@@ -163,22 +161,6 @@ namespace {
             teamManager
         );
         waveManager->Reset(10, 0, 0);
-        AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
-        GameManager::GetInstance().SetState(GameState::GAMEPLAY);
-    }
-
-    void ResetGameModular(
-        TeamManager* teamManager,
-        LevelManager* levelManager,
-        WaveManager* waveManager
-    ) {
-        teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
-        for (auto* paladin : teamManager->GetTeam()) {
-            paladin->ResetStats();
-        }
-        GameManager::GetInstance().ClearProjectiles();
-        levelManager->GenerateDungeon(teamManager);
-        waveManager->Reset(0, 0, 0);
         AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
         GameManager::GetInstance().SetState(GameState::GAMEPLAY);
     }
@@ -423,9 +405,7 @@ int main() {
                         DialogueManager::GetInstance().ClearMissionRequest();
                         paladinSelectionMenu.Close();
 
-                        if (missionId == -2) {
-                            ResetGameModular(teamManager, &levelManager, &waveManager);
-                        } else {
+                        if (missionId == -1) {
                             ResetGame(teamManager, &levelManager, &waveManager);
                         }
                         break;

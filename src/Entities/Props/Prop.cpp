@@ -83,11 +83,16 @@ void Prop::DrawBaseLayer() {
     if (tex.id != 0) {
         float frameWidth = (float)tex.width / frames;
         float frameHeight = (float)tex.height;
-        float baseHeight = frameHeight * 0.75f; // 75% base height for collision depth
-        float topHeight = frameHeight * 0.25f; // 25% overhang
+        float splitY = frameHeight * 0.5f;
 
-        Rectangle src = {currentFrame * frameWidth, topHeight, frameWidth, baseHeight};
-        DrawTexturePro(tex, src, GetBoundingBox(), {0,0}, 0.0f, WHITE);
+        Rectangle src = {currentFrame * frameWidth, splitY, frameWidth, frameHeight - splitY};
+        
+        Rectangle bounds = GetBoundingBox();
+        float visualHeight = bounds.height / 0.75f;
+        float destHeight = visualHeight * 0.5f;
+        Rectangle dest = {bounds.x, bounds.y + bounds.height - destHeight, bounds.width, destHeight};
+
+        DrawTexturePro(tex, src, dest, {0,0}, 0.0f, WHITE);
     }
 }
 
@@ -118,15 +123,17 @@ void Prop::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
             if (tex.id != 0) {
                 float frameWidth = (float)tex.width / frames;
                 float frameHeight = (float)tex.height;
-                float baseHeight = frameHeight * 0.75f;
-                float topHeight = frameHeight * 0.25f;
+                float splitY = frameHeight * 0.5f;
 
-                Rectangle src = {currentFrame * frameWidth, 0.0f, frameWidth, topHeight};
+                Rectangle src = {currentFrame * frameWidth, 0.0f, frameWidth, splitY};
                 
                 Rectangle bounds = GetBoundingBox();
-                Rectangle topBounds = {bounds.x, bounds.y - topHeight, bounds.width, topHeight};
+                float visualHeight = bounds.height / 0.75f;
+                float destHeight = visualHeight * 0.5f;
+                // Top half is directly above the bottom half
+                Rectangle dest = {bounds.x, bounds.y + bounds.height - visualHeight, bounds.width, destHeight};
                 
-                DrawTexturePro(tex, src, topBounds, {0,0}, 0.0f, WHITE);
+                DrawTexturePro(tex, src, dest, {0,0}, 0.0f, WHITE);
             }
         }
     });

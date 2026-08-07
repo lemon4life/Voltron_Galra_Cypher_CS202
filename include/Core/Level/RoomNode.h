@@ -1,7 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include "raylib.h"
+
+class DoorGate;
 
 
 enum class RoomState {
@@ -33,6 +36,8 @@ struct RoomNode {
     RoomState state;
     Rectangle triggerBounds; // in absolute world coords
     bool isCleared;
+    
+    std::vector<DoorGate*> doors;
 
     RoomNode(int x, int y, RoomType t = RoomType::BATTLE)
         : type(t), gridX(x), gridY(y),

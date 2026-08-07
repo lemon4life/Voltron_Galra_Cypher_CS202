@@ -8,7 +8,8 @@ enum class GameObjectType {
     NPC,
     HubPaladinStand,
     Wall,
-    Projectile
+    Projectile,
+    DoorGate
 };
 
 class GameObject {

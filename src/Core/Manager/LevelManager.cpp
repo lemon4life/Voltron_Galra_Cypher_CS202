@@ -6,6 +6,7 @@
 #include "Core/EntityFactory.h"
 #include "Entities/Enemy.h"
 #include "Entities/Props/Prop.h"
+#include "Entities/Props/DoorGate.h"
 
 #include <fstream>
 #include <sstream>
@@ -266,7 +267,9 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
 void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
     if (IsProceduralDungeon()) {
         if (currentlyLockedRoom && currentlyLockedRoom->state == RoomState::CLEARED) {
-            doorColliders.clear();
+            for (auto* door : currentlyLockedRoom->doors) {
+                door->SetState(DoorGate::State::OPENING);
+            }
             currentlyLockedRoom = nullptr;
         }
 
@@ -286,39 +289,18 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
                         node->state = RoomState::LOCKED;
                         currentlyLockedRoom = node;
 
-                        // Generate dynamic doors blocking exits
-                        doorColliders.clear();
-                        float tileW = Constants::RENDER_TILE_SIZE;
-                        int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
-                        int startX = node->gridX * roomOuterSize;
-                        int startY = node->gridY * roomOuterSize;
-                        
-                        int currentRoomSize = (node->type == RoomType::BATTLE || node->type == RoomType::BOSS) 
-                                              ? Constants::MAX_ROOM_TILE_SIZE 
-                                              : Constants::NORMAL_ROOM_TILE_SIZE;
-                        int offset = (Constants::MAX_ROOM_TILE_SIZE - currentRoomSize) / 2;
-                        
-                        for (int y = 0; y < currentRoomSize; ++y) {
-                            for (int x = 0; x < currentRoomSize; ++x) {
-                                if (activeRoom->layer1_objects[startY + offset + y][startX + offset + x] == 20) {
-                                    doorColliders.push_back({
-                                        (startX + offset + x) * tileW,
-                                        (startY + offset + y) * tileW,
-                                        tileW,
-                                        tileW
-                                    });
-                                }
-                            }
+                        for (auto* door : node->doors) {
+                            door->SetState(DoorGate::State::CLOSING);
                         }
 
                         // Nudge player to room center so they don't get stuck inside a door collider
-                        float roomCenterX = (startX + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW;
-                        float roomCenterY = (startY + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW;
+                        float roomCenterX = (node->gridX * (Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH) + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * Constants::RENDER_TILE_SIZE;
+                        float roomCenterY = (node->gridY * (Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH) + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * Constants::RENDER_TILE_SIZE;
+                        
                         // Move toward center, but only if currently overlapping a door
-                        Rectangle pBox = playerBox;
                         bool overlappingDoor = false;
-                        for (const auto& door : doorColliders) {
-                            if (CheckCollisionRecs(pBox, door)) {
+                        for (auto* door : node->doors) {
+                            if (CheckCollisionRecs(playerBox, door->GetBoundingBox())) {
                                 overlappingDoor = true;
                                 break;
                             }
@@ -466,6 +448,8 @@ void LevelManager::DrawLevelBase() {
     for (auto* entity : levelEntities) {
         if (entity->GetObjectType() == GameObjectType::Box) {
             static_cast<Prop*>(entity)->DrawBaseLayer();
+        } else if (entity->GetObjectType() == GameObjectType::DoorGate) {
+            static_cast<DoorGate*>(entity)->DrawBaseLayer();
         }
     }
 }
@@ -516,6 +500,8 @@ void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
     for (auto* entity : levelEntities) {
         if (entity->GetObjectType() == GameObjectType::Box) {
             static_cast<Prop*>(entity)->AddDepthRenderItems(items);
+        } else if (entity->GetObjectType() == GameObjectType::DoorGate) {
+            static_cast<DoorGate*>(entity)->AddDepthRenderItems(items);
         } else {
             items.push_back({
                 entity->GetBoundingBox().y + entity->GetBoundingBox().height,
@@ -560,17 +546,18 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
                 return true;
             }
         }
-        for (const auto& doorRect : doorColliders) {
-            if (CheckCollisionRecs(box, doorRect)) {
-                return true;
-            }
-        }
         
         // Check props (entities) in procedural dungeon
         for (const auto* entity : levelEntities) {
             if (entity->GetObjectType() == GameObjectType::Box) {
                 if (CheckCollisionRecs(box, entity->GetBoundingBox())) {
                     return true;
+                }
+            } else if (entity->GetObjectType() == GameObjectType::DoorGate) {
+                if (static_cast<const DoorGate*>(entity)->IsSolid()) {
+                    if (CheckCollisionRecs(box, entity->GetBoundingBox())) {
+                        return true;
+                    }
                 }
             }
         }
@@ -964,6 +951,32 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
                             teamManager,
                             GetLevelAccessBundle()
                         ));
+                    }
+                }
+            }
+        }
+        
+        // Instantiate DoorGates for each RoomNode
+        for (auto& node : levelMap.generatedNodes) {
+            float tileW = Constants::RENDER_TILE_SIZE;
+            int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
+            int startX = node->gridX * roomOuterSize;
+            int startY = node->gridY * roomOuterSize;
+            int currentRoomSize = (node->type == RoomType::BATTLE || node->type == RoomType::BOSS) 
+                                  ? Constants::MAX_ROOM_TILE_SIZE 
+                                  : Constants::NORMAL_ROOM_TILE_SIZE;
+            int offset = (Constants::MAX_ROOM_TILE_SIZE - currentRoomSize) / 2;
+            
+            for (int y = 0; y < currentRoomSize; ++y) {
+                for (int x = 0; x < currentRoomSize; ++x) {
+                    if (activeRoom->layer1_objects[startY + offset + y][startX + offset + x] == 20) {
+                        Vector2 worldPos = {
+                            (startX + offset + x) * tileW,
+                            (startY + offset + y) * tileW
+                        };
+                        DoorGate* door = new DoorGate(worldPos);
+                        AddEntity(door);
+                        node->doors.push_back(door);
                     }
                 }
             }

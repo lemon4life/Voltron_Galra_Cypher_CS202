@@ -169,44 +169,44 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
         
         // 2. Carve Corridors
         if (node->east) {
-            for (int y = roomCenter - Constants::CORRIDOR_WIDTH / 2; y <= roomCenter + Constants::CORRIDOR_WIDTH / 2; ++y) {
+            for (int y = roomCenter - Constants::CORRIDOR_WIDTH / 2 - 1; y <= roomCenter + Constants::CORRIDOR_WIDTH / 2 + 1; ++y) {
                 for (int x = offset + currentRoomSize; x < roomOuterSize; ++x) {
                     int px = startX + x;
                     int py = startY + y;
-                    bool isWall = (y == roomCenter - Constants::CORRIDOR_WIDTH / 2 || y == roomCenter + Constants::CORRIDOR_WIDTH / 2);
+                    bool isWall = (y == roomCenter - Constants::CORRIDOR_WIDTH / 2 - 1 || y == roomCenter + Constants::CORRIDOR_WIDTH / 2 + 1);
                     baked->layer0_tiles[py][px] = isWall ? 1 : 0;
                 }
             }
         }
         
         if (node->south) {
-            for (int x = roomCenter - Constants::CORRIDOR_WIDTH / 2; x <= roomCenter + Constants::CORRIDOR_WIDTH / 2; ++x) {
+            for (int x = roomCenter - Constants::CORRIDOR_WIDTH / 2 - 1; x <= roomCenter + Constants::CORRIDOR_WIDTH / 2 + 1; ++x) {
                 for (int y = offset + currentRoomSize; y < roomOuterSize; ++y) {
                     int px = startX + x;
                     int py = startY + y;
-                    bool isWall = (x == roomCenter - Constants::CORRIDOR_WIDTH / 2 || x == roomCenter + Constants::CORRIDOR_WIDTH / 2);
+                    bool isWall = (x == roomCenter - Constants::CORRIDOR_WIDTH / 2 - 1 || x == roomCenter + Constants::CORRIDOR_WIDTH / 2 + 1);
                     baked->layer0_tiles[py][px] = isWall ? 1 : 0;
                 }
             }
         }
         
         if (node->west) {
-            for (int y = roomCenter - Constants::CORRIDOR_WIDTH / 2; y <= roomCenter + Constants::CORRIDOR_WIDTH / 2; ++y) {
+            for (int y = roomCenter - Constants::CORRIDOR_WIDTH / 2 - 1; y <= roomCenter + Constants::CORRIDOR_WIDTH / 2 + 1; ++y) {
                 for (int x = 0; x < offset; ++x) {
                     int px = startX + x;
                     int py = startY + y;
-                    bool isWall = (y == roomCenter - Constants::CORRIDOR_WIDTH / 2 || y == roomCenter + Constants::CORRIDOR_WIDTH / 2);
+                    bool isWall = (y == roomCenter - Constants::CORRIDOR_WIDTH / 2 - 1 || y == roomCenter + Constants::CORRIDOR_WIDTH / 2 + 1);
                     baked->layer0_tiles[py][px] = isWall ? 1 : 0;
                 }
             }
         }
         
         if (node->north) {
-            for (int x = roomCenter - Constants::CORRIDOR_WIDTH / 2; x <= roomCenter + Constants::CORRIDOR_WIDTH / 2; ++x) {
+            for (int x = roomCenter - Constants::CORRIDOR_WIDTH / 2 - 1; x <= roomCenter + Constants::CORRIDOR_WIDTH / 2 + 1; ++x) {
                 for (int y = 0; y < offset; ++y) {
                     int px = startX + x;
                     int py = startY + y;
-                    bool isWall = (x == roomCenter - Constants::CORRIDOR_WIDTH / 2 || x == roomCenter + Constants::CORRIDOR_WIDTH / 2);
+                    bool isWall = (x == roomCenter - Constants::CORRIDOR_WIDTH / 2 - 1 || x == roomCenter + Constants::CORRIDOR_WIDTH / 2 + 1);
                     baked->layer0_tiles[py][px] = isWall ? 1 : 0;
                 }
             }
@@ -238,7 +238,7 @@ void TilemapRenderer::DrawRoomBase(const RoomTemplate& room, Vector2 roomOffsetW
             int tileType = room.layer0_tiles[y][x];
             int objType = room.layer1_objects[y][x];
             
-            if (tileType == 2 || tileType == 1 || objType == 20) continue; 
+            if (tileType == 2 || tileType == 1) continue; 
             
             Rectangle destRec = {
                 std::floor(roomOffsetWorldPos.x + x * scaledTileSize),
@@ -257,7 +257,7 @@ void TilemapRenderer::DrawRoomBase(const RoomTemplate& room, Vector2 roomOffsetW
             int tileType = room.layer0_tiles[y][x];
             int objType = room.layer1_objects[y][x];
             
-            if (tileType == 1 || objType == 20) {
+            if (tileType == 1) {
                 int variant = std::abs(hash(x, y)) % 2;
                 bool tileBelowIsFloorOrVoid = false;
                 if (y + 1 >= room.height) {
@@ -269,7 +269,7 @@ void TilemapRenderer::DrawRoomBase(const RoomTemplate& room, Vector2 roomOffsetW
                     }
                 }
                 
-                if (tileBelowIsFloorOrVoid && (y + 1 >= room.height || room.layer1_objects[y+1][x] != 20)) {
+                if (tileBelowIsFloorOrVoid) {
                     Rectangle destRecFace = {
                         std::floor(roomOffsetWorldPos.x + x * scaledTileSize),
                         std::floor(roomOffsetWorldPos.y + (y + 1) * scaledTileSize),
@@ -298,7 +298,7 @@ void TilemapRenderer::GetRoomDepthRenderItems(const RoomTemplate& room, Vector2 
             int tileType = room.layer0_tiles[y][x];
             int objType = room.layer1_objects[y][x];
             
-            if (tileType == 1 || objType == 20) {
+            if (tileType == 1) {
                 float ySort = std::floor(roomOffsetWorldPos.y + (y + 1) * scaledTileSize);
                 items.push_back({
                     ySort,
