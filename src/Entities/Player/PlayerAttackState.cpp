@@ -2,6 +2,7 @@
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
+#include "Core/Manager/InputManager.h"
 
 void PlayerAttackState::Enter(Paladin* player) {
     // Lock movement for 0.2s
@@ -34,11 +35,7 @@ void PlayerAttackState::Update(Paladin* player, float deltaTime) {
     }
 
     // Check movement input during attack
-    Vector2 moveDir = { 0.0f, 0.0f };
-    if (IsKeyDown(KEY_D)) moveDir.x += 1.0f;
-    if (IsKeyDown(KEY_A)) moveDir.x -= 1.0f;
-    if (IsKeyDown(KEY_W)) moveDir.y -= 1.0f;
-    if (IsKeyDown(KEY_S)) moveDir.y += 1.0f;
+    Vector2 moveDir = InputManager::GetMovementVector();
 
     if (Vector2Length(moveDir) > 0.0f) {
         moveDir = Vector2Normalize(moveDir);

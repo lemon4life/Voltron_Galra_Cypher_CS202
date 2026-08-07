@@ -1,4 +1,6 @@
 #include "UI/UIManager.h"
+#include "Core/Constants.h"
+#include "Core/Manager/InputManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 #include "UI/PaladinPortrait.h"
@@ -156,6 +158,12 @@ void UIManager::DrawTeamHUD(
     int textX = startX + 98 + (44 - textWidth) / 2;
     int textY = startY + 34 + (12 - fontSize) / 2;
     DrawText(hpText, textX, textY, fontSize, WHITE);
+
+    if (InputManager::GetMode() == InputMode::KEYBOARD_ONLY && !Constants::isAutoAimEnabled) {
+        const char* hint = "Auto-Aim ('T') Recommended for Keyboard Only";
+        int hintWidth = MeasureText(hint, 20);
+        DrawText(hint, (GetScreenWidth() - hintWidth) / 2, GetScreenHeight() - 100, 20, Fade(WHITE, 0.7f));
+    }
 
 }
 

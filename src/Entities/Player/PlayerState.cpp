@@ -4,6 +4,7 @@
 #include "raymath.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/TeamManager.h"
+#include "Core/Manager/InputManager.h"
 #include <cstdio>
 
 // --- PlayerIdleState ---
@@ -16,26 +17,26 @@ void PlayerIdleState::Enter(Paladin* player) {
 void PlayerIdleState::Update(Paladin* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
     if (GameManager::GetInstance().GetState() == GameState::GAMEPLAY) {
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        if (InputManager::IsAttackPressed()) {
             player->ChangeState(player->GetAttackState());
             return;
         }
 
-        // Check for Dash Input (Spacebar and cooldown off)
-        if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
+        // Check for Dash Input (Spacebar/K and cooldown off)
+        if (InputManager::IsDashPressed() && player->GetDashCooldown() <= 0.0f) {
             player->ChangeState(player->GetDashState());
             return;
         }
 
-        // Check for Parry Input ('F')
-        if (IsKeyPressed(KEY_F) && player->GetDashCooldown() <= 0.0f) {
+        // Check for Parry Input
+        if (InputManager::IsParryPressed() && player->GetDashCooldown() <= 0.0f) {
             player->ChangeState(player->GetParryState());
             return;
         }
     }
 
     // Check for input to transition to Run state
-    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_A) || IsKeyDown(KEY_W) || IsKeyDown(KEY_S)) {
+    if (Vector2LengthSqr(InputManager::GetMovementVector()) > 0.0f) {
         player->ChangeState(player->GetRunState());
         return;
     }
@@ -57,30 +58,25 @@ void PlayerRunState::Enter(Paladin* player) {
 void PlayerRunState::Update(Paladin* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
     if (GameManager::GetInstance().GetState() == GameState::GAMEPLAY) {
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        if (InputManager::IsAttackPressed()) {
             player->ChangeState(player->GetAttackState());
             return;
         }
 
-        // Check for Dash Input (Spacebar and cooldown off)
-        if (IsKeyPressed(KEY_SPACE) && player->GetDashCooldown() <= 0.0f) {
+        // Check for Dash Input
+        if (InputManager::IsDashPressed() && player->GetDashCooldown() <= 0.0f) {
             player->ChangeState(player->GetDashState());
             return;
         }
 
-        // Check for Parry Input ('F')
-        if (IsKeyPressed(KEY_F) && player->GetDashCooldown() <= 0.0f) {
+        // Check for Parry Input
+        if (InputManager::IsParryPressed() && player->GetDashCooldown() <= 0.0f) {
             player->ChangeState(player->GetParryState());
             return;
         }
     }
 
-    Vector2 moveDir = { 0.0f, 0.0f };
-
-    if (IsKeyDown(KEY_D)) moveDir.x += 1.0f;
-    if (IsKeyDown(KEY_A)) moveDir.x -= 1.0f;
-    if (IsKeyDown(KEY_W)) moveDir.y -= 1.0f;
-    if (IsKeyDown(KEY_S)) moveDir.y += 1.0f;
+    Vector2 moveDir = InputManager::GetMovementVector();
 
     // Check if we stopped moving
     if (moveDir.x == 0.0f && moveDir.y == 0.0f) {
@@ -160,13 +156,13 @@ void PlayerParryState::Update(Paladin* player, float deltaTime) {
             return;
         }
         // Break out if movement, attack, or dash is pressed explicitly
-        if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_A) || IsKeyPressed(KEY_S) || IsKeyPressed(KEY_D) || 
-            IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_SPACE)) {
+        if (Vector2LengthSqr(InputManager::GetMovementVector()) > 0.0f || 
+            InputManager::IsAttackPressed() || InputManager::IsDashPressed()) {
             player->ChangeState(player->GetIdleState());
             return;
         }
     } else {
-        if (!IsKeyDown(KEY_F)) {
+        if (!InputManager::IsParryDown()) {
             player->ChangeState(player->GetIdleState());
         }
     }

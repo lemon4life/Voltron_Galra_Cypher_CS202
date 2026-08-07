@@ -3,6 +3,7 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/LevelManager.h"
+#include "Core/Manager/InputManager.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
 
@@ -121,20 +122,23 @@ void Paladin::Update(float deltaTime) {
     }
 
     if (!Constants::isAutoAimEnabled) {
-        Vector2 aimDir = Vector2Subtract(aimTarget, position);
-        if (Vector2Length(aimDir) > 0.1f) {
-            targetAimAngle = atan2f(aimDir.y, aimDir.x);
+        if (InputManager::GetMode() == InputMode::KEYBOARD_ONLY) {
+            Vector2 moveDir = InputManager::GetMovementVector();
+            if (Vector2Length(moveDir) > 0.1f) {
+                targetAimAngle = atan2f(moveDir.y, moveDir.x);
+            }
+        } else {
+            Vector2 aimDir = Vector2Subtract(aimTarget, position);
+            if (Vector2Length(aimDir) > 0.1f) {
+                targetAimAngle = atan2f(aimDir.y, aimDir.x);
+            }
         }
     } else {
         if (lockedEnemy) {
             Vector2 aimDir = Vector2Subtract(lockedEnemy->GetPosition(), position);
             targetAimAngle = atan2f(aimDir.y, aimDir.x);
         } else {
-            Vector2 moveDir = { 0.0f, 0.0f };
-            if (IsKeyDown(KEY_D)) moveDir.x += 1.0f;
-            if (IsKeyDown(KEY_A)) moveDir.x -= 1.0f;
-            if (IsKeyDown(KEY_W)) moveDir.y -= 1.0f;
-            if (IsKeyDown(KEY_S)) moveDir.y += 1.0f;
+            Vector2 moveDir = InputManager::GetMovementVector();
             
             if (Vector2Length(moveDir) > 0.1f) {
                 targetAimAngle = atan2f(moveDir.y, moveDir.x);

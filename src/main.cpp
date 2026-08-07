@@ -3,6 +3,7 @@
 
 #include "Core/Constants.h"
 #include "Core/Manager/AssetManager.h"
+#include "Core/Manager/InputManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/CameraManager.h"
 #include "Core/Manager/DialogueManager.h"
@@ -102,12 +103,10 @@ namespace {
             return;
         }
 
-        std::string text = "Press E to talk";
-        if (interactable->GetObjectType() ==
-            GameObjectType::HubPaladinStand) {
-            HubPaladinStand* stand =
-                static_cast<HubPaladinStand*>(interactable);
-            text = std::string("Press E to inspect ") +
+        std::string text = "Press F to talk";
+        if (interactable->GetObjectType() == GameObjectType::HubPaladinStand) {
+            HubPaladinStand* stand = static_cast<HubPaladinStand*>(interactable);
+            text = std::string("Press F to inspect ") + 
                    stand->GetDisplayName();
         }
 
@@ -233,6 +232,7 @@ int main() {
     GameState settingsReturnState = GameState::MAIN_MENU;
 
     while (!WindowShouldClose() && !quitRequested) {
+        InputManager::Update();
         float deltaTime = GetFrameTime();
         const float viewportScale = std::min(
             (float)GetScreenWidth() / Constants::GAME_WIDTH,
@@ -354,8 +354,7 @@ int main() {
             activePaladin->SetAimTarget(unifiedAimTarget);
 
             bool keyboardPauseRequested =
-                !hubModalOpen &&
-                (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE));
+                !hubModalOpen && InputManager::IsPausePressed();
             bool hudPauseRequested =
                 !hubModalOpen &&
                 (state == GameState::HUB ||
@@ -414,7 +413,7 @@ int main() {
                     levelManager.UpdateLevel(deltaTime, teamManager->GetActivePaladin()->GetPosition());
                     teamManager->Update(deltaTime);
 
-                    if (IsKeyPressed(KEY_E)) {
+                    if (InputManager::IsInteractPressed()) {
                         GameObject* interactable = FindNearestHubInteractable(
                             gameManager.GetLevelEntities(),
                             teamManager->GetActivePaladin()->GetPosition()
@@ -452,6 +451,9 @@ int main() {
                 if (!systemInitialized) {
                     break;
                 }
+                if (InputManager::IsToggleAutoAimPressed()) {
+                    Constants::isAutoAimEnabled = !Constants::isAutoAimEnabled;
+                }
                 if (gameManager.GetHitstopTimer() > 0.0f) {
                     gameManager.UpdateHitstop(deltaTime);
                 } else {
@@ -461,7 +463,7 @@ int main() {
                     }
                     teamManager->Update(deltaTime);
                     
-                    if (IsKeyPressed(KEY_E)) {
+                    if (InputManager::IsInteractPressed()) {
                         if (levelManager.IsPlayerInExitRoom(teamManager->GetActivePaladin()->GetPosition())) {
                             ReturnToHub(teamManager, &levelManager);
                             break;
@@ -582,7 +584,7 @@ int main() {
                         DrawLine(targetPos.x - 25, targetPos.y, targetPos.x + 25, targetPos.y, RED);
                         DrawLine(targetPos.x, targetPos.y - 25, targetPos.x, targetPos.y + 25, RED);
                     }
-                } else {
+                } else if (InputManager::GetMode() != InputMode::KEYBOARD_ONLY) {
                     // Manual Aim Crosshair
                     DrawCircleLines(static_cast<int>(mouseWorld.x), static_cast<int>(mouseWorld.y), 10.0f, GREEN);
                     DrawLine(mouseWorld.x - 15, mouseWorld.y, mouseWorld.x + 15, mouseWorld.y, GREEN);
