@@ -75,10 +75,12 @@ void UIManager::DrawTeamHUD(
     int activeIdx = team->GetActiveIndex();
     
     int offIndex = 0;
+    int offField1Idx = -1;
+    int offField2Idx = -1;
     for (int i = 0; i < numPaladins; i++) {
         if (i == activeIdx) continue;
-        if (offIndex == 0) offField1 = roster[i];
-        else if (offIndex == 1) offField2 = roster[i];
+        if (offIndex == 0) { offField1 = roster[i]; offField1Idx = i; }
+        else if (offIndex == 1) { offField2 = roster[i]; offField2Idx = i; }
         offIndex++;
     }
 
@@ -94,13 +96,26 @@ void UIManager::DrawTeamHUD(
     }
 
     // --- Layer 1: Portraits ---
-    DrawPaladinPortrait(active, {startX + 4, startY + 4, 90, 42});
+    
+    auto DrawPortraitNumber = [](int idx, Rectangle dest) {
+        int num = idx + 1;
+        DrawCircle(dest.x + dest.width - 8, dest.y + dest.height - 8, 8, Fade(BLACK, 0.7f));
+        DrawText(TextFormat("%d", num), dest.x + dest.width - 11, dest.y + dest.height - 13, 10, WHITE);
+    };
+
+    Rectangle activeDest = {startX + 4, startY + 4, 90, 42};
+    DrawPaladinPortrait(active, activeDest);
+    DrawPortraitNumber(activeIdx, activeDest);
 
     if (offField1) {
-        DrawPaladinPortrait(offField1, {startX + 226, startY + 4, 60, 28});
+        Rectangle off1Dest = {startX + 226, startY + 4, 60, 28};
+        DrawPaladinPortrait(offField1, off1Dest);
+        DrawPortraitNumber(offField1Idx, off1Dest);
     }
     if (offField2) {
-        DrawPaladinPortrait(offField2, {startX + 354, startY + 4, 60, 28});
+        Rectangle off2Dest = {startX + 354, startY + 4, 60, 28};
+        DrawPaladinPortrait(offField2, off2Dest);
+        DrawPortraitNumber(offField2Idx, off2Dest);
     }
 
     // Helper lambda for HP

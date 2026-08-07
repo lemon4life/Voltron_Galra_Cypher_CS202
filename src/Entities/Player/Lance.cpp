@@ -16,3 +16,11 @@ Lance::Lance(Vector2 pos, CharacterSprites sprites)
     );
     texture = GetIdleTexture();
 }
+
+void Lance::UseSkill() {
+    // TODO: Implement Lance's unique skill
+}
+
+void Lance::UseUltimate() {
+    // TODO: Implement Lance's unique ultimate
+}

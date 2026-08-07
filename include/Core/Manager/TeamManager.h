@@ -29,6 +29,7 @@ public:
     void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
 
     void SwapCharacter();
+    void SwapCharacterToIndex(int targetIndex);
     void SwapDueToDeath();
     int FindMemberIndex(PaladinId id) const;
     bool MovePaladinToSlot(PaladinId id, std::size_t targetIndex);

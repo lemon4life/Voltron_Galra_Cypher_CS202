@@ -17,3 +17,11 @@ Keith::Keith(Vector2 pos, CharacterSprites sprites)
     );
     texture = GetIdleTexture();
 }
+
+void Keith::UseSkill() {
+    // TODO: Implement Keith's unique skill
+}
+
+void Keith::UseUltimate() {
+    // TODO: Implement Keith's unique ultimate
+}

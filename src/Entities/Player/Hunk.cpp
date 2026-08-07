@@ -17,3 +17,11 @@ Hunk::Hunk(Vector2 pos, CharacterSprites sprites)
     );
     texture = GetIdleTexture();
 }
+
+void Hunk::UseSkill() {
+    // TODO: Implement Hunk's unique skill
+}
+
+void Hunk::UseUltimate() {
+    // TODO: Implement Hunk's unique ultimate
+}

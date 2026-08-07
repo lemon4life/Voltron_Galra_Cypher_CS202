@@ -98,8 +98,47 @@ void TeamManager::SwapCharacter() {
     // Transfer position and aim target
     newActive->SetPosition(oldActive->GetPosition());
     newActive->SetAimTarget(oldActive->GetAimTarget());
+    newActive->SetCurrentAimAngle(oldActive->GetCurrentAimAngle());
+    newActive->SetTargetAimAngle(oldActive->GetTargetAimAngle());
+    newActive->SetFacingLeft(oldActive->IsFacingLeft());
+    
+    if (oldActive->IsParrying()) {
+        newActive->ChangeState(newActive->GetParryState());
+    } else {
+        newActive->ChangeState(newActive->GetIdleState());
+    }
+    
     newActive->TriggerSwapParryWindow();
     
+    NotifyObservers();
+}
+
+void TeamManager::SwapCharacterToIndex(int targetIndex) {
+    if (team.size() <= 1) return;
+    if (targetIndex < 0 || targetIndex >= team.size()) return;
+    if (activeIndex == targetIndex) return; // Already active
+    
+    if (team[targetIndex]->GetHealth() <= 0) return; // Do nothing if downed
+    
+    Paladin* oldActive = GetActivePaladin();
+    if (!oldActive) return;
+    
+    activeIndex = targetIndex;
+    Paladin* newActive = GetActivePaladin();
+    
+    newActive->SetPosition(oldActive->GetPosition());
+    newActive->SetAimTarget(oldActive->GetAimTarget());
+    newActive->SetCurrentAimAngle(oldActive->GetCurrentAimAngle());
+    newActive->SetTargetAimAngle(oldActive->GetTargetAimAngle());
+    newActive->SetFacingLeft(oldActive->IsFacingLeft());
+    
+    if (oldActive->IsParrying()) {
+        newActive->ChangeState(newActive->GetParryState());
+    } else {
+        newActive->ChangeState(newActive->GetIdleState());
+    }
+    
+    newActive->TriggerSwapParryWindow();
     NotifyObservers();
 }
 
@@ -109,22 +148,16 @@ void TeamManager::SwapDueToDeath() {
     Paladin* deadActive = GetActivePaladin();
     if (!deadActive) return;
     
-    // Move to the back of the team queue
-    team.erase(team.begin() + activeIndex);
-    team.push_back(deadActive);
-    
-    // activeIndex is now effectively pointing to the "next" character in the old array
-    // We need to find the first alive character starting from 0 (since we shifted everything left)
     int attempts = 0;
-    int nextIndex = 0;
+    int nextIndex = activeIndex;
     bool foundAlive = false;
     
     while (attempts < team.size()) {
+        nextIndex = (nextIndex + 1) % team.size();
         if (team[nextIndex]->GetHealth() > 0) {
             foundAlive = true;
             break;
         }
-        nextIndex = (nextIndex + 1) % team.size();
         attempts++;
     }
     
@@ -136,6 +169,11 @@ void TeamManager::SwapDueToDeath() {
     // Transfer position and aim target
     newActive->SetPosition(deadActive->GetPosition());
     newActive->SetAimTarget(deadActive->GetAimTarget());
+    newActive->SetCurrentAimAngle(deadActive->GetCurrentAimAngle());
+    newActive->SetTargetAimAngle(deadActive->GetTargetAimAngle());
+    newActive->SetFacingLeft(deadActive->IsFacingLeft());
+    
+    newActive->ChangeState(newActive->GetIdleState());
     
     NotifyObservers();
 }
@@ -147,6 +185,12 @@ void TeamManager::Update(float deltaTime) {
 
     if (IsKeyPressed(KEY_TAB)) {
         SwapCharacter();
+    } else if (IsKeyPressed(KEY_ONE)) {
+        SwapCharacterToIndex(0);
+    } else if (IsKeyPressed(KEY_TWO)) {
+        SwapCharacterToIndex(1);
+    } else if (IsKeyPressed(KEY_THREE)) {
+        SwapCharacterToIndex(2);
     }
 
 

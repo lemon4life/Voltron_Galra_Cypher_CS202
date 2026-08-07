@@ -107,12 +107,20 @@ public:
     class Enemy* GetLockedEnemy() const { return lockedEnemy; }
     
     float GetCurrentAimAngle() const { return currentAimAngle; }
+    void SetCurrentAimAngle(float angle) { currentAimAngle = angle; }
+    
+    float GetTargetAimAngle() const { return targetAimAngle; }
+    void SetTargetAimAngle(float angle) { targetAimAngle = angle; }
     
     void SetTeamManager(TeamManager* manager) { teamManager = manager; }
     TeamManager* GetTeamManager() const { return teamManager; }
 
     void ChangeState(IPlayerState* newState);
     void Attack();
+    
+    virtual void UseSkill() = 0;
+    virtual void UseUltimate() = 0;
+    
     Vector2 GetWeaponPivot() const;
     void SetWeapon(IAttackStrategy* weapon) { currentWeapon = weapon; }
     IAttackStrategy* GetCurrentWeapon() const { return currentWeapon; }

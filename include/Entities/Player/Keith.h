@@ -4,4 +4,7 @@
 class Keith : public Paladin {
 public:
     Keith(Vector2 pos, CharacterSprites sprites);
+    
+    void UseSkill() override;
+    void UseUltimate() override;
 };
