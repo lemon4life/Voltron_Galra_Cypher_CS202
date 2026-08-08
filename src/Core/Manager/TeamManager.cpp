@@ -127,6 +127,7 @@ void TeamManager::SwapCharacter() {
     newActive->SetAimTarget(oldActive->GetAimTarget());
     newActive->SetCurrentAimAngle(oldActive->GetCurrentAimAngle());
     newActive->SetTargetAimAngle(oldActive->GetTargetAimAngle());
+    newActive->SetCurrentAimStrategy(oldActive->GetCurrentAimStrategy());
     newActive->SetFacingLeft(oldActive->IsFacingLeft());
     
     if (oldActive->IsParrying()) {
@@ -157,6 +158,7 @@ void TeamManager::SwapCharacterToIndex(int targetIndex) {
     newActive->SetAimTarget(oldActive->GetAimTarget());
     newActive->SetCurrentAimAngle(oldActive->GetCurrentAimAngle());
     newActive->SetTargetAimAngle(oldActive->GetTargetAimAngle());
+    newActive->SetCurrentAimStrategy(oldActive->GetCurrentAimStrategy());
     newActive->SetFacingLeft(oldActive->IsFacingLeft());
     
     if (oldActive->IsParrying()) {
@@ -198,6 +200,7 @@ void TeamManager::SwapDueToDeath() {
     newActive->SetAimTarget(deadActive->GetAimTarget());
     newActive->SetCurrentAimAngle(deadActive->GetCurrentAimAngle());
     newActive->SetTargetAimAngle(deadActive->GetTargetAimAngle());
+    newActive->SetCurrentAimStrategy(deadActive->GetCurrentAimStrategy());
     newActive->SetFacingLeft(deadActive->IsFacingLeft());
     
     newActive->ChangeState(newActive->GetIdleState());

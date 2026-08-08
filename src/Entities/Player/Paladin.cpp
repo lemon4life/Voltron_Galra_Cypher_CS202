@@ -42,9 +42,12 @@ Paladin::Paladin(
       footstepTimer(0.0f),
       renderOffsetY(0.0f),
       swapParryWindowTimer(0.0f), autoParryDurationTimer(0.0f), isAutoParry(false),
+      aimTarget(pos),
       lockedEnemy(nullptr),
       currentAimAngle(0.0f),
-      targetAimAngle(0.0f)
+      targetAimAngle(0.0f),
+      currentAimVector{1.0f, 0.0f},
+      currentAimStrategy(nullptr)
 {
     currentState = &idleState;
     currentState->Enter(this);

@@ -118,6 +118,7 @@ public:
     
     Vector2 GetCurrentAimVector() const { return currentAimVector; }
     void SetCurrentAimStrategy(IAimStrategy* strategy) { currentAimStrategy = strategy; }
+    IAimStrategy* GetCurrentAimStrategy() const { return currentAimStrategy; }
     
     void SetTeamManager(TeamManager* manager) { teamManager = manager; }
     TeamManager* GetTeamManager() const { return teamManager; }
