@@ -206,6 +206,12 @@ void GameManager::ClearProjectiles() {
     activeProjectiles.clear();
 }
 
+void GameManager::ResetTransientState() {
+    ClearProjectiles();
+    activeEffects.clear();
+    hitstopTimer = 0.0f;
+}
+
 void GameManager::AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime, bool drawBehind) {
     ImpactEffect effect;
     effect.position = pos;

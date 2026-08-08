@@ -217,9 +217,24 @@ void Paladin::ResetStats() {
     ghostHp = maxHealth;
     exEnergy = 0.0f;
     dashCooldown = 0.0f;
+    dashTimer = 0.0f;
+    isInvincible = false;
+    isParrying = false;
+    parrySuccess = false;
+    consecutiveParries = 0;
+    knockbackVelocity = {0.0f, 0.0f};
+    swapParryWindowTimer = 0.0f;
+    autoParryDurationTimer = 0.0f;
+    isAutoParry = false;
+    lockedEnemy = nullptr;
+    currentAimAngle = 0.0f;
+    targetAimAngle = 0.0f;
+    currentAimVector = {1.0f, 0.0f};
+    lastMoveDir = {1.0f, 0.0f};
     texture = GetIdleTexture();
     renderOffsetY = 0.0f;
     ChangeState(&idleState);
+    ResetAnimation();
 }
 
 Rectangle Paladin::GetBoundingBox() const {

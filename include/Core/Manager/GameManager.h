@@ -92,4 +92,5 @@ public:
     void DrawProjectiles();
     void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
     void ClearProjectiles();
+    void ResetTransientState();
 };

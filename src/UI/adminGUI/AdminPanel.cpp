@@ -529,6 +529,13 @@ void AdminPanel::Draw() const {
         SMALL_TEXT_SIZE,
         GRAY
     );
+    DrawText(
+        TextFormat("FPS: %i", GetFPS()),
+        (int)(panel.x + panel.width - 158.0f),
+        (int)panel.y + 17,
+        SMALL_TEXT_SIZE,
+        LIME
+    );
 
     DrawToggleRow(
         { contentX, panel.y + 52.0f, contentWidth, TOGGLE_HEIGHT },

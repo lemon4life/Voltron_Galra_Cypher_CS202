@@ -42,6 +42,7 @@ public:
     void LoadDialogueTree(const std::string& filepath);
 
     void StartDialogue();
+    void ResetSession();
     void Update(float deltaTime);
     void Draw(int screenWidth, int screenHeight);
 

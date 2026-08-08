@@ -7,7 +7,11 @@
 
 TeamManager::TeamManager()
     : activeIndex(0),
-      sharedUltimateDecibels(0.0f)
+      sharedArmor(0),
+      maxSharedArmor(0),
+      sharedUltimateDecibels(0.0f),
+      timeSinceLastDamage(0.0f),
+      armorRegenTimer(0.0f)
 {
 }
 
@@ -28,6 +32,29 @@ void TeamManager::AddMember(Paladin* paladin) {
 Paladin* TeamManager::GetActivePaladin() const {
     if (team.empty()) return nullptr;
     return team[activeIndex];
+}
+
+void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
+    std::sort(
+        team.begin(),
+        team.end(),
+        [](const Paladin* left, const Paladin* right) {
+            return static_cast<int>(left->GetPaladinId()) <
+                static_cast<int>(right->GetPaladinId());
+        }
+    );
+    activeIndex = 0;
+    sharedArmor = maxSharedArmor;
+    sharedUltimateDecibels = 0.0f;
+    timeSinceLastDamage = 0.0f;
+    armorRegenTimer = 0.0f;
+
+    for (Paladin* paladin : team) {
+        paladin->SetPosition(spawnPosition);
+        paladin->ResetStats();
+        paladin->SetAimTarget(spawnPosition);
+    }
+    NotifyObservers();
 }
 
 int TeamManager::FindMemberIndex(PaladinId id) const {

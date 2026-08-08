@@ -15,6 +15,7 @@ struct MenuButton {
 
 
 enum class MenuState { LOADING, TRANSITIONING, ACTIVE };
+enum class MainMenuAction { None, StartGame, Continue };
 
 class MainMenu {
 private:
@@ -24,6 +25,8 @@ private:
     float transitionTimer = 0.0f;
     bool isReady = false;
     bool quitRequested = false;
+    bool continueAvailable = false;
+    MainMenuAction pendingAction = MainMenuAction::None;
 
     std::vector<Texture2D> bgSlides;
     int currentSlideIndex;
@@ -33,6 +36,8 @@ private:
 
     Texture2D logoTex;
     std::vector<MenuButton> buttons;
+
+    void RebuildButtons();
     
     // Lerping parameters
     float baseScale = 1.0f;
@@ -50,5 +55,7 @@ public:
     bool IsReady() const { return isReady; }
     MenuState GetState() const { return currentState; }
     bool ConsumeQuitRequest();
+    MainMenuAction ConsumeAction();
+    void SetContinueAvailable(bool available);
     void Draw(int screenWidth, int screenHeight);
 };

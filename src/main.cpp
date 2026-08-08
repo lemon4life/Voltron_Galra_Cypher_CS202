@@ -35,6 +35,16 @@
 
 namespace {
     constexpr float MAX_MODAL_SCALE = 1.35f;
+    constexpr const char* HUB_LEVEL_PATH =
+        "assets/map/hub_Tile Layer 1.csv";
+
+    Vector2 GetLevelCenter(const LevelManager& levelManager) {
+        Rectangle bounds = levelManager.GetLevelBounds();
+        return {
+            bounds.x + bounds.width * 0.5f,
+            bounds.y + bounds.height * 0.5f
+        };
+    }
 
     Camera2D CreateCenteredUICamera(float scale) {
         Camera2D camera = {};
@@ -166,21 +176,24 @@ namespace {
         GameManager::GetInstance().SetState(GameState::GAMEPLAY);
     }
 
-    void ReturnToMainMenu(
-        TeamManager* teamManager,
-        LevelManager* levelManager
-    ) {
-        GameManager::GetInstance().ClearProjectiles();
-        for (auto* paladin : teamManager->GetTeam()) {
-            paladin->ResetStats();
-        }
-        teamManager->GetActivePaladin()->SetPosition({256.0f, 256.0f});
-        levelManager->LoadLevel(
-            "assets/map/hub_Tile Layer 1.csv",
-            teamManager
-        );
+    void OpenMainMenu() {
         AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
         GameManager::GetInstance().SetState(GameState::MAIN_MENU);
+    }
+
+    void StartNewGame(
+        TeamManager* teamManager,
+        LevelManager* levelManager,
+        WaveManager* waveManager
+    ) {
+        GameManager::GetInstance().ResetTransientState();
+        ParticleManager::GetInstance().Clear();
+        DialogueManager::GetInstance().ResetSession();
+        levelManager->LoadLevel(HUB_LEVEL_PATH, teamManager);
+        teamManager->ResetForNewGame(GetLevelCenter(*levelManager));
+        waveManager->Reset(0, 0, 0);
+        AudioManager::GetInstance().PlayMusicTrack("bgm_story_mode", 1.0f);
+        GameManager::GetInstance().SetState(GameState::HUB);
     }
 
     void ReturnToHub(
@@ -191,8 +204,10 @@ namespace {
         for (auto* paladin : teamManager->GetTeam()) {
             paladin->ResetStats();
         }
-        teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
-        levelManager->LoadLevel("assets/map/hub_Tile Layer 1.csv", teamManager);
+        levelManager->LoadLevel(HUB_LEVEL_PATH, teamManager);
+        teamManager->GetActivePaladin()->SetPosition(
+            GetLevelCenter(*levelManager)
+        );
         AudioManager::GetInstance().PlayMusicTrack("bgm_story_mode", 1.0f);
         GameManager::GetInstance().SetState(GameState::HUB);
     }
@@ -232,6 +247,9 @@ int main() {
     gameManager.UpdateTargetFPS(Constants::TARGET_FPS);
 
     GameState settingsReturnState = GameState::MAIN_MENU;
+    GameState continueState = GameState::HUB;
+    std::string continueMusicName = "bgm_story_mode";
+    bool hasContinuableSession = false;
     MouseAimStrategy mouseStrategy;
     AutoAimStrategy autoStrategy;
 
@@ -263,11 +281,7 @@ int main() {
                 AssetManager::GetInstance().GetTexture("Lance_Impact")
             );
 
-            // Spawn at center of the 20x20 tile map (10 * RENDER_TILE_SIZE)
-            Vector2 startPosition = {
-                10.0f * Constants::RENDER_TILE_SIZE,
-                10.0f * Constants::RENDER_TILE_SIZE
-            };
+            Vector2 startPosition = {0.0f, 0.0f};
             teamManager = new TeamManager();
             teamManager->AddMember(new Lance(
                 startPosition,
@@ -286,9 +300,10 @@ int main() {
             uiManager.SetTeamManager(teamManager);
 
             levelManager.LoadLevel(
-                "assets/map/hub_Tile Layer 1.csv",
+                HUB_LEVEL_PATH,
                 teamManager
             );
+            teamManager->ResetForNewGame(GetLevelCenter(levelManager));
             gameManager.SetLevelManager(&levelManager);
             AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
             systemInitialized = true;
@@ -378,6 +393,29 @@ int main() {
         switch (state) {
             case GameState::MAIN_MENU: {
                 mainMenu.Update(deltaTime);
+                MainMenuAction menuAction = mainMenu.ConsumeAction();
+                if (menuAction == MainMenuAction::StartGame &&
+                    systemInitialized) {
+                    paladinSelectionMenu.Close();
+                    hasContinuableSession = false;
+                    mainMenu.SetContinueAvailable(false);
+                    StartNewGame(
+                        teamManager,
+                        &levelManager,
+                        &waveManager
+                    );
+                } else if (menuAction == MainMenuAction::Continue &&
+                           hasContinuableSession) {
+                    hasContinuableSession = false;
+                    mainMenu.SetContinueAvailable(false);
+                    if (!continueMusicName.empty()) {
+                        AudioManager::GetInstance().PlayMusicTrack(
+                            continueMusicName,
+                            1.0f
+                        );
+                    }
+                    gameManager.SetState(continueState);
+                }
                 if (mainMenu.ConsumeQuitRequest()) {
                     quitRequested = true;
                 }
@@ -510,7 +548,12 @@ int main() {
                         break;
                     case PauseMenuAction::BackToMainMenu:
                         paladinSelectionMenu.Close();
-                        ReturnToMainMenu(teamManager, &levelManager);
+                        continueState = gameManager.GetPreviousGameState();
+                        continueMusicName = AudioManager::GetInstance()
+                            .GetCurrentMusicName();
+                        hasContinuableSession = true;
+                        mainMenu.SetContinueAvailable(true);
+                        OpenMainMenu();
                         break;
                     case PauseMenuAction::Quit:
                         quitRequested = true;
@@ -539,7 +582,9 @@ int main() {
             case GameState::VICTORY:
                 if (IsKeyPressed(KEY_R)) {
                     paladinSelectionMenu.Close();
-                    ReturnToMainMenu(teamManager, &levelManager);
+                    hasContinuableSession = false;
+                    mainMenu.SetContinueAvailable(false);
+                    OpenMainMenu();
                 }
                 break;
         }

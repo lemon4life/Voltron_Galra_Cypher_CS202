@@ -31,11 +31,23 @@ void MainMenu::Initialize() {
     logoTex = assets.LoadTexture2D("Voltron_logo", "assets/img/Background/Voltron_logo.png", true);
     
     // Initialize buttons
+    RebuildButtons();
+}
+
+void MainMenu::RebuildButtons() {
     buttons.clear();
-    const char* titles[] = { "Start Game", "Settings", "About us", "Exit Game" };
-    for (int i = 0; i < 4; i++) {
+    std::vector<std::string> titles;
+    if (continueAvailable) {
+        titles.push_back("Continue");
+    }
+    titles.push_back("Start Game");
+    titles.push_back("Settings");
+    titles.push_back("About us");
+    titles.push_back("Exit Game");
+
+    for (const std::string& title : titles) {
         MenuButton btn;
-        btn.text = titles[i];
+        btn.text = title;
         btn.bounds = { 0, 0, 250, 50 }; 
         btn.currentScale = baseScale;
         btn.currentXOffset = 0.0f;
@@ -93,7 +105,9 @@ void MainMenu::Update(float deltaTime) {
 
         if (IsKeyPressed(KEY_ENTER)) {
             AudioManager::GetInstance().PlayRandomClick();
-            GameManager::GetInstance().SetState(GameState::HUB);
+            pendingAction = continueAvailable
+                ? MainMenuAction::Continue
+                : MainMenuAction::StartGame;
             return;
         }
         
@@ -114,8 +128,10 @@ void MainMenu::Update(float deltaTime) {
 
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                     AudioManager::GetInstance().PlayRandomClick();
-                    if (btn.text == "Start Game") {
-                        GameManager::GetInstance().SetState(GameState::HUB);
+                    if (btn.text == "Continue") {
+                        pendingAction = MainMenuAction::Continue;
+                    } else if (btn.text == "Start Game") {
+                        pendingAction = MainMenuAction::StartGame;
                     } else if (btn.text == "Settings") {
                         GameManager::GetInstance().SetState(GameState::SETTINGS);
                     } else if (btn.text == "About us") {
@@ -140,6 +156,19 @@ bool MainMenu::ConsumeQuitRequest() {
     bool requested = quitRequested;
     quitRequested = false;
     return requested;
+}
+
+MainMenuAction MainMenu::ConsumeAction() {
+    MainMenuAction action = pendingAction;
+    pendingAction = MainMenuAction::None;
+    return action;
+}
+
+void MainMenu::SetContinueAvailable(bool available) {
+    if (continueAvailable == available) return;
+
+    continueAvailable = available;
+    RebuildButtons();
 }
 
 void MainMenu::Draw(int screenWidth, int screenHeight) {

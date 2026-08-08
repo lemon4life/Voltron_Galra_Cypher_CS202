@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <vector>
+#include "raylib.h"
 #include "Core/ISubject.h"
 #include "Entities/Player/PaladinDefinition.h"
 #include "Core/DepthRenderItem.h"
@@ -31,6 +32,7 @@ public:
     void SwapCharacter();
     void SwapCharacterToIndex(int targetIndex);
     void SwapDueToDeath();
+    void ResetForNewGame(Vector2 spawnPosition);
     int FindMemberIndex(PaladinId id) const;
     bool MovePaladinToSlot(PaladinId id, std::size_t targetIndex);
     Paladin* GetActivePaladin() const;

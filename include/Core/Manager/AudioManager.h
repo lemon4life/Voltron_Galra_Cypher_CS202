@@ -49,6 +49,7 @@ public:
     void LoadMusic(const std::string& name, const std::string& filepath);
     void PlayMusicTrack(const std::string& name, float fadeTime = 1.0f);
     void UpdateMusicStream();
+    const std::string& GetCurrentMusicName() const { return currentMusicName; }
 
     void SetSoundEffectsVolume(float volume);
     void SetMusicVolumeLevel(float volume);

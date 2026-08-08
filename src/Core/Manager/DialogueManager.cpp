@@ -96,6 +96,17 @@ void DialogueManager::StartDialogue() {
     typewriterTimer = 0.0f;
 }
 
+void DialogueManager::ResetSession() {
+    currentTree.clear();
+    isDialogueActive = false;
+    currentNode = 0;
+    selectedOption = 0;
+    missionRequested = false;
+    requestedMissionId = 0;
+    typewriterTimer = 0.0f;
+    visibleCharCount = 0;
+}
+
 void DialogueManager::Update(float deltaTime) {
     if (!isDialogueActive || currentTree.empty()) return;
 
