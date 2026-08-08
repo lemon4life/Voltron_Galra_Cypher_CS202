@@ -18,13 +18,13 @@
 
 namespace {
     constexpr float DIAGONAL_COST = 1.41421356f;
-    constexpr float TARGET_LOOP_ALL_INTERVAL = 0.2f;
+    constexpr float TARGET_LOOP_ALL_INTERVAL = 0.6f;
     constexpr float BODY_PATH_SAMPLE_SPACING = 4.0f;
     constexpr float POSITION_EPSILON_SQUARED = 4.0f;
     constexpr float PLAYER_GOAL_RADIUS = 30.0f;
     constexpr float QUARTER_TILE_OFFSET = 8.0f;
-    constexpr int MAX_SEARCH_STEPS = 500;
-    constexpr int MAX_TARGET_POSITIONS = 10;
+    constexpr int MAX_SEARCH_STEPS = 70;
+    constexpr int MAX_TARGET_POSITIONS = 7;
 
     struct Tile {
         int x;

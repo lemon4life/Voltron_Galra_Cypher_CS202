@@ -269,6 +269,21 @@ void AdminPanel::SpawnSelectedType(
         EnemyTypeName(spawnType);
 }
 
+void AdminPanel::DeleteAllEnemies(LevelManager& levelManager) {
+    int enemyCount = 0;
+    for (GameObject* entity : levelManager.GetEntities()) {
+        if (entity && entity->GetObjectType() == GameObjectType::Enemy) {
+            levelManager.QueueRemoval(entity);
+            ++enemyCount;
+        }
+    }
+
+    statusMessage = enemyCount > 0
+        ? std::string("Removing ") + std::to_string(enemyCount) +
+            " enemies"
+        : "No enemies to delete";
+}
+
 void AdminPanel::UpdatePropertyEditor(Vector2 mousePosition) {
     Rectangle viewport = GetPropertyViewport();
     float totalHeight = (float)PROPERTIES.size() * PROPERTY_ROW_HEIGHT;
@@ -388,15 +403,25 @@ void AdminPanel::Update(
         }
     }
 
+    float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
     Rectangle cancelButton = {
         contentX,
         panel.y + 285.0f,
-        contentWidth,
+        actionButtonWidth,
+        BUTTON_HEIGHT
+    };
+    Rectangle deleteAllButton = {
+        contentX + actionButtonWidth + 8.0f,
+        panel.y + 285.0f,
+        actionButtonWidth,
         BUTTON_HEIGHT
     };
     if (WasButtonPressed(cancelButton, mousePosition)) {
         placementArmed = false;
         statusMessage = "Placement cancelled; values are preserved";
+    }
+    if (WasButtonPressed(deleteAllButton, mousePosition)) {
+        DeleteAllEnemies(levelManager);
     }
 
     UpdatePropertyEditor(mousePosition);
@@ -585,13 +610,21 @@ void AdminPanel::Draw() const {
         );
     }
 
+    float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
     Rectangle cancelButton = {
         contentX,
         panel.y + 285.0f,
-        contentWidth,
+        actionButtonWidth,
+        BUTTON_HEIGHT
+    };
+    Rectangle deleteAllButton = {
+        contentX + actionButtonWidth + 8.0f,
+        panel.y + 285.0f,
+        actionButtonWidth,
         BUTTON_HEIGHT
     };
     DrawButton(cancelButton, "Cancel placement", mousePosition);
+    DrawButton(deleteAllButton, "Delete all enemies", mousePosition);
 
     DrawText(
         statusMessage.c_str(),

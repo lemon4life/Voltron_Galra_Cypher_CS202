@@ -37,6 +37,7 @@ private:
         LevelManager& levelManager,
         TeamManager* teamManager
     );
+    void DeleteAllEnemies(LevelManager& levelManager);
     void UpdatePropertyEditor(Vector2 mousePosition);
     void DrawPropertyEditor() const;
     std::size_t GetSpawnTypeIndex() const;
