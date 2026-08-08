@@ -18,6 +18,7 @@ namespace Constants {
     inline bool DEBUG_DRAW_ENTITY_COLLISION_BOXES = false;
     inline bool DEBUG_DRAW_ENEMY_PATHS = false;
     inline bool DEBUG_PLAYER_IMMUNITY = false;
+    inline bool DEBUG_SHOW_PATHFINDING_PROFILING = false;
     constexpr float DEBUG_COLLISION_LINE_THICKNESS = 0.75f;
 
     // Scale & Transformation Constants

@@ -181,7 +181,10 @@ AdminPanel::AdminPanel()
       spawnType(MapObjectId::Chaser),
       spawnValues(DEFAULT_SPAWN_VALUES),
       propertyScroll(0.0f),
-      statusMessage("Select a type, tune values, then click the world") {
+      statusMessage("Select a type, tune values, then click the world"),
+      pathSearchesPerSecond(0),
+      pathAverageMilliseconds(0.0f),
+      pathMaximumMilliseconds(0.0f) {
 }
 
 Rectangle AdminPanel::GetPanelBounds() const {
@@ -352,6 +355,12 @@ void AdminPanel::Update(
         open = !open;
     }
     if (!open) return;
+
+    const EnemyPathProfilingStats& pathStats =
+        levelManager.GetEnemyPathProfilingStats();
+    pathSearchesPerSecond = pathStats.searchesLastSecond;
+    pathAverageMilliseconds = pathStats.averageSearchMilliseconds;
+    pathMaximumMilliseconds = pathStats.maximumSearchMilliseconds;
 
     Vector2 mousePosition = GetMousePosition();
     Rectangle panel = GetPanelBounds();
@@ -561,6 +570,20 @@ void AdminPanel::Draw() const {
         SMALL_TEXT_SIZE,
         LIME
     );
+    if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
+        DrawText(
+            TextFormat(
+                "Path: %i/s  avg %.2f ms  max %.2f ms",
+                pathSearchesPerSecond,
+                pathAverageMilliseconds,
+                pathMaximumMilliseconds
+            ),
+            (int)contentX,
+            (int)panel.y + 36,
+            13,
+            SKYBLUE
+        );
+    }
 
     DrawToggleRow(
         { contentX, panel.y + 52.0f, contentWidth, TOGGLE_HEIGHT },

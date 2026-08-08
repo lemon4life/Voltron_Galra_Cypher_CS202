@@ -1,5 +1,6 @@
 #include "Core/Manager/EnemyPathManager.h"
 
+#include "Core/Constants.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Enemy.h"
@@ -9,12 +10,85 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
+#include <cstdint>
 #include <cmath>
 #include <limits>
 #include <optional>
 #include <queue>
 #include <unordered_map>
 #include <vector>
+
+struct NavigationCacheKey {
+    int width;
+    int height;
+    int offsetX;
+    int offsetY;
+    int minimumTileX;
+    int minimumTileY;
+    int tileWidth;
+    int tileHeight;
+
+    bool operator==(const NavigationCacheKey& other) const {
+        return width == other.width && height == other.height &&
+            offsetX == other.offsetX && offsetY == other.offsetY &&
+            minimumTileX == other.minimumTileX &&
+            minimumTileY == other.minimumTileY &&
+            tileWidth == other.tileWidth && tileHeight == other.tileHeight;
+    }
+};
+
+struct NavigationCacheKeyHash {
+    std::size_t operator()(const NavigationCacheKey& key) const {
+        std::size_t value = 0;
+        auto combine = [&value](int component) {
+            value ^= std::hash<int>()(component) + 0x9e3779b9U +
+                (value << 6) + (value >> 2);
+        };
+        combine(key.width);
+        combine(key.height);
+        combine(key.offsetX);
+        combine(key.offsetY);
+        combine(key.minimumTileX);
+        combine(key.minimumTileY);
+        combine(key.tileWidth);
+        combine(key.tileHeight);
+        return value;
+    }
+};
+
+struct NavigationGridCache {
+    Rectangle searchBounds = {};
+    int minimumTileX = 0;
+    int minimumTileY = 0;
+    int tileWidth = 0;
+    int tileHeight = 0;
+    std::vector<std::int8_t> clearTiles;
+    std::vector<std::array<std::int8_t, 8>> clearEdges;
+};
+
+struct EnemyNavigationCacheStore {
+    std::uint64_t navigationRevision =
+        std::numeric_limits<std::uint64_t>::max();
+    std::unordered_map<
+        NavigationCacheKey,
+        NavigationGridCache,
+        NavigationCacheKeyHash
+    > grids;
+    bool goalsValid = false;
+    int goalTargetTileX = 0;
+    int goalTargetTileY = 0;
+    Rectangle goalSearchBounds = {};
+    std::vector<EnemyPathDebugPoint> sharedGoals;
+
+    void EnsureRevision(std::uint64_t revision) {
+        if (navigationRevision == revision) return;
+        navigationRevision = revision;
+        grids.clear();
+        goalsValid = false;
+        sharedGoals.clear();
+    }
+};
 
 namespace {
     constexpr float DIAGONAL_COST = 1.41421356f;
@@ -25,6 +99,9 @@ namespace {
     constexpr float QUARTER_TILE_OFFSET = 8.0f;
     constexpr int MAX_SEARCH_STEPS = 70;
     constexpr int MAX_TARGET_POSITIONS = 7;
+    constexpr int MAX_SEARCHES_PER_FRAME = 1;
+    constexpr int MAX_START_CONNECTION_ATTEMPTS = 32;
+    constexpr float FAILED_PATH_RETRY_INTERVAL = 1.2f;
 
     struct Tile {
         int x;
@@ -42,34 +119,6 @@ namespace {
             return xHash ^ (yHash << 1);
         }
     };
-
-    bool TileLess(Tile first, Tile second) {
-        return first.x < second.x ||
-            (first.x == second.x && first.y < second.y);
-    }
-
-    struct TileEdge {
-        Tile first;
-        Tile second;
-
-        bool operator==(const TileEdge& other) const {
-            return first == other.first && second == other.second;
-        }
-    };
-
-    struct TileEdgeHash {
-        std::size_t operator()(const TileEdge& edge) const {
-            TileHash hash;
-            return hash(edge.first) ^ (hash(edge.second) << 1);
-        }
-    };
-
-    TileEdge MakeTileEdge(Tile first, Tile second) {
-        if (TileLess(second, first)) {
-            std::swap(first, second);
-        }
-        return { first, second };
-    }
 
     struct AStarNode {
         Tile tile;
@@ -101,6 +150,7 @@ namespace {
         std::vector<Vector2> waypoints;
         std::vector<EnemyPathDebugPoint> debugGoals;
         std::optional<Vector2> selectedGoal;
+        int expandedCells = 0;
     };
 
     float DistanceSquared(Vector2 first, Vector2 second) {
@@ -165,10 +215,11 @@ namespace {
     bool IsBodyClearAtWorldPosition(
         const LevelManager& levelManager,
         const Enemy& enemy,
-        Vector2 worldPosition
+        Vector2 worldPosition,
+        Rectangle searchBounds
     ) {
         Rectangle footprint = enemy.GetNavigationFootprintAt(worldPosition);
-        return ContainsRectangle(levelManager.GetLevelBounds(), footprint) &&
+        return ContainsRectangle(searchBounds, footprint) &&
             !levelManager.IsSolidCollision(footprint);
     }
 
@@ -176,7 +227,8 @@ namespace {
         const LevelManager& levelManager,
         const Enemy& enemy,
         Vector2 start,
-        Vector2 end
+        Vector2 end,
+        Rectangle searchBounds
     ) {
         float distance = Vector2Distance(start, end);
         int sampleCount = std::max(
@@ -187,7 +239,11 @@ namespace {
         for (int sample = 0; sample <= sampleCount; ++sample) {
             float amount = (float)sample / (float)sampleCount;
             Vector2 position = Vector2Lerp(start, end, amount);
-            if (!IsBodyClearAtWorldPosition(levelManager, enemy, position)) {
+            if (!IsBodyClearAtWorldPosition(
+                    levelManager,
+                    enemy,
+                    position,
+                    searchBounds)) {
                 return false;
             }
         }
@@ -199,9 +255,15 @@ namespace {
         const LevelManager& levelManager,
         const Enemy& enemy,
         Vector2 start,
-        Vector2 end
+        Vector2 end,
+        Rectangle searchBounds
     ) {
-        if (IsBodyPathClear(levelManager, enemy, start, end)) {
+        if (IsBodyPathClear(
+                levelManager,
+                enemy,
+                start,
+                end,
+                searchBounds)) {
             return std::vector<Vector2>{ end };
         }
 
@@ -213,9 +275,23 @@ namespace {
         float bestLength = std::numeric_limits<float>::max();
 
         for (Vector2 corner : corners) {
-            if (!IsBodyClearAtWorldPosition(levelManager, enemy, corner) ||
-                !IsBodyPathClear(levelManager, enemy, start, corner) ||
-                !IsBodyPathClear(levelManager, enemy, corner, end)) {
+            if (!IsBodyClearAtWorldPosition(
+                    levelManager,
+                    enemy,
+                    corner,
+                    searchBounds) ||
+                !IsBodyPathClear(
+                    levelManager,
+                    enemy,
+                    start,
+                    corner,
+                    searchBounds) ||
+                !IsBodyPathClear(
+                    levelManager,
+                    enemy,
+                    corner,
+                    end,
+                    searchBounds)) {
                 continue;
             }
 
@@ -239,37 +315,137 @@ namespace {
 
     class SearchCollisionCache {
     public:
-        SearchCollisionCache(LevelManager& levelManager, Enemy& enemy)
-            : levelManager(levelManager), enemy(enemy) {}
+        SearchCollisionCache(
+            LevelManager& levelManager,
+            Enemy& enemy,
+            EnemyNavigationCacheStore& store,
+            Rectangle searchBounds,
+            std::uint64_t navigationRevision
+        )
+            : levelManager(levelManager),
+              enemy(enemy),
+              searchBounds(searchBounds) {
+            store.EnsureRevision(navigationRevision);
+
+            EnemyCollisionProfile profile = enemy.GetCollisionProfile();
+            int minimumTileX = (int)std::floor(
+                searchBounds.x / Constants::RENDER_TILE_SIZE
+            );
+            int minimumTileY = (int)std::floor(
+                searchBounds.y / Constants::RENDER_TILE_SIZE
+            );
+            int maximumTileX = (int)std::ceil(
+                (searchBounds.x + searchBounds.width) /
+                    Constants::RENDER_TILE_SIZE
+            ) - 1;
+            int maximumTileY = (int)std::ceil(
+                (searchBounds.y + searchBounds.height) /
+                    Constants::RENDER_TILE_SIZE
+            ) - 1;
+
+            NavigationCacheKey key = {
+                Quantize(profile.navigationSize.x),
+                Quantize(profile.navigationSize.y),
+                Quantize(profile.navigationCenterOffset.x),
+                Quantize(profile.navigationCenterOffset.y),
+                minimumTileX,
+                minimumTileY,
+                std::max(0, maximumTileX - minimumTileX + 1),
+                std::max(0, maximumTileY - minimumTileY + 1)
+            };
+
+            auto existing = store.grids.find(key);
+            if (existing == store.grids.end()) {
+                NavigationGridCache created;
+                created.searchBounds = searchBounds;
+                created.minimumTileX = key.minimumTileX;
+                created.minimumTileY = key.minimumTileY;
+                created.tileWidth = key.tileWidth;
+                created.tileHeight = key.tileHeight;
+                int cellCount = key.tileWidth * key.tileHeight;
+                created.clearTiles.assign(cellCount, (std::int8_t)-1);
+                created.clearEdges.resize(cellCount);
+                for (auto& edges : created.clearEdges) {
+                    edges.fill((std::int8_t)-1);
+                }
+                existing = store.grids.emplace(
+                    key,
+                    std::move(created)
+                ).first;
+            }
+            grid = &existing->second;
+        }
 
         bool IsTileClear(Tile tile) {
-            auto existing = tileClear.find(tile);
-            if (existing != tileClear.end()) {
-                return existing->second;
-            }
+            int index = GetIndex(tile);
+            if (index < 0) return false;
+            std::int8_t& cached = grid->clearTiles[index];
+            if (cached >= 0) return cached != 0;
 
             bool clear = IsBodyClearAtWorldPosition(
                 levelManager,
                 enemy,
-                levelManager.TileToWorld(tile.x, tile.y)
+                levelManager.TileToWorld(tile.x, tile.y),
+                searchBounds
             );
-            tileClear[tile] = clear;
+            cached = clear ? 1 : 0;
             return clear;
         }
 
         bool IsEdgeClear(Tile current, Tile neighbor) {
-            TileEdge edge = MakeTileEdge(current, neighbor);
-            auto existing = edgeClear.find(edge);
-            if (existing != edgeClear.end()) {
-                return existing->second;
+            int currentIndex = GetIndex(current);
+            int neighborIndex = GetIndex(neighbor);
+            int direction = DirectionIndex(
+                neighbor.x - current.x,
+                neighbor.y - current.y
+            );
+            if (currentIndex < 0 || neighborIndex < 0 || direction < 0) {
+                return false;
             }
 
+            std::int8_t& cached = grid->clearEdges[currentIndex][direction];
+            if (cached >= 0) return cached != 0;
+
             bool clear = CalculateEdgeClear(current, neighbor);
-            edgeClear[edge] = clear;
+            cached = clear ? 1 : 0;
+            int reverseDirection = DirectionIndex(
+                current.x - neighbor.x,
+                current.y - neighbor.y
+            );
+            if (reverseDirection >= 0) {
+                grid->clearEdges[neighborIndex][reverseDirection] = cached;
+            }
             return clear;
         }
 
     private:
+        static int Quantize(float value) {
+            return (int)std::lround(value * 1000.0f);
+        }
+
+        static int DirectionIndex(int dx, int dy) {
+            constexpr std::array<Tile, 8> DIRECTIONS = {
+                Tile{ 1, 0 }, Tile{ -1, 0 }, Tile{ 0, 1 }, Tile{ 0, -1 },
+                Tile{ 1, 1 }, Tile{ 1, -1 }, Tile{ -1, 1 }, Tile{ -1, -1 }
+            };
+            for (int index = 0; index < (int)DIRECTIONS.size(); ++index) {
+                if (DIRECTIONS[index].x == dx && DIRECTIONS[index].y == dy) {
+                    return index;
+                }
+            }
+            return -1;
+        }
+
+        int GetIndex(Tile tile) const {
+            int localX = tile.x - grid->minimumTileX;
+            int localY = tile.y - grid->minimumTileY;
+            if (localX < 0 || localY < 0 ||
+                localX >= grid->tileWidth || localY >= grid->tileHeight) {
+                return -1;
+            }
+            return localY * grid->tileWidth + localX;
+        }
+
         bool CalculateEdgeClear(Tile current, Tile neighbor) {
             if (!IsTileClear(neighbor)) return false;
 
@@ -286,14 +462,15 @@ namespace {
                 levelManager,
                 enemy,
                 levelManager.TileToWorld(current.x, current.y),
-                levelManager.TileToWorld(neighbor.x, neighbor.y)
+                levelManager.TileToWorld(neighbor.x, neighbor.y),
+                searchBounds
             );
         }
 
         LevelManager& levelManager;
         Enemy& enemy;
-        std::unordered_map<Tile, bool, TileHash> tileClear;
-        std::unordered_map<TileEdge, bool, TileEdgeHash> edgeClear;
+        Rectangle searchBounds;
+        NavigationGridCache* grid = nullptr;
     };
 
     Tile WorldTile(const LevelManager& levelManager, Vector2 position) {
@@ -315,7 +492,8 @@ namespace {
     std::optional<PositionConnection> FindStartConnection(
         LevelManager& levelManager,
         Enemy& enemy,
-        SearchCollisionCache& cache
+        SearchCollisionCache& cache,
+        Rectangle searchBounds
     ) {
         Vector2 start = enemy.GetPosition();
         Tile startTile = WorldTile(levelManager, start);
@@ -333,10 +511,28 @@ namespace {
         };
 
         std::vector<Tile> graphTiles = NearbyTiles(startTile);
+        std::sort(
+            graphTiles.begin(),
+            graphTiles.end(),
+            [&](Tile first, Tile second) {
+                return DistanceSquared(
+                           start,
+                           levelManager.TileToWorld(first.x, first.y)) <
+                    DistanceSquared(
+                           start,
+                           levelManager.TileToWorld(second.x, second.y));
+            }
+        );
         for (Tile graphTile : graphTiles) {
             if (!cache.IsTileClear(graphTile)) continue;
             Vector2 center = levelManager.TileToWorld(graphTile.x, graphTile.y);
-            auto connection = ConnectPositions(levelManager, enemy, start, center);
+            auto connection = ConnectPositions(
+                levelManager,
+                enemy,
+                start,
+                center,
+                searchBounds
+            );
             if (connection) {
                 consider(graphTile, std::move(*connection));
             }
@@ -355,14 +551,25 @@ namespace {
             Vector2{ -QUARTER_TILE_OFFSET, -QUARTER_TILE_OFFSET }
         };
 
+        int connectionAttempts = 0;
         for (Tile anchorTile : graphTiles) {
+            if (!cache.IsTileClear(anchorTile)) continue;
             Vector2 tileCenter = levelManager.TileToWorld(
                 anchorTile.x,
                 anchorTile.y
             );
             for (Vector2 offset : ANCHOR_OFFSETS) {
+                if (connectionAttempts >= MAX_START_CONNECTION_ATTEMPTS) {
+                    return best;
+                }
+                ++connectionAttempts;
+
                 Vector2 anchor = Vector2Add(tileCenter, offset);
-                if (!IsBodyClearAtWorldPosition(levelManager, enemy, anchor)) {
+                if (!IsBodyClearAtWorldPosition(
+                        levelManager,
+                        enemy,
+                        anchor,
+                        searchBounds)) {
                     continue;
                 }
 
@@ -370,28 +577,23 @@ namespace {
                     levelManager,
                     enemy,
                     start,
-                    anchor
+                    anchor,
+                    searchBounds
                 );
                 if (!toAnchor) continue;
 
-                for (Tile graphTile : graphTiles) {
-                    if (!cache.IsTileClear(graphTile)) continue;
-                    Vector2 graphCenter = levelManager.TileToWorld(
-                        graphTile.x,
-                        graphTile.y
-                    );
-                    auto toGraph = ConnectPositions(
-                        levelManager,
-                        enemy,
-                        anchor,
-                        graphCenter
-                    );
-                    if (!toGraph) continue;
+                auto toGraph = ConnectPositions(
+                    levelManager,
+                    enemy,
+                    anchor,
+                    tileCenter,
+                    searchBounds
+                );
+                if (!toGraph) continue;
 
-                    std::vector<Vector2> points = *toAnchor;
-                    points.insert(points.end(), toGraph->begin(), toGraph->end());
-                    consider(graphTile, std::move(points));
-                }
+                std::vector<Vector2> points = *toAnchor;
+                points.insert(points.end(), toGraph->begin(), toGraph->end());
+                consider(anchorTile, std::move(points));
             }
         }
 
@@ -426,29 +628,69 @@ namespace {
         return candidates;
     }
 
-    std::vector<GoalAnchor> BuildGoalAnchors(
-        LevelManager& levelManager,
-        Enemy& enemy,
-        const Paladin& target,
-        SearchCollisionCache& cache,
-        std::vector<EnemyPathDebugPoint>& debugGoals
-    ) {
-        std::vector<GoalAnchor> anchors;
-        std::vector<Vector2> candidates = GenerateGoalCandidates(target);
-        debugGoals.reserve(candidates.size());
+    bool SameRectangle(Rectangle first, Rectangle second) {
+        return std::abs(first.x - second.x) < 0.001f &&
+            std::abs(first.y - second.y) < 0.001f &&
+            std::abs(first.width - second.width) < 0.001f &&
+            std::abs(first.height - second.height) < 0.001f;
+    }
 
+    const std::vector<EnemyPathDebugPoint>& GetSharedGoalCandidates(
+        LevelManager& levelManager,
+        const Paladin& target,
+        EnemyNavigationCacheStore& store,
+        Rectangle searchBounds
+    ) {
+        Tile targetTile = WorldTile(levelManager, target.GetPosition());
+        if (store.goalsValid &&
+            store.goalTargetTileX == targetTile.x &&
+            store.goalTargetTileY == targetTile.y &&
+            SameRectangle(store.goalSearchBounds, searchBounds)) {
+            return store.sharedGoals;
+        }
+
+        store.goalsValid = true;
+        store.goalTargetTileX = targetTile.x;
+        store.goalTargetTileY = targetTile.y;
+        store.goalSearchBounds = searchBounds;
+        store.sharedGoals.clear();
+
+        std::vector<Vector2> candidates = GenerateGoalCandidates(target);
+        store.sharedGoals.reserve(candidates.size());
         for (Vector2 candidate : candidates) {
             Vector2 closestHitboxPoint = ClosestPointOnRectangle(
                 candidate,
                 target.GetBoundingBox()
             );
-            bool hasLineOfSight = levelManager.HasClearLineOfSight(
+            bool insideDomain = CheckCollisionPointRec(
                 candidate,
-                closestHitboxPoint,
-                0.0f
+                searchBounds
             );
-            debugGoals.push_back({ candidate, hasLineOfSight });
-            if (!hasLineOfSight) continue;
+            bool hasLineOfSight = insideDomain &&
+                levelManager.HasClearLineOfSight(
+                    candidate,
+                    closestHitboxPoint,
+                    0.0f
+                );
+            store.sharedGoals.push_back({ candidate, hasLineOfSight });
+        }
+        return store.sharedGoals;
+    }
+
+    std::vector<GoalAnchor> BuildGoalAnchors(
+        LevelManager& levelManager,
+        Enemy& enemy,
+        const std::vector<EnemyPathDebugPoint>& candidates,
+        SearchCollisionCache& cache,
+        std::vector<EnemyPathDebugPoint>& debugGoals,
+        Rectangle searchBounds
+    ) {
+        std::vector<GoalAnchor> anchors;
+        debugGoals = candidates;
+
+        for (const EnemyPathDebugPoint& candidateData : candidates) {
+            Vector2 candidate = candidateData.position;
+            if (!candidateData.hasLineOfSight) continue;
 
             Tile candidateTile = WorldTile(levelManager, candidate);
             for (Tile graphTile : NearbyTiles(candidateTile)) {
@@ -462,7 +704,8 @@ namespace {
                     levelManager,
                     enemy,
                     graphCenter,
-                    candidate
+                    candidate,
+                    searchBounds
                 );
                 if (!connection) continue;
 
@@ -495,7 +738,8 @@ namespace {
     std::vector<Vector2> CondenseWaypoints(
         const LevelManager& levelManager,
         const Enemy& enemy,
-        const std::vector<Vector2>& rawWaypoints
+        const std::vector<Vector2>& rawWaypoints,
+        Rectangle searchBounds
     ) {
         std::vector<Vector2> condensed;
         Vector2 cursor = enemy.GetPosition();
@@ -504,15 +748,16 @@ namespace {
         while (index < rawWaypoints.size() &&
                (int)condensed.size() < MAX_TARGET_POSITIONS) {
             std::size_t farthest = index;
-            for (std::size_t candidate = index;
-                 candidate < rawWaypoints.size();
-                 ++candidate) {
+            for (std::size_t candidate = rawWaypoints.size();
+                 candidate-- > index;) {
                 if (IsBodyPathClear(
                         levelManager,
                         enemy,
                         cursor,
-                        rawWaypoints[candidate])) {
+                        rawWaypoints[candidate],
+                        searchBounds)) {
                     farthest = candidate;
+                    break;
                 }
             }
 
@@ -541,29 +786,48 @@ namespace {
     PathSearchResult FindPath(
         LevelManager& levelManager,
         Enemy& enemy,
-        Paladin& target
+        Paladin& target,
+        EnemyNavigationCacheStore& store,
+        Rectangle searchBounds,
+        std::uint64_t navigationRevision
     ) {
         PathSearchResult result;
 
         if (!IsBodyClearAtWorldPosition(
                 levelManager,
                 enemy,
-                enemy.GetPosition())) {
+                enemy.GetPosition(),
+                searchBounds)) {
             return result;
         }
 
-        SearchCollisionCache cache(levelManager, enemy);
+        SearchCollisionCache cache(
+            levelManager,
+            enemy,
+            store,
+            searchBounds,
+            navigationRevision
+        );
         std::optional<PositionConnection> start = FindStartConnection(
             levelManager,
             enemy,
-            cache
+            cache,
+            searchBounds
         );
+        const std::vector<EnemyPathDebugPoint>& candidates =
+            GetSharedGoalCandidates(
+                levelManager,
+                target,
+                store,
+                searchBounds
+            );
         std::vector<GoalAnchor> goals = BuildGoalAnchors(
             levelManager,
             enemy,
-            target,
+            candidates,
             cache,
-            result.debugGoals
+            result.debugGoals,
+            searchBounds
         );
 
         for (const EnemyPathDebugPoint& candidate : result.debugGoals) {
@@ -626,6 +890,7 @@ namespace {
                 break;
             }
             ++expandedCells;
+            result.expandedCells = expandedCells;
 
             const GoalAnchor* reachedGoal = FindGoalAtTile(
                 current.tile,
@@ -661,7 +926,8 @@ namespace {
                 result.waypoints = CondenseWaypoints(
                     levelManager,
                     enemy,
-                    rawWaypoints
+                    rawWaypoints,
+                    searchBounds
                 );
                 result.status = result.waypoints.empty()
                     ? EnemyPathStatus::AtGoal
@@ -702,6 +968,7 @@ namespace {
         if (reachedSearchLimit) {
             result.status = EnemyPathStatus::SearchLimitReached;
         }
+        result.expandedCells = expandedCells;
         return result;
     }
 
@@ -723,27 +990,46 @@ namespace {
     }
 }
 
+EnemyPathManager::EnemyPathManager()
+    : navigationCacheStore(
+          std::make_unique<EnemyNavigationCacheStore>()) {
+}
+
+EnemyPathManager::~EnemyPathManager() = default;
+
 void EnemyPathManager::RemoveEnemy(Enemy& enemy) {
     enemies.erase(
         std::remove(enemies.begin(), enemies.end(), &enemy),
         enemies.end()
     );
+    pathRecords.erase(&enemy);
 
     if (nextEnemyIndex >= (int)enemies.size()) {
         nextEnemyIndex = 0;
     }
+    searchCredits = std::min(searchCredits, (float)enemies.size());
 }
 
 void EnemyPathManager::AddEnemy(Enemy& enemy) {
     if (std::find(enemies.begin(), enemies.end(), &enemy) == enemies.end()) {
         enemies.push_back(&enemy);
+        pathRecords[&enemy] = PathRecord{};
+        searchCredits = std::min(
+            (float)enemies.size(),
+            searchCredits + 1.0f
+        );
         enemy.SetPathStatus(EnemyPathStatus::Pending);
     }
 }
 
 void EnemyPathManager::Clear() {
     enemies.clear();
+    pathRecords.clear();
     nextEnemyIndex = 0;
+    searchCredits = 0.0f;
+    navigationCacheStore->grids.clear();
+    navigationCacheStore->goalsValid = false;
+    navigationCacheStore->sharedGoals.clear();
 }
 
 std::optional<Vector2> EnemyPathManager::GetNextMoveTarget(
@@ -753,14 +1039,30 @@ std::optional<Vector2> EnemyPathManager::GetNextMoveTarget(
     PopReachedTargets(enemy);
 
     if (!enemy.HasTargetPosition()) {
+        if (enemy.GetPathStatus() == EnemyPathStatus::Ready) {
+            enemy.SetPathStatus(EnemyPathStatus::AtGoal);
+        }
         return std::nullopt;
     }
 
     Vector2 targetPosition = enemy.FirstTargetPosition();
-    if (!IsBodyClearAtWorldPosition(levelManager, enemy, targetPosition)) {
+    Rectangle searchBounds = levelManager.GetCurrentRoomBounds();
+    if (!IsBodyClearAtWorldPosition(
+            levelManager,
+            enemy,
+            targetPosition,
+            searchBounds)) {
         enemy.ClearTargetPosition();
         enemy.ClearSelectedPathGoal();
         enemy.SetPathStatus(EnemyPathStatus::Pending);
+        auto record = pathRecords.find(&enemy);
+        if (record != pathRecords.end()) {
+            record->second.forceRepath = true;
+        }
+        searchCredits = std::min(
+            (float)std::max<std::size_t>(1, enemies.size()),
+            searchCredits + 1.0f
+        );
         return std::nullopt;
     }
 
@@ -778,21 +1080,29 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
 
     Vector2 finalDirection = desiredDirection;
     Vector2 enemyPosition = enemy.GetPosition();
+    Rectangle searchBounds = levelManager.GetCurrentRoomBounds();
     constexpr float SEPARATION_RADIUS = 42.0f;
+    constexpr float SEPARATION_RADIUS_SQUARED =
+        SEPARATION_RADIUS * SEPARATION_RADIUS;
     constexpr float SEPARATION_WEIGHT = 0.85f;
 
-    for (GameObject* entity : levelManager.GetEntities()) {
-        if (entity->GetObjectType() != GameObjectType::Enemy) continue;
-
-        Enemy* otherEnemy = static_cast<Enemy*>(entity);
+    for (Enemy* otherEnemy : enemies) {
+        if (!otherEnemy) continue;
         if (otherEnemy == &enemy || otherEnemy->IsDead()) continue;
+        if (!ContainsRectangle(
+                searchBounds,
+                otherEnemy->GetCollisionBox())) {
+            continue;
+        }
 
         Vector2 away = Vector2Subtract(
             enemyPosition,
             otherEnemy->GetPosition()
         );
-        float distance = Vector2Length(away);
-        if (distance > 0.001f && distance < SEPARATION_RADIUS) {
+        float distanceSquared = away.x * away.x + away.y * away.y;
+        if (distanceSquared > 0.000001f &&
+            distanceSquared < SEPARATION_RADIUS_SQUARED) {
+            float distance = std::sqrt(distanceSquared);
             float strength = (SEPARATION_RADIUS - distance) /
                 SEPARATION_RADIUS;
             finalDirection = Vector2Add(
@@ -810,18 +1120,24 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
         enemyPosition,
         Vector2Scale(desiredDirection, PROBE_DISTANCE)
     );
-    if (!IsBodyClearAtWorldPosition(levelManager, enemy, forwardProbe)) {
+    if (!IsBodyClearAtWorldPosition(
+            levelManager,
+            enemy,
+            forwardProbe,
+            searchBounds)) {
         Vector2 left = { -desiredDirection.y, desiredDirection.x };
         Vector2 right = { desiredDirection.y, -desiredDirection.x };
         bool leftClear = IsBodyClearAtWorldPosition(
             levelManager,
             enemy,
-            Vector2Add(enemyPosition, Vector2Scale(left, PROBE_DISTANCE))
+            Vector2Add(enemyPosition, Vector2Scale(left, PROBE_DISTANCE)),
+            searchBounds
         );
         bool rightClear = IsBodyClearAtWorldPosition(
             levelManager,
             enemy,
-            Vector2Add(enemyPosition, Vector2Scale(right, PROBE_DISTANCE))
+            Vector2Add(enemyPosition, Vector2Scale(right, PROBE_DISTANCE)),
+            searchBounds
         );
 
         if (leftClear && !rightClear) {
@@ -848,38 +1164,178 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
 }
 
 void EnemyPathManager::Update(LevelManager& levelManager, float deltaTime) {
-    if (enemies.empty() || TARGET_LOOP_ALL_INTERVAL <= 0.0f) return;
+    profilingStats.searchesThisFrame = 0;
+    profilingTimer += std::max(0.0f, deltaTime);
+    if (profilingTimer >= 1.0f) {
+        profilingStats.searchesLastSecond = profilingSearches;
+        profilingStats.readyLastSecond = profilingReady;
+        profilingStats.unreachableLastSecond = profilingUnreachable;
+        profilingStats.searchLimitLastSecond = profilingSearchLimit;
+        profilingStats.averageExpandedCells = profilingSearches > 0
+            ? (float)profilingExpandedTotal / (float)profilingSearches
+            : 0.0f;
+        profilingStats.maximumExpandedCells = profilingExpandedMaximum;
+        profilingStats.averageSearchMilliseconds = profilingSearches > 0
+            ? profilingMillisecondsTotal / (float)profilingSearches
+            : 0.0f;
+        profilingStats.maximumSearchMilliseconds =
+            profilingMillisecondsMaximum;
 
-    int enemiesPerFrame = (int)std::ceil(
-        (float)enemies.size() *
-        std::min(1.0f, deltaTime / TARGET_LOOP_ALL_INTERVAL)
+        profilingTimer = std::fmod(profilingTimer, 1.0f);
+        profilingSearches = 0;
+        profilingReady = 0;
+        profilingUnreachable = 0;
+        profilingSearchLimit = 0;
+        profilingExpandedTotal = 0;
+        profilingExpandedMaximum = 0;
+        profilingMillisecondsTotal = 0.0f;
+        profilingMillisecondsMaximum = 0.0f;
+    }
+
+    if (enemies.empty() || TARGET_LOOP_ALL_INTERVAL <= 0.0f) {
+        searchCredits = 0.0f;
+        return;
+    }
+
+    for (auto& entry : pathRecords) {
+        entry.second.pathAge += std::max(0.0f, deltaTime);
+    }
+
+    searchCredits += std::max(0.0f, deltaTime) *
+        (float)enemies.size() / TARGET_LOOP_ALL_INTERVAL;
+    searchCredits = std::clamp(
+        searchCredits,
+        0.0f,
+        (float)enemies.size()
     );
-    enemiesPerFrame = std::max(1, enemiesPerFrame);
 
-    for (int index = 0; index < enemiesPerFrame; ++index) {
-        if (enemies.empty()) return;
+    int availableSearches = std::min(
+        (int)std::floor(searchCredits),
+        MAX_SEARCHES_PER_FRAME
+    );
+    if (availableSearches <= 0) return;
+
+    int searchesPerformed = 0;
+    int enemiesInspected = 0;
+    std::uint64_t navigationRevision =
+        levelManager.GetNavigationRevision();
+    Rectangle searchBounds = levelManager.GetCurrentRoomBounds();
+
+    while (searchesPerformed < availableSearches &&
+           enemiesInspected < (int)enemies.size()) {
         if (nextEnemyIndex >= (int)enemies.size()) nextEnemyIndex = 0;
-
         Enemy* enemy = enemies[nextEnemyIndex++];
+        ++enemiesInspected;
         if (!enemy || enemy->IsDead() || !enemy->GetTargetTeam()) continue;
 
         Paladin* target = enemy->GetTargetTeam()->GetActivePaladin();
         if (!target) continue;
 
+        PathRecord& record = pathRecords[enemy];
+        Tile targetTile = WorldTile(levelManager, target->GetPosition());
+        bool targetChanged = !record.hasTargetTile ||
+            record.targetTileX != targetTile.x ||
+            record.targetTileY != targetTile.y;
+        bool navigationChanged =
+            record.navigationRevision != navigationRevision;
+        bool failedPathRetry = record.lastSearchFailed &&
+            record.pathAge >= FAILED_PATH_RETRY_INTERVAL;
+        bool needsSearch = record.forceRepath || targetChanged ||
+            navigationChanged || failedPathRetry;
+        if (!needsSearch) continue;
+
         PopReachedTargets(*enemy);
-        PathSearchResult result = FindPath(levelManager, *enemy, *target);
+        std::chrono::steady_clock::time_point searchStarted;
+        if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
+            searchStarted = std::chrono::steady_clock::now();
+        }
+        PathSearchResult result = FindPath(
+            levelManager,
+            *enemy,
+            *target,
+            *navigationCacheStore,
+            searchBounds,
+            navigationRevision
+        );
+        float elapsedMilliseconds = 0.0f;
+        if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
+            elapsedMilliseconds = std::chrono::duration<float, std::milli>(
+                std::chrono::steady_clock::now() - searchStarted
+            ).count();
+        }
+
+        ++searchesPerformed;
+        searchCredits = std::max(0.0f, searchCredits - 1.0f);
+        ++profilingStats.searchesThisFrame;
+        ++profilingSearches;
+        profilingExpandedTotal += result.expandedCells;
+        profilingExpandedMaximum = std::max(
+            profilingExpandedMaximum,
+            result.expandedCells
+        );
+        profilingMillisecondsTotal += elapsedMilliseconds;
+        profilingMillisecondsMaximum = std::max(
+            profilingMillisecondsMaximum,
+            elapsedMilliseconds
+        );
+
+        if (result.status == EnemyPathStatus::Ready) {
+            ++profilingReady;
+        } else if (result.status == EnemyPathStatus::SearchLimitReached) {
+            ++profilingSearchLimit;
+        } else if (result.status == EnemyPathStatus::Unreachable) {
+            ++profilingUnreachable;
+        }
+
+        record.hasTargetTile = true;
+        record.targetTileX = targetTile.x;
+        record.targetTileY = targetTile.y;
+        record.navigationRevision = navigationRevision;
+        record.pathAge = 0.0f;
+        record.forceRepath = false;
+        record.lastSearchFailed =
+            result.status == EnemyPathStatus::Unreachable ||
+            result.status == EnemyPathStatus::SearchLimitReached;
+
+        enemy->SetPathDebugPoints(std::move(result.debugGoals));
+        if (result.status == EnemyPathStatus::Ready) {
+            enemy->ClearTargetPosition();
+            for (Vector2 waypoint : result.waypoints) {
+                enemy->AddTargetPosition(waypoint);
+            }
+            enemy->SetPathStatus(EnemyPathStatus::Ready);
+            enemy->ClearSelectedPathGoal();
+            if (result.selectedGoal) {
+                enemy->SetSelectedPathGoal(*result.selectedGoal);
+            }
+            continue;
+        }
+
+        if (result.status == EnemyPathStatus::AtGoal) {
+            enemy->ClearTargetPosition();
+            enemy->SetPathStatus(EnemyPathStatus::AtGoal);
+            enemy->ClearSelectedPathGoal();
+            if (result.selectedGoal) {
+                enemy->SetSelectedPathGoal(*result.selectedGoal);
+            }
+            continue;
+        }
+
+        bool existingPathValid = enemy->HasTargetPosition() &&
+            IsBodyPathClear(
+                levelManager,
+                *enemy,
+                enemy->GetPosition(),
+                enemy->FirstTargetPosition(),
+                searchBounds
+            );
+        if (existingPathValid) {
+            enemy->SetPathStatus(EnemyPathStatus::Ready);
+            continue;
+        }
 
         enemy->ClearTargetPosition();
-        enemy->SetPathStatus(result.status);
-        enemy->SetPathDebugPoints(std::move(result.debugGoals));
         enemy->ClearSelectedPathGoal();
-        if (result.selectedGoal) {
-            enemy->SetSelectedPathGoal(*result.selectedGoal);
-        }
-
-        if (result.status != EnemyPathStatus::Ready) continue;
-        for (Vector2 waypoint : result.waypoints) {
-            enemy->AddTargetPosition(waypoint);
-        }
+        enemy->SetPathStatus(result.status);
     }
 }

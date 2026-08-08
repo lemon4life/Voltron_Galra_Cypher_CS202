@@ -20,6 +20,12 @@
     constexpr float RIGHT_PARTIAL_WALL_OFFSET = Constants::RENDER_TILE_SIZE - PARTIAL_WALL_WIDTH;
     constexpr int DRAW_PADDING_TILES = 20;
 
+    bool IsNavigationObstacle(const GameObject* entity) {
+        return entity &&
+            (entity->GetObjectType() == GameObjectType::Box ||
+             entity->GetObjectType() == GameObjectType::DoorGate);
+    }
+
     bool LoadCsvGrid(
         const std::string& filepath,
         std::vector<std::vector<int>>& output
@@ -292,6 +298,7 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
                         for (auto* door : node->doors) {
                             door->SetState(DoorGate::State::CLOSING);
                         }
+                        MarkNavigationChanged();
 
                         // Nudge player to room center so they don't get stuck inside a door collider
                         float roomCenterX = (node->gridX * (Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH) + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * Constants::RENDER_TILE_SIZE;
@@ -329,7 +336,15 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
             }
         }
 
+        DoorGate* updatingDoor =
+            (*it)->GetObjectType() == GameObjectType::DoorGate
+                ? static_cast<DoorGate*>(*it)
+                : nullptr;
+        bool doorWasSolid = updatingDoor && updatingDoor->IsSolid();
         (*it)->Update(deltaTime);
+        if (updatingDoor && doorWasSolid != updatingDoor->IsSolid()) {
+            MarkNavigationChanged();
+        }
     }
 
     ProcessPendingMapObjectDestructions();
@@ -531,11 +546,15 @@ void LevelManager::ClearLevel() {
     nudgePosition = {0.0f, 0.0f};
     needsNudge = false;
     levelMode = LevelMode::Layered;
+    MarkNavigationChanged();
 }
 
 void LevelManager::AddEntity(GameObject* entity) {
     if (entity) {
         levelEntities.push_back(entity);
+        if (IsNavigationObstacle(entity)) {
+            MarkNavigationChanged();
+        }
     }
 }
 
@@ -762,8 +781,12 @@ void LevelManager::ProcessPendingRemovals() {
     for (GameObject* entity : pendingRemoval) {
         auto it = std::find(levelEntities.begin(), levelEntities.end(), entity);
         if (it != levelEntities.end()) {
+            bool navigationObstacle = IsNavigationObstacle(*it);
             delete *it;
             levelEntities.erase(it);
+            if (navigationObstacle) {
+                MarkNavigationChanged();
+            }
         }
     }
     pendingRemoval.clear();

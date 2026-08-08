@@ -51,4 +51,7 @@ private:
     > spawnValues;
     float propertyScroll;
     std::string statusMessage;
+    int pathSearchesPerSecond;
+    float pathAverageMilliseconds;
+    float pathMaximumMilliseconds;
 };

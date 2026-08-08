@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <vector>
 #include <string>
 #include "raylib.h"
@@ -51,11 +52,13 @@ private:
     Vector2 roomOffset = {0.0f, 0.0f};
     Vector2 nudgePosition = {0.0f, 0.0f};
     bool needsNudge = false;
+    std::uint64_t navigationRevision = 0;
 
 
     bool LoadObjectGrid(const std::string& filepath);
     void SpawnGameObjects(TeamManager* teamManager);
     bool IsSolidMapObject(MapObjectId objectId) const;
+    void MarkNavigationChanged() { ++navigationRevision; }
 
     // Enemy pathfinding and deferred object/entity removal.
     void ProcessPendingMapObjectDestructions();
@@ -72,7 +75,12 @@ public:
 
     const LevelMap& GetLevelMap() const { return levelMap; }
     RoomState GetActiveRoomState() const { return (currentlyLockedRoom) ? currentlyLockedRoom->state : RoomState::IDLE; }
-    void SetActiveRoomState(RoomState s) { if(currentlyLockedRoom) currentlyLockedRoom->state = s; }
+    void SetActiveRoomState(RoomState s) {
+        if (currentlyLockedRoom && currentlyLockedRoom->state != s) {
+            currentlyLockedRoom->state = s;
+            MarkNavigationChanged();
+        }
+    }
     bool IsProceduralDungeon() const {
         return levelMode == LevelMode::Procedural;
     }
@@ -116,6 +124,12 @@ public:
         Enemy& enemy
     ) override;
     Rectangle GetCurrentRoomBounds() const;
+    std::uint64_t GetNavigationRevision() const {
+        return navigationRevision;
+    }
+    const EnemyPathProfilingStats& GetEnemyPathProfilingStats() const {
+        return enemyPathManager.GetProfilingStats();
+    }
     Vector2 GetLocalDirection(
         Enemy& enemy,
         Vector2 desiredDirection
