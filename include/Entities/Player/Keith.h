@@ -7,4 +7,27 @@ public:
     
     void UseSkill() override;
     void UseUltimate() override;
+    
+    void Update(float deltaTime) override;
+    void Draw() override;
+    
+    void UpdateInactive(float deltaTime) override;
+    void DrawInactive() override;
+    bool IsDoingUltimate() const override { return isUltimateAiming || ultimateFlashTimer > 0.0f; }
+    
+private:
+    void ProcessFireCircle(float deltaTime, Vector2 centerPos);
+
+    bool isFireCircleActive = false;
+    float fireCircleTimer = 0.0f;
+    Vector2 fireCirclePos = {0.0f, 0.0f};
+    
+    float ultimateFlashTimer = 0.0f;
+    bool isUltimateAiming = false;
+    
+    float skillCooldownTimer = 0.0f;
+    const float SKILL_COOLDOWN = 10.0f;
+    
+public:
+    bool debugSpamMode = true; // Debug toggle for instant spam
 };

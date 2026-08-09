@@ -14,6 +14,7 @@ Lance::Lance(Vector2 pos, CharacterSprites sprites)
         weapon.maximumDamage,
         weapon.recoil
     );
+    if (currentWeapon) currentWeapon->SetOwner(this);
     texture = GetIdleTexture();
 }
 

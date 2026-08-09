@@ -361,7 +361,7 @@ void Paladin::UpdateFootsteps(float dt) {
 }
 
 void Paladin::OnHitEnemy(int damage) {
-    exEnergy += (float)damage * 0.5f; // 50% of damage converts to EX
+    exEnergy += (float)damage * 0.15f; // 15% of damage converts to EX
     if (exEnergy > maxExEnergy) {
         exEnergy = maxExEnergy;
     }

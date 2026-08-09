@@ -5,7 +5,7 @@
 #include "raymath.h"
 
 Vector2 AutoAimStrategy::CalculateAimVector(Paladin* paladin) {
-    if (paladin->GetLockedEnemy()) {
+    if (paladin->GetLockedEnemy() && !paladin->IsDoingUltimate()) {
         Vector2 aimDir = Vector2Subtract(paladin->GetLockedEnemy()->GetPosition(), paladin->GetPosition());
         if (Vector2Length(aimDir) > 0.1f) {
             return Vector2Normalize(aimDir);

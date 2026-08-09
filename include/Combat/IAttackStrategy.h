@@ -3,13 +3,18 @@
 
 #include "raymath.h"
 
+class Paladin;
+
 class IAttackStrategy {
 protected:
     Vector2 aimDir;
     float aimAngle;
+    Paladin* owner = nullptr;
 
 public:
     virtual ~IAttackStrategy() = default;
+
+    virtual void SetOwner(Paladin* p) { owner = p; }
 
     virtual void SetAim(Vector2 dir, float angle) {
         aimDir = dir;

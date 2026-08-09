@@ -95,12 +95,21 @@ bool TeamManager::MovePaladinToSlot(
 }
 
 void TeamManager::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
-    if (activeIndex >= 0 && activeIndex < team.size()) {
-        Paladin* activePaladin = team[activeIndex];
-        items.push_back({
-            activePaladin->GetBoundingBox().y + activePaladin->GetBoundingBox().height,
-            [activePaladin]() { activePaladin->Draw(); }
-        });
+    if (team.empty()) return;
+    
+    Paladin* active = GetActivePaladin();
+    for (auto* paladin : team) {
+        if (paladin == active) {
+            items.push_back({
+                paladin->GetBoundingBox().y + paladin->GetBoundingBox().height,
+                [paladin]() { paladin->Draw(); }
+            });
+        } else {
+            items.push_back({
+                paladin->GetBoundingBox().y + paladin->GetBoundingBox().height,
+                [paladin]() { paladin->DrawInactive(); }
+            });
+        }
     }
 }
 
@@ -212,26 +221,39 @@ void TeamManager::Update(float deltaTime) {
     if (team.empty()) return;
 
     // Check if current active paladin is dead is now handled by PlayerDownState deferred logic.
+    Paladin* active = GetActivePaladin();
 
-    if (IsKeyPressed(KEY_TAB)) {
-        SwapCharacter();
-    } else if (IsKeyPressed(KEY_ONE)) {
-        SwapCharacterToIndex(0);
-    } else if (IsKeyPressed(KEY_TWO)) {
-        SwapCharacterToIndex(1);
-    } else if (IsKeyPressed(KEY_THREE)) {
-        SwapCharacterToIndex(2);
+    if (!active->IsDoingUltimate()) {
+        if (IsKeyPressed(KEY_TAB)) {
+            SwapCharacter();
+        } else if (IsKeyPressed(KEY_ONE)) {
+            SwapCharacterToIndex(0);
+        } else if (IsKeyPressed(KEY_TWO)) {
+            SwapCharacterToIndex(1);
+        } else if (IsKeyPressed(KEY_THREE)) {
+            SwapCharacterToIndex(2);
+        }
     }
 
-
-
-    // Only update the active paladin
-    GetActivePaladin()->Update(deltaTime);
+    for (auto* paladin : team) {
+        if (paladin == active) {
+            paladin->Update(deltaTime);
+        } else {
+            paladin->UpdateInactive(deltaTime);
+        }
+    }
 }
 
 void TeamManager::Draw() {
     if (team.empty()) return;
-    GetActivePaladin()->Draw();
+    
+    Paladin* active = GetActivePaladin();
+    for (auto* paladin : team) {
+        if (paladin != active) {
+            paladin->DrawInactive();
+        }
+    }
+    active->Draw();
 }
 
 

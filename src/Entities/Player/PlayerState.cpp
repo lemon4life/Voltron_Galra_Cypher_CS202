@@ -17,7 +17,7 @@ void PlayerIdleState::Enter(Paladin* player) {
 void PlayerIdleState::Update(Paladin* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
     if (GameManager::GetInstance().GetState() == GameState::GAMEPLAY) {
-        if (InputManager::IsAttackPressed()) {
+        if (InputManager::IsAttackPressed() && !player->IsDoingUltimate()) {
             player->ChangeState(player->GetAttackState());
             return;
         }
@@ -29,9 +29,17 @@ void PlayerIdleState::Update(Paladin* player, float deltaTime) {
         }
 
         // Check for Parry Input
-        if (InputManager::IsParryPressed() && player->GetDashCooldown() <= 0.0f) {
+        if (InputManager::IsParryPressed() && player->GetDashCooldown() <= 0.0f && !player->IsDoingUltimate()) {
             player->ChangeState(player->GetParryState());
             return;
+        }
+
+        if (InputManager::IsSkillPressed()) {
+            player->UseSkill();
+        }
+
+        if (InputManager::IsUltimatePressed()) {
+            player->UseUltimate();
         }
     }
 
@@ -58,7 +66,7 @@ void PlayerRunState::Enter(Paladin* player) {
 void PlayerRunState::Update(Paladin* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
     if (GameManager::GetInstance().GetState() == GameState::GAMEPLAY) {
-        if (InputManager::IsAttackPressed()) {
+        if (InputManager::IsAttackPressed() && !player->IsDoingUltimate()) {
             player->ChangeState(player->GetAttackState());
             return;
         }
@@ -70,9 +78,17 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
         }
 
         // Check for Parry Input
-        if (InputManager::IsParryPressed() && player->GetDashCooldown() <= 0.0f) {
+        if (InputManager::IsParryPressed() && player->GetDashCooldown() <= 0.0f && !player->IsDoingUltimate()) {
             player->ChangeState(player->GetParryState());
             return;
+        }
+
+        if (InputManager::IsSkillPressed()) {
+            player->UseSkill();
+        }
+
+        if (InputManager::IsUltimatePressed()) {
+            player->UseUltimate();
         }
     }
 

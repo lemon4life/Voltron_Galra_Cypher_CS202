@@ -88,8 +88,13 @@ public:
     );
     virtual ~Paladin();
 
-    void Update(float deltaTime) override;
-    void Draw() override;
+    virtual void Update(float deltaTime) override;
+    virtual void Draw() override;
+    
+    virtual void UpdateInactive(float deltaTime) {}
+    virtual void DrawInactive() {}
+    virtual bool IsDoingUltimate() const { return false; }
+    
     void SetParrying(bool parry);
     int GetConsecutiveParries() const { return consecutiveParries; }
     void IncrementParryCount() { 
@@ -130,7 +135,10 @@ public:
     virtual void UseUltimate() = 0;
     
     Vector2 GetWeaponPivot() const;
-    void SetWeapon(IAttackStrategy* weapon) { currentWeapon = weapon; }
+    void SetWeapon(IAttackStrategy* weapon) { 
+        currentWeapon = weapon; 
+        if (currentWeapon) currentWeapon->SetOwner(this);
+    }
     IAttackStrategy* GetCurrentWeapon() const { return currentWeapon; }
     
     virtual void TakeDamage(int amount);

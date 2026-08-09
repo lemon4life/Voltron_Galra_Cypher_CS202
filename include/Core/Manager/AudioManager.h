@@ -15,7 +15,7 @@ private:
 
     int currentFootstepIndex = 0;
     float soundEffectsVolume = 1.0f;
-    float musicVolume = 0.5f;
+    float musicVolume = 0.05f;
 
     AudioManager(); // Private constructor (Initializes Raylib Audio)
     ~AudioManager(); // Private destructor (Closes Raylib Audio)
