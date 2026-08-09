@@ -66,6 +66,11 @@ EnemyRange::~EnemyRange() {
 
 void EnemyRange::Update(float deltaTime) {
     UpdateKnockback(deltaTime);
+    
+    if (statusComponent.Update(deltaTime, this)) {
+        return;
+    }
+    
     if (currentState) {
         currentState->Update(this, deltaTime);
     kinematics.Update(deltaTime);
@@ -119,7 +124,8 @@ void EnemyRange::Draw() {
         src.width = -src.width;
     }
     
-    DrawTexturePro(texToDraw, src, dest, origin, 0.0f, WHITE);
+    Color tint = statusComponent.GetStatusTint();
+    DrawTexturePro(texToDraw, src, dest, origin, 0.0f, tint);
     
     if (health > 0 && sprites.weapon.id != 0) {
         Rectangle wSrc = { 0, 0, (float)sprites.weapon.width, (float)sprites.weapon.height };
@@ -132,7 +138,7 @@ void EnemyRange::Draw() {
             wOrigin.x = sprites.weapon.width;
         }
         
-        DrawTexturePro(sprites.weapon, wSrc, wDest, wOrigin, weaponAngle, WHITE);
+        DrawTexturePro(sprites.weapon, wSrc, wDest, wOrigin, weaponAngle, tint);
         
         if (false) {
             float efWidth = sprites.effect.width;
@@ -155,7 +161,7 @@ void EnemyRange::Draw() {
             Vector2 eOrigin = { 0.0f, sprites.effect.height / 2.0f };
             if (facingLeft) eOrigin.x = efWidth;
             
-            DrawTexturePro(sprites.effect, eSrc, eDest, eOrigin, weaponAngle, WHITE);
+            DrawTexturePro(sprites.effect, eSrc, eDest, eOrigin, weaponAngle, tint);
         }
     }
 

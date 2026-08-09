@@ -4,6 +4,7 @@
 #include "AI/EnemyCollision.h"
 #include "Core/LevelAccess.h"
 #include "Combat/WeaponKinematics.h"
+#include "Entities/Components/StatusComponent.h"
 #include "raylib.h"
 
 #include <deque>
@@ -71,6 +72,7 @@ protected:
     int currentEffectFrame = 0;
 
     WeaponKinematics kinematics;
+    StatusComponent statusComponent;
 
     TeamManager* targetTeam;
     IEnemyState* currentState;
@@ -163,6 +165,10 @@ public:
     }
     Vector2 GetSize() const { return size; }
     void SetSize(Vector2 value) { size = value; }
+
+    StatusComponent& GetStatusComponent() { return statusComponent; }
+    void SetCurrentVelocity(Vector2 v) { currentVelocity = v; }
+
     EnemyCollisionProfile GetCollisionProfile() const {
         return collisionProfile;
     }

@@ -85,6 +85,11 @@ Boss::~Boss() {
 
 void Boss::Update(float deltaTime) {
     UpdateKnockback(deltaTime);
+    
+    if (statusComponent.Update(deltaTime, this)) {
+        return;
+    }
+    
     if (currentState) {
         currentState->Update(this, deltaTime);
     }
@@ -140,7 +145,7 @@ void Boss::Draw() {
             destination,
             origin,
             0.0f,
-            WHITE
+            statusComponent.GetStatusTint()
         );
     } else {
         DrawRectangleRec(GetBoundingBox(), ORANGE);
