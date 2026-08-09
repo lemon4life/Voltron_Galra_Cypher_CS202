@@ -7,7 +7,8 @@ class Enemy;
 enum class EffectType {
     NONE,
     BURN,
-    FREEZE
+    FREEZE,
+    DIZZY
 };
 
 struct StatusModifier {

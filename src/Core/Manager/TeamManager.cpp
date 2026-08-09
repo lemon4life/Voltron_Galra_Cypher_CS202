@@ -139,6 +139,11 @@ void TeamManager::SwapCharacter() {
     newActive->SetCurrentAimStrategy(oldActive->GetCurrentAimStrategy());
     newActive->SetFacingLeft(oldActive->IsFacingLeft());
     
+    newActive->SetInvulnerable(oldActive->IsInvulnerable());
+    newActive->SetInvulnerabilityTimer(oldActive->GetInvulnerabilityTimer());
+    oldActive->SetInvulnerable(false);
+    oldActive->SetInvulnerabilityTimer(0.0f);
+    
     if (oldActive->IsParrying()) {
         newActive->ChangeState(newActive->GetParryState());
     } else {
@@ -169,6 +174,11 @@ void TeamManager::SwapCharacterToIndex(int targetIndex) {
     newActive->SetTargetAimAngle(oldActive->GetTargetAimAngle());
     newActive->SetCurrentAimStrategy(oldActive->GetCurrentAimStrategy());
     newActive->SetFacingLeft(oldActive->IsFacingLeft());
+    
+    newActive->SetInvulnerable(oldActive->IsInvulnerable());
+    newActive->SetInvulnerabilityTimer(oldActive->GetInvulnerabilityTimer());
+    oldActive->SetInvulnerable(false);
+    oldActive->SetInvulnerabilityTimer(0.0f);
     
     if (oldActive->IsParrying()) {
         newActive->ChangeState(newActive->GetParryState());

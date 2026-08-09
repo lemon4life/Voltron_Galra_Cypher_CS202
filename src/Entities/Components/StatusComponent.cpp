@@ -34,7 +34,7 @@ bool StatusComponent::Update(float deltaTime, Enemy* owner) {
                 owner->TakeDamage(static_cast<int>(it->magnitude));
                 it->tickTimer -= 1.0f;
             }
-        } else if (it->type == EffectType::FREEZE) {
+        } else if (it->type == EffectType::FREEZE || it->type == EffectType::DIZZY) {
             isFrozen = true;
         }
         
@@ -53,6 +53,9 @@ Color StatusComponent::GetStatusTint() const {
     for (const auto& mod : activeModifiers) {
         if (mod.type == EffectType::FREEZE) {
             return SKYBLUE; // Freeze takes priority
+        }
+        if (mod.type == EffectType::DIZZY) {
+            return LIGHTGRAY;
         }
         if (mod.type == EffectType::BURN) {
             hasBurn = true;

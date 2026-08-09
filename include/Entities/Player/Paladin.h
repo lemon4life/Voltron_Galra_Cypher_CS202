@@ -54,6 +54,10 @@ protected:
     float ghostHp;
     float exEnergy;
     float maxExEnergy;
+    
+    // Aegis Shield Mechanic
+    bool isInvulnerable = false;
+    float invulnerabilityTimer = 0.0f;
 
     // Dash mechanic properties
     float dashCooldown;
@@ -107,7 +111,13 @@ public:
     bool IsParrying() const { return isParrying; }
     bool CanParryAttack(Vector2 attackerPos) const;
     void TriggerParrySuccess(GameObject* attacker);
-    void ApplyKnockback(Vector2 dir, float force);
+    virtual void ApplyKnockback(Vector2 dir, float force);
+    
+    // Aegis Shield Methods
+    bool IsInvulnerable() const { return isInvulnerable; }
+    void SetInvulnerable(bool val) { isInvulnerable = val; }
+    float GetInvulnerabilityTimer() const { return invulnerabilityTimer; }
+    void SetInvulnerabilityTimer(float val) { invulnerabilityTimer = val; }
     
     void SetAimTarget(Vector2 target) { if (!isParrying) aimTarget = target; }
     Vector2 GetAimTarget() const { return aimTarget; }
@@ -133,6 +143,7 @@ public:
     
     virtual void UseSkill() = 0;
     virtual void UseUltimate() = 0;
+    virtual void ExecuteUltimateAction() = 0;
     
     Vector2 GetWeaponPivot() const;
     void SetWeapon(IAttackStrategy* weapon) { 
@@ -175,6 +186,7 @@ public:
     // Animation helpers
     void UpdateAnimation(float deltaTime);
     void SetNumFrames(int frames) { numFrames = frames; }
+    int GetNumFrames() const { return numFrames; }
     void ResetAnimation() { currentFrame = 0; frameTimer = 0.0f; }
     void SetFacingLeft(bool left) { facingLeft = left; }
     bool IsFacingLeft() const { return facingLeft; }

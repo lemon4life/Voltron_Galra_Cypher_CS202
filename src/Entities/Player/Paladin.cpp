@@ -96,7 +96,7 @@ void Paladin::ChangeState(IPlayerState* newState) {
 }
 
 void Paladin::TakeDamage(int amount) {
-    if (isInvincible || Constants::DEBUG_PLAYER_IMMUNITY) return;
+    if (isInvincible || isInvulnerable || Constants::DEBUG_PLAYER_IMMUNITY) return;
     
     exEnergy = 0.0f; // Clear EX on damage
     
@@ -115,6 +115,13 @@ void Paladin::TakeDamage(int amount) {
 }
 
 void Paladin::Update(float deltaTime) {
+    if (invulnerabilityTimer > 0.0f) {
+        invulnerabilityTimer -= deltaTime;
+        if (invulnerabilityTimer <= 0.0f) {
+            isInvulnerable = false;
+        }
+    }
+
     DecrementSwapParryWindow(deltaTime);
     // Update Ghost HP
     if (ghostHp > health) {
@@ -222,6 +229,8 @@ void Paladin::ResetStats() {
     dashCooldown = 0.0f;
     dashTimer = 0.0f;
     isInvincible = false;
+    isInvulnerable = false;
+    invulnerabilityTimer = 0.0f;
     isParrying = false;
     parrySuccess = false;
     consecutiveParries = 0;
@@ -268,6 +277,15 @@ void Paladin::UpdateAnimation(float deltaTime) {
 }
 
 void Paladin::Draw() {
+    const float frameWidth = (float)texture.width / numFrames;
+    const float frameHeight = (float)texture.height;
+
+    if (isInvulnerable) {
+        Vector2 center = { position.x , position.y  };
+        DrawCircleLines(center.x, center.y, 20.0f, ColorAlpha(YELLOW, 0.4f));
+        DrawCircleLines(center.x, center.y, 22.0f, ColorAlpha(YELLOW, 0.2f));
+    }
+
     // Draw Player Circle underneath
     Texture2D circleTex = AssetManager::GetInstance().GetTexture("Player_Circle");
     if (circleTex.id != 0) {
@@ -275,9 +293,6 @@ void Paladin::Draw() {
         Vector2 circleOrigin = { (float)circleTex.width / 2.0f, (float)circleTex.height / 2.0f };
         DrawTexturePro(circleTex, {0, 0, (float)circleTex.width, (float)circleTex.height}, dest, circleOrigin, 0.0f, WHITE);
     }
-
-    const float frameWidth = (float)texture.width / numFrames;
-    const float frameHeight = (float)texture.height;
 
     float sourceX = (float)currentFrame * frameWidth;
     if (facingLeft) {
