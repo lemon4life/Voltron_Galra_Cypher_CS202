@@ -44,6 +44,11 @@ void AssetManager::QueueCharacterAssets() {
         loadTasks.push_back([this, k, p, f](){ LoadTexture2D(k, p, f); }); 
     };
 
+    // Character Cards
+    add("Card_Lance", "assets/img/CharacterCard/Lance.png", false);
+    add("Card_Keith", "assets/img/CharacterCard/Keith.png", false);
+    add("Card_Hunk", "assets/img/CharacterCard/Hunk.png", false);
+
     // Lance
     add("Lance_Idle", "assets/sprites/Lance/Idle_Sheet.png", true);
     add("Lance_Run", "assets/sprites/Lance/Run_Sheet.png", true);

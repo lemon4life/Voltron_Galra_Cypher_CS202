@@ -12,6 +12,7 @@
 #include "Core/Manager/ParticleManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/WaveManager.h"
+#include "Core/Manager/UltimateIntroManager.h"
 #include "Core/DepthRenderItem.h"
 #include "Entities/Hub/HubPaladinStand.h"
 #include "Entities/NPC.h"
@@ -502,7 +503,9 @@ int main() {
                 if (InputManager::IsToggleAutoAimPressed()) {
                     Constants::isAutoAimEnabled = !Constants::isAutoAimEnabled;
                 }
-                if (gameManager.GetHitstopTimer() > 0.0f) {
+                if (UltimateIntroManager::GetInstance().IsPlaying()) {
+                    UltimateIntroManager::GetInstance().Update(deltaTime);
+                } else if (gameManager.GetHitstopTimer() > 0.0f) {
                     gameManager.UpdateHitstop(deltaTime);
                 } else {
                     if (Constants::isAutoAimEnabled || InputManager::GetMode() == InputMode::KEYBOARD_ONLY) {
@@ -663,6 +666,9 @@ int main() {
                     Constants::GAME_HEIGHT,
                     uiMousePosition
                 );
+            }
+            if (renderState == GameState::GAMEPLAY && UltimateIntroManager::GetInstance().IsPlaying()) {
+                UltimateIntroManager::GetInstance().Draw();
             }
             if (renderState == GameState::HUB &&
                 DialogueManager::GetInstance().IsActive()) {

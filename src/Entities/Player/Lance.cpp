@@ -102,10 +102,16 @@ void Lance::UseSkill() {
 #include "Core/Manager/GameManager.h"
 #include "Entities/Enemy.h"
 
+#include "Core/Manager/UltimateIntroManager.h"
+
 void Lance::UseUltimate() {
     if (!debugSpamMode && exEnergy < maxExEnergy) return;
     
     if (!debugSpamMode) exEnergy = 0.0f;
+    UltimateIntroManager::GetInstance().PlayIntro(this);
+}
+
+void Lance::ExecuteUltimateAction() {
     isUltimateFlash = true;
     ultimateFlashTimer = 0.2f; // Short flash
     

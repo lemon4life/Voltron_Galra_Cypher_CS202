@@ -32,3 +32,22 @@ To fully implement the intricate aiming, rendering, and logic requirements for K
 - Implemented `Lance`'s dual-wielding skill by overriding `Draw` and `Attack` to spawn parallel projectiles from distinct shoulder sockets using a squashed perpendicular normal.
 - Implemented `Lance`'s Absolute Zero ultimate by globally iterating over `GameManager` enemies and applying the `FREEZE` status.
 - Added `debugSpamMode` toggle in `Lance.h` to bypass ability constraints.
+
+## Prompt:
+Context: We have an established `Paladin` base class and a global enemy list. We are implementing the `Hunk` subclass (The Anchor), focused on defensive mechanics and crowd control.
+
+Task: Implement the `Hunk` subclass derived from `Paladin`. Implement his base stats, a radial knockback skill ("Earthshatter"), a team-wide invulnerability ultimate ("Aegis Shield"), and a debug harness for instant cooldowns and EX bypass.
+
+Requirements:
+1. Hunk Base Setup (Task 4.1): Inherit Paladin. Initialize 1.5x HP and slower speed. Override ApplyKnockback to ignore collisions.
+2. Earthshatter Skill (Task 4.2): Radial knockback pushing enemies away and drawing an expanding brown circle.
+3. Aegis Shield Ultimate (Task 4.3): Team-wide 5.0s invulnerability buff added to base Paladin class with a yellow aura.
+4. Debug Testing Harness: `debugSpamMode` to bypass EX and cooldowns for instant casting.
+
+## Purpose:
+To implement the final Paladin subclass, Hunk, along with his defensive radial abilities and global immunity buffs that persist through character swapping.
+
+## Content Generated:
+- `Paladin.h`/`.cpp`: Added `isInvulnerable` and `invulnerabilityTimer`, modified `TakeDamage()` to prevent damage, made `ApplyKnockback()` virtual, and drew the yellow aura in `Draw()$.
+- `Hunk.h`/`.cpp`: Increased `maxHealth`, overrode `ApplyKnockback()` to do nothing (knockback resistance), implemented Earthshatter radial knockback math against all enemies, and tied everything to `debugSpamMode`.
+

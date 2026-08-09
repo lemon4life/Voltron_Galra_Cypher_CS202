@@ -7,6 +7,7 @@ public:
     
     void UseSkill() override;
     void UseUltimate() override;
+    void ExecuteUltimateAction() override;
     
     void Update(float deltaTime) override;
     void Draw() override;

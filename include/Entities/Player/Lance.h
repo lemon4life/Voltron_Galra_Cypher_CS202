@@ -10,6 +10,7 @@ public:
     void Attack() override;
     void UseSkill() override;
     void UseUltimate() override;
+    void ExecuteUltimateAction() override;
     
 private:
     bool debugSpamMode = true;

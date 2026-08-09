@@ -48,6 +48,37 @@ void Keith::UseUltimate() {
     }
 }
 
+#include "Core/Manager/UltimateIntroManager.h"
+
+void Keith::ExecuteUltimateAction() {
+    float length = 300.0f;
+    float width = 100.0f;
+    
+    const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
+    for (GameObject* obj : entities) {
+        Enemy* enemy = dynamic_cast<Enemy*>(obj);
+        if (enemy && !enemy->IsDead()) {
+            Vector2 pivot = { position.x, position.y + 17.0f };
+            Vector2 offset = Vector2Subtract(enemy->GetPosition(), pivot);
+            
+            // Rotate offset by -currentAimAngle
+            float radAngle = -currentAimAngle;
+            float cosA = cosf(radAngle);
+            float sinA = sinf(radAngle);
+            
+            float localX = offset.x * cosA - offset.y * sinA;
+            float localY = offset.x * sinA + offset.y * cosA;
+            
+            if (localX > 0 && localX < length && localY > -width/2.0f && localY < width/2.0f) {
+                enemy->TakeDamage(100);
+                enemy->GetStatusComponent().AddEffect(EffectType::BURN, 5.0f, 10.0f);
+            }
+        }
+    }
+    
+    ultimateFlashTimer = 0.1f;
+}
+
 void Keith::ProcessFireCircle(float deltaTime, Vector2 centerPos) {
     if (!isFireCircleActive) return;
     
@@ -85,33 +116,7 @@ void Keith::Update(float deltaTime) {
         // Intercept Attack input to fire ultimate
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_J)) {
             isUltimateAiming = false;
-            
-            float length = 300.0f;
-            float width = 100.0f;
-            
-            const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
-            for (GameObject* obj : entities) {
-                Enemy* enemy = dynamic_cast<Enemy*>(obj);
-                if (enemy && !enemy->IsDead()) {
-                    Vector2 pivot = { position.x, position.y + 17.0f };
-                    Vector2 offset = Vector2Subtract(enemy->GetPosition(), pivot);
-                    
-                    // Rotate offset by -currentAimAngle
-                    float radAngle = -currentAimAngle;
-                    float cosA = cosf(radAngle);
-                    float sinA = sinf(radAngle);
-                    
-                    float localX = offset.x * cosA - offset.y * sinA;
-                    float localY = offset.x * sinA + offset.y * cosA;
-                    
-                    if (localX > 0 && localX < length && localY > -width/2.0f && localY < width/2.0f) {
-                        enemy->TakeDamage(100);
-                        enemy->GetStatusComponent().AddEffect(EffectType::BURN, 5.0f, 10.0f);
-                    }
-                }
-            }
-            
-            ultimateFlashTimer = 0.1f;
+            UltimateIntroManager::GetInstance().PlayIntro(this);
         }
     }
     
