@@ -129,7 +129,7 @@ public:
     TeamManager* GetTeamManager() const { return teamManager; }
 
     void ChangeState(IPlayerState* newState);
-    void Attack();
+    virtual void Attack();
     
     virtual void UseSkill() = 0;
     virtual void UseUltimate() = 0;
