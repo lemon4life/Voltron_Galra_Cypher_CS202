@@ -20,6 +20,11 @@ private:
     int maxSharedArmor;
     float sharedUltimateDecibels;
 
+    // Quintessence — shared team ultimate fuel (separate from per-character EX)
+    float currentQuintessence = 0.0f;
+    float maxQuintessence = 300.0f;
+    bool debugFastFuel = false;
+
     float timeSinceLastDamage;
     float armorRegenTimer;
 
@@ -56,6 +61,13 @@ public:
     
     int GetSharedArmor() const { return sharedArmor; }
     int GetMaxSharedArmor() const { return maxSharedArmor; }
+
+    // Quintessence (shared ultimate fuel)
+    static constexpr float ULTIMATE_COST = 100.0f;
+    void AddQuintessence(float amount);
+    bool ConsumeQuintessence(float amount);
+    float GetQuintessence() const { return currentQuintessence; }
+    float GetMaxQuintessence() const { return maxQuintessence; }
     
     // Observers might need to know when team state changes
     void NotifyObservers() override;

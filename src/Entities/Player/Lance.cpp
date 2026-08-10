@@ -89,9 +89,9 @@ void Lance::Draw() {
 }
 
 void Lance::UseSkill() {
-    if (!debugSpamMode && exEnergy < maxExEnergy / 3.0f) return;
+    if (exEnergy < maxExEnergy) return;
     
-    if (!debugSpamMode) exEnergy -= maxExEnergy / 3.0f;
+    exEnergy = 0.0f;
     AddPersonalBuff(std::make_unique<DualWieldBuff>(5.0f));
 }
 
@@ -99,11 +99,14 @@ void Lance::UseSkill() {
 #include "Entities/Enemy.h"
 
 #include "Core/Manager/UltimateIntroManager.h"
+#include "Core/Manager/TeamManager.h"
 
 void Lance::UseUltimate() {
-    if (!debugSpamMode && exEnergy < maxExEnergy) return;
+    // Gate on Quintessence (shared team fuel) + individual cooldown
+    if (ultimateCooldownTimer > 0.0f) return;
+    if (!teamManager || !teamManager->ConsumeQuintessence(TeamManager::ULTIMATE_COST)) return;
     
-    if (!debugSpamMode) exEnergy = 0.0f;
+    ultimateCooldownTimer = ULTIMATE_COOLDOWN_MAX;
     UltimateIntroManager::GetInstance().PlayIntro(this);
 }
 

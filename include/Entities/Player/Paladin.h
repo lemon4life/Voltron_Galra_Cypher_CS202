@@ -74,6 +74,9 @@ protected:
     float ghostHp;
     float exEnergy;
     float maxExEnergy;
+
+    // Ultimate cooldown (separate from EX — gated by Quintessence)
+    float ultimateCooldownTimer = 0.0f;
     
     // Aegis Shield Mechanic
     bool isInvulnerable = false;
@@ -209,6 +212,12 @@ public:
     float GetGhostHp() const { return ghostHp; }
     float GetExEnergy() const { return exEnergy; }
     float GetMaxExEnergy() const { return maxExEnergy; }
+
+    // Ultimate cooldown
+    static constexpr float ULTIMATE_COOLDOWN_MAX = 5.0f;
+    float GetUltimateCooldownTimer() const { return ultimateCooldownTimer; }
+    void ResetUltimateCooldown() { ultimateCooldownTimer = ULTIMATE_COOLDOWN_MAX; }
+    void TickUltimateCooldown(float dt) { if (ultimateCooldownTimer > 0.0f) ultimateCooldownTimer -= dt; }
     
     virtual bool IsWeaponVisible() const { return true; }
     

@@ -151,19 +151,28 @@ void UIManager::DrawTeamHUD(
     Color maskColor = { 91, 91, 103, 255 }; // #5b5b67
     DrawRectangle(startX + 146, startY + 20, 76, 12, maskColor);
 
-    // Helper lambda for EX Energy
+    // Helper lambda for EX Energy (BLUE — for Skills)
     auto DrawEX = [&](Paladin* p, float x, float y, float maxW, float h) {
         if (!p) return;
         float ex = p->GetExEnergy();
         float maxEx = p->GetMaxExEnergy();
         float pct = maxEx > 0 ? (ex / maxEx) : 0;
-        DrawRectangle(startX + x, startY + y, (int)(maxW * pct), h, PURPLE);
+        DrawRectangle(startX + x, startY + y, (int)(maxW * pct), h, BLUE);
     };
 
-    // --- Layer 4: EX Bars (Doubled) ---
+    // --- Layer 4: EX Bars (BLUE) ---
     DrawEX(active, 146, 20, 76, 12);
     DrawEX(offField1, 290, 20, 60, 12);
     DrawEX(offField2, 418, 20, 60, 12);
+
+    // --- Layer 4.5: Quintessence Bar (PURPLE — shared team ultimate fuel, 3 cells) ---
+    Rectangle qBar = { startX + 146, startY + 36, 332, 12 };
+    UIUtils::DrawSegmentedProgressBar(
+        qBar,
+        team->GetQuintessence(),
+        team->GetMaxQuintessence(),
+        3, DARKGRAY, PURPLE, RAYWHITE
+    );
 
     // --- Layer 5: Stats Shell Overlay ---
     if (statsShell.id != 0) {
@@ -186,6 +195,7 @@ void UIManager::DrawTeamHUD(
         Vector2 hintSize = MeasureTextEx(fontSans, hint, 20, 1.0f);
         UIUtils::DrawText("PixeloidSans", hint, { (GetScreenWidth() - hintSize.x) / 2, GetScreenHeight() - 100.0f }, static_cast<UIUtils::FontSize>(20), Fade(WHITE, 0.7f));
     }
+
 
 }
 

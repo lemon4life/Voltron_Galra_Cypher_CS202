@@ -29,29 +29,25 @@ Keith::Keith(Vector2 pos, CharacterSprites sprites)
 }
 
 void Keith::UseSkill() {
-    if (!debugSpamMode && skillCooldownTimer > 0.0f) {
-        return; // Skill on cooldown
+    if (exEnergy < maxExEnergy) {
+        return; 
     }
     
     if (teamManager) {
         teamManager->AddSharedBuff(std::make_unique<FireCircleBuff>(5.0f));
     }
     
-    if (!debugSpamMode) {
-        skillCooldownTimer = SKILL_COOLDOWN;
-    }
+    
+    exEnergy = 0.0f;
 }
 
 void Keith::UseUltimate() {
-    if (!debugSpamMode && exEnergy < maxExEnergy) {
-        return; // Not enough EX
-    }
+    // Gate on Quintessence (shared team fuel) + individual cooldown
+    if (ultimateCooldownTimer > 0.0f) return;
+    if (!teamManager || !teamManager->ConsumeQuintessence(TeamManager::ULTIMATE_COST)) return;
     
+    ultimateCooldownTimer = ULTIMATE_COOLDOWN_MAX;
     isUltimateAiming = true;
-    
-    if (!debugSpamMode) {
-        exEnergy = 0.0f; // Reset EX meter after casting
-    }
 }
 
 #include "Core/Manager/UltimateIntroManager.h"

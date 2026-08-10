@@ -103,8 +103,6 @@ void Paladin::ChangeState(IPlayerState* newState) {
 void Paladin::TakeDamage(int amount) {
     if (isInvincible || isInvulnerable || Constants::DEBUG_PLAYER_IMMUNITY) return;
     
-    exEnergy = 0.0f; // Clear EX on damage
-    
     health -= amount;
     
     if (health <= 0) {
@@ -292,6 +290,7 @@ void Paladin::ResetStats() {
     lastMoveDir = {1.0f, 0.0f};
     texture = GetIdleTexture();
     renderOffsetY = 0.0f;
+    ultimateCooldownTimer = 0.0f;
     ChangeState(&idleState);
     ResetAnimation();
 }
@@ -428,9 +427,14 @@ void Paladin::UpdateFootsteps(float dt) {
 }
 
 void Paladin::OnHitEnemy(int damage) {
-    exEnergy += (float)damage * 0.15f; // 15% of damage converts to EX
+    exEnergy += (float)damage * 0.15f; // Slower EX generation
     if (exEnergy > maxExEnergy) {
         exEnergy = maxExEnergy;
+    }
+
+    // Also award Quintessence to team pool
+    if (teamManager) {
+        teamManager->AddQuintessence((float)damage * 0.05f); // Slower Quintessence generation
     }
 }
 

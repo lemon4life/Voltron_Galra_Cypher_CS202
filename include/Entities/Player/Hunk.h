@@ -13,7 +13,6 @@ public:
     void ExecuteUltimateAction() override;
     
 private:
-    bool debugSpamMode = true;
     
     // Earthshatter mechanics
     float knockbackRadius = 100.0f;

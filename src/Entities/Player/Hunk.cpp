@@ -60,8 +60,8 @@ void Hunk::Draw() {
 }
 
 void Hunk::UseSkill() {
-    if (!debugSpamMode && exEnergy < maxExEnergy / 3.0f) return;
-    if (!debugSpamMode) exEnergy -= maxExEnergy / 3.0f;
+    if (exEnergy < maxExEnergy) return;
+    exEnergy = 0.0f;
     
     isEarthshatterFlash = true;
     earthshatterFlashTimer = 0.2f;
@@ -89,9 +89,11 @@ void Hunk::UseSkill() {
 #include "Core/Manager/UltimateIntroManager.h"
 
 void Hunk::UseUltimate() {
-    if (!debugSpamMode && exEnergy < maxExEnergy) return;
-    if (!debugSpamMode) exEnergy = 0.0f;
+    // Gate on Quintessence (shared team fuel) + individual cooldown
+    if (ultimateCooldownTimer > 0.0f) return;
+    if (!teamManager || !teamManager->ConsumeQuintessence(TeamManager::ULTIMATE_COST)) return;
     
+    ultimateCooldownTimer = ULTIMATE_COOLDOWN_MAX;
     UltimateIntroManager::GetInstance().PlayIntro(this);
 }
 

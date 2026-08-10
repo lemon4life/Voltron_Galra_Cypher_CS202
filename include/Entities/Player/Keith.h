@@ -24,5 +24,4 @@ private:
     const float SKILL_COOLDOWN = 10.0f;
     
 public:
-    bool debugSpamMode = true; // Debug toggle for instant spam
 };

@@ -48,6 +48,7 @@ void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
     activeIndex = 0;
     sharedArmor = maxSharedArmor;
     sharedUltimateDecibels = 0.0f;
+    currentQuintessence = 0.0f;
     timeSinceLastDamage = 0.0f;
     armorRegenTimer = 0.0f;
 
@@ -290,6 +291,11 @@ void TeamManager::Update(float deltaTime) {
             ++it;
         }
     }
+
+    // Tick ultimate cooldowns for ALL team members (active + benched)
+    for (auto* paladin : team) {
+        paladin->TickUltimateCooldown(deltaTime);
+    }
 }
 
 void TeamManager::Draw() {
@@ -328,5 +334,23 @@ bool TeamManager::IsTeamDead() const {
     for (auto* paladin : team) {
         if (paladin->GetHealth() > 0) return false;
     }
+    return true;
+}
+
+void TeamManager::AddQuintessence(float amount) {
+    if (debugFastFuel) {
+        amount *= 20.0f;
+    }
+    currentQuintessence += amount;
+    if (currentQuintessence > maxQuintessence) {
+        currentQuintessence = maxQuintessence;
+    }
+}
+
+bool TeamManager::ConsumeQuintessence(float amount) {
+    if (currentQuintessence < amount) {
+        return false;
+    }
+    currentQuintessence -= amount;
     return true;
 }

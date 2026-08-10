@@ -81,12 +81,9 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
                 e->TakeDamage(damage); // Piercing laser damage
                 // Add Impact Effect visually
                 GameManager::GetInstance().AddImpactEffect({e->GetPosition().x, e->GetPosition().y});
-                // Add EX Energy
-                // To get the TeamManager, we could pass it or rely on the fact that Hunk is the active paladin.
-                // We'll let the Paladin's OnHitEnemy handle it via GameManager context if needed.
-                // Actually, let's just trigger it safely if we can find the active paladin.
-                // Unfortunately we don't have direct access to TeamManager here unless passed.
-                // However, we know Hunk is active if he is attacking. 
+                if (owner) {
+                    owner->OnHitEnemy(damage);
+                }
             }
         }
     }

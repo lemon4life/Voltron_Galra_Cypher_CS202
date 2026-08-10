@@ -13,7 +13,6 @@ public:
     void ExecuteUltimateAction() override;
     
 private:
-    bool debugSpamMode = true;
     
     bool isUltimateFlash;
     float ultimateFlashTimer;

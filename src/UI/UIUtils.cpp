@@ -40,6 +40,18 @@ namespace UIUtils {
         }
     }
 
+    void DrawSegmentedProgressBar(Rectangle bounds, float currentVal, float maxVal, int segments, Color bgColor, Color fillColor, Color dividerColor) {
+        // Background
+        DrawRectangleRec(bounds, bgColor);
+
+        // Fill
+        if (maxVal > 0.0f) {
+            float ratio = std::clamp(currentVal / maxVal, 0.0f, 1.0f);
+            Rectangle fillRect = { bounds.x, bounds.y, bounds.width * ratio, bounds.height };
+            DrawRectangleRec(fillRect, fillColor);
+        }
+    }
+
     void DrawPanel(Rectangle bounds, Color color) {
         DrawRectangleRec(bounds, color);
         DrawRectangleLinesEx(bounds, 2.0f, LIGHTGRAY);
