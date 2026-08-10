@@ -27,4 +27,5 @@ public:
     void Draw() override;
     
     void Update(float deltaTime) override;
+    void UpdateInactive(float deltaTime) override;
 };

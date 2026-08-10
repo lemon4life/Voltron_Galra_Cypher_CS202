@@ -5,6 +5,8 @@
 #include "Core/ISubject.h"
 #include "Entities/Player/PaladinDefinition.h"
 #include "Core/DepthRenderItem.h"
+#include "Combat/IBuff.h"
+#include <memory>
 
 class Paladin;
 
@@ -21,6 +23,8 @@ private:
     float timeSinceLastDamage;
     float armorRegenTimer;
 
+    std::vector<std::unique_ptr<IBuff>> sharedBuffs;
+
 public:
     TeamManager();
     ~TeamManager();
@@ -28,7 +32,15 @@ public:
     void AddMember(Paladin* paladin);
     void Update(float deltaTime);
     void Draw();
+    void DrawBuffs(); // Draw shared buffs
     void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
+    
+    void AddSharedBuff(std::unique_ptr<IBuff> buff) {
+        if (buff && GetActivePaladin()) {
+            buff->OnApply(GetActivePaladin());
+            sharedBuffs.push_back(std::move(buff));
+        }
+    }
 
     void SwapCharacter();
     void SwapCharacterToIndex(int targetIndex);

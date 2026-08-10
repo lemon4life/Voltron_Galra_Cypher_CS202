@@ -6,6 +6,7 @@
 #include "Core/Manager/InputManager.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
+#include "Entities/Projectile.h"
 
 #include <cmath>
 #include <iostream>
@@ -15,7 +16,7 @@ Paladin::Paladin(
     CharacterSprites sprites,
     const PaladinDefinition& definition
 )
-    : Character(pos, definition.speed, definition.maxHealth, sprites.idle),
+    : Character(pos, BaseStats::Speed * definition.speedScalar, BaseStats::HP * definition.hpScalar, sprites.idle),
       currentWeapon(nullptr),
       sprites(sprites),
       teamManager(nullptr),
@@ -25,12 +26,12 @@ Paladin::Paladin(
       frameDuration(0.1f), // 10 fps animation speed
       facingLeft(false),
       numFrames(4),
-      maxHealth(definition.maxHealth),
-      ghostHp(definition.maxHealth),
+      maxHealth(BaseStats::HP * definition.hpScalar),
+      ghostHp(BaseStats::HP * definition.hpScalar),
       exEnergy(0.0f),
       maxExEnergy(definition.maxExEnergy),
       dashCooldown(0.0f),
-      attackCooldown(definition.attackCooldown),
+      attackCooldown(BaseStats::AttackCooldown * definition.attackCooldownScalar),
       dashTimer(0.0f),
       isInvincible(false),
       isParrying(false),
@@ -61,6 +62,10 @@ Paladin::~Paladin() {
         if (currentWeapon) {
         delete currentWeapon;
     }
+    for (auto& buff : personalBuffs) {
+        buff->OnRemove(this);
+    }
+    personalBuffs.clear();
 }
 
 Vector2 Paladin::GetWeaponPivot() const {
@@ -114,11 +119,45 @@ void Paladin::TakeDamage(int amount) {
     }
 }
 
+void Paladin::TickTimers(float deltaTime) {
+    if (dashCooldown > 0.0f) dashCooldown -= deltaTime;
+    
+    // Update personal buffs
+    for (auto it = personalBuffs.begin(); it != personalBuffs.end(); ) {
+        (*it)->Update(deltaTime, this);
+        if ((*it)->IsFinished()) {
+            (*it)->OnRemove(this);
+            it = personalBuffs.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+Projectile* Paladin::SpawnLinearProjectile(Vector2 dir, float speed, int damage, float maxFlyTime, bool piercing, Texture2D tex, bool fixedRotation) {
+    Vector2 vel = Vector2Scale(dir, speed);
+    Projectile* proj = new Projectile(GetWeaponPivot(), vel, 5.0f, damage, tex, false);
+    proj->SetReturning(false);
+    proj->SetPiercing(piercing);
+    proj->SetMaxFlyTime(maxFlyTime);
+    proj->SetOwner(this);
+    
+    if (fixedRotation) {
+        float rot = atan2(dir.y, dir.x) * (180.0f / PI);
+        proj->SetFixedRotation(true, rot);
+    }
+    
+    GameManager::GetInstance().AddProjectile(proj);
+    return proj;
+}
+
 void Paladin::Update(float deltaTime) {
-    if (invulnerabilityTimer > 0.0f) {
-        invulnerabilityTimer -= deltaTime;
-        if (invulnerabilityTimer <= 0.0f) {
-            isInvulnerable = false;
+    TickTimers(deltaTime);
+    
+    if (autoParryDurationTimer > 0.0f) {
+        autoParryDurationTimer -= deltaTime;
+        if (autoParryDurationTimer <= 0.0f) {
+            isAutoParry = false;
         }
     }
 
@@ -222,6 +261,14 @@ void Paladin::Update(float deltaTime) {
     }
 }
 
+void Paladin::UpdateInactive(float deltaTime) {
+    TickTimers(deltaTime);
+}
+
+void Paladin::DrawInactive() {
+    // If you want any visual effect for inactive characters (like particle trails), it could go here
+}
+
 void Paladin::ResetStats() {
     health = maxHealth;
     ghostHp = maxHealth;
@@ -277,6 +324,11 @@ void Paladin::UpdateAnimation(float deltaTime) {
 }
 
 void Paladin::Draw() {
+    for (auto& buff : personalBuffs) {
+        buff->Draw(this);
+    }
+    
+    // Auto parry visual indication
     const float frameWidth = (float)texture.width / numFrames;
     const float frameHeight = (float)texture.height;
 

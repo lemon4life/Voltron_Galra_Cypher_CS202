@@ -126,6 +126,14 @@ void TeamManager::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
             });
         }
     }
+    
+    // Draw shared buffs slightly behind the active paladin
+    if (active && !sharedBuffs.empty()) {
+        items.push_back({
+            active->GetBoundingBox().y + active->GetBoundingBox().height - 0.1f,
+            [this]() { this->DrawBuffs(); }
+        });
+    }
 }
 
 void TeamManager::SwapCharacter() {
@@ -154,10 +162,12 @@ void TeamManager::SwapCharacter() {
     newActive->SetCurrentAimStrategy(oldActive->GetCurrentAimStrategy());
     newActive->SetFacingLeft(oldActive->IsFacingLeft());
     
-    newActive->SetInvulnerable(oldActive->IsInvulnerable());
-    newActive->SetInvulnerabilityTimer(oldActive->GetInvulnerabilityTimer());
-    oldActive->SetInvulnerable(false);
-    oldActive->SetInvulnerabilityTimer(0.0f);
+    // Manage shared buffs
+    for (auto& buff : sharedBuffs) {
+        buff->OnRemove(oldActive);
+        buff->OnApply(newActive);
+    }
+    oldActive->SetInvulnerable(false); // Failsafe cleanup
     
     if (oldActive->IsParrying()) {
         newActive->ChangeState(newActive->GetParryState());
@@ -190,10 +200,12 @@ void TeamManager::SwapCharacterToIndex(int targetIndex) {
     newActive->SetCurrentAimStrategy(oldActive->GetCurrentAimStrategy());
     newActive->SetFacingLeft(oldActive->IsFacingLeft());
     
-    newActive->SetInvulnerable(oldActive->IsInvulnerable());
-    newActive->SetInvulnerabilityTimer(oldActive->GetInvulnerabilityTimer());
-    oldActive->SetInvulnerable(false);
-    oldActive->SetInvulnerabilityTimer(0.0f);
+    // Manage shared buffs
+    for (auto& buff : sharedBuffs) {
+        buff->OnRemove(oldActive);
+        buff->OnApply(newActive);
+    }
+    oldActive->SetInvulnerable(false); // Failsafe cleanup
     
     if (oldActive->IsParrying()) {
         newActive->ChangeState(newActive->GetParryState());
@@ -267,6 +279,17 @@ void TeamManager::Update(float deltaTime) {
             paladin->UpdateInactive(deltaTime);
         }
     }
+    
+    // Update shared buffs
+    for (auto it = sharedBuffs.begin(); it != sharedBuffs.end(); ) {
+        (*it)->Update(deltaTime, active);
+        if ((*it)->IsFinished()) {
+            (*it)->OnRemove(active);
+            it = sharedBuffs.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 void TeamManager::Draw() {
@@ -279,6 +302,13 @@ void TeamManager::Draw() {
         }
     }
     active->Draw();
+}
+
+void TeamManager::DrawBuffs() {
+    Paladin* active = GetActivePaladin();
+    for (auto& buff : sharedBuffs) {
+        buff->Draw(active);
+    }
 }
 
 

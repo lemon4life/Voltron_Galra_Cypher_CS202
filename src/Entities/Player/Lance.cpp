@@ -1,11 +1,10 @@
 #include "Entities/Player/Lance.h"
 #include "Combat/RangedAttackStrategy.h"
 #include "Entities/Player/PaladinDefinition.h"
+#include "Combat/Buffs.h"
 
 Lance::Lance(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Lance)),
-      isDualWielding(false),
-      dualWieldTimer(0.0f),
       isUltimateFlash(false),
       ultimateFlashTimer(0.0f)
 {
@@ -16,22 +15,19 @@ Lance::Lance(Vector2 pos, CharacterSprites sprites)
         sprites.weapon,
         sprites.muzzleFlash,
         sprites.bullet,
-        weapon.maximumDamage,
+        BaseStats::Damage * weapon.maxDamageScalar,
         weapon.recoil
     );
     if (currentWeapon) currentWeapon->SetOwner(this);
     texture = GetIdleTexture();
+    
 }
 
 void Lance::Update(float deltaTime) {
     Paladin::Update(deltaTime);
     
-    if (isDualWielding) {
-        dualWieldTimer -= deltaTime;
+    if (HasPersonalBuff<DualWieldBuff>()) {
         attackCooldown = 0.2f; // Halved attack cooldown
-        if (dualWieldTimer <= 0.0f) {
-            isDualWielding = false;
-        }
     } else {
         attackCooldown = 0.4f; // Normal attack cooldown
     }
@@ -45,7 +41,7 @@ void Lance::Update(float deltaTime) {
 }
 
 void Lance::Attack() {
-    if (!isDualWielding) {
+    if (!HasPersonalBuff<DualWieldBuff>()) {
         Paladin::Attack();
     } else {
         if (currentWeapon) {
@@ -64,7 +60,7 @@ void Lance::Attack() {
 }
 
 void Lance::Draw() {
-    if (!isDualWielding) {
+    if (!HasPersonalBuff<DualWieldBuff>()) {
         Paladin::Draw();
     } else {
         // Suppress drawing the single weapon from Paladin::Draw by temporarily unsetting it
@@ -96,8 +92,7 @@ void Lance::UseSkill() {
     if (!debugSpamMode && exEnergy < maxExEnergy / 3.0f) return;
     
     if (!debugSpamMode) exEnergy -= maxExEnergy / 3.0f;
-    isDualWielding = true;
-    dualWieldTimer = 5.0f;
+    AddPersonalBuff(std::make_unique<DualWieldBuff>(5.0f));
 }
 
 #include "Core/Manager/GameManager.h"

@@ -8,6 +8,15 @@
 #include "Core/AimStrategy/IAimStrategy.h"
 #include <vector>
 #include <string>
+#include <memory>
+#include "Combat/IBuff.h"
+
+struct BaseStats {
+    static constexpr int HP = 100;
+    static constexpr float Speed = 200.0f;
+    static constexpr int Damage = 20;
+    static constexpr float AttackCooldown = 0.5f;
+};
 
 struct UltimateIntroData {
     std::string paladinName;
@@ -95,6 +104,11 @@ protected:
     Vector2 currentAimVector;
     IAimStrategy* currentAimStrategy;
 
+    std::vector<std::unique_ptr<IBuff>> personalBuffs;
+
+    void TickTimers(float deltaTime);
+    class Projectile* SpawnLinearProjectile(Vector2 dir, float speed, int damage, float maxFlyTime, bool piercing, Texture2D tex, bool fixedRotation);
+
 public:
     Paladin(
         Vector2 pos,
@@ -105,9 +119,8 @@ public:
 
     virtual void Update(float deltaTime) override;
     virtual void Draw() override;
-    
-    virtual void UpdateInactive(float deltaTime) {}
-    virtual void DrawInactive() {}
+    virtual void UpdateInactive(float deltaTime);
+    virtual void DrawInactive();
     virtual bool IsDoingUltimate() const { return false; }
     
     void SetParrying(bool parry);
@@ -148,6 +161,23 @@ public:
     
     void SetTeamManager(TeamManager* manager) { teamManager = manager; }
     TeamManager* GetTeamManager() const { return teamManager; }
+
+    void AddPersonalBuff(std::unique_ptr<IBuff> buff) {
+        if (buff) {
+            buff->OnApply(this);
+            personalBuffs.push_back(std::move(buff));
+        }
+    }
+    const std::vector<std::unique_ptr<IBuff>>& GetPersonalBuffs() const { return personalBuffs; }
+    
+    // Check if a buff exists (useful for DualWield check in Lance)
+    template<typename T>
+    bool HasPersonalBuff() const {
+        for (const auto& buff : personalBuffs) {
+            if (dynamic_cast<T*>(buff.get())) return true;
+        }
+        return false;
+    }
 
     void ChangeState(IPlayerState* newState);
     virtual void Attack();

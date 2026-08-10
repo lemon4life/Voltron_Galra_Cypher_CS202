@@ -14,8 +14,8 @@ struct WeaponDefinition {
     std::string name;
     std::string description;
     std::string textureKey;
-    int minimumDamage;
-    int maximumDamage;
+    float minDamageScalar;
+    float maxDamageScalar;
     float recoil;
     bool recoilApplicable;
 };
@@ -25,10 +25,10 @@ struct PaladinDefinition {
     std::string name;
     std::string description;
     std::string idleTextureKey;
-    int maxHealth;
-    float speed;
+    float hpScalar;
+    float speedScalar;
     float maxExEnergy;
-    float attackCooldown;
+    float attackCooldownScalar;
     WeaponDefinition weapon;
 };
 

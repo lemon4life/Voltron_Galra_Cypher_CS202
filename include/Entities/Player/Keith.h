@@ -17,12 +17,6 @@ public:
     bool IsDoingUltimate() const override { return isUltimateAiming || ultimateFlashTimer > 0.0f; }
     
 private:
-    void ProcessFireCircle(float deltaTime, Vector2 centerPos);
-
-    bool isFireCircleActive = false;
-    float fireCircleTimer = 0.0f;
-    Vector2 fireCirclePos = {0.0f, 0.0f};
-    
     float ultimateFlashTimer = 0.0f;
     bool isUltimateAiming = false;
     

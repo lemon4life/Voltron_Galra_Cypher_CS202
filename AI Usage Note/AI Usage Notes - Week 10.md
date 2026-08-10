@@ -70,3 +70,13 @@ To finalize Pidge's active abilities (Venom Zone) and ultimate ability (Rover co
 - Migrated `VenomZone` AoE hazard tracking directly into `Pidge` subclass with strict 7-second durations and collision-circle evaluations.
 - Updated `Enemy::GetSpeed()` to calculate a 50% velocity reduction when the `SLOW` status effect is active from the Venom Zone.
 - Added a `debugSpamMode` bypass to Pidge's `UseSkill()` for testing without energy constraints.
+
+
+## Session 3: Stat and Shared Buff System Refactor (OOD Improvements)
+- **Prompts**: "Also is there any OOD that can help in this stituation? (Shared Buffs)" -> "hey there are some ultimate buffs that is shared across paladins (not only the one who cast them) like Hunk's invulnerability, Keith's fire skill, ..."
+- **Purpose**: To transition away from ad-hoc booleans in the `TeamManager` to a proper Strategy pattern implementation (`IBuff`) for status effects, and scalar derivations for Paladin stats.
+- **Content Generated**:
+  - `IBuff.h`, `Buffs.h`: Concrete strategy implementations (`AegisShieldBuff`, `FireCircleBuff`, `DualWieldBuff`).
+  - `TeamManager`: Maintained `std::vector<std::unique_ptr<IBuff>> sharedBuffs`, propagating `OnApply`/`OnRemove` via `SwapCharacter`.
+  - `Paladin.cpp`: Included `TickTimers()` refactor and integrated `BaseStats` scalar modifiers into subclasses constructors (`Hunk.cpp`, `Lance.cpp`, `Keith.cpp`, `Pidge.cpp`).
+  - `plan_15_stat_refactor.md`: Documented architecture decision for the buff system.

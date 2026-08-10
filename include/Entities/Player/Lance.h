@@ -14,8 +14,6 @@ public:
     
 private:
     bool debugSpamMode = true;
-    bool isDualWielding;
-    float dualWieldTimer;
     
     bool isUltimateFlash;
     float ultimateFlashTimer;

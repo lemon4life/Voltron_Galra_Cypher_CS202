@@ -6,6 +6,7 @@
 #include "Entities/Player/PaladinDefinition.h"
 #include "Entities/Enemy.h"
 #include "raymath.h"
+#include "Combat/Buffs.h"
 
 Keith::Keith(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Keith))
@@ -18,11 +19,13 @@ Keith::Keith(Vector2 pos, CharacterSprites sprites)
         sprites.weapon,
         AssetManager::GetInstance().GetTexture("Sword_Slash_Small"),
         AssetManager::GetInstance().GetTexture("Sword_Slash_Small"),
-        weapon.minimumDamage,
-        weapon.maximumDamage
+        BaseStats::Damage * weapon.minDamageScalar,
+        BaseStats::Damage * weapon.maxDamageScalar
     );
     if (currentWeapon) currentWeapon->SetOwner(this);
     texture = GetIdleTexture();
+    
+
 }
 
 void Keith::UseSkill() {
@@ -30,8 +33,9 @@ void Keith::UseSkill() {
         return; // Skill on cooldown
     }
     
-    isFireCircleActive = true;
-    fireCircleTimer = 5.0f;
+    if (teamManager) {
+        teamManager->AddSharedBuff(std::make_unique<FireCircleBuff>(5.0f));
+    }
     
     if (!debugSpamMode) {
         skillCooldownTimer = SKILL_COOLDOWN;
@@ -81,37 +85,13 @@ void Keith::ExecuteUltimateAction() {
     ultimateFlashTimer = 0.1f;
 }
 
-void Keith::ProcessFireCircle(float deltaTime, Vector2 centerPos) {
-    if (!isFireCircleActive) return;
-    
-    fireCircleTimer -= deltaTime;
-    if (fireCircleTimer <= 0.0f) {
-        isFireCircleActive = false;
-    } else {
-        float skillRadius = 100.0f;
-        const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
-        for (GameObject* obj : entities) {
-            Enemy* enemy = dynamic_cast<Enemy*>(obj);
-            if (enemy && !enemy->IsDead()) {
-                if (CheckCollisionCircles(centerPos, skillRadius, enemy->GetPosition(), 15.0f)) {
-                    enemy->GetStatusComponent().AddEffect(EffectType::BURN, 5.0f, 5.0f);
-                    OnHitEnemy(5); // Constant EX generation on Fire Circle hit
-                }
-            }
-        }
-    }
-}
+// ProcessFireCircle is removed
 
 void Keith::Update(float deltaTime) {
     Paladin::Update(deltaTime);
     
     if (skillCooldownTimer > 0.0f) {
         skillCooldownTimer -= deltaTime;
-    }
-    
-    if (isFireCircleActive) {
-        ProcessFireCircle(deltaTime, position);
-        fireCirclePos = position;
     }
     
     if (isUltimateAiming) {
@@ -122,34 +102,19 @@ void Keith::Update(float deltaTime) {
         }
     }
     
-    ProcessFireCircle(deltaTime, position);
-    fireCirclePos = position; // Track for drawing
-    
     if (ultimateFlashTimer > 0.0f) {
         ultimateFlashTimer -= deltaTime;
     }
 }
 
 void Keith::UpdateInactive(float deltaTime) {
+    Paladin::UpdateInactive(deltaTime);
     if (skillCooldownTimer > 0.0f) {
         skillCooldownTimer -= deltaTime;
-    }
-    
-    if (isFireCircleActive) {
-        if (TeamManager* tm = GetTeamManager()) {
-            Paladin* active = tm->GetActivePaladin();
-            if (active) {
-                ProcessFireCircle(deltaTime, active->GetPosition());
-                fireCirclePos = active->GetPosition();
-            }
-        }
     }
 }
 
 void Keith::Draw() {
-    if (isFireCircleActive) {
-        DrawCircleV(fireCirclePos, 100.0f, ColorAlpha(RED, 0.3f));
-    }
     
     if (isUltimateAiming) {
         float length = 300.0f;
@@ -171,7 +136,5 @@ void Keith::Draw() {
 }
 
 void Keith::DrawInactive() {
-    if (isFireCircleActive) {
-        DrawCircleV(fireCirclePos, 100.0f, ColorAlpha(RED, 0.3f));
-    }
+    Paladin::DrawInactive();
 }

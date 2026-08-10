@@ -1,6 +1,8 @@
 #include "Entities/Player/Hunk.h"
 #include "Combat/LaserAttackStrategy.h"
 #include "Entities/Player/PaladinDefinition.h"
+#include "Core/Manager/TeamManager.h"
+#include "Combat/Buffs.h"
 
 Hunk::Hunk(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Hunk))
@@ -13,19 +15,13 @@ Hunk::Hunk(Vector2 pos, CharacterSprites sprites)
         sprites.muzzleFlash,
         sprites.bullet,
         sprites.impact,
-        weapon.maximumDamage,
+        BaseStats::Damage * weapon.maxDamageScalar,
         weapon.recoil
     );
     if (currentWeapon) currentWeapon->SetOwner(this);
     texture = GetIdleTexture();
     
-    // Base Stats Override
-    maxHealth = 150;
-    health = maxHealth;
-    ghostHp = maxHealth;
-    // Speed is determined by stats, wait I will override the default speed multiplier?
-    // Hunk is slower, so let's set a slower max speed? But speed is not explicitly in Paladin class.
-    // PaladinDefinition handles speed? I'll let definition handle it, or just set speed?
+
     // Let's check if Paladin has a speed variable.
     // Actually, I'll just leave speed alone since the plan says "speed is determined by PaladinDefinition", I can just not change it here if it's not accessible.
 }
@@ -100,6 +96,7 @@ void Hunk::UseUltimate() {
 }
 
 void Hunk::ExecuteUltimateAction() {
-    isInvulnerable = true;
-    invulnerabilityTimer = 5.0f;
+    if (teamManager) {
+        teamManager->AddSharedBuff(std::make_unique<AegisShieldBuff>(5.0f));
+    }
 }

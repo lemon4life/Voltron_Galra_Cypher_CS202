@@ -14,6 +14,7 @@ Pidge::Pidge(Vector2 startPos, CharacterSprites sprites)
     isWeaponThrown = false;
     thrownWeapon = nullptr;
     
+
     // Setup Boomerang as RangedAttackStrategy for now, or just leave it empty and override Attack
     // Wait, the plan was to use RangedAttackStrategy with isReturning inside Projectile.
     const WeaponDefinition& weapon = PaladinCatalog::Get(PaladinId::Pidge).weapon;
@@ -21,10 +22,34 @@ Pidge::Pidge(Vector2 startPos, CharacterSprites sprites)
         sprites.weapon,
         sprites.muzzleFlash,
         sprites.bullet,
-        weapon.maximumDamage,
+        BaseStats::Damage * weapon.maxDamageScalar,
         weapon.recoil
     );
     if (currentWeapon) currentWeapon->SetOwner(this);
+}
+
+void Pidge::UpdateInactive(float deltaTime) {
+    Paladin::UpdateInactive(deltaTime);
+    if (isVenomZoneActive) {
+        venomZoneTimer -= deltaTime;
+        if (venomZoneTimer <= 0.0f) {
+            isVenomZoneActive = false;
+        } else {
+            float zoneRadius = 120.0f;
+            const auto& entities = GameManager::GetInstance().GetLevelEntities();
+            for (const auto& e : entities) {
+                if (e->GetObjectType() == GameObjectType::Enemy) {
+                    Enemy* enemy = static_cast<Enemy*>(e);
+                    if (!enemy || enemy->IsDead()) continue;
+                    
+                    if (CheckCollisionCircles(venomZonePos, zoneRadius, enemy->GetPosition(), 16.0f)) {
+                        enemy->GetStatusComponent().AddEffect(EffectType::POISON, 1.1f, 5.0f);
+                        enemy->GetStatusComponent().AddEffect(EffectType::SLOW, 1.1f);
+                    }
+                }
+            }
+        }
+    }
 }
 
 void Pidge::Update(float deltaTime) {
@@ -66,21 +91,9 @@ void Pidge::Attack() {
     // Fire Boomerang
     Vector2 dir = currentAimVector;
     float speed = 800.0f; // Fast Boomerang speed
-    Vector2 vel = Vector2Scale(dir, speed);
+    int baseDamage = BaseStats::Damage * PaladinCatalog::Get(PaladinId::Pidge).weapon.minDamageScalar;
     
-    int baseDamage = PaladinCatalog::Get(PaladinId::Pidge).weapon.minimumDamage;
-    
-    Projectile* proj = new Projectile(GetWeaponPivot(), vel, 5.0f, baseDamage, sprites.weapon, false);
-    proj->SetReturning(false);
-    proj->SetPiercing(true);
-    proj->SetMaxFlyTime(0.35f); // Slightly faster max fly time
-    proj->SetOwner(this);
-    
-    float rot = atan2(dir.y, dir.x) * (180.0f / PI);
-    proj->SetFixedRotation(true, rot);
-    
-    thrownWeapon = proj;
-    GameManager::GetInstance().AddProjectile(proj);
+    thrownWeapon = SpawnLinearProjectile(dir, speed, baseDamage, 0.35f, true, sprites.weapon, true);
 }
 
 void Pidge::CatchWeapon() {
