@@ -5,6 +5,7 @@
 Hunk::Hunk(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Hunk))
 {
+    introData = {"HUNK", "EARTHSHAKER", YELLOW, "Card_Hunk", "hunk_ult_voice"};
     const WeaponDefinition& weapon =
         PaladinCatalog::Get(PaladinId::Hunk).weapon;
     currentWeapon = new LaserAttackStrategy(

@@ -1,4 +1,8 @@
 #include "Entities/Projectile.h"
+#include "Core/Manager/ParticleManager.h"
+#include "Entities/Player/Paladin.h"
+#include "raymath.h"
+#include <cmath>
 
 Projectile::Projectile(Vector2 pos, Vector2 vel, float life, int dmg, bool isEnemy)
     : GameObject(pos, GameObjectType::Projectile),
@@ -16,6 +20,28 @@ Projectile::Projectile(Vector2 pos, Vector2 vel, float life, int dmg, Texture2D 
 
 void Projectile::Update(float deltaTime) {
     if (!active) return;
+
+    if (maxFlyTime > 0.0f && !isReturning) {
+        flightTimer += deltaTime;
+        if (flightTimer >= maxFlyTime) {
+            isReturning = true;
+        }
+    }
+
+    if (isReturning && owner != nullptr) {
+        Vector2 ownerPos = owner->GetPosition();
+        Vector2 toOwner = { ownerPos.x - position.x, ownerPos.y - position.y };
+        float dist = std::sqrt(toOwner.x * toOwner.x + toOwner.y * toOwner.y);
+        
+        // Immediate catch
+        if (dist < 20.0f) { 
+            active = false;
+        } else {
+            float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+            velocity.x = (toOwner.x / dist) * speed;
+            velocity.y = (toOwner.y / dist) * speed;
+        }
+    }
 
     // Move projectile
     position.x += velocity.x * deltaTime;
@@ -36,13 +62,13 @@ void Projectile::Update(float deltaTime) {
 void Projectile::Draw() {
     if (active) {
         if (texture.id != 0) {
-            float rot = atan2(velocity.y, velocity.x) * (180.0f / PI);
+            float rot = fixedRotation ? rotationAngle : atan2(velocity.y, velocity.x) * (180.0f / PI);
             Rectangle source = { 0, 0, (float)texture.width, (float)texture.height };
             Rectangle dest = { position.x, position.y, (float)texture.width, (float)texture.height };
             Vector2 origin = { (float)texture.width / 2.0f, (float)texture.height / 2.0f };
-            DrawTexturePro(texture, source, dest, origin, rot, WHITE);
+            DrawTexturePro(texture, source, dest, origin, rot, tint);
         } else {
-            DrawRectangleRec(boundingBox, BLUE);
+            DrawRectangleRec(boundingBox, tint.a == 0 && tint.r == 0 ? BLUE : tint); // fallback
         }
     }
 }

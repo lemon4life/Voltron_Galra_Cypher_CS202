@@ -19,6 +19,7 @@
 #include "Entities/Player/Hunk.h"
 #include "Entities/Player/Keith.h"
 #include "Entities/Player/Lance.h"
+#include "Entities/Player/Pidge.h"
 #include "UI/MainMenu.h"
 #include "UI/PauseMenu.h"
 #include "UI/PaladinSelectionMenu.h"
@@ -296,6 +297,10 @@ int main() {
                 startPosition,
                 AssetManager::GetInstance().GetHunkSprites()
             ));
+            teamManager->AddMember(new Pidge(
+                startPosition,
+                AssetManager::GetInstance().GetPidgeSprites()
+            ));
 
             uiManager.Initialize();
             uiManager.SetTeamManager(teamManager);
@@ -528,6 +533,7 @@ int main() {
                     }
                     
                     gameManager.UpdateProjectiles(deltaTime, teamManager);
+                    gameManager.UpdateAssists(deltaTime, teamManager);
                     waveManager.Update(deltaTime, teamManager, &levelManager);
                 }
                 gameManager.UpdateEffects(deltaTime);
@@ -617,6 +623,7 @@ int main() {
             BeginMode2D(CameraManager::GetInstance().GetCamera());
             ClearBackground(BLACK);
             levelManager.DrawLevelBase();
+
             gameManager.DrawEffects(true);
 
             std::vector<DepthRenderItem> depthItems;

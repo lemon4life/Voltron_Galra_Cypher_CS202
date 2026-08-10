@@ -10,6 +10,8 @@
 Keith::Keith(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Keith))
 {
+    introData = {"KEITH", "EXCALIBUR", RED, "Card_Keith", "keith_ult_voice"};
+
     const WeaponDefinition& weapon =
         PaladinCatalog::Get(PaladinId::Keith).weapon;
     currentWeapon = new MeleeAttackStrategy(

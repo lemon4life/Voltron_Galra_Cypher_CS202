@@ -319,7 +319,7 @@ void Paladin::Draw() {
 
     DrawTexturePro(texture, sourceRec, destRec, origin, 0.0f, tint);
     
-    if (currentWeapon && GameManager::GetInstance().GetState() != GameState::HUB && health > 0) {
+    if (currentWeapon && IsWeaponVisible() && GameManager::GetInstance().GetState() != GameState::HUB && health > 0) {
         Vector2 pivot = GetWeaponPivot();
         if (isParrying) {
             Vector2 dir = { cosf(currentAimAngle), sinf(currentAimAngle) };

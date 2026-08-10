@@ -48,6 +48,7 @@ void AssetManager::QueueCharacterAssets() {
     add("Card_Lance", "assets/img/CharacterCard/Lance.png", false);
     add("Card_Keith", "assets/img/CharacterCard/Keith.png", false);
     add("Card_Hunk", "assets/img/CharacterCard/Hunk.png", false);
+    add("Card_Pidge", "assets/img/CharacterCard/Pidge.png", false);
 
     // Lance
     add("Lance_Idle", "assets/sprites/Lance/Idle_Sheet.png", true);
@@ -85,6 +86,15 @@ void AssetManager::QueueCharacterAssets() {
     add("Lance_Down", "assets/sprites/Lance/Down.png");
     add("Keith_Down", "assets/sprites/Keith/Down.png");
     add("Hunk_Down", "assets/sprites/Hunk/Down.png");
+
+    // Pidge
+    add("Paladin_Pidge_Idle", "assets/sprites/Pidge/Idle_Sheet.png", true);
+    add("Paladin_Pidge_Run", "assets/sprites/Pidge/Run_Sheet.png", true);
+    add("Paladin_Pidge_Weapon", "assets/sprites/Pidge/Weapon_Static.png", true);
+    add("Paladin_Pidge_DashFront", "assets/sprites/Pidge/Dash_front.png", true);
+    add("Paladin_Pidge_DashBack", "assets/sprites/Pidge/Dash_back.png", true);
+    add("Paladin_Pidge_Parry", "assets/sprites/Pidge/Parry.png", true);
+    add("Paladin_Pidge_Down", "assets/sprites/Pidge/Down.png", true);
 
     // UI and Effects
     add("Player_Circle", "assets/UI/Player_Circle.png");
@@ -170,6 +180,18 @@ CharacterSprites AssetManager::GetHunkSprites() {
     sprites.dashBack = GetTexture("Hunk_DashBack");
     sprites.parry = GetTexture("Hunk_Parry");
     sprites.down = GetTexture("Hunk_Down");
+    return sprites;
+}
+
+CharacterSprites AssetManager::GetPidgeSprites() {
+    CharacterSprites sprites;
+    sprites.idle = GetTexture("Paladin_Pidge_Idle");
+    sprites.run = GetTexture("Paladin_Pidge_Run");
+    sprites.weapon = GetTexture("Paladin_Pidge_Weapon");
+    sprites.dashFront = GetTexture("Paladin_Pidge_DashFront");
+    sprites.dashBack = GetTexture("Paladin_Pidge_DashBack");
+    sprites.parry = GetTexture("Paladin_Pidge_Parry");
+    sprites.down = GetTexture("Paladin_Pidge_Down");
     return sprites;
 }
 

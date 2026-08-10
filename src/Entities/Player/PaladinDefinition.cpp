@@ -3,7 +3,7 @@
 #include <cstddef>
 
 namespace {
-const std::array<PaladinDefinition, 3> PALADINS = {{
+const std::array<PaladinDefinition, 4> PALADINS = {{
     {
         PaladinId::Lance,
         "Lance",
@@ -60,6 +60,25 @@ const std::array<PaladinDefinition, 3> PALADINS = {{
             30.0f,
             true
         }
+    },
+    {
+        PaladinId::Pidge,
+        "Pidge",
+        "Tech Specialist. Boomerang attack, Poison Zone skill, Rover ultimate.",
+        "Paladin_Pidge_Idle",
+        90,    // maxHealth (slightly lower HP 0.9x)
+        138.f, // speed (high speed 1.15x)
+        100.f, // maxExEnergy
+        0.4f,  // attackCooldown
+        {
+            "Green Bayard",
+            "Returning boomerang",
+            "Paladin_Pidge_Weapon",
+            8,     // minimumDamage (slightly lower base damage)
+            12,    // maximumDamage
+            0.0f,  // recoil
+            false  // recoilApplicable
+        }
     }
 }};
 }
@@ -68,6 +87,6 @@ const PaladinDefinition& PaladinCatalog::Get(PaladinId id) {
     return PALADINS[static_cast<std::size_t>(id)];
 }
 
-const std::array<PaladinDefinition, 3>& PaladinCatalog::GetAll() {
+const std::array<PaladinDefinition, 4>& PaladinCatalog::GetAll() {
     return PALADINS;
 }

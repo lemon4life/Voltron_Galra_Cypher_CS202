@@ -16,17 +16,19 @@ TeamManager::TeamManager()
 }
 
 TeamManager::~TeamManager() {
-    for (auto* paladin : team) {
+    for (auto* paladin : roster) {
         delete paladin;
     }
+    roster.clear();
     team.clear();
 }
 
 void TeamManager::AddMember(Paladin* paladin) {
+    roster.push_back(paladin);
     if (team.size() < 3) {
         team.push_back(paladin);
-        paladin->SetTeamManager(this);
     }
+    paladin->SetTeamManager(this);
 }
 
 Paladin* TeamManager::GetActivePaladin() const {
@@ -49,7 +51,7 @@ void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
     timeSinceLastDamage = 0.0f;
     armorRegenTimer = 0.0f;
 
-    for (Paladin* paladin : team) {
+    for (Paladin* paladin : roster) {
         paladin->SetPosition(spawnPosition);
         paladin->ResetStats();
         paladin->SetAimTarget(spawnPosition);
@@ -66,7 +68,7 @@ int TeamManager::FindMemberIndex(PaladinId id) const {
     return -1;
 }
 
-bool TeamManager::MovePaladinToSlot(
+bool TeamManager::AssignPaladinToSlot(
     PaladinId id,
     std::size_t targetIndex
 ) {
@@ -75,19 +77,32 @@ bool TeamManager::MovePaladinToSlot(
     }
 
     int sourceIndex = FindMemberIndex(id);
-    if (sourceIndex < 0) {
-        return false;
-    }
-    if (sourceIndex == static_cast<int>(targetIndex)) {
-        return true;
-    }
+    if (sourceIndex >= 0) {
+        if (sourceIndex == static_cast<int>(targetIndex)) {
+            return true;
+        }
 
-    Paladin* activePaladin = GetActivePaladin();
-    std::swap(team[static_cast<std::size_t>(sourceIndex)], team[targetIndex]);
+        Paladin* activePaladin = GetActivePaladin();
+        std::swap(team[static_cast<std::size_t>(sourceIndex)], team[targetIndex]);
 
-    auto activeIt = std::find(team.begin(), team.end(), activePaladin);
-    if (activeIt != team.end()) {
-        activeIndex = static_cast<int>(activeIt - team.begin());
+        auto activeIt = std::find(team.begin(), team.end(), activePaladin);
+        if (activeIt != team.end()) {
+            activeIndex = static_cast<int>(activeIt - team.begin());
+        }
+    } else {
+        Paladin* newPaladin = nullptr;
+        for (auto* p : roster) {
+            if (p->GetPaladinId() == id) {
+                newPaladin = p;
+                break;
+            }
+        }
+        if (!newPaladin) return false;
+
+        Paladin* oldPaladin = team[targetIndex];
+        newPaladin->SetPosition(oldPaladin->GetPosition());
+        newPaladin->SetAimTarget(oldPaladin->GetAimTarget());
+        team[targetIndex] = newPaladin;
     }
 
     NotifyObservers();

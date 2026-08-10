@@ -144,7 +144,9 @@ public:
     void SetHealth(int h);
     void SetMaxHealth(int h);
     int GetMaxHealth() const { return maxHealth; }
-    float GetSpeed() const { return speed; }
+    float GetSpeed() const { 
+        return statusComponent.HasEffect(EffectType::SLOW) ? speed * 0.5f : speed; 
+    }
     void SetSpeed(float s) { speed = s; }
     int GetDamage() const { return damage; }
     void SetDamage(int value) { damage = value; }

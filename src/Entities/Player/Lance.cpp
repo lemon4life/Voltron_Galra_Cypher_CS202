@@ -9,6 +9,7 @@ Lance::Lance(Vector2 pos, CharacterSprites sprites)
       isUltimateFlash(false),
       ultimateFlashTimer(0.0f)
 {
+    introData = {"LANCE", "GLACIER PIERCE", BLUE, "Card_Lance", "lance_ult_voice"};
     const WeaponDefinition& weapon =
         PaladinCatalog::Get(PaladinId::Lance).weapon;
     currentWeapon = new RangedAttackStrategy(

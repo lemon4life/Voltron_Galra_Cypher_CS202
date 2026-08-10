@@ -51,3 +51,22 @@ To implement the final Paladin subclass, Hunk, along with his defensive radial a
 - `Paladin.h`/`.cpp`: Added `isInvulnerable` and `invulnerabilityTimer`, modified `TakeDamage()` to prevent damage, made `ApplyKnockback()` virtual, and drew the yellow aura in `Draw()$.
 - `Hunk.h`/`.cpp`: Increased `maxHealth`, overrode `ApplyKnockback()` to do nothing (knockback resistance), implemented Earthshatter radial knockback math against all enemies, and tied everything to `debugSpamMode`.
 
+
+## Fixes & Enhancements: Pidge's Rover & Venom Zone (Aug 10)
+**Prompts Used:**
+- "double check why Rover still isn't moving or shooting at all?"
+- "Context: We are refactoring the Rover entity. Currently, Rover's update loop is improperly nested inside Pidge's skill logic, its movement ignores environment walls (causing it to get stuck), and it lacks a catch-up mechanic... Decouple Rover's update loop from Pidge, implement standard AI environment pathfinding/collision for its movement, and add a teleportation failsafe."
+- "find a way to smoothen Rover's movement"
+- "Context: We are finalizing the Pidge subclass. The agent previously missed the implementation for her active skill, the "Venom Zone"... Implement Pidge's active skill: a stationary, 7-second area-of-effect hazard that inflicts Poison and Slow status effects on enemies that step inside it."
+- "allow Pidge to spam skills for mock-up"
+
+**Purpose:**
+To finalize Pidge's active abilities (Venom Zone) and ultimate ability (Rover companion) by fixing update loops, collision logic, and ability mechanics.
+
+**Content Generated:**
+- Decoupled `Rover` updates from Pidge's skill loop, converting `UpdateWithTeam()` into a standard `GameObject::Update()` override called globally in `main.cpp`.
+- Implemented physics-based movement smoothing (velocity interpolation) and wall-sliding collision resolution for Rover.
+- Added a teleport failsafe (leash mechanic) if Rover falls more than `400.0f` distance behind the player.
+- Migrated `VenomZone` AoE hazard tracking directly into `Pidge` subclass with strict 7-second durations and collision-circle evaluations.
+- Updated `Enemy::GetSpeed()` to calculate a 50% velocity reduction when the `SLOW` status effect is active from the Venom Zone.
+- Added a `debugSpamMode` bypass to Pidge's `UseSkill()` for testing without energy constraints.

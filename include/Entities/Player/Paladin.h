@@ -7,6 +7,15 @@
 #include "Combat/IAttackStrategy.h"
 #include "Core/AimStrategy/IAimStrategy.h"
 #include <vector>
+#include <string>
+
+struct UltimateIntroData {
+    std::string paladinName;
+    std::string ultimateName;
+    Color themeColor;
+    std::string portraitTextureID;
+    std::string voicelineAudioID;
+};
 
 struct CharacterSprites {
     Texture2D idle;
@@ -33,6 +42,8 @@ protected:
     CharacterSprites sprites;
     TeamManager* teamManager;
     PaladinId paladinId;
+    
+    UltimateIntroData introData;
 
     // Animation specific
     int currentFrame;
@@ -168,6 +179,10 @@ public:
     float GetGhostHp() const { return ghostHp; }
     float GetExEnergy() const { return exEnergy; }
     float GetMaxExEnergy() const { return maxExEnergy; }
+    
+    virtual bool IsWeaponVisible() const { return true; }
+    
+    const UltimateIntroData& GetIntroData() const { return introData; }
     
     PlayerIdleState* GetIdleState() { return &idleState; }
     PlayerRunState* GetRunState() { return &runState; }

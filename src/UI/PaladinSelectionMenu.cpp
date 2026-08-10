@@ -199,7 +199,7 @@ void PaladinSelectionMenu::Update(
         if (CheckCollisionPointRec(mousePosition, TeamCardBounds(index))) {
             audioManager.PlayRandomClick();
             int previousIndex = teamManager.FindMemberIndex(inspectedPaladin);
-            if (teamManager.MovePaladinToSlot(inspectedPaladin, index)) {
+            if (teamManager.AssignPaladinToSlot(inspectedPaladin, index)) {
                 if (previousIndex == static_cast<int>(index)) {
                     SetFeedback("Paladin is already in that slot");
                 } else {

@@ -3,9 +3,6 @@
 #include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
 #include "Entities/Player/Paladin.h"
-#include "Entities/Player/Keith.h"
-#include "Entities/Player/Lance.h"
-#include "Entities/Player/Hunk.h"
 #include "raymath.h"
 #include <iostream>
 
@@ -27,11 +24,7 @@ void UltimateIntroManager::PlayIntro(Paladin* paladin) {
     
     // Play placeholder sound
     AudioManager::GetInstance().PlaySoundEffect("sfx_button_click"); 
-    // Wait, the user asked for a voiceline. I can use PlaySoundEffect with a generic name for now.
-    // e.g. "keith_ult_voice" if dynamic cast works.
-    if (dynamic_cast<Keith*>(paladin)) AudioManager::GetInstance().PlaySoundEffect("keith_ult_voice");
-    else if (dynamic_cast<Lance*>(paladin)) AudioManager::GetInstance().PlaySoundEffect("lance_ult_voice");
-    else if (dynamic_cast<Hunk*>(paladin)) AudioManager::GetInstance().PlaySoundEffect("hunk_ult_voice");
+    AudioManager::GetInstance().PlaySoundEffect(activePaladin->GetIntroData().voicelineAudioID);
 }
 
 void UltimateIntroManager::Update(float deltaTime) {
@@ -65,17 +58,14 @@ void UltimateIntroManager::Draw() {
     DrawRectangle(0, 0, Constants::SCREEN_WIDTH, Constants::SCREEN_HEIGHT, ColorAlpha(BLACK, darkAlpha));
     
     // 2. Banner Color based on Paladin
-    Color bannerColor = GRAY;
-    std::string nameText = "PALADIN";
-    std::string ultText = "ULTIMATE";
-    
-    if (dynamic_cast<Keith*>(activePaladin)) { bannerColor = RED; nameText = "KEITH"; ultText = "EXCALIBUR"; }
-    else if (dynamic_cast<Lance*>(activePaladin)) { bannerColor = BLUE; nameText = "LANCE"; ultText = "ABSOLUTE ZERO"; }
-    else if (dynamic_cast<Hunk*>(activePaladin)) { bannerColor = YELLOW; nameText = "HUNK"; ultText = "AEGIS SHIELD"; }
+    const UltimateIntroData& data = activePaladin->GetIntroData();
+    Color bannerColor = data.themeColor;
+    std::string nameText = data.paladinName;
+    std::string ultText = data.ultimateName;
     
     // 3. Banner sliding
     float bannerY = screenH / 2.0f;
-    float bannerHeight = .0f;
+    float bannerHeight = 350.0f;
     
     float slideOffset = 0.0f;
     if (timer < 0.3f) {
@@ -123,10 +113,7 @@ void UltimateIntroManager::Draw() {
     
     if (timer >= 0.3f) {
         // Draw Portrait
-        Texture2D portraitTex;
-        if (dynamic_cast<Keith*>(activePaladin)) portraitTex = AssetManager::GetInstance().GetTexture("Card_Keith");
-        else if (dynamic_cast<Lance*>(activePaladin)) portraitTex = AssetManager::GetInstance().GetTexture("Card_Lance");
-        else if (dynamic_cast<Hunk*>(activePaladin)) portraitTex = AssetManager::GetInstance().GetTexture("Card_Hunk");
+        Texture2D portraitTex = AssetManager::GetInstance().GetTexture(data.portraitTextureID);
         
         if (portraitTex.id != 0) {
             float targetHeight = 400.0f;

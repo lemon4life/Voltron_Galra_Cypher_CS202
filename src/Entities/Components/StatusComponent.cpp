@@ -17,6 +17,13 @@ void StatusComponent::AddEffect(EffectType type, float duration, float magnitude
     activeModifiers.push_back({type, duration, 0.0f, magnitude});
 }
 
+bool StatusComponent::HasEffect(EffectType type) const {
+    for (const auto& mod : activeModifiers) {
+        if (mod.type == type) return true;
+    }
+    return false;
+}
+
 bool StatusComponent::Update(float deltaTime, Enemy* owner) {
     bool isFrozen = false;
     
@@ -28,7 +35,7 @@ bool StatusComponent::Update(float deltaTime, Enemy* owner) {
             continue;
         }
         
-        if (it->type == EffectType::BURN) {
+        if (it->type == EffectType::BURN || it->type == EffectType::POISON) {
             it->tickTimer += deltaTime;
             if (it->tickTimer >= 1.0f) {
                 owner->TakeDamage(static_cast<int>(it->magnitude));
@@ -50,6 +57,7 @@ bool StatusComponent::Update(float deltaTime, Enemy* owner) {
 
 Color StatusComponent::GetStatusTint() const {
     bool hasBurn = false;
+    bool hasPoison = false;
     for (const auto& mod : activeModifiers) {
         if (mod.type == EffectType::FREEZE) {
             return SKYBLUE; // Freeze takes priority
@@ -60,8 +68,13 @@ Color StatusComponent::GetStatusTint() const {
         if (mod.type == EffectType::BURN) {
             hasBurn = true;
         }
+        if (mod.type == EffectType::POISON) {
+            hasPoison = true;
+        }
     }
-    return hasBurn ? RED : WHITE;
+    if (hasBurn) return RED;
+    if (hasPoison) return GREEN;
+    return WHITE;
 }
 
 void StatusComponent::Clear() {

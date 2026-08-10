@@ -10,6 +10,7 @@ class Paladin;
 
 class TeamManager : public ISubject {
 private:
+    std::vector<Paladin*> roster;
     std::vector<Paladin*> team;
     int activeIndex;
 
@@ -34,7 +35,7 @@ public:
     void SwapDueToDeath();
     void ResetForNewGame(Vector2 spawnPosition);
     int FindMemberIndex(PaladinId id) const;
-    bool MovePaladinToSlot(PaladinId id, std::size_t targetIndex);
+    bool AssignPaladinToSlot(PaladinId id, std::size_t targetIndex);
     Paladin* GetActivePaladin() const;
 
     int TakeArmorDamage(int amount);

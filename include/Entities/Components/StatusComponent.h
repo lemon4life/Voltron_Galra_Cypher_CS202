@@ -8,7 +8,9 @@ enum class EffectType {
     NONE,
     BURN,
     FREEZE,
-    DIZZY
+    DIZZY,
+    POISON,
+    SLOW
 };
 
 struct StatusModifier {
@@ -26,6 +28,7 @@ public:
     StatusComponent() = default;
     
     void AddEffect(EffectType type, float duration, float magnitude = 1.0f);
+    bool HasEffect(EffectType type) const;
     
     // Returns true if the enemy is frozen (to allow early return in enemy Update)
     bool Update(float deltaTime, Enemy* owner);

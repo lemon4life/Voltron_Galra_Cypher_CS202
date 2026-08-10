@@ -73,6 +73,7 @@ void GameManager::AddProjectile(Projectile* p) {
 }
 
 #include "Entities/Enemy.h"
+#include "Entities/Rover.h"
 #include "Entities/Props/Prop.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
@@ -105,9 +106,11 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
             break;
         }
 
-        // If it's an enemy projectile, check collision with Player
-        if (!hitSomething && (*it)->IsEnemyProjectile() &&
-            teamManager && teamManager->GetActivePaladin()) {
+        // We no longer skip all collision checks here. Returning weapons must hit enemies and boxes.
+        // We will explicitly skip SOLID environment collisions further down.
+
+        // Check collision with Player (if it's an enemy projectile)
+        if (!hitSomething && (*it)->IsEnemyProjectile() && teamManager && teamManager->GetActivePaladin()) {
             Paladin* activePaladin = teamManager->GetActivePaladin();
             if (CheckCollisionRecs(pBox, activePaladin->GetBoundingBox())) {
                 if (activePaladin->CanParryAttack((*it)->GetPosition())) {
@@ -128,11 +131,23 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
                 hitSomething = true;
             }
         }
+        
+        // If it's an enemy projectile, check collision with Rovers
+        if (!hitSomething && (*it)->IsEnemyProjectile()) {
+            for (auto& rover : activeRovers) {
+                if (!rover->IsDead() && CheckCollisionRecs(pBox, rover->GetBoundingBox())) {
+                    rover->TakeDamage((*it)->GetDamage());
+                    AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});
+                    hitSomething = true;
+                    break;
+                }
+            }
+        }
 
         // Check collision with environment and enemies (if it's a player projectile)
         if (!hitSomething) {
-            // First check level manager for static walls
-            if (levelManager && levelManager->IsSolidCollision(pBox)) {
+            // First check level manager for static walls, ONLY if it's not returning
+            if (levelManager && !(*it)->IsReturning() && levelManager->IsSolidCollision(pBox)) {
                 hitSomething = true;
                 if (!(*it)->IsEnemyProjectile()) {
                     AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});
@@ -172,7 +187,13 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
         }
 
         if (hitSomething) {
-            (*it)->Destroy();
+            if ((*it)->IsPiercing() && !(*it)->IsEnemyProjectile()) {
+                if (levelManager && levelManager->IsSolidCollision(pBox)) {
+                    (*it)->SetReturning(true);
+                }
+            } else {
+                (*it)->Destroy();
+            }
         }
 
         if (!(*it)->IsActive()) {
@@ -185,7 +206,10 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
 }
 
 void GameManager::DrawProjectiles() {
-    for (auto* p : activeProjectiles) {
+    for (const auto p : activeProjectiles) {
+        if (p->GetOwner() != nullptr && p->IsReturning()) {
+            DrawLineEx(p->GetPosition(), p->GetOwner()->GetPosition(), 2.0f, GREEN);
+        }
         p->Draw();
     }
 }
@@ -196,6 +220,9 @@ void GameManager::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
             p->GetBoundingBox().y + p->GetBoundingBox().height,
             [p]() { p->Draw(); }
         });
+    }
+    for (auto& r : activeRovers) {
+        items.push_back({ r->GetPosition().y, [&r]() { r->Draw(); } });
     }
 }
 
@@ -256,4 +283,24 @@ void GameManager::DrawEffects(bool background) {
             DrawTexturePro(effect.texture, source, dest, origin, 0.0f, WHITE);
         }
     }
+}
+
+void GameManager::AddRover(std::unique_ptr<Rover> rover) {
+    if (!activeRovers.empty()) {
+        activeRovers.front()->Heal();
+    } else {
+        activeRovers.push_back(std::move(rover));
+    }
+}
+
+// Removed AddVenomZone
+
+void GameManager::UpdateAssists(float deltaTime, TeamManager* teamManager) {
+    // Update Rovers
+    for (auto& rover : activeRovers) {
+        rover->Update(deltaTime);
+    }
+    
+    activeRovers.erase(std::remove_if(activeRovers.begin(), activeRovers.end(),
+        [](const std::unique_ptr<Rover>& r) { return r->IsDead(); }), activeRovers.end());
 }

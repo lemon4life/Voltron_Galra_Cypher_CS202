@@ -6,7 +6,8 @@
 enum class PaladinId {
     Lance,
     Keith,
-    Hunk
+    Hunk,
+    Pidge
 };
 
 struct WeaponDefinition {
@@ -34,5 +35,5 @@ struct PaladinDefinition {
 class PaladinCatalog {
 public:
     static const PaladinDefinition& Get(PaladinId id);
-    static const std::array<PaladinDefinition, 3>& GetAll();
+    static const std::array<PaladinDefinition, 4>& GetAll();
 };

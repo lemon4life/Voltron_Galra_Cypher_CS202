@@ -37,6 +37,7 @@ public:
     CharacterSprites GetLanceSprites();
     CharacterSprites GetKeithSprites();
     CharacterSprites GetHunkSprites();
+    CharacterSprites GetPidgeSprites();
     
     EnemySprites GetRangeSprites();
     EnemySprites GetDiverSprites();
