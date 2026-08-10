@@ -1,4 +1,6 @@
 #include "UI/GUIButton.h"
+#include "UI/UIUtils.h"
+#include "Core/Manager/AssetManager.h"
 
 #include <utility>
 
@@ -20,9 +22,10 @@ void GUIButton::Draw(Vector2 mousePosition) const {
     DrawRectangleRec(bounds, backgroundColor);
     DrawRectangleLinesEx(bounds, 2.0f, borderColor);
 
-    constexpr int fontSize = 20;
-    const int textWidth = MeasureText(label.c_str(), fontSize);
-    const int textX = static_cast<int>(bounds.x + (bounds.width - textWidth) * 0.5f);
-    const int textY = static_cast<int>(bounds.y + (bounds.height - fontSize) * 0.5f);
-    DrawText(label.c_str(), textX, textY, fontSize, RAYWHITE);
+    constexpr float fontSize = 20.0f;
+    Font fontSans = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
+    Vector2 textSize = MeasureTextEx(fontSans, label.c_str(), fontSize, 1.0f);
+    float textX = bounds.x + (bounds.width - textSize.x) * 0.5f;
+    float textY = bounds.y + (bounds.height - fontSize) * 0.5f;
+    UIUtils::DrawText("PixeloidSans", label.c_str(), { textX, textY }, static_cast<UIUtils::FontSize>(fontSize), RAYWHITE);
 }

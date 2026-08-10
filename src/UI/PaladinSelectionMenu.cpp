@@ -1,4 +1,5 @@
 #include "UI/PaladinSelectionMenu.h"
+#include "UI/UIUtils.h"
 
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/AudioManager.h"
@@ -34,16 +35,8 @@ Rectangle TeamCardBounds(std::size_t index) {
 }
 
 void DrawPanel(Rectangle bounds, const char* title) {
-    DrawRectangleRec(bounds, Color{24, 31, 44, 248});
-    DrawRectangleLinesEx(bounds, 2.0f, Color{112, 132, 164, 255});
-    int width = MeasureText(title, 16);
-    DrawText(
-        title,
-        static_cast<int>(bounds.x + (bounds.width - width) * 0.5f),
-        static_cast<int>(bounds.y + 8.0f),
-        16,
-        Color{225, 234, 248, 255}
-    );
+    UIUtils::DrawPanel(bounds, Color{24, 31, 44, 248});
+    UIUtils::DrawCenteredText("PixeloidBold", title, { bounds.x + bounds.width * 0.5f, bounds.y + 16.0f }, UIUtils::FontSize::SMALL, Color{225, 234, 248, 255});
 }
 
 void DrawWrappedText(
@@ -58,14 +51,8 @@ void DrawWrappedText(
     float y = bounds.y;
     while (stream >> word && y + fontSize <= bounds.y + bounds.height) {
         std::string candidate = line.empty() ? word : line + " " + word;
-        if (!line.empty() && MeasureText(candidate.c_str(), fontSize) > bounds.width) {
-            DrawText(
-                line.c_str(),
-                static_cast<int>(bounds.x),
-                static_cast<int>(y),
-                fontSize,
-                color
-            );
+        if (!line.empty() && UIUtils::MeasureText("PixeloidSans", candidate, static_cast<UIUtils::FontSize>(fontSize)).x > bounds.width) {
+            UIUtils::DrawText("PixeloidSans", line, { bounds.x, y }, static_cast<UIUtils::FontSize>(fontSize), color);
             line = word;
             y += fontSize + 3.0f;
         } else {
@@ -73,13 +60,7 @@ void DrawWrappedText(
         }
     }
     if (!line.empty() && y + fontSize <= bounds.y + bounds.height) {
-        DrawText(
-            line.c_str(),
-            static_cast<int>(bounds.x),
-            static_cast<int>(y),
-            fontSize,
-            color
-        );
+        UIUtils::DrawText("PixeloidSans", line, { bounds.x, y }, static_cast<UIUtils::FontSize>(fontSize), color);
     }
 }
 
@@ -118,22 +99,11 @@ void DrawSimpleButton(
     const char* label,
     Vector2 mousePosition
 ) {
-    bool hovered = CheckCollisionPointRec(mousePosition, bounds);
+    bool hovered = UIUtils::IsHovered(bounds);
     Color background = hovered ? Color{67, 88, 119, 255}
                                : Color{43, 56, 76, 255};
-    Color border = hovered
-        ? GOLD
-        : Color{135, 151, 177, 255};
-    DrawRectangleRec(bounds, background);
-    DrawRectangleLinesEx(bounds, 2.0f, border);
-    int textWidth = MeasureText(label, 14);
-    DrawText(
-        label,
-        static_cast<int>(bounds.x + (bounds.width - textWidth) * 0.5f),
-        static_cast<int>(bounds.y + (bounds.height - 14.0f) * 0.5f),
-        14,
-        RAYWHITE
-    );
+    UIUtils::DrawPanel(bounds, background);
+    UIUtils::DrawCenteredText("PixeloidSans", label, { bounds.x + bounds.width * 0.5f, bounds.y + bounds.height * 0.5f }, static_cast<UIUtils::FontSize>(14), RAYWHITE);
 }
 }
 
@@ -225,17 +195,9 @@ void PaladinSelectionMenu::Draw(
         PaladinCatalog::Get(inspectedPaladin);
     const auto& catalog = PaladinCatalog::GetAll();
 
-    DrawRectangleRec(CONTAINER, Color{13, 18, 27, 252});
-    DrawRectangleLinesEx(CONTAINER, 2.0f, Color{166, 184, 214, 255});
+    UIUtils::DrawPanel(CONTAINER, Color{13, 18, 27, 252});
     const char* title = "PALADIN SELECTION";
-    int titleWidth = MeasureText(title, 24);
-    DrawText(
-        title,
-        static_cast<int>((683.0f - titleWidth) * 0.5f),
-        17,
-        24,
-        GOLD
-    );
+    UIUtils::DrawCenteredText("PixeloidBold", title, { 683.0f * 0.5f, 17.0f + 12.0f }, UIUtils::FontSize::BODY, GOLD);
 
     DrawPanel(LEFT_PANEL, "PALADIN STATS");
     DrawPanel(CENTER_PANEL, definition.name.c_str());
@@ -248,14 +210,14 @@ void PaladinSelectionMenu::Draw(
     float maxDamage = 0.0f;
     float maxRecoil = 0.0f;
     for (const PaladinDefinition& paladin : catalog) {
-        maxHealth = std::max(maxHealth, (float)paladin.maxHealth);
-        maxSpeed = std::max(maxSpeed, paladin.speed);
+        maxHealth = std::max(maxHealth, BaseStats::HP * paladin.hpScalar);
+        maxSpeed = std::max(maxSpeed, BaseStats::Speed * paladin.speedScalar);
         maxEx = std::max(maxEx, paladin.maxExEnergy);
         maxAttackSpeed = std::max(
             maxAttackSpeed,
-            1.0f / paladin.attackCooldown
+            1.0f / (BaseStats::AttackCooldown * paladin.attackCooldownScalar)
         );
-        maxDamage = std::max(maxDamage, (float)paladin.weapon.maximumDamage);
+        maxDamage = std::max(maxDamage, BaseStats::Damage * paladin.weapon.maxDamageScalar);
         if (paladin.weapon.recoilApplicable) {
             maxRecoil = std::max(maxRecoil, paladin.weapon.recoil);
         }
@@ -264,16 +226,16 @@ void PaladinSelectionMenu::Draw(
     GUIStatBar::Draw(
         {32.0f, 100.0f, 164.0f, 12.0f},
         "Max Health",
-        std::to_string(definition.maxHealth),
-        (float)definition.maxHealth,
+        std::to_string(static_cast<int>(BaseStats::HP * definition.hpScalar)),
+        BaseStats::HP * definition.hpScalar,
         maxHealth,
         Color{66, 190, 100, 255}
     );
     GUIStatBar::Draw(
         {32.0f, 151.0f, 164.0f, 12.0f},
         "Speed",
-        FormatNumber(definition.speed),
-        definition.speed,
+        FormatNumber(BaseStats::Speed * definition.speedScalar),
+        BaseStats::Speed * definition.speedScalar,
         maxSpeed,
         Color{77, 180, 225, 255}
     );
@@ -285,7 +247,7 @@ void PaladinSelectionMenu::Draw(
         maxEx,
         Color{163, 92, 224, 255}
     );
-    float attacksPerSecond = 1.0f / definition.attackCooldown;
+    float attacksPerSecond = 1.0f / (BaseStats::AttackCooldown * definition.attackCooldownScalar);
     GUIStatBar::Draw(
         {32.0f, 253.0f, 164.0f, 12.0f},
         "Attack Speed",
@@ -312,15 +274,15 @@ void PaladinSelectionMenu::Draw(
     DrawTextureAspectFit(weaponTexture, {495.0f, 81.0f, 148.0f, 72.0f});
 
     std::string damageText =
-        definition.weapon.minimumDamage == definition.weapon.maximumDamage
-        ? std::to_string(definition.weapon.maximumDamage)
-        : std::to_string(definition.weapon.minimumDamage) + "-" +
-          std::to_string(definition.weapon.maximumDamage);
+        definition.weapon.minDamageScalar == definition.weapon.maxDamageScalar
+        ? std::to_string(static_cast<int>(BaseStats::Damage * definition.weapon.maxDamageScalar))
+        : std::to_string(static_cast<int>(BaseStats::Damage * definition.weapon.minDamageScalar)) + "-" +
+          std::to_string(static_cast<int>(BaseStats::Damage * definition.weapon.maxDamageScalar));
     GUIStatBar::Draw(
         {487.0f, 188.0f, 164.0f, 12.0f},
         "Damage",
         damageText,
-        (float)definition.weapon.maximumDamage,
+        BaseStats::Damage * definition.weapon.maxDamageScalar,
         maxDamage,
         Color{220, 76, 70, 255}
     );
@@ -345,14 +307,7 @@ void PaladinSelectionMenu::Draw(
     std::string instruction =
         "Click a portrait card to place " + definition.name +
         " in that slot";
-    int instructionWidth = MeasureText(instruction.c_str(), 14);
-    DrawText(
-        instruction.c_str(),
-        static_cast<int>((683.0f - instructionWidth) * 0.5f),
-        328,
-        14,
-        Color{218, 226, 240, 255}
-    );
+    UIUtils::DrawCenteredText("PixeloidSans", instruction, { 683.0f * 0.5f, 328.0f + 7.0f }, static_cast<UIUtils::FontSize>(14), Color{218, 226, 240, 255});
 
     const std::vector<Paladin*>& team = teamManager.GetTeam();
     for (std::size_t index = 0; index < team.size(); ++index) {
@@ -364,13 +319,7 @@ void PaladinSelectionMenu::Draw(
         Color background = hovered
             ? Color{56, 75, 103, 255}
             : Color{35, 46, 64, 255};
-        DrawRectangleRec(card, background);
-        DrawRectangleLinesEx(
-            card,
-            inspected ? 3.0f : 2.0f,
-            inspected ? SKYBLUE
-                      : (hovered ? GOLD : Color{121, 139, 166, 255})
-        );
+        UIUtils::DrawPanel(card, background);
 
         if (paladin) {
             DrawPaladinPortrait(
@@ -380,38 +329,14 @@ void PaladinSelectionMenu::Draw(
             const PaladinDefinition& memberDefinition =
                 PaladinCatalog::Get(paladin->GetPaladinId());
             std::string slotLabel = "SLOT " + std::to_string(index + 1);
-            DrawText(
-                slotLabel.c_str(),
-                static_cast<int>(card.x + 79.0f),
-                static_cast<int>(card.y + 10.0f),
-                12,
-                GRAY
-            );
-            DrawText(
-                memberDefinition.name.c_str(),
-                static_cast<int>(card.x + 79.0f),
-                static_cast<int>(card.y + 29.0f),
-                18,
-                RAYWHITE
-            );
-            DrawText(
-                "Click to assign",
-                static_cast<int>(card.x + 79.0f),
-                static_cast<int>(card.y + 50.0f),
-                10,
-                Color{170, 184, 204, 255}
-            );
+            UIUtils::DrawText("PixeloidSans", slotLabel, { card.x + 79.0f, card.y + 10.0f }, static_cast<UIUtils::FontSize>(12), GRAY);
+            UIUtils::DrawText("PixeloidBold", memberDefinition.name, { card.x + 79.0f, card.y + 29.0f }, static_cast<UIUtils::FontSize>(18), RAYWHITE);
+            UIUtils::DrawText("PixeloidSans", "Click to assign", { card.x + 79.0f, card.y + 50.0f }, static_cast<UIUtils::FontSize>(10), Color{170, 184, 204, 255});
         }
     }
 
     DrawSimpleButton(BACK_BUTTON, "BACK", mousePosition);
     if (!feedbackText.empty()) {
-        DrawText(
-            feedbackText.c_str(),
-            22,
-            473,
-            13,
-            GOLD
-        );
+        UIUtils::DrawText("PixeloidSans", feedbackText, { 22.0f, 473.0f }, static_cast<UIUtils::FontSize>(13), GOLD);
     }
 }

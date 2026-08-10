@@ -1,4 +1,5 @@
 #include "Entities/NPC.h"
+#include "UI/UIUtils.h"
 #include <cmath>
 
 static Texture2D alluraSprite = { 0 };
@@ -33,7 +34,7 @@ void NPC::Draw() {
         DrawTexturePro(alluraSprite, source, dest, origin, 0.0f, WHITE);
     } else {
         DrawRectangleRec(GetBoundingBox(), BLUE);
-        DrawText("N", position.x - 4, position.y - 10, 20, WHITE);
+        UIUtils::DrawText("PixeloidBold", "N", { position.x - 4, position.y - 10 }, UIUtils::FontSize::BODY, WHITE);
     }
 }
 

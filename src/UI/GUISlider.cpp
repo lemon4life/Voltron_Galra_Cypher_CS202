@@ -1,4 +1,6 @@
 #include "UI/GUISlider.h"
+#include "UI/UIUtils.h"
+#include "Core/Manager/AssetManager.h"
 
 #include <algorithm>
 #include <cmath>
@@ -38,21 +40,17 @@ bool GUISlider::Update(Vector2 mousePosition) {
 }
 
 void GUISlider::Draw() const {
-    constexpr int labelFontSize = 18;
+    constexpr float labelFontSize = 18.0f;
     const int percentage = static_cast<int>(value * 100.0f + 0.5f);
     const std::string percentageText = std::to_string(percentage) + "%";
 
-    DrawText(label.c_str(),
-             static_cast<int>(trackBounds.x),
-             static_cast<int>(trackBounds.y - 27.0f),
-             labelFontSize,
-             RAYWHITE);
-    DrawText(percentageText.c_str(),
-             static_cast<int>(trackBounds.x + trackBounds.width -
-                              MeasureText(percentageText.c_str(), labelFontSize)),
-             static_cast<int>(trackBounds.y - 27.0f),
-             labelFontSize,
-             LIGHTGRAY);
+    Font fontSans = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
+    Font fontMono = AssetManager::GetInstance().GetCustomFont("PixeloidMono");
+
+    UIUtils::DrawText("PixeloidSans", label.c_str(), { trackBounds.x, trackBounds.y - 27.0f }, static_cast<UIUtils::FontSize>(labelFontSize), RAYWHITE);
+    
+    Vector2 pctSize = MeasureTextEx(fontMono, percentageText.c_str(), labelFontSize, 1.0f);
+    UIUtils::DrawText("PixeloidMono", percentageText.c_str(), { trackBounds.x + trackBounds.width - pctSize.x, trackBounds.y - 27.0f }, static_cast<UIUtils::FontSize>(labelFontSize), LIGHTGRAY);
 
     DrawRectangleRec(trackBounds, Color{50, 54, 64, 255});
     DrawRectangleRec(

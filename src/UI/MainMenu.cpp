@@ -1,4 +1,5 @@
 #include "UI/MainMenu.h"
+#include "UI/UIUtils.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
@@ -232,13 +233,15 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
         int barX = (screenWidth - barWidth) / 2;
         int barY = screenHeight * 0.75f + loadingSlideY;
         
-        // Custom loading bar drawing
-        DrawRectangleLines(barX, barY, barWidth, barHeight, Fade(RAYWHITE, loadingAlpha));
-        DrawRectangle(barX + 2, barY + 2, (barWidth - 4) * loadingProgress, barHeight - 4, Fade(RAYWHITE, loadingAlpha));
+        UIUtils::DrawProgressBar(
+            { (float)barX, (float)barY, (float)barWidth, (float)barHeight },
+            loadingProgress, 1.0f,
+            Fade(RAYWHITE, loadingAlpha * 0.3f), // Assuming bg color slightly faded
+            Fade(RAYWHITE, loadingAlpha)
+        );
         
         const char* text = TextFormat("LOADING... %d%%", (int)(loadingProgress * 100));
-        int tw = MeasureText(text, 20);
-        DrawText(text, barX + (barWidth - tw)/2, barY - 30, 20, Fade(RAYWHITE, loadingAlpha));
+        UIUtils::DrawCenteredText("PixeloidSans", text, { barX + barWidth / 2.0f, (float)barY - 30.0f + 10.0f }, UIUtils::FontSize::SMALL, Fade(RAYWHITE, loadingAlpha));
     }
 
     // Draw UI Panel (only if uiAlpha > 0)
@@ -246,20 +249,19 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
         DrawRectangleGradientH(panelX, 0, panelWidth, screenHeight, BLANK, Fade(BLACK, 0.9f * uiAlpha));
 
         float startY = screenHeight * 0.5f;
-        float btnSpacing = 60.0f;
+        float btnSpacing = 55.0f;
         
         float btnSlideY = (1.0f - uiAlpha) * 30.0f; // Buttons slide up as they fade in
         
         for (size_t i = 0; i < buttons.size(); i++) {
             auto& btn = buttons[i];
-            int fontSize = 30;
-            int drawFontSize = (int)(fontSize * btn.currentScale);
             
-            float textWidth = MeasureText(btn.text.c_str(), fontSize);
-            float drawTextWidth = MeasureText(btn.text.c_str(), drawFontSize);
+            float textWidth = UIUtils::MeasureText("PixeloidSans", btn.text, UIUtils::FontSize::HEADER).x;
+            float drawTextWidth = textWidth * btn.currentScale;
+            float drawFontSize = static_cast<float>(UIUtils::FontSize::HEADER) * btn.currentScale;
             
-            float btnWidth = textWidth + 40;
-            float btnHeight = 40;
+            float btnWidth = textWidth + 80;
+            float btnHeight = static_cast<float>(UIUtils::FontSize::HEADER) + 20.0f;
             float targetX = panelX + (panelWidth / 2.0f) - (btnWidth / 2.0f);
             
             btn.bounds = { targetX, startY + (i * btnSpacing), btnWidth, btnHeight };
@@ -267,14 +269,16 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
             float drawX = targetX + btn.currentXOffset;
             float drawY = btn.bounds.y + btnSlideY;
             
-            float adjustedY = drawY - (drawFontSize - fontSize) / 2.0f;
+            float adjustedY = drawY - (drawFontSize - static_cast<float>(UIUtils::FontSize::HEADER)) / 2.0f;
             float adjustedX = drawX - (drawTextWidth - textWidth) / 2.0f;
 
             Color fadeColor = btn.currentColor;
             fadeColor.a = (unsigned char)(fadeColor.a * uiAlpha);
 
-            DrawText(btn.text.c_str(), adjustedX + 2, adjustedY + 2, drawFontSize, Fade(BLACK, fadeColor.a / 255.0f));
-            DrawText(btn.text.c_str(), adjustedX, adjustedY, drawFontSize, fadeColor);
+            // Shadow
+            UIUtils::DrawText("PixeloidSans", btn.text, { adjustedX + 2, adjustedY + 2 }, static_cast<UIUtils::FontSize>(drawFontSize), Fade(BLACK, fadeColor.a / 255.0f));
+            // Text
+            UIUtils::DrawText("PixeloidSans", btn.text, { adjustedX, adjustedY }, static_cast<UIUtils::FontSize>(drawFontSize), fadeColor);
         }
     }
     // Calculate Logo dynamic position (Lerp from top-center to panel layout)

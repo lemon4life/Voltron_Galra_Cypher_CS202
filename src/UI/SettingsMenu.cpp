@@ -1,4 +1,6 @@
 #include "UI/SettingsMenu.h"
+#include "UI/UIUtils.h"
+#include "Core/Manager/AssetManager.h"
 
 #include "Core/Constants.h"
 #include "Core/Manager/AudioManager.h"
@@ -75,19 +77,11 @@ void SettingsMenu::Draw(Vector2 mousePosition) const {
     DrawRectangleRec(containerBounds, Color{25, 31, 43, 248});
     DrawRectangleLinesEx(containerBounds, 2.0f, Color{145, 156, 178, 255});
 
-    constexpr int titleFontSize = 26;
+    constexpr float titleFontSize = 26.0f;
     constexpr const char* title = "SETTINGS";
-    const int titleWidth = MeasureText(title, titleFontSize);
-    DrawText(
-        title,
-        static_cast<int>(
-            containerBounds.x +
-            (containerBounds.width - titleWidth) * 0.5f
-        ),
-        static_cast<int>(containerBounds.y + 18.0f),
-        titleFontSize,
-        RAYWHITE
-    );
+    Font fontBold = AssetManager::GetInstance().GetCustomFont("PixeloidBold");
+    Vector2 titleSize = MeasureTextEx(fontBold, title, titleFontSize, 1.0f);
+    UIUtils::DrawText("PixeloidBold", title, { containerBounds.x + (containerBounds.width - titleSize.x) * 0.5f, containerBounds.y + 18.0f }, static_cast<UIUtils::FontSize>(titleFontSize), RAYWHITE);
     DrawLine(
         static_cast<int>(containerBounds.x + 20.0f),
         static_cast<int>(containerBounds.y + 60.0f),
@@ -102,7 +96,8 @@ void SettingsMenu::Draw(Vector2 mousePosition) const {
     musicSlider.Draw();
     
     // Draw Auto-Aim Toggle
-    DrawText("Auto-Aim", static_cast<int>(autoAimToggleBounds.x + 35.0f), static_cast<int>(autoAimToggleBounds.y + 2.0f), 20, RAYWHITE);
+    Font fontSans = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
+    UIUtils::DrawText("PixeloidSans", "Auto-Aim", { autoAimToggleBounds.x + 35.0f, autoAimToggleBounds.y + 2.0f }, static_cast<UIUtils::FontSize>(20), RAYWHITE);
     DrawRectangleLinesEx(autoAimToggleBounds, 2.0f, RAYWHITE);
     if (Constants::isAutoAimEnabled) {
         Rectangle fillRec = { autoAimToggleBounds.x + 4, autoAimToggleBounds.y + 4, autoAimToggleBounds.width - 8, autoAimToggleBounds.height - 8 };

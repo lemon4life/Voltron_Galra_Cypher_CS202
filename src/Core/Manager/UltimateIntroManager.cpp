@@ -1,6 +1,7 @@
 #include "Core/Manager/UltimateIntroManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/AssetManager.h"
+#include "UI/UIUtils.h"
 #include "Core/Constants.h"
 #include "Entities/Player/Paladin.h"
 #include "raymath.h"
@@ -129,7 +130,7 @@ void UltimateIntroManager::Draw() {
         }
         
         // Draw Text
-        DrawTextPro(GetFontDefault(), nameText.c_str(), {textX, bannerY + slideOffset - 25.0f}, {0,0}, -5.0f, 40, 5, WHITE);
-        DrawTextPro(GetFontDefault(), ultText.c_str(), {textX, bannerY + slideOffset + 15.0f}, {0,0}, -5.0f, 20, 3, WHITE);
+        UIUtils::DrawTextPro("PixeloidBold", nameText, {textX, bannerY + slideOffset - 40.0f}, {0,0}, -5.0f, UIUtils::FontSize::TITLE, WHITE);
+        UIUtils::DrawTextPro("PixeloidBold", ultText, {textX, bannerY + slideOffset + 35.0f}, {0,0}, -5.0f, UIUtils::FontSize::BODY, WHITE);
     }
 }

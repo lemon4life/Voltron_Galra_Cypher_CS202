@@ -31,11 +31,44 @@ Texture2D AssetManager::GetTexture(const std::string& key) {
     return Texture2D{0};
 }
 
+Font AssetManager::LoadCustomFont(const std::string& key, const std::string& path, int fontSize) {
+    if (fonts.find(key) != fonts.end()) {
+        return fonts[key];
+    }
+    
+    Font font = LoadFontEx(path.c_str(), fontSize, 0, 250);
+    if (font.texture.id == 0) {
+        std::cerr << "Failed to load font: " << path << std::endl;
+    }
+    
+    fonts[key] = font;
+    return font;
+}
+
+Font AssetManager::GetCustomFont(const std::string& key) {
+    auto it = fonts.find(key);
+    if (it != fonts.end()) {
+        return it->second;
+    }
+    return GetFontDefault();
+}
+
+void AssetManager::LoadGlobalFonts() {
+    LoadCustomFont("PixeloidMono", "assets/fonts/PixeloidMono.ttf", 64);
+    LoadCustomFont("PixeloidBold", "assets/fonts/PixeloidSans-Bold.ttf", 64);
+    LoadCustomFont("PixeloidSans", "assets/fonts/PixeloidSans.ttf", 64);
+}
+
 void AssetManager::UnloadAll() {
     for (auto& pair : textures) {
         UnloadTexture(pair.second);
     }
     textures.clear();
+    
+    for (auto& pair : fonts) {
+        UnloadFont(pair.second);
+    }
+    fonts.clear();
 }
 
 void AssetManager::QueueCharacterAssets() {

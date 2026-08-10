@@ -1,5 +1,6 @@
 #include "UI/adminGUI/AdminPanel.h"
 
+#include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
 #include "Core/EntityFactory.h"
 #include "Core/Manager/GameManager.h"
@@ -13,6 +14,10 @@
 #include <cstdio>
 
 namespace {
+void DrawTextAdmin(const char* text, int x, int y, int fontSize, Color color) {
+    DrawTextEx(AssetManager::GetInstance().GetCustomFont("PixeloidSans"), text, {(float)x, (float)y}, fontSize, 1.0f, color);
+}
+
 constexpr float PANEL_X = 10.0f;
 constexpr float PANEL_Y = 10.0f;
 constexpr float PANEL_WIDTH = 460.0f;
@@ -111,8 +116,8 @@ void DrawButton(
             : BUTTON_COLOR);
     DrawRectangleRec(bounds, color);
     DrawRectangleLinesEx(bounds, 1.0f, PANEL_BORDER_COLOR);
-    int textWidth = MeasureText(text, TEXT_SIZE);
-    DrawText(
+    int textWidth = MeasureTextEx(AssetManager::GetInstance().GetCustomFont("PixeloidSans"), text, TEXT_SIZE, 1.0f).x;
+    DrawTextAdmin(
         text,
         (int)(bounds.x + (bounds.width - textWidth) * 0.5f),
         (int)(bounds.y + (bounds.height - TEXT_SIZE) * 0.5f),
@@ -163,9 +168,9 @@ void DrawToggleRow(
     DrawRectangleRec(box, enabled ? BUTTON_SELECTED_COLOR : BUTTON_COLOR);
     DrawRectangleLinesEx(box, 1.0f, PANEL_BORDER_COLOR);
     if (enabled) {
-        DrawText("X", (int)box.x + 5, (int)box.y + 1, TEXT_SIZE, RAYWHITE);
+        DrawTextAdmin("X", (int)box.x + 5, (int)box.y + 1, TEXT_SIZE, RAYWHITE);
     }
-    DrawText(
+    DrawTextAdmin(
         label,
         (int)row.x + 34,
         (int)row.y + 6,
@@ -473,7 +478,7 @@ void AdminPanel::DrawPropertyEditor() const {
         if (index % 2 == 0) {
             DrawRectangleRec(row, Color{ 25, 31, 43, 180 });
         }
-        DrawText(
+        DrawTextAdmin(
             definition.label,
             (int)row.x + 8,
             (int)row.y + 7,
@@ -489,8 +494,8 @@ void AdminPanel::DrawPropertyEditor() const {
                 (definition.decimals == 1 ? "%.1f" : "%.2f"),
             values[index]
         );
-        int valueWidth = MeasureText(valueText, TEXT_SIZE);
-        DrawText(
+        int valueWidth = MeasureTextEx(AssetManager::GetInstance().GetCustomFont("PixeloidSans"), valueText, TEXT_SIZE, 1.0f).x;
+        DrawTextAdmin(
             valueText,
             (int)(row.x + row.width - valueWidth - 10.0f),
             (int)row.y + 7,
@@ -549,21 +554,21 @@ void AdminPanel::Draw() const {
 
     DrawRectangleRec(panel, PANEL_COLOR);
     DrawRectangleLinesEx(panel, 1.0f, PANEL_BORDER_COLOR);
-    DrawText(
+    DrawTextAdmin(
         "ADMIN PANEL",
         (int)contentX,
         (int)panel.y + 10,
         TITLE_TEXT_SIZE,
         GOLD
     );
-    DrawText(
+    DrawTextAdmin(
         "F1: hide",
         (int)(panel.x + panel.width - 78.0f),
         (int)panel.y + 17,
         SMALL_TEXT_SIZE,
         GRAY
     );
-    DrawText(
+    DrawTextAdmin(
         TextFormat("FPS: %i", GetFPS()),
         (int)(panel.x + panel.width - 158.0f),
         (int)panel.y + 17,
@@ -571,7 +576,7 @@ void AdminPanel::Draw() const {
         LIME
     );
     if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
-        DrawText(
+        DrawTextAdmin(
             TextFormat(
                 "Path: %i/s  avg %.2f ms  max %.2f ms",
                 pathSearchesPerSecond,
@@ -604,7 +609,7 @@ void AdminPanel::Draw() const {
         mousePosition
     );
 
-    DrawText(
+    DrawTextAdmin(
         "SPAWN ENEMY",
         (int)contentX,
         (int)panel.y + 168,
@@ -649,7 +654,7 @@ void AdminPanel::Draw() const {
     DrawButton(cancelButton, "Cancel placement", mousePosition);
     DrawButton(deleteAllButton, "Delete all enemies", mousePosition);
 
-    DrawText(
+    DrawTextAdmin(
         statusMessage.c_str(),
         (int)contentX,
         (int)panel.y + 331,
@@ -659,7 +664,7 @@ void AdminPanel::Draw() const {
 
     std::string heading = std::string("NEXT ") +
         EnemyTypeName(spawnType) + " SPAWN VALUES";
-    DrawText(
+    DrawTextAdmin(
         heading.c_str(),
         (int)contentX,
         (int)panel.y + 353,

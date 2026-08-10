@@ -1,4 +1,6 @@
 #include "UI/PauseMenu.h"
+#include "UI/UIUtils.h"
+#include "Core/Manager/AssetManager.h"
 
 #include "Core/Constants.h"
 #include "Core/Manager/AudioManager.h"
@@ -76,15 +78,11 @@ void PauseMenu::Draw(Vector2 mousePosition) const {
     DrawRectangleRec(containerBounds, Color{25, 31, 43, 248});
     DrawRectangleLinesEx(containerBounds, 2.0f, Color{145, 156, 178, 255});
 
-    constexpr int titleFontSize = 26;
+    constexpr float titleFontSize = 26.0f;
     constexpr const char* title = "PAUSED";
-    const int titleWidth = MeasureText(title, titleFontSize);
-    DrawText(title,
-             static_cast<int>(containerBounds.x +
-                              (containerBounds.width - titleWidth) * 0.5f),
-             static_cast<int>(containerBounds.y + 16.0f),
-             titleFontSize,
-             RAYWHITE);
+    Font fontBold = AssetManager::GetInstance().GetCustomFont("PixeloidBold");
+    Vector2 titleSize = MeasureTextEx(fontBold, title, titleFontSize, 1.0f);
+    UIUtils::DrawText("PixeloidBold", title, { containerBounds.x + (containerBounds.width - titleSize.x) * 0.5f, containerBounds.y + 16.0f }, static_cast<UIUtils::FontSize>(titleFontSize), RAYWHITE);
 
     resumeButton.Draw(mousePosition);
     settingsButton.Draw(mousePosition);

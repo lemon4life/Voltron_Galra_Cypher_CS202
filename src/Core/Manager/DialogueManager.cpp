@@ -1,4 +1,5 @@
 #include "Core/Manager/DialogueManager.h"
+#include "UI/UIUtils.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Entities/Player/Paladin.h"
@@ -9,7 +10,6 @@
 DialogueManager::DialogueManager() : isDialogueActive(false), currentNode(0), selectedOption(0), missionRequested(false), typewriterTimer(0.0f), visibleCharCount(0) {}
 
 DialogueManager::~DialogueManager() {
-    UnloadFont(dialogFont);
     for (auto& pair : portraits) {
         UnloadTexture(pair.second);
     }
@@ -21,7 +21,6 @@ DialogueManager& DialogueManager::GetInstance() {
 }
 
 void DialogueManager::InitializeAssets() {
-    dialogFont = LoadFontEx("assets/fonts/monogram.ttf", 32, 0, 250);
     portraits["Lance"] = LoadTexture("assets/img/Lance.PNG");
     portraits["Keith"] = LoadTexture("assets/img/Keith.PNG");
     portraits["Shiro"] = LoadTexture("assets/img/Shiro.PNG");
@@ -233,8 +232,7 @@ void DialogueManager::Draw(int screenWidth, int screenHeight) {
         logicalWidth - MARGIN * 2.0f,
         BOX_HEIGHT
     };
-    DrawRectangleRec(box, { 30, 30, 30, 240 });
-    DrawRectangleLinesEx(box, 3.0f, DARKGRAY);
+    UIUtils::DrawPanel(box, { 30, 30, 30, 240 });
 
     // Name Box
     Rectangle nameBox = {
@@ -243,33 +241,12 @@ void DialogueManager::Draw(int screenWidth, int screenHeight) {
         100.0f,
         30.0f
     };
-    DrawRectangleRec(nameBox, { 50, 50, 50, 255 });
-    DrawRectangleLinesEx(nameBox, 2.0f, LIGHTGRAY);
-    DrawTextEx(
-        dialogFont,
-        node.speakerName.c_str(),
-        {
-            nameBox.x + 10.0f,
-            nameBox.y + 5.0f
-        },
-        24.0f,
-        TEXT_SPACING,
-        YELLOW
-    );
+    UIUtils::DrawPanel(nameBox, { 50, 50, 50, 255 });
+    UIUtils::DrawCenteredText("PixeloidBold", node.speakerName, { nameBox.x + nameBox.width * 0.5f, nameBox.y + nameBox.height * 0.5f }, UIUtils::FontSize::SMALL, YELLOW);
 
     // Text (Typewriter effect)
     std::string visibleText = node.text.substr(0, visibleCharCount);
-    DrawTextEx(
-        dialogFont,
-        visibleText.c_str(),
-        {
-            box.x + 20.0f,
-            box.y + 30.0f
-        },
-        22.0f,
-        TEXT_SPACING,
-        WHITE
-    );
+    UIUtils::DrawText("PixeloidSans", visibleText, { box.x + 20.0f, box.y + 30.0f }, UIUtils::FontSize::BODY, WHITE);
 
     // Options (Only draw if typing is done)
     if (visibleCharCount >= (int)node.text.length()) {
@@ -277,17 +254,7 @@ void DialogueManager::Draw(int screenWidth, int screenHeight) {
         for (int i = 0; i < (int)node.options.size(); ++i) {
             Color color = (i == selectedOption) ? YELLOW : LIGHTGRAY;
             std::string prefix = (i == selectedOption) ? "> " : "  ";
-            DrawTextEx(
-                dialogFont,
-                (prefix + node.options[i]).c_str(),
-                {
-                    box.x + 30.0f,
-                    optionY + (float)i * 25.0f
-                },
-                20.0f,
-                TEXT_SPACING,
-                color
-            );
+            UIUtils::DrawText("PixeloidSans", prefix + node.options[i], { box.x + 30.0f, optionY + (float)i * 25.0f }, UIUtils::FontSize::SMALL, color);
         }
     }
 }

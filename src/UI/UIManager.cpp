@@ -1,9 +1,11 @@
 #include "UI/UIManager.h"
+#include "UI/UIUtils.h"
 #include "Core/Constants.h"
 #include "Core/Manager/InputManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 #include "UI/PaladinPortrait.h"
+#include "Core/Manager/AssetManager.h"
 #include <string>
 #include <vector>
 
@@ -97,10 +99,15 @@ void UIManager::DrawTeamHUD(
 
     // --- Layer 1: Portraits ---
     
-    auto DrawPortraitNumber = [](int idx, Rectangle dest) {
+    Font fontMono = AssetManager::GetInstance().GetCustomFont("PixeloidMono");
+    Font fontSans = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
+    Font fontBold = AssetManager::GetInstance().GetCustomFont("PixeloidBold");
+
+    auto DrawPortraitNumber = [&](int idx, Rectangle dest) {
         int num = idx + 1;
         DrawCircle(dest.x + dest.width - 8, dest.y + dest.height - 8, 8, Fade(BLACK, 0.7f));
-        DrawText(TextFormat("%d", num), dest.x + dest.width - 11, dest.y + dest.height - 13, 10, WHITE);
+        Vector2 numSize = MeasureTextEx(fontMono, TextFormat("%d", num), 10, 1.0f);
+        UIUtils::DrawText("PixeloidMono", TextFormat("%d", num), { dest.x + dest.width - 8 - numSize.x/2, dest.y + dest.height - 8 - numSize.y/2 }, static_cast<UIUtils::FontSize>(10), WHITE);
     };
 
     Rectangle activeDest = {startX + 4, startY + 4, 90, 42};
@@ -169,15 +176,15 @@ void UIManager::DrawTeamHUD(
     snprintf(hpText, sizeof(hpText), "%d/%d", active->GetHealth(), active->GetMaxHealth());
     
     int fontSize = 10;
-    int textWidth = MeasureText(hpText, fontSize);
-    int textX = startX + 98 + (44 - textWidth) / 2;
-    int textY = startY + 34 + (12 - fontSize) / 2;
-    DrawText(hpText, textX, textY, fontSize, WHITE);
+    Vector2 textSize = MeasureTextEx(fontMono, hpText, fontSize, 1.0f);
+    float textX = startX + 98 + (44 - textSize.x) / 2;
+    float textY = startY + 34 + (12 - textSize.y) / 2;
+    UIUtils::DrawText("PixeloidMono", hpText, { textX, textY }, static_cast<UIUtils::FontSize>(fontSize), WHITE);
 
     if (InputManager::GetMode() == InputMode::KEYBOARD_ONLY && !Constants::isAutoAimEnabled) {
         const char* hint = "Auto-Aim ('T') Recommended for Keyboard Only";
-        int hintWidth = MeasureText(hint, 20);
-        DrawText(hint, (GetScreenWidth() - hintWidth) / 2, GetScreenHeight() - 100, 20, Fade(WHITE, 0.7f));
+        Vector2 hintSize = MeasureTextEx(fontSans, hint, 20, 1.0f);
+        UIUtils::DrawText("PixeloidSans", hint, { (GetScreenWidth() - hintSize.x) / 2, GetScreenHeight() - 100.0f }, static_cast<UIUtils::FontSize>(20), Fade(WHITE, 0.7f));
     }
 
 }
@@ -194,10 +201,11 @@ void UIManager::DrawPopupFrame(Rectangle bounds, const char* title) {
     DrawRectangleRoundedLinesEx(bounds, 0.1f, 16, 2.0f, BLACK);
 
     // Title area
-    int titleWidth = MeasureText(title, 24);
-    int titleX = bounds.x + (bounds.width - titleWidth) / 2;
-    int titleY = bounds.y + 20;
+    Font fontBold = AssetManager::GetInstance().GetCustomFont("PixeloidBold");
+    Vector2 titleSize = MeasureTextEx(fontBold, title, 24, 1.0f);
+    float titleX = bounds.x + (bounds.width - titleSize.x) / 2;
+    float titleY = bounds.y + 20;
 
-    DrawText(title, titleX, titleY, 24, WHITE);
+    UIUtils::DrawText("PixeloidBold", title, { titleX, titleY }, static_cast<UIUtils::FontSize>(24), WHITE);
     DrawLine(bounds.x + 20, bounds.y + 60, bounds.x + bounds.width - 20, bounds.y + 60, GRAY);
 }

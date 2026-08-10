@@ -1,4 +1,6 @@
 #include "UI/MinimapRenderer.h"
+#include "UI/UIUtils.h"
+#include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
 
 #include<cmath>
@@ -141,6 +143,7 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
         }
     }
     
-    // Draw minimap label
-    DrawText("MAP", anchor.x + 4, anchor.y + minimapSize - 14, 10, Fade(WHITE, 0.5f));
+    // Draw minimap label    
+    Font fontSans = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
+    UIUtils::DrawText("PixeloidSans", "MAP", { anchor.x + 4, anchor.y + minimapSize - 14 }, static_cast<UIUtils::FontSize>(10), Fade(WHITE, 0.5f));
 }
