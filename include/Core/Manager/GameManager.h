@@ -26,6 +26,8 @@ struct ImpactEffect {
 class Projectile; // Forward declaration
 class LevelManager; // Forward declaration
 class GameObject; // Forward declaration
+class Rover; // Forward declaration
+
 
 class GameManager {
 private:
@@ -34,6 +36,7 @@ private:
     std::vector<GameObject*> levelEntities;
     std::vector<Projectile*> activeProjectiles;
     std::vector<ImpactEffect> activeEffects;
+    std::vector<std::unique_ptr<Rover>> activeRovers;
     Texture2D bulletImpactTex;
 
     int targetFPS;
@@ -93,4 +96,8 @@ public:
     void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
     void ClearProjectiles();
     void ResetTransientState();
+    
+    // Pidge skills
+    void AddRover(std::unique_ptr<Rover> rover);
+    void UpdateAssists(float deltaTime, class TeamManager* teamManager = nullptr);
 };

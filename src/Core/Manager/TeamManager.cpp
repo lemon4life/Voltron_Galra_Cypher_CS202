@@ -16,17 +16,19 @@ TeamManager::TeamManager()
 }
 
 TeamManager::~TeamManager() {
-    for (auto* paladin : team) {
+    for (auto* paladin : roster) {
         delete paladin;
     }
+    roster.clear();
     team.clear();
 }
 
 void TeamManager::AddMember(Paladin* paladin) {
+    roster.push_back(paladin);
     if (team.size() < 3) {
         team.push_back(paladin);
-        paladin->SetTeamManager(this);
     }
+    paladin->SetTeamManager(this);
 }
 
 Paladin* TeamManager::GetActivePaladin() const {
@@ -46,10 +48,11 @@ void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
     activeIndex = 0;
     sharedArmor = maxSharedArmor;
     sharedUltimateDecibels = 0.0f;
+    currentQuintessence = 0.0f;
     timeSinceLastDamage = 0.0f;
     armorRegenTimer = 0.0f;
 
-    for (Paladin* paladin : team) {
+    for (Paladin* paladin : roster) {
         paladin->SetPosition(spawnPosition);
         paladin->ResetStats();
         paladin->SetAimTarget(spawnPosition);
@@ -66,7 +69,7 @@ int TeamManager::FindMemberIndex(PaladinId id) const {
     return -1;
 }
 
-bool TeamManager::MovePaladinToSlot(
+bool TeamManager::AssignPaladinToSlot(
     PaladinId id,
     std::size_t targetIndex
 ) {
@@ -75,19 +78,32 @@ bool TeamManager::MovePaladinToSlot(
     }
 
     int sourceIndex = FindMemberIndex(id);
-    if (sourceIndex < 0) {
-        return false;
-    }
-    if (sourceIndex == static_cast<int>(targetIndex)) {
-        return true;
-    }
+    if (sourceIndex >= 0) {
+        if (sourceIndex == static_cast<int>(targetIndex)) {
+            return true;
+        }
 
-    Paladin* activePaladin = GetActivePaladin();
-    std::swap(team[static_cast<std::size_t>(sourceIndex)], team[targetIndex]);
+        Paladin* activePaladin = GetActivePaladin();
+        std::swap(team[static_cast<std::size_t>(sourceIndex)], team[targetIndex]);
 
-    auto activeIt = std::find(team.begin(), team.end(), activePaladin);
-    if (activeIt != team.end()) {
-        activeIndex = static_cast<int>(activeIt - team.begin());
+        auto activeIt = std::find(team.begin(), team.end(), activePaladin);
+        if (activeIt != team.end()) {
+            activeIndex = static_cast<int>(activeIt - team.begin());
+        }
+    } else {
+        Paladin* newPaladin = nullptr;
+        for (auto* p : roster) {
+            if (p->GetPaladinId() == id) {
+                newPaladin = p;
+                break;
+            }
+        }
+        if (!newPaladin) return false;
+
+        Paladin* oldPaladin = team[targetIndex];
+        newPaladin->SetPosition(oldPaladin->GetPosition());
+        newPaladin->SetAimTarget(oldPaladin->GetAimTarget());
+        team[targetIndex] = newPaladin;
     }
 
     NotifyObservers();
@@ -95,11 +111,28 @@ bool TeamManager::MovePaladinToSlot(
 }
 
 void TeamManager::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
-    if (activeIndex >= 0 && activeIndex < team.size()) {
-        Paladin* activePaladin = team[activeIndex];
+    if (team.empty()) return;
+    
+    Paladin* active = GetActivePaladin();
+    for (auto* paladin : team) {
+        if (paladin == active) {
+            items.push_back({
+                paladin->GetBoundingBox().y + paladin->GetBoundingBox().height,
+                [paladin]() { paladin->Draw(); }
+            });
+        } else {
+            items.push_back({
+                paladin->GetBoundingBox().y + paladin->GetBoundingBox().height,
+                [paladin]() { paladin->DrawInactive(); }
+            });
+        }
+    }
+    
+    // Draw shared buffs slightly behind the active paladin
+    if (active && !sharedBuffs.empty()) {
         items.push_back({
-            activePaladin->GetBoundingBox().y + activePaladin->GetBoundingBox().height,
-            [activePaladin]() { activePaladin->Draw(); }
+            active->GetBoundingBox().y + active->GetBoundingBox().height - 0.1f,
+            [this]() { this->DrawBuffs(); }
         });
     }
 }
@@ -129,6 +162,13 @@ void TeamManager::SwapCharacter() {
     newActive->SetTargetAimAngle(oldActive->GetTargetAimAngle());
     newActive->SetCurrentAimStrategy(oldActive->GetCurrentAimStrategy());
     newActive->SetFacingLeft(oldActive->IsFacingLeft());
+    
+    // Manage shared buffs
+    for (auto& buff : sharedBuffs) {
+        buff->OnRemove(oldActive);
+        buff->OnApply(newActive);
+    }
+    oldActive->SetInvulnerable(false); // Failsafe cleanup
     
     if (oldActive->IsParrying()) {
         newActive->ChangeState(newActive->GetParryState());
@@ -160,6 +200,13 @@ void TeamManager::SwapCharacterToIndex(int targetIndex) {
     newActive->SetTargetAimAngle(oldActive->GetTargetAimAngle());
     newActive->SetCurrentAimStrategy(oldActive->GetCurrentAimStrategy());
     newActive->SetFacingLeft(oldActive->IsFacingLeft());
+    
+    // Manage shared buffs
+    for (auto& buff : sharedBuffs) {
+        buff->OnRemove(oldActive);
+        buff->OnApply(newActive);
+    }
+    oldActive->SetInvulnerable(false); // Failsafe cleanup
     
     if (oldActive->IsParrying()) {
         newActive->ChangeState(newActive->GetParryState());
@@ -212,26 +259,62 @@ void TeamManager::Update(float deltaTime) {
     if (team.empty()) return;
 
     // Check if current active paladin is dead is now handled by PlayerDownState deferred logic.
+    Paladin* active = GetActivePaladin();
 
-    if (IsKeyPressed(KEY_TAB)) {
-        SwapCharacter();
-    } else if (IsKeyPressed(KEY_ONE)) {
-        SwapCharacterToIndex(0);
-    } else if (IsKeyPressed(KEY_TWO)) {
-        SwapCharacterToIndex(1);
-    } else if (IsKeyPressed(KEY_THREE)) {
-        SwapCharacterToIndex(2);
+    if (!active->IsDoingUltimate()) {
+        if (IsKeyPressed(KEY_TAB)) {
+            SwapCharacter();
+        } else if (IsKeyPressed(KEY_ONE)) {
+            SwapCharacterToIndex(0);
+        } else if (IsKeyPressed(KEY_TWO)) {
+            SwapCharacterToIndex(1);
+        } else if (IsKeyPressed(KEY_THREE)) {
+            SwapCharacterToIndex(2);
+        }
     }
 
+    for (auto* paladin : team) {
+        if (paladin == active) {
+            paladin->Update(deltaTime);
+        } else {
+            paladin->UpdateInactive(deltaTime);
+        }
+    }
+    
+    // Update shared buffs
+    for (auto it = sharedBuffs.begin(); it != sharedBuffs.end(); ) {
+        (*it)->Update(deltaTime, active);
+        if ((*it)->IsFinished()) {
+            (*it)->OnRemove(active);
+            it = sharedBuffs.erase(it);
+        } else {
+            ++it;
+        }
+    }
 
-
-    // Only update the active paladin
-    GetActivePaladin()->Update(deltaTime);
+    // Tick ultimate cooldowns for ALL team members (active + benched)
+    for (auto* paladin : team) {
+        paladin->TickUltimateCooldown(deltaTime);
+    }
 }
 
 void TeamManager::Draw() {
     if (team.empty()) return;
-    GetActivePaladin()->Draw();
+    
+    Paladin* active = GetActivePaladin();
+    for (auto* paladin : team) {
+        if (paladin != active) {
+            paladin->DrawInactive();
+        }
+    }
+    active->Draw();
+}
+
+void TeamManager::DrawBuffs() {
+    Paladin* active = GetActivePaladin();
+    for (auto& buff : sharedBuffs) {
+        buff->Draw(active);
+    }
 }
 
 
@@ -251,5 +334,23 @@ bool TeamManager::IsTeamDead() const {
     for (auto* paladin : team) {
         if (paladin->GetHealth() > 0) return false;
     }
+    return true;
+}
+
+void TeamManager::AddQuintessence(float amount) {
+    if (debugFastFuel) {
+        amount *= 20.0f;
+    }
+    currentQuintessence += amount;
+    if (currentQuintessence > maxQuintessence) {
+        currentQuintessence = maxQuintessence;
+    }
+}
+
+bool TeamManager::ConsumeQuintessence(float amount) {
+    if (currentQuintessence < amount) {
+        return false;
+    }
+    currentQuintessence -= amount;
     return true;
 }

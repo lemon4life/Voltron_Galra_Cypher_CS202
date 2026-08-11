@@ -77,6 +77,8 @@ GameObject* EntityFactory::CreateEntity(
             return CreateHubPaladinStand(PaladinId::Keith, position);
         case MapObjectId::HubHunkStand:
             return CreateHubPaladinStand(PaladinId::Hunk, position);
+        case MapObjectId::HubPidgeStand:
+            return CreateHubPaladinStand(PaladinId::Pidge, position);
         case MapObjectId::Empty:
         default:
             return nullptr;

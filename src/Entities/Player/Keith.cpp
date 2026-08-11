@@ -1,27 +1,136 @@
 #include "Entities/Player/Keith.h"
 #include "Combat/MeleeAttackStrategy.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/TeamManager.h"
 #include "Core/Manager/AssetManager.h"
 #include "Entities/Player/PaladinDefinition.h"
+#include "Entities/Enemy.h"
+#include "raymath.h"
+#include "Combat/Buffs.h"
 
 Keith::Keith(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Keith))
 {
+    introData = {"KEITH", "EXCALIBUR", RED, "Card_Keith", "keith_ult_voice"};
+
     const WeaponDefinition& weapon =
         PaladinCatalog::Get(PaladinId::Keith).weapon;
     currentWeapon = new MeleeAttackStrategy(
         sprites.weapon,
         AssetManager::GetInstance().GetTexture("Sword_Slash_Small"),
         AssetManager::GetInstance().GetTexture("Sword_Slash_Small"),
-        weapon.minimumDamage,
-        weapon.maximumDamage
+        BaseStats::Damage * weapon.minDamageScalar,
+        BaseStats::Damage * weapon.maxDamageScalar
     );
+    if (currentWeapon) currentWeapon->SetOwner(this);
     texture = GetIdleTexture();
+    
+
 }
 
 void Keith::UseSkill() {
-    // TODO: Implement Keith's unique skill
+    if (exEnergy < maxExEnergy) {
+        return; 
+    }
+    
+    if (teamManager) {
+        teamManager->AddSharedBuff(std::make_unique<FireCircleBuff>(5.0f));
+    }
+    
+    
+    exEnergy = 0.0f;
 }
 
 void Keith::UseUltimate() {
-    // TODO: Implement Keith's unique ultimate
+    // Gate on Quintessence (shared team fuel) + individual cooldown
+    if (ultimateCooldownTimer > 0.0f) return;
+    if (!teamManager || !teamManager->ConsumeQuintessence(TeamManager::ULTIMATE_COST)) return;
+    
+    ultimateCooldownTimer = ULTIMATE_COOLDOWN_MAX;
+    isUltimateAiming = true;
+}
+
+#include "Core/Manager/UltimateIntroManager.h"
+
+void Keith::ExecuteUltimateAction() {
+    float length = 300.0f;
+    float width = 100.0f;
+    
+    const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
+    for (GameObject* obj : entities) {
+        Enemy* enemy = dynamic_cast<Enemy*>(obj);
+        if (enemy && !enemy->IsDead()) {
+            Vector2 pivot = { position.x, position.y + 17.0f };
+            Vector2 offset = Vector2Subtract(enemy->GetPosition(), pivot);
+            
+            // Rotate offset by -currentAimAngle
+            float radAngle = -currentAimAngle;
+            float cosA = cosf(radAngle);
+            float sinA = sinf(radAngle);
+            
+            float localX = offset.x * cosA - offset.y * sinA;
+            float localY = offset.x * sinA + offset.y * cosA;
+            
+            if (localX > 0 && localX < length && localY > -width/2.0f && localY < width/2.0f) {
+                enemy->TakeDamage(100);
+                enemy->GetStatusComponent().AddEffect(EffectType::BURN, 5.0f, 10.0f);
+            }
+        }
+    }
+    
+    ultimateFlashTimer = 0.1f;
+}
+
+// ProcessFireCircle is removed
+
+void Keith::Update(float deltaTime) {
+    Paladin::Update(deltaTime);
+    
+    if (skillCooldownTimer > 0.0f) {
+        skillCooldownTimer -= deltaTime;
+    }
+    
+    if (isUltimateAiming) {
+        // Intercept Attack input to fire ultimate
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_J)) {
+            isUltimateAiming = false;
+            UltimateIntroManager::GetInstance().PlayIntro(this);
+        }
+    }
+    
+    if (ultimateFlashTimer > 0.0f) {
+        ultimateFlashTimer -= deltaTime;
+    }
+}
+
+void Keith::UpdateInactive(float deltaTime) {
+    Paladin::UpdateInactive(deltaTime);
+    if (skillCooldownTimer > 0.0f) {
+        skillCooldownTimer -= deltaTime;
+    }
+}
+
+void Keith::Draw() {
+    
+    if (isUltimateAiming) {
+        float length = 300.0f;
+        float width = 100.0f;
+        Rectangle ghostRect = { position.x, position.y + 17.0f, length, width };
+        Vector2 origin = { 0.0f, width / 2.0f };
+        DrawRectanglePro(ghostRect, origin, currentAimAngle * RAD2DEG, ColorAlpha(ORANGE, 0.3f));
+    }
+    
+    if (ultimateFlashTimer > 0.0f) {
+        float length = 300.0f;
+        float width = 100.0f;
+        Rectangle flashRect = { position.x, position.y + 17.0f, length, width };
+        Vector2 origin = { 0.0f, width / 2.0f };
+        DrawRectanglePro(flashRect, origin, currentAimAngle * RAD2DEG, ColorAlpha(ORANGE, 0.8f));
+    }
+    
+    Paladin::Draw();
+}
+
+void Keith::DrawInactive() {
+    Paladin::DrawInactive();
 }

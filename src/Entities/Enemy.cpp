@@ -310,6 +310,11 @@ void Enemy::UpdateKnockback(float deltaTime) {
 
 
 EnemyMoveResult Enemy::UpdateMovement(Vector2 desiredVelocity, float deltaTime, EnemyWallResponse response) {
+    if (statusComponent.HasEffect(EffectType::SLOW)) {
+        desiredVelocity.x *= 0.5f;
+        desiredVelocity.y *= 0.5f;
+    }
+
     float friction = 6.0f;
     currentVelocity.x += (desiredVelocity.x - currentVelocity.x) * friction * deltaTime;
     currentVelocity.y += (desiredVelocity.y - currentVelocity.y) * friction * deltaTime;

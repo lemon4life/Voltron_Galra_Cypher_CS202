@@ -6,6 +6,7 @@
 #include "Core/Manager/InputManager.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
+#include "Entities/Projectile.h"
 
 #include <cmath>
 #include <iostream>
@@ -15,7 +16,7 @@ Paladin::Paladin(
     CharacterSprites sprites,
     const PaladinDefinition& definition
 )
-    : Character(pos, definition.speed, definition.maxHealth, sprites.idle),
+    : Character(pos, BaseStats::Speed * definition.speedScalar, BaseStats::HP * definition.hpScalar, sprites.idle),
       currentWeapon(nullptr),
       sprites(sprites),
       teamManager(nullptr),
@@ -25,12 +26,12 @@ Paladin::Paladin(
       frameDuration(0.1f), // 10 fps animation speed
       facingLeft(false),
       numFrames(4),
-      maxHealth(definition.maxHealth),
-      ghostHp(definition.maxHealth),
+      maxHealth(BaseStats::HP * definition.hpScalar),
+      ghostHp(BaseStats::HP * definition.hpScalar),
       exEnergy(0.0f),
       maxExEnergy(definition.maxExEnergy),
       dashCooldown(0.0f),
-      attackCooldown(definition.attackCooldown),
+      attackCooldown(BaseStats::AttackCooldown * definition.attackCooldownScalar),
       dashTimer(0.0f),
       isInvincible(false),
       isParrying(false),
@@ -61,6 +62,10 @@ Paladin::~Paladin() {
         if (currentWeapon) {
         delete currentWeapon;
     }
+    for (auto& buff : personalBuffs) {
+        buff->OnRemove(this);
+    }
+    personalBuffs.clear();
 }
 
 Vector2 Paladin::GetWeaponPivot() const {
@@ -96,9 +101,7 @@ void Paladin::ChangeState(IPlayerState* newState) {
 }
 
 void Paladin::TakeDamage(int amount) {
-    if (isInvincible || Constants::DEBUG_PLAYER_IMMUNITY) return;
-    
-    exEnergy = 0.0f; // Clear EX on damage
+    if (isInvincible || isInvulnerable || Constants::DEBUG_PLAYER_IMMUNITY) return;
     
     health -= amount;
     
@@ -114,7 +117,48 @@ void Paladin::TakeDamage(int amount) {
     }
 }
 
+void Paladin::TickTimers(float deltaTime) {
+    if (dashCooldown > 0.0f) dashCooldown -= deltaTime;
+    
+    // Update personal buffs
+    for (auto it = personalBuffs.begin(); it != personalBuffs.end(); ) {
+        (*it)->Update(deltaTime, this);
+        if ((*it)->IsFinished()) {
+            (*it)->OnRemove(this);
+            it = personalBuffs.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+Projectile* Paladin::SpawnLinearProjectile(Vector2 dir, float speed, int damage, float maxFlyTime, bool piercing, Texture2D tex, bool fixedRotation) {
+    Vector2 vel = Vector2Scale(dir, speed);
+    Projectile* proj = new Projectile(GetWeaponPivot(), vel, 5.0f, damage, tex, false);
+    proj->SetReturning(false);
+    proj->SetPiercing(piercing);
+    proj->SetMaxFlyTime(maxFlyTime);
+    proj->SetOwner(this);
+    
+    if (fixedRotation) {
+        float rot = atan2(dir.y, dir.x) * (180.0f / PI);
+        proj->SetFixedRotation(true, rot);
+    }
+    
+    GameManager::GetInstance().AddProjectile(proj);
+    return proj;
+}
+
 void Paladin::Update(float deltaTime) {
+    TickTimers(deltaTime);
+    
+    if (autoParryDurationTimer > 0.0f) {
+        autoParryDurationTimer -= deltaTime;
+        if (autoParryDurationTimer <= 0.0f) {
+            isAutoParry = false;
+        }
+    }
+
     DecrementSwapParryWindow(deltaTime);
     // Update Ghost HP
     if (ghostHp > health) {
@@ -215,6 +259,14 @@ void Paladin::Update(float deltaTime) {
     }
 }
 
+void Paladin::UpdateInactive(float deltaTime) {
+    TickTimers(deltaTime);
+}
+
+void Paladin::DrawInactive() {
+    // If you want any visual effect for inactive characters (like particle trails), it could go here
+}
+
 void Paladin::ResetStats() {
     health = maxHealth;
     ghostHp = maxHealth;
@@ -222,6 +274,8 @@ void Paladin::ResetStats() {
     dashCooldown = 0.0f;
     dashTimer = 0.0f;
     isInvincible = false;
+    isInvulnerable = false;
+    invulnerabilityTimer = 0.0f;
     isParrying = false;
     parrySuccess = false;
     consecutiveParries = 0;
@@ -236,6 +290,7 @@ void Paladin::ResetStats() {
     lastMoveDir = {1.0f, 0.0f};
     texture = GetIdleTexture();
     renderOffsetY = 0.0f;
+    ultimateCooldownTimer = 0.0f;
     ChangeState(&idleState);
     ResetAnimation();
 }
@@ -268,6 +323,20 @@ void Paladin::UpdateAnimation(float deltaTime) {
 }
 
 void Paladin::Draw() {
+    for (auto& buff : personalBuffs) {
+        buff->Draw(this);
+    }
+    
+    // Auto parry visual indication
+    const float frameWidth = (float)texture.width / numFrames;
+    const float frameHeight = (float)texture.height;
+
+    if (isInvulnerable) {
+        Vector2 center = { position.x , position.y  };
+        DrawCircleLines(center.x, center.y, 20.0f, ColorAlpha(YELLOW, 0.4f));
+        DrawCircleLines(center.x, center.y, 22.0f, ColorAlpha(YELLOW, 0.2f));
+    }
+
     // Draw Player Circle underneath
     Texture2D circleTex = AssetManager::GetInstance().GetTexture("Player_Circle");
     if (circleTex.id != 0) {
@@ -275,9 +344,6 @@ void Paladin::Draw() {
         Vector2 circleOrigin = { (float)circleTex.width / 2.0f, (float)circleTex.height / 2.0f };
         DrawTexturePro(circleTex, {0, 0, (float)circleTex.width, (float)circleTex.height}, dest, circleOrigin, 0.0f, WHITE);
     }
-
-    const float frameWidth = (float)texture.width / numFrames;
-    const float frameHeight = (float)texture.height;
 
     float sourceX = (float)currentFrame * frameWidth;
     if (facingLeft) {
@@ -304,7 +370,7 @@ void Paladin::Draw() {
 
     DrawTexturePro(texture, sourceRec, destRec, origin, 0.0f, tint);
     
-    if (currentWeapon && GameManager::GetInstance().GetState() != GameState::HUB && health > 0) {
+    if (currentWeapon && IsWeaponVisible() && GameManager::GetInstance().GetState() != GameState::HUB && health > 0) {
         Vector2 pivot = GetWeaponPivot();
         if (isParrying) {
             Vector2 dir = { cosf(currentAimAngle), sinf(currentAimAngle) };
@@ -361,9 +427,14 @@ void Paladin::UpdateFootsteps(float dt) {
 }
 
 void Paladin::OnHitEnemy(int damage) {
-    exEnergy += (float)damage * 0.5f; // 50% of damage converts to EX
+    exEnergy += (float)damage * 0.15f; // Slower EX generation
     if (exEnergy > maxExEnergy) {
         exEnergy = maxExEnergy;
+    }
+
+    // Also award Quintessence to team pool
+    if (teamManager) {
+        teamManager->AddQuintessence((float)damage * 0.05f); // Slower Quintessence generation
     }
 }
 

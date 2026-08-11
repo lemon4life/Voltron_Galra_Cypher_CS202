@@ -28,7 +28,6 @@ private:
     int visibleCharCount;
 
     // Visual Assets
-    Font dialogFont;
     std::map<std::string, Texture2D> portraits;
 
 public:

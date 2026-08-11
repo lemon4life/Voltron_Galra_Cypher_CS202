@@ -11,6 +11,7 @@
 class AssetManager {
 private:
     std::unordered_map<std::string, Texture2D> textures;
+    std::unordered_map<std::string, Font> fonts;
     std::vector<std::function<void()>> loadTasks;
     int totalTasks = 0;
 
@@ -27,6 +28,12 @@ public:
     // Core functions
     Texture2D LoadTexture2D(const std::string& key, const std::string& path, bool applyPointFilter = false);
     Texture2D GetTexture(const std::string& key);
+    
+    Font LoadCustomFont(const std::string& key, const std::string& path, int fontSize);
+    Font GetCustomFont(const std::string& key);
+    
+    void LoadGlobalFonts();
+    
     void UnloadAll();
 
     // Helper to load all character sprites
@@ -37,6 +44,7 @@ public:
     CharacterSprites GetLanceSprites();
     CharacterSprites GetKeithSprites();
     CharacterSprites GetHunkSprites();
+    CharacterSprites GetPidgeSprites();
     
     EnemySprites GetRangeSprites();
     EnemySprites GetDiverSprites();

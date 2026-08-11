@@ -1,4 +1,6 @@
 #include "UI/GUIStatBar.h"
+#include "UI/UIUtils.h"
+#include "Core/Manager/AssetManager.h"
 
 #include <algorithm>
 
@@ -11,23 +13,14 @@ void GUIStatBar::Draw(
     Color fillColor,
     bool enabled
 ) {
-    constexpr int FONT_SIZE = 12;
-    DrawText(
-        label.c_str(),
-        static_cast<int>(bounds.x),
-        static_cast<int>(bounds.y - FONT_SIZE - 2.0f),
-        FONT_SIZE,
-        enabled ? RAYWHITE : GRAY
-    );
+    constexpr float FONT_SIZE = 12.0f;
+    Font fontSans = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
+    Font fontMono = AssetManager::GetInstance().GetCustomFont("PixeloidMono");
 
-    int valueWidth = MeasureText(exactValue.c_str(), FONT_SIZE);
-    DrawText(
-        exactValue.c_str(),
-        static_cast<int>(bounds.x + bounds.width - valueWidth),
-        static_cast<int>(bounds.y - FONT_SIZE - 2.0f),
-        FONT_SIZE,
-        enabled ? Color{210, 220, 235, 255} : GRAY
-    );
+    UIUtils::DrawText("PixeloidSans", label.c_str(), { bounds.x, bounds.y - FONT_SIZE - 2.0f }, static_cast<UIUtils::FontSize>(FONT_SIZE), enabled ? RAYWHITE : GRAY);
+
+    Vector2 valueSize = MeasureTextEx(fontMono, exactValue.c_str(), FONT_SIZE, 1.0f);
+    UIUtils::DrawText("PixeloidMono", exactValue.c_str(), { bounds.x + bounds.width - valueSize.x, bounds.y - FONT_SIZE - 2.0f }, static_cast<UIUtils::FontSize>(FONT_SIZE), enabled ? Color{210, 220, 235, 255} : GRAY);
 
     DrawRectangleRec(bounds, Color{22, 28, 39, 255});
     DrawRectangleLinesEx(bounds, 1.0f, Color{120, 132, 151, 255});

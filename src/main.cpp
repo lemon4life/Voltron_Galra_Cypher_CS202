@@ -12,15 +12,18 @@
 #include "Core/Manager/ParticleManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/WaveManager.h"
+#include "Core/Manager/UltimateIntroManager.h"
 #include "Core/DepthRenderItem.h"
 #include "Entities/Hub/HubPaladinStand.h"
 #include "Entities/NPC.h"
 #include "Entities/Player/Hunk.h"
 #include "Entities/Player/Keith.h"
 #include "Entities/Player/Lance.h"
+#include "Entities/Player/Pidge.h"
 #include "UI/MainMenu.h"
 #include "UI/PauseMenu.h"
 #include "UI/PaladinSelectionMenu.h"
+#include "UI/UIUtils.h"
 #include "UI/SettingsMenu.h"
 #include "UI/UIManager.h"
 #include "UI/MinimapRenderer.h"
@@ -122,23 +125,15 @@ namespace {
                    stand->GetDisplayName();
         }
 
-        constexpr int FONT_SIZE = 16;
-        int textWidth = MeasureText(text.c_str(), FONT_SIZE);
+        float textWidth = UIUtils::MeasureText("PixeloidSans", text, UIUtils::FontSize::SMALL).x;
         Rectangle background = {
             (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
             Constants::GAME_HEIGHT - 44.0f,
-            (float)textWidth + 20.0f,
+            textWidth + 20.0f,
             28.0f
         };
-        DrawRectangleRec(background, Color{15, 20, 29, 220});
-        DrawRectangleLinesEx(background, 1.0f, GOLD);
-        DrawText(
-            text.c_str(),
-            static_cast<int>(background.x + 10.0f),
-            static_cast<int>(background.y + 6.0f),
-            FONT_SIZE,
-            RAYWHITE
-        );
+        UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
+        UIUtils::DrawCenteredText("PixeloidSans", text, { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
     }
 
     void ResetGame(
@@ -225,6 +220,7 @@ int main() {
     AudioManager::GetInstance().Initialize();
     ParticleManager::GetInstance().Initialize();
     DialogueManager::GetInstance().InitializeAssets();
+    AssetManager::GetInstance().LoadGlobalFonts();
 
     MainMenu mainMenu;
     mainMenu.Initialize();
@@ -294,6 +290,10 @@ int main() {
             teamManager->AddMember(new Hunk(
                 startPosition,
                 AssetManager::GetInstance().GetHunkSprites()
+            ));
+            teamManager->AddMember(new Pidge(
+                startPosition,
+                AssetManager::GetInstance().GetPidgeSprites()
             ));
 
             uiManager.Initialize();
@@ -502,7 +502,9 @@ int main() {
                 if (InputManager::IsToggleAutoAimPressed()) {
                     Constants::isAutoAimEnabled = !Constants::isAutoAimEnabled;
                 }
-                if (gameManager.GetHitstopTimer() > 0.0f) {
+                if (UltimateIntroManager::GetInstance().IsPlaying()) {
+                    UltimateIntroManager::GetInstance().Update(deltaTime);
+                } else if (gameManager.GetHitstopTimer() > 0.0f) {
                     gameManager.UpdateHitstop(deltaTime);
                 } else {
                     if (Constants::isAutoAimEnabled || InputManager::GetMode() == InputMode::KEYBOARD_ONLY) {
@@ -525,6 +527,7 @@ int main() {
                     }
                     
                     gameManager.UpdateProjectiles(deltaTime, teamManager);
+                    gameManager.UpdateAssists(deltaTime, teamManager);
                     waveManager.Update(deltaTime, teamManager, &levelManager);
                 }
                 gameManager.UpdateEffects(deltaTime);
@@ -614,6 +617,7 @@ int main() {
             BeginMode2D(CameraManager::GetInstance().GetCamera());
             ClearBackground(BLACK);
             levelManager.DrawLevelBase();
+
             gameManager.DrawEffects(true);
 
             std::vector<DepthRenderItem> depthItems;
@@ -664,6 +668,9 @@ int main() {
                     uiMousePosition
                 );
             }
+            if (renderState == GameState::GAMEPLAY && UltimateIntroManager::GetInstance().IsPlaying()) {
+                UltimateIntroManager::GetInstance().Draw();
+            }
             if (renderState == GameState::HUB &&
                 DialogueManager::GetInstance().IsActive()) {
                 DialogueManager::GetInstance().Draw(
@@ -700,20 +707,14 @@ int main() {
         } else if (renderState == GameState::GAME_OVER) {
             BeginMode2D(uiCamera);
             ClearBackground(BLACK);
-            DrawText("GAME OVER", 180, 220, 30, RED);
-            DrawText("Press R to Restart", 160, 280, 20, LIGHTGRAY);
+            UIUtils::DrawCenteredText("PixeloidBold", "GAME OVER", { 400, 250 }, UIUtils::FontSize::TITLE, RED);
+            UIUtils::DrawCenteredText("PixeloidSans", "Press R to Restart", { 400, 300 }, UIUtils::FontSize::BODY, LIGHTGRAY);
             EndMode2D();
         } else if (renderState == GameState::VICTORY) {
             BeginMode2D(uiCamera);
             ClearBackground(RAYWHITE);
-            DrawText("MISSION ACCOMPLISHED", 90, 200, 40, GOLD);
-            DrawText(
-                "Press R to return to Main Menu",
-                150,
-                300,
-                20,
-                DARKGRAY
-            );
+            UIUtils::DrawCenteredText("PixeloidBold", "MISSION ACCOMPLISHED", { 400, 200 }, UIUtils::FontSize::TITLE, GOLD);
+            UIUtils::DrawCenteredText("PixeloidSans", "Press R to return to Main Menu", { 400, 300 }, UIUtils::FontSize::BODY, DARKGRAY);
             EndMode2D();
         } else {
             mainMenu.Draw(GetScreenWidth(), GetScreenHeight());

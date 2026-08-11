@@ -1,0 +1,111 @@
+[0/2] Re-checking globbed directories...
+[1/8] Building CXX object CMakeFiles/VoltronMissionGalraCypher.dir/src/UI/PaladinPortrait.cpp.o
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/UI/PaladinPortrait.cpp:3:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:91:18: warning: 'Update' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   91 |     virtual void Update(float deltaTime);
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:30:18: note: overridden virtual function is here
+   30 |     virtual void Update(float deltaTime) = 0;
+      |                  ^
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/UI/PaladinPortrait.cpp:3:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:92:18: warning: 'Draw' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   92 |     virtual void Draw();
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:31:18: note: overridden virtual function is here
+   31 |     virtual void Draw() = 0;
+      |                  ^
+2 warnings generated.
+[2/8] Building CXX object CMakeFiles/VoltronMissionGalraCypher.dir/src/UI/UIManager.cpp.o
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/UI/UIManager.cpp:5:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:91:18: warning: 'Update' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   91 |     virtual void Update(float deltaTime);
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:30:18: note: overridden virtual function is here
+   30 |     virtual void Update(float deltaTime) = 0;
+      |                  ^
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/UI/UIManager.cpp:5:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:92:18: warning: 'Draw' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   92 |     virtual void Draw();
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:31:18: note: overridden virtual function is here
+   31 |     virtual void Draw() = 0;
+      |                  ^
+2 warnings generated.
+[3/8] Building CXX object CMakeFiles/VoltronMissionGalraCypher.dir/src/Entities/Player/Keith.cpp.o
+FAILED: [code=1] CMakeFiles/VoltronMissionGalraCypher.dir/src/Entities/Player/Keith.cpp.o 
+/usr/bin/clang++ -DGRAPHICS_API_OPENGL_33 -DPLATFORM_DESKTOP -I"/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include" -I"/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src" -I"/Users/lemon4life/tmp/Voltron Mission Galra Cypher/build/_deps/raylib-src/src" -I"/Users/lemon4life/tmp/Voltron Mission Galra Cypher/build/_deps/raylib-src/src/external/glfw/include" -g -std=gnu++17 -arch arm64 -MD -MT CMakeFiles/VoltronMissionGalraCypher.dir/src/Entities/Player/Keith.cpp.o -MF CMakeFiles/VoltronMissionGalraCypher.dir/src/Entities/Player/Keith.cpp.o.d -o CMakeFiles/VoltronMissionGalraCypher.dir/src/Entities/Player/Keith.cpp.o -c '/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/Entities/Player/Keith.cpp'
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/Entities/Player/Keith.cpp:1:
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Keith.h:2:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:91:18: warning: 'Update' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   91 |     virtual void Update(float deltaTime);
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:30:18: note: overridden virtual function is here
+   30 |     virtual void Update(float deltaTime) = 0;
+      |                  ^
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/Entities/Player/Keith.cpp:1:
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Keith.h:2:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:92:18: warning: 'Draw' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   92 |     virtual void Draw();
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:31:18: note: overridden virtual function is here
+   31 |     virtual void Draw() = 0;
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/Entities/Player/Keith.cpp:125:54: error: no member named 'GetTeamManager' in 'GameManager'
+  125 |         Paladin* active = GameManager::GetInstance().GetTeamManager()->GetActivePaladin();
+      |                           ~~~~~~~~~~~~~~~~~~~~~~~~~~ ^
+2 warnings and 1 error generated.
+[4/8] Building CXX object CMakeFiles/VoltronMissionGalraCypher.dir/src/UI/MainMenu.cpp.o
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/UI/MainMenu.cpp:2:
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Core/Manager/AssetManager.h:8:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:91:18: warning: 'Update' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   91 |     virtual void Update(float deltaTime);
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:30:18: note: overridden virtual function is here
+   30 |     virtual void Update(float deltaTime) = 0;
+      |                  ^
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/UI/MainMenu.cpp:2:
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Core/Manager/AssetManager.h:8:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:92:18: warning: 'Draw' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   92 |     virtual void Draw();
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:31:18: note: overridden virtual function is here
+   31 |     virtual void Draw() = 0;
+      |                  ^
+2 warnings generated.
+[5/8] Building CXX object CMakeFiles/VoltronMissionGalraCypher.dir/src/UI/PaladinSelectionMenu.cpp.o
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/UI/PaladinSelectionMenu.cpp:3:
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Core/Manager/AssetManager.h:8:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:91:18: warning: 'Update' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   91 |     virtual void Update(float deltaTime);
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:30:18: note: overridden virtual function is here
+   30 |     virtual void Update(float deltaTime) = 0;
+      |                  ^
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/UI/PaladinSelectionMenu.cpp:3:
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Core/Manager/AssetManager.h:8:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:92:18: warning: 'Draw' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   92 |     virtual void Draw();
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:31:18: note: overridden virtual function is here
+   31 |     virtual void Draw() = 0;
+      |                  ^
+2 warnings generated.
+[6/8] Building CXX object CMakeFiles/VoltronMissionGalraCypher.dir/src/main.cpp.o
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/main.cpp:5:
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Core/Manager/AssetManager.h:8:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:91:18: warning: 'Update' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   91 |     virtual void Update(float deltaTime);
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:30:18: note: overridden virtual function is here
+   30 |     virtual void Update(float deltaTime) = 0;
+      |                  ^
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/src/main.cpp:5:
+In file included from /Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Core/Manager/AssetManager.h:8:
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/Player/Paladin.h:92:18: warning: 'Draw' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   92 |     virtual void Draw();
+      |                  ^
+/Users/lemon4life/Library/CloudStorage/OneDrive-Personal/Documents/1_HCMUS/3rd/CS202/Voltron Mission Galra Cypher/include/Entities/GameObject.h:31:18: note: overridden virtual function is here
+   31 |     virtual void Draw() = 0;
+      |                  ^
+2 warnings generated.
+ninja: build stopped: subcommand failed.

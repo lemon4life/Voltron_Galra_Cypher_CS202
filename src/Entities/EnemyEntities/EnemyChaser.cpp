@@ -75,6 +75,10 @@ EnemyChaser::~EnemyChaser() {
 void EnemyChaser::Update(float deltaTime) {
     UpdateKnockback(deltaTime);
     
+    if (statusComponent.Update(deltaTime, this)) {
+        return;
+    }
+    
     IEnemyState* lastState = currentState;
     if (currentState) {
         currentState->Update(this, deltaTime);
@@ -147,7 +151,8 @@ void EnemyChaser::Draw() {
         src.width = -src.width;
     }
     
-    DrawTexturePro(texToDraw, src, dest, origin, 0.0f, WHITE);
+    Color tint = statusComponent.GetStatusTint();
+    DrawTexturePro(texToDraw, src, dest, origin, 0.0f, tint);
     
     if (health > 0 && sprites.weapon.id != 0) {
         Rectangle wSrc = { 0, 0, (float)sprites.weapon.width, (float)sprites.weapon.height };
@@ -160,7 +165,7 @@ void EnemyChaser::Draw() {
         }
         
         float currentAngle = weaponAngle + (facingLeft ? -kinematics.GetAngleOffset() : kinematics.GetAngleOffset());
-        DrawTexturePro(sprites.weapon, wSrc, wDest, wOrigin, currentAngle, WHITE);
+        DrawTexturePro(sprites.weapon, wSrc, wDest, wOrigin, currentAngle, tint);
         
         if (playingEffect && sprites.effect.id != 0) {
             float efWidth = sprites.effect.width;
@@ -181,7 +186,7 @@ void EnemyChaser::Draw() {
             Vector2 eOrigin = { 0.0f, (sprites.effect.height * scale) / 2.0f };
             if (facingLeft) eOrigin.x = efWidth * scale;
             
-            DrawTexturePro(sprites.effect, eSrc, eDest, eOrigin, weaponAngle, WHITE);
+            DrawTexturePro(sprites.effect, eSrc, eDest, eOrigin, weaponAngle, tint);
         }
     }
 

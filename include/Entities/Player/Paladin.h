@@ -7,6 +7,24 @@
 #include "Combat/IAttackStrategy.h"
 #include "Core/AimStrategy/IAimStrategy.h"
 #include <vector>
+#include <string>
+#include <memory>
+#include "Combat/IBuff.h"
+
+struct BaseStats {
+    static constexpr int HP = 100;
+    static constexpr float Speed = 200.0f;
+    static constexpr int Damage = 20;
+    static constexpr float AttackCooldown = 0.5f;
+};
+
+struct UltimateIntroData {
+    std::string paladinName;
+    std::string ultimateName;
+    Color themeColor;
+    std::string portraitTextureID;
+    std::string voicelineAudioID;
+};
 
 struct CharacterSprites {
     Texture2D idle;
@@ -33,6 +51,8 @@ protected:
     CharacterSprites sprites;
     TeamManager* teamManager;
     PaladinId paladinId;
+    
+    UltimateIntroData introData;
 
     // Animation specific
     int currentFrame;
@@ -54,6 +74,13 @@ protected:
     float ghostHp;
     float exEnergy;
     float maxExEnergy;
+
+    // Ultimate cooldown (separate from EX — gated by Quintessence)
+    float ultimateCooldownTimer = 0.0f;
+    
+    // Aegis Shield Mechanic
+    bool isInvulnerable = false;
+    float invulnerabilityTimer = 0.0f;
 
     // Dash mechanic properties
     float dashCooldown;
@@ -80,6 +107,11 @@ protected:
     Vector2 currentAimVector;
     IAimStrategy* currentAimStrategy;
 
+    std::vector<std::unique_ptr<IBuff>> personalBuffs;
+
+    void TickTimers(float deltaTime);
+    class Projectile* SpawnLinearProjectile(Vector2 dir, float speed, int damage, float maxFlyTime, bool piercing, Texture2D tex, bool fixedRotation);
+
 public:
     Paladin(
         Vector2 pos,
@@ -88,8 +120,12 @@ public:
     );
     virtual ~Paladin();
 
-    void Update(float deltaTime) override;
-    void Draw() override;
+    virtual void Update(float deltaTime) override;
+    virtual void Draw() override;
+    virtual void UpdateInactive(float deltaTime);
+    virtual void DrawInactive();
+    virtual bool IsDoingUltimate() const { return false; }
+    
     void SetParrying(bool parry);
     int GetConsecutiveParries() const { return consecutiveParries; }
     void IncrementParryCount() { 
@@ -102,7 +138,13 @@ public:
     bool IsParrying() const { return isParrying; }
     bool CanParryAttack(Vector2 attackerPos) const;
     void TriggerParrySuccess(GameObject* attacker);
-    void ApplyKnockback(Vector2 dir, float force);
+    virtual void ApplyKnockback(Vector2 dir, float force);
+    
+    // Aegis Shield Methods
+    bool IsInvulnerable() const { return isInvulnerable; }
+    void SetInvulnerable(bool val) { isInvulnerable = val; }
+    float GetInvulnerabilityTimer() const { return invulnerabilityTimer; }
+    void SetInvulnerabilityTimer(float val) { invulnerabilityTimer = val; }
     
     void SetAimTarget(Vector2 target) { if (!isParrying) aimTarget = target; }
     Vector2 GetAimTarget() const { return aimTarget; }
@@ -123,14 +165,35 @@ public:
     void SetTeamManager(TeamManager* manager) { teamManager = manager; }
     TeamManager* GetTeamManager() const { return teamManager; }
 
+    void AddPersonalBuff(std::unique_ptr<IBuff> buff) {
+        if (buff) {
+            buff->OnApply(this);
+            personalBuffs.push_back(std::move(buff));
+        }
+    }
+    const std::vector<std::unique_ptr<IBuff>>& GetPersonalBuffs() const { return personalBuffs; }
+    
+    // Check if a buff exists (useful for DualWield check in Lance)
+    template<typename T>
+    bool HasPersonalBuff() const {
+        for (const auto& buff : personalBuffs) {
+            if (dynamic_cast<T*>(buff.get())) return true;
+        }
+        return false;
+    }
+
     void ChangeState(IPlayerState* newState);
-    void Attack();
+    virtual void Attack();
     
     virtual void UseSkill() = 0;
     virtual void UseUltimate() = 0;
+    virtual void ExecuteUltimateAction() = 0;
     
     Vector2 GetWeaponPivot() const;
-    void SetWeapon(IAttackStrategy* weapon) { currentWeapon = weapon; }
+    void SetWeapon(IAttackStrategy* weapon) { 
+        currentWeapon = weapon; 
+        if (currentWeapon) currentWeapon->SetOwner(this);
+    }
     IAttackStrategy* GetCurrentWeapon() const { return currentWeapon; }
     
     virtual void TakeDamage(int amount);
@@ -149,6 +212,16 @@ public:
     float GetGhostHp() const { return ghostHp; }
     float GetExEnergy() const { return exEnergy; }
     float GetMaxExEnergy() const { return maxExEnergy; }
+
+    // Ultimate cooldown
+    static constexpr float ULTIMATE_COOLDOWN_MAX = 5.0f;
+    float GetUltimateCooldownTimer() const { return ultimateCooldownTimer; }
+    void ResetUltimateCooldown() { ultimateCooldownTimer = ULTIMATE_COOLDOWN_MAX; }
+    void TickUltimateCooldown(float dt) { if (ultimateCooldownTimer > 0.0f) ultimateCooldownTimer -= dt; }
+    
+    virtual bool IsWeaponVisible() const { return true; }
+    
+    const UltimateIntroData& GetIntroData() const { return introData; }
     
     PlayerIdleState* GetIdleState() { return &idleState; }
     PlayerRunState* GetRunState() { return &runState; }
@@ -167,6 +240,7 @@ public:
     // Animation helpers
     void UpdateAnimation(float deltaTime);
     void SetNumFrames(int frames) { numFrames = frames; }
+    int GetNumFrames() const { return numFrames; }
     void ResetAnimation() { currentFrame = 0; frameTimer = 0.0f; }
     void SetFacingLeft(bool left) { facingLeft = left; }
     bool IsFacingLeft() const { return facingLeft; }

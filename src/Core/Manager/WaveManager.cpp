@@ -1,4 +1,5 @@
 #include "Core/Manager/WaveManager.h"
+#include "UI/UIUtils.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/EntityFactory.h"
 #include "Core/Manager/TeamManager.h"
@@ -6,6 +7,7 @@
 #include "Entities/Enemy.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
+#include "Core/Manager/AssetManager.h"
 #include "Core/Level/RoomNode.h"
 #include "raymath.h"
 #include <algorithm>
@@ -250,40 +252,44 @@ void WaveManager::SpawnEnemy(
 void WaveManager::DrawHUD() {
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
 
+    Font fontBold = AssetManager::GetInstance().GetCustomFont("PixeloidBold");
+    Font fontSans = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
+    Font fontMono = AssetManager::GetInstance().GetCustomFont("PixeloidMono");
+
     if (levelManager->IsProceduralDungeon()) {
         // Dungeon room HUD
         if (levelManager->GetActiveRoomState() == RoomState::LOCKED && dungeonTotalWaves > 0) {
             if (isBossRoom) {
-                DrawText("BOSS BATTLE!", 240, 10, 20, RED);
+                UIUtils::DrawText("PixeloidBold", "BOSS BATTLE!", { 240.0f, 10.0f }, static_cast<UIUtils::FontSize>(20), RED);
             } else {
-                DrawText(TextFormat("WAVE %d / %d", dungeonCurrentWave, dungeonTotalWaves), 260, 10, 18, WHITE);
+                UIUtils::DrawText("PixeloidMono", TextFormat("WAVE %d / %d", dungeonCurrentWave, dungeonTotalWaves), { 260.0f, 10.0f }, static_cast<UIUtils::FontSize>(18), WHITE);
             }
 
             if (showWaveTextTimer > 0.0f) {
                 if (isBossRoom) {
-                    DrawText("BOSS WARNING!", 200, 240, 28, RED);
+                    UIUtils::DrawText("PixeloidBold", "BOSS WARNING!", { 200.0f, 240.0f }, static_cast<UIUtils::FontSize>(28), RED);
                 } else if (dungeonCurrentWave == 1 && enemiesToSpawn > 0) {
-                    DrawText("ENEMIES INCOMING!", 200, 240, 20, RED);
+                    UIUtils::DrawText("PixeloidBold", "ENEMIES INCOMING!", { 200.0f, 240.0f }, static_cast<UIUtils::FontSize>(20), RED);
                 } else if (dungeonCurrentWave > 1) {
-                    DrawText(TextFormat("WAVE %d!", dungeonCurrentWave), 260, 240, 20, YELLOW);
+                    UIUtils::DrawText("PixeloidBold", TextFormat("WAVE %d!", dungeonCurrentWave), { 260.0f, 240.0f }, static_cast<UIUtils::FontSize>(20), YELLOW);
                 }
             }
         } else if (showWaveTextTimer > 0.0f && dungeonTotalWaves == 0) {
-            DrawText("ROOM CLEARED!", 240, 240, 20, GREEN);
+            UIUtils::DrawText("PixeloidBold", "ROOM CLEARED!", { 240.0f, 240.0f }, static_cast<UIUtils::FontSize>(20), GREEN);
         }
         return;
     }
 
     // Layered static-map HUD
     if (currentWave == 0) return;
-    DrawText(TextFormat("WAVE: %d / 5", currentWave), 360, 10, 20, WHITE);
+    UIUtils::DrawText("PixeloidMono", TextFormat("WAVE: %d / 5", currentWave), { 360.0f, 10.0f }, static_cast<UIUtils::FontSize>(20), WHITE);
     if (showWaveTextTimer > 0.0f) {
         if (currentWave == 5) {
-            DrawText("BOSS WARNING!", 150, 240, 30, RED);
+            UIUtils::DrawText("PixeloidBold", "BOSS WARNING!", { 150.0f, 240.0f }, static_cast<UIUtils::FontSize>(30), RED);
         } else if (currentWave == 1) {
-            DrawText("WAVE 1 START!", 180, 240, 20, GREEN);
+            UIUtils::DrawText("PixeloidBold", "WAVE 1 START!", { 180.0f, 240.0f }, static_cast<UIUtils::FontSize>(20), GREEN);
         } else {
-            DrawText("WAVE CLEARED!", 180, 240, 20, GREEN);
+            UIUtils::DrawText("PixeloidBold", "WAVE CLEARED!", { 180.0f, 240.0f }, static_cast<UIUtils::FontSize>(20), GREEN);
         }
     }
 }
