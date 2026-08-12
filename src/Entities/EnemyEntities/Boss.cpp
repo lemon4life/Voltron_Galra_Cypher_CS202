@@ -17,26 +17,27 @@ namespace {
     constexpr float BOSS_SIGHT_DISTANCE = 900.0f;
     constexpr float BOSS_OFF_SIGHT_DISTANCE = 1200.0f;
 
-    constexpr int BOSS_FRAME_COUNT = 4;
-    constexpr float BOSS_RENDER_WIDTH = 128.0f;
-    constexpr float BOSS_RENDER_HEIGHT = 128.0f;
+    constexpr int BOSS_FRAME_COUNT = 10;
+    constexpr float BOSS_FRAME_WIDTH = 64.0f;
+    constexpr float BOSS_FRAME_HEIGHT = 72.0f;
     constexpr float BOSS_IDLE_FRAME_DURATION = 0.18f;
     constexpr float BOSS_RUN_FRAME_DURATION = 0.11f;
     constexpr float BOSS_KNOCKBACK_RESISTANCE = 1.0f;
 
-    // Across all frames, the non-transparent artwork occupies x=25..120 and
-    // y=4..127: approximately 96x124 pixels. The directional origins center
-    // that asymmetric visible region rather than the transparent 128x128 cell.
-    constexpr Vector2 BOSS_SIZE = { 96.0f, 124.0f };
-    constexpr float BOSS_UNFLIPPED_ORIGIN_X = 72.5f;
-    constexpr float BOSS_FLIPPED_ORIGIN_X = 54.5f;
-    constexpr float BOSS_ORIGIN_Y = 66.0f;
+    // Across both ten-frame sheets, visible pixels occupy x=12..51 and
+    // y=4..71 inside each 64x72 cell. Centering that 40x68 union on the Boss
+    // position keeps the combat hitbox aligned for both sprite directions.
+    constexpr Vector2 BOSS_SIZE = { 40.0f, 68.0f };
+    constexpr Vector2 BOSS_DRAW_ORIGIN = { 32.0f, 38.0f };
+
+    // The bottom twelve source rows contain the stable foot silhouette. Its
+    // center is 28 pixels below the visible-body center.
     constexpr EnemyCollisionProfile BOSS_COLLISION_PROFILE = {
-        { 56.0f, 18.0f },
-        { 0.0f, 53.0f }
+        { 32.0f, 12.0f },
+        { 0.0f, 28.0f }
     };
 
-    constexpr float BOSS_HEALTH_BAR_WIDTH = 96.0f;
+    constexpr float BOSS_HEALTH_BAR_WIDTH = BOSS_FRAME_WIDTH;
     constexpr float BOSS_HEALTH_BAR_HEIGHT = 6.0f;
     constexpr float BOSS_HEALTH_BAR_GAP = 8.0f;
 }
@@ -118,32 +119,26 @@ void Boss::Draw() {
     // The supplied Boss artwork faces left in its unflipped orientation.
     bool flipSprite = !facingLeft;
 
-    if (texture.id != 0 && texture.width >= BOSS_FRAME_COUNT) {
-        float frameWidth = (float)texture.width / BOSS_FRAME_COUNT;
-        float frameHeight = (float)texture.height;
+    if (texture.id != 0 &&
+        texture.width >= (int)(BOSS_FRAME_WIDTH * BOSS_FRAME_COUNT) &&
+        texture.height >= (int)BOSS_FRAME_HEIGHT) {
         Rectangle source = {
-            currentRunFrame * frameWidth,
+            currentRunFrame * BOSS_FRAME_WIDTH,
             0.0f,
-            flipSprite ? -frameWidth : frameWidth,
-            frameHeight
+            flipSprite ? -BOSS_FRAME_WIDTH : BOSS_FRAME_WIDTH,
+            BOSS_FRAME_HEIGHT
         };
         Rectangle destination = {
             std::round(position.x),
             std::round(position.y),
-            BOSS_RENDER_WIDTH,
-            BOSS_RENDER_HEIGHT
-        };
-        Vector2 origin = {
-            flipSprite
-                ? BOSS_FLIPPED_ORIGIN_X
-                : BOSS_UNFLIPPED_ORIGIN_X,
-            BOSS_ORIGIN_Y
+            BOSS_FRAME_WIDTH,
+            BOSS_FRAME_HEIGHT
         };
         DrawTexturePro(
             texture,
             source,
             destination,
-            origin,
+            BOSS_DRAW_ORIGIN,
             0.0f,
             statusComponent.GetStatusTint()
         );

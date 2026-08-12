@@ -3,6 +3,8 @@
 #include <vector>
 #include "Core/DepthRenderItem.h"
 
+#include<memory>
+
 enum class GameState {
     MAIN_MENU,
     HUB,
