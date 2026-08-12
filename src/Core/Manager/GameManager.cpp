@@ -1,5 +1,7 @@
 #include "Core/Manager/GameManager.h"
+#include "Core/Constants.h"
 #include "Entities/Projectile.h"
+#include "Entities/GameObject.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/ParticleManager.h"
 #include "raymath.h"
@@ -77,6 +79,70 @@ void GameManager::AddProjectile(Projectile* p) {
 #include "Entities/Props/Prop.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
+
+namespace {
+    void DrawObjectCollisionDebug(const GameObject& object) {
+        Color hitboxColor = PURPLE;
+        Color collisionColor = GOLD;
+        if (object.GetObjectType() == GameObjectType::Player) {
+            hitboxColor = BLUE;
+            collisionColor = GREEN;
+        } else if (object.GetObjectType() == GameObjectType::Enemy) {
+            hitboxColor = RED;
+            collisionColor = ORANGE;
+        }
+
+        // A thicker hitbox outline remains visible when an entity uses the
+        // same rectangle for both combat and movement collision.
+        DrawRectangleLinesEx(
+            object.GetBoundingBox(),
+            Constants::DEBUG_COLLISION_LINE_THICKNESS * 2.0f,
+            hitboxColor
+        );
+        DrawRectangleLinesEx(
+            object.GetCollisionBox(),
+            Constants::DEBUG_COLLISION_LINE_THICKNESS,
+            collisionColor
+        );
+    }
+}
+
+void GameManager::DrawDebugOverlays(TeamManager* teamManager) const {
+    if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
+        if (teamManager) {
+            for (const Paladin* paladin : teamManager->GetTeam()) {
+                if (paladin) {
+                    DrawObjectCollisionDebug(*paladin);
+                }
+            }
+        }
+
+        for (const GameObject* entity : GetLevelEntities()) {
+            if (entity) {
+                DrawObjectCollisionDebug(*entity);
+            }
+        }
+        for (const Projectile* projectile : activeProjectiles) {
+            if (projectile && projectile->IsActive()) {
+                DrawObjectCollisionDebug(*projectile);
+            }
+        }
+        for (const std::unique_ptr<Rover>& rover : activeRovers) {
+            if (rover && !rover->IsDead()) {
+                DrawObjectCollisionDebug(*rover);
+            }
+        }
+    }
+
+    if (Constants::DEBUG_DRAW_ENEMY_PATHS) {
+        for (GameObject* entity : GetLevelEntities()) {
+            if (entity &&
+                entity->GetObjectType() == GameObjectType::Enemy) {
+                static_cast<Enemy*>(entity)->DrawPathDebug();
+            }
+        }
+    }
+}
 
 void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
     const auto& entities = GetLevelEntities();

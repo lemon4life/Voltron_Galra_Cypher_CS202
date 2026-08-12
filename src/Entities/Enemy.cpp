@@ -149,41 +149,28 @@ Rectangle Enemy::GetContactAttackBoxAt(Vector2 entityPosition) const {
 }
 
 void Enemy::DrawPathDebug() const {
-    if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
-        DrawRectangleLinesEx(
-            GetBoundingBox(),
-            Constants::DEBUG_COLLISION_LINE_THICKNESS,
-            RED
-        );
-        DrawRectangleLinesEx(
-            GetCollisionBox(),
-            Constants::DEBUG_COLLISION_LINE_THICKNESS,
-            ORANGE
-        );
-
-        for (const EnemyPathDebugPoint& point : pathDebugPoints) {
-            DrawCircleV(
-                point.position,
-                2.5f,
-                point.hasLineOfSight ? GREEN : RED
-            );
-        }
-
-        if (hasSelectedPathGoal) {
-            DrawCircleLines(
-                (int)selectedPathGoal.x,
-                (int)selectedPathGoal.y,
-                5.0f,
-                LIME
-            );
-        }
-    }
-
-    if (!Constants::DEBUG_DRAW_ENEMY_PATHS ||
-        !usePathFinding ||
-        health <= 0) {
+    if (!Constants::DEBUG_DRAW_ENEMY_PATHS || health <= 0) {
         return;
     }
+
+    for (const EnemyPathDebugPoint& point : pathDebugPoints) {
+        DrawCircleV(
+            point.position,
+            2.5f,
+            point.hasLineOfSight ? GREEN : RED
+        );
+    }
+
+    if (hasSelectedPathGoal) {
+        DrawCircleLines(
+            (int)selectedPathGoal.x,
+            (int)selectedPathGoal.y,
+            5.0f,
+            LIME
+        );
+    }
+
+    if (!usePathFinding) return;
 
     Vector2 segmentStart = position;
     bool isCurrentTarget = true;

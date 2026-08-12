@@ -168,5 +168,4 @@ void Boss::Draw() {
         RED
     );
 
-    DrawPathDebug();
 }

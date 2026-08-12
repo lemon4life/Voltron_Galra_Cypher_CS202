@@ -657,6 +657,8 @@ int main() {
                     DrawCircle(static_cast<int>(mouseWorld.x), static_cast<int>(mouseWorld.y), 2.0f, GREEN);
                 }
             }
+
+            gameManager.DrawDebugOverlays(teamManager);
             
             EndMode2D();
 

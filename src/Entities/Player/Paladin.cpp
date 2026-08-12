@@ -381,18 +381,6 @@ void Paladin::Draw() {
         currentWeapon->Draw(pivot, facingLeft);
     }
 
-    if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
-        DrawRectangleLinesEx(
-            GetBoundingBox(),
-            Constants::DEBUG_COLLISION_LINE_THICKNESS,
-            BLUE
-        );
-        DrawRectangleLinesEx(
-            GetCollisionBox(),
-            Constants::DEBUG_COLLISION_LINE_THICKNESS,
-            GREEN
-        );
-    }
 }
 
 Texture2D Paladin::GetIdleTexture() const {

@@ -96,6 +96,7 @@ public:
     void AddImpactEffect(Vector2 pos);
     void DrawProjectiles();
     void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
+    void DrawDebugOverlays(class TeamManager* teamManager) const;
     void ClearProjectiles();
     void ResetTransientState();
     
