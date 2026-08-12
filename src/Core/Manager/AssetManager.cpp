@@ -147,7 +147,7 @@ void AssetManager::QueueCharacterAssets() {
 
     // Boss
     add("Boss_Idle", "assets/sprites/Enemy/Boss/Boss-1-idle.png", true);
-    add("Boss_Run", "assets/sprites/Enemy/Boss/Boss-1-running.png", true);
+    add("Boss_Run", "assets/sprites/Enemy/Boss/boss-run-1.png", true);
 }
 
 bool AssetManager::UpdateLoading(float& outProgress) {

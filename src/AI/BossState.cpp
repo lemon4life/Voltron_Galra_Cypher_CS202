@@ -2,31 +2,75 @@
 
 #include "AI/EnemyCollision.h"
 #include "Core/LevelAccess.h"
-#include "Core/Manager/GameManager.h"
 
 #include "Entities/EnemyEntities/Boss.h"
-#include "Entities/Projectile.h"
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/TeamManager.h"
 
 #include "raymath.h"
 
+#include <algorithm>
+
+namespace {
+    constexpr int BOSS_IDLE_MIN_MILLISECONDS = 3000;
+    constexpr int BOSS_IDLE_MAX_MILLISECONDS = 5000;
+    constexpr int BOSS_CHASE_MIN_MILLISECONDS = 5000;
+    constexpr int BOSS_CHASE_MAX_MILLISECONDS = 7000;
+
+    float RollDuration(int minimumMilliseconds, int maximumMilliseconds) {
+        return (float)GetRandomValue(
+            minimumMilliseconds,
+            maximumMilliseconds
+        ) / 1000.0f;
+    }
+}
+
+// Boss Idling State
+
+void BossIdlingState::Enter(Boss* enemy) {
+    elapsedTime = 0.0f;
+    idleDuration = RollDuration(
+        BOSS_IDLE_MIN_MILLISECONDS,
+        BOSS_IDLE_MAX_MILLISECONDS
+    );
+    enemy->SetCurrentVelocity({ 0.0f, 0.0f });
+}
+
+void BossIdlingState::Update(Boss* enemy, float deltaTime) {
+    elapsedTime += std::max(0.0f, deltaTime);
+    if (elapsedTime >= idleDuration) {
+        enemy->ChangeState(enemy->GetChaseState());
+    }
+}
+
+void BossIdlingState::Exit(Boss* enemy) {
+}
+
 // Boss Chase State
 
 void BossChaseState::Enter(Boss* enemy) {
+    elapsedTime = 0.0f;
+    chaseDuration = RollDuration(
+        BOSS_CHASE_MIN_MILLISECONDS,
+        BOSS_CHASE_MAX_MILLISECONDS
+    );
     enemy->StartPathFinding();
 }
 
 void BossChaseState::Update(Boss* enemy, float deltaTime) {
-    if (!enemy->GetTargetTeam()) return;
+    elapsedTime += std::max(0.0f, deltaTime);
+    if (elapsedTime >= chaseDuration) {
+        enemy->ChangeState(enemy->GetIdlingState());
+        return;
+    }
+
+    if (!enemy->GetTargetTeam() ||
+        !enemy->GetTargetTeam()->GetActivePaladin()) {
+        return;
+    }
 
     Vector2 ePos = enemy->GetPosition();
     Vector2 pPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
-    
-    if (enemy->IsBeyondDisengageDistance(pPos)) {
-        enemy->ChangeState(enemy->GetIdleState());
-        return;
-    }
 
     IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
     std::optional<Vector2> moveTarget =
@@ -53,13 +97,6 @@ void BossChaseState::Update(Boss* enemy, float deltaTime) {
         enemy->SetAttackCooldown(remainingCooldown > 0.0f ? remainingCooldown : 0.0f);
     }
     
-    float skillCd = enemy->GetBossSkillCooldown() - deltaTime;
-    enemy->SetBossSkillCooldown(skillCd);
-    if (skillCd <= 0.0f) {
-        enemy->ChangeState(enemy->GetBossRangedAttackState());
-        return;
-    }
-
     // Check collision with Player for overlap resolution and damage
     Paladin* activePaladin = enemy->GetTargetTeam()->GetActivePaladin();
     if (EnemyCollision::CheckPlayerCollision(*enemy, *activePaladin)) {
@@ -81,59 +118,4 @@ void BossChaseState::Update(Boss* enemy, float deltaTime) {
 
 void BossChaseState::Exit(Boss* enemy) {
     enemy->EndPathFinding();
-}
-
-// Boss Ranged Attack State
-void BossRangedAttackState::Enter(Enemy* enemy) {
-    Boss* boss = dynamic_cast<Boss*>(enemy);
-    if (!boss) return;
-
-    boss->SetBurstCount(3);
-    boss->SetBurstTimer(0.0f);
-}
-
-void BossRangedAttackState::Update(Enemy* enemy, float deltaTime) {
-    Boss* boss = dynamic_cast<Boss*>(enemy);
-    if (!boss) return;
-
-    if (!enemy->GetTargetTeam()) {
-        enemy->ChangeState(enemy->GetIdleState());
-        return;
-    }
-
-    float timer = boss->GetBurstTimer() + deltaTime;
-    
-    // Fire every 0.15 seconds
-    if (timer >= 0.15f) {
-        timer = 0.0f;
-        int count = boss->GetBurstCount();
-        
-        // Fire projectile
-        Vector2 pos = enemy->GetPosition();
-        Vector2 tPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
-        Vector2 dir = Vector2Subtract(tPos, pos);
-        if (Vector2Length(dir) > 0.0f) {
-            dir = Vector2Normalize(dir);
-        } else {
-            dir = {1.0f, 0.0f};
-        }
-        
-        Vector2 vel = { dir.x * 300.0f, dir.y * 300.0f };
-        Projectile* p = new Projectile(pos, vel, 2.0f, enemy->GetDamage(), true);
-        GameManager::GetInstance().AddProjectile(p);
-        
-        count--;
-        boss->SetBurstCount(count);
-        
-        if (count <= 0) {
-            boss->SetBossSkillCooldown(2.0f);
-            enemy->ChangeState(enemy->GetChaseState());
-            return;
-        }
-    }
-    boss->SetBurstTimer(timer);
-}
-
-void BossRangedAttackState::Exit(Enemy* enemy) {
-    // Reset any state if needed
 }

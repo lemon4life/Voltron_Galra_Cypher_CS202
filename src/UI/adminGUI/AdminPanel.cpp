@@ -91,7 +91,7 @@ constexpr std::array<std::array<float, 14>, 4> DEFAULT_SPAWN_VALUES = {{
     { 200.0f, 200.0f, 160.0f, 70.0f, 2.5f, 2.5f, 2.0f, 0.50f,
       24.0f, 24.0f, 18.0f, 8.0f, 0.0f, 8.0f },
     { 500.0f, 500.0f, 75.0f, 25.0f, 0.8f, 0.8f, 2.0f, 1.0f,
-      40.0f, 68.0f, 32.0f, 12.0f, 0.0f, 28.0f }
+      47.0f, 69.0f, 32.0f, 12.0f, 0.0f, 28.5f }
 }};
 
 bool IsPointInside(Rectangle bounds, Vector2 point) {
