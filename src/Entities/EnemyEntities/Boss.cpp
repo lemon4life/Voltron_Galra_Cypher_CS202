@@ -19,11 +19,14 @@ namespace {
     constexpr int BOSS_IDLE_FRAME_COUNT = 10;
     constexpr int BOSS_RUN_FRAME_COUNT = 6;
     constexpr int BOSS_SPELL_FRAME_COUNT = 6;
+    constexpr int BOSS_PUNCH_READY_FRAME_COUNT = 3;
+    constexpr int BOSS_PUNCH_PLAY_FRAME_COUNT = 6;
     constexpr float BOSS_FRAME_WIDTH = 64.0f;
     constexpr float BOSS_FRAME_HEIGHT = 72.0f;
     constexpr float BOSS_IDLE_FRAME_DURATION = 0.18f;
     constexpr float BOSS_RUN_FRAME_DURATION = 0.11f;
     constexpr float BOSS_SPELL_FRAME_DURATION = 0.11f;
+    constexpr float BOSS_PUNCH_FRAME_DURATION = 0.11f;
     constexpr float BOSS_KNOCKBACK_RESISTANCE = 1.0f;
 
     // Across the ten idle and six running frames, visible pixels occupy the
@@ -76,9 +79,19 @@ Boss::Boss(
     idleState = std::make_unique<BossIdlingState>();
     chaseState = std::make_unique<BossChaseState>();
     spellingState = std::make_unique<BossSpellingState>();
+    punchState = std::make_unique<BossPunchState>();
 
     SetEnemySprites(AssetManager::GetInstance().GetBossSprites());
     spellTexture = AssetManager::GetInstance().GetTexture("Boss_Spell");
+    punchReadyTexture = AssetManager::GetInstance().GetTexture(
+        "Boss_Punch_Ready"
+    );
+    punchPlayTexture = AssetManager::GetInstance().GetTexture(
+        "Boss_Punch_Play"
+    );
+    punchHandTexture = AssetManager::GetInstance().GetTexture(
+        "Boss_Punch_Hand"
+    );
 
     ChangeState(GetIdlingState());
 }
@@ -116,14 +129,28 @@ void Boss::Update(float deltaTime) {
             position.x;
     }
 
-    bool useSpellAnimation = IsSpelling();
-    bool useRunAnimation = !useSpellAnimation && IsMovingForAnimation();
-    int frameCount = useSpellAnimation
-        ? BOSS_SPELL_FRAME_COUNT
-        : (useRunAnimation ? BOSS_RUN_FRAME_COUNT : BOSS_IDLE_FRAME_COUNT);
-    float frameDuration = useSpellAnimation
-        ? BOSS_SPELL_FRAME_DURATION
-        : (useRunAnimation ? BOSS_RUN_FRAME_DURATION : BOSS_IDLE_FRAME_DURATION);
+    bool usePunchAnimation = IsPunching();
+    bool usePunchReadyAnimation =
+        usePunchAnimation && IsPunchReadyAnimation();
+    bool useSpellAnimation = !usePunchAnimation && IsSpelling();
+    bool useRunAnimation = !usePunchAnimation && !useSpellAnimation &&
+        IsMovingForAnimation();
+    int frameCount = usePunchAnimation
+        ? (usePunchReadyAnimation
+            ? BOSS_PUNCH_READY_FRAME_COUNT
+            : BOSS_PUNCH_PLAY_FRAME_COUNT)
+        : (useSpellAnimation
+            ? BOSS_SPELL_FRAME_COUNT
+            : (useRunAnimation
+                ? BOSS_RUN_FRAME_COUNT
+                : BOSS_IDLE_FRAME_COUNT));
+    float frameDuration = usePunchAnimation
+        ? BOSS_PUNCH_FRAME_DURATION
+        : (useSpellAnimation
+            ? BOSS_SPELL_FRAME_DURATION
+            : (useRunAnimation
+                ? BOSS_RUN_FRAME_DURATION
+                : BOSS_IDLE_FRAME_DURATION));
     currentRunFrame %= frameCount;
     runFrameTime += deltaTime;
     while (runFrameTime >= frameDuration) {
@@ -138,15 +165,29 @@ void Boss::Draw() {
         return;
     }
 
-    bool useSpellAnimation = IsSpelling();
-    bool useRunAnimation = !useSpellAnimation && IsMovingForAnimation();
-    int frameCount = useSpellAnimation
-        ? BOSS_SPELL_FRAME_COUNT
-        : (useRunAnimation ? BOSS_RUN_FRAME_COUNT : BOSS_IDLE_FRAME_COUNT);
+    bool usePunchAnimation = IsPunching();
+    bool usePunchReadyAnimation =
+        usePunchAnimation && IsPunchReadyAnimation();
+    bool useSpellAnimation = !usePunchAnimation && IsSpelling();
+    bool useRunAnimation = !usePunchAnimation && !useSpellAnimation &&
+        IsMovingForAnimation();
+    int frameCount = usePunchAnimation
+        ? (usePunchReadyAnimation
+            ? BOSS_PUNCH_READY_FRAME_COUNT
+            : BOSS_PUNCH_PLAY_FRAME_COUNT)
+        : (useSpellAnimation
+            ? BOSS_SPELL_FRAME_COUNT
+            : (useRunAnimation
+                ? BOSS_RUN_FRAME_COUNT
+                : BOSS_IDLE_FRAME_COUNT));
     int frameIndex = currentRunFrame % frameCount;
-    Texture2D texture = useSpellAnimation
-        ? spellTexture
-        : (useRunAnimation ? sprites.run : sprites.idle);
+    Texture2D texture = usePunchAnimation
+        ? (usePunchReadyAnimation
+            ? punchReadyTexture
+            : punchPlayTexture)
+        : (useSpellAnimation
+            ? spellTexture
+            : (useRunAnimation ? sprites.run : sprites.idle));
     // Invert the sheet's authored direction to match the Boss target facing.
     bool flipSprite = facingLeft;
 
@@ -175,6 +216,50 @@ void Boss::Draw() {
         );
     } else {
         DrawRectangleRec(GetBoundingBox(), ORANGE);
+    }
+
+    if (usePunchAnimation && !usePunchReadyAnimation &&
+        punchHandTexture.id != 0 &&
+        punchHandTexture.width >=
+            (int)(BOSS_FRAME_WIDTH * BOSS_PUNCH_PLAY_FRAME_COUNT) &&
+        punchHandTexture.height >= (int)BOSS_FRAME_HEIGHT) {
+        float handAngle = 0.0f;
+        if (targetTeam && targetTeam->GetActivePaladin()) {
+            Vector2 targetDirection = Vector2Subtract(
+                targetTeam->GetActivePaladin()->GetPosition(),
+                position
+            );
+            if (Vector2Length(targetDirection) > 0.0f) {
+                // The authored hand points along the zero-degree axis.
+                handAngle = std::atan2(
+                    targetDirection.y,
+                    targetDirection.x
+                ) * RAD2DEG;
+                if (flipSprite) {
+                    // Horizontal mirroring reverses the authored hand axis.
+                    handAngle += 180.0f;
+                }
+            }
+        }
+
+        DrawTexturePro(
+            punchHandTexture,
+            {
+                frameIndex * BOSS_FRAME_WIDTH,
+                0.0f,
+                flipSprite ? -BOSS_FRAME_WIDTH : BOSS_FRAME_WIDTH,
+                BOSS_FRAME_HEIGHT
+            },
+            {
+                std::round(position.x),
+                std::round(position.y),
+                BOSS_FRAME_WIDTH,
+                BOSS_FRAME_HEIGHT
+            },
+            BOSS_DRAW_ORIGIN,
+            handAngle,
+            statusComponent.GetStatusTint()
+        );
     }
 
     float healthPercent = maxHealth > 0
@@ -235,4 +320,14 @@ bool Boss::TrySummonRandomEnemy() {
 void Boss::ResetAnimationCycle() {
     currentRunFrame = 0;
     runFrameTime = 0.0f;
+}
+
+void Boss::BeginPunchReadyAnimation() {
+    punchReadyAnimation = true;
+    ResetAnimationCycle();
+}
+
+void Boss::BeginPunchPlayAnimation() {
+    punchReadyAnimation = false;
+    ResetAnimationCycle();
 }

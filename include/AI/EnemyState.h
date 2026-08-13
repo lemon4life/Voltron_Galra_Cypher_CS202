@@ -118,7 +118,7 @@ public:
 };
 
 /*
-    Boss alternating idle/chase behavior
+    Boss idle and randomized offense behaviors
 */
 
 class BossIdlingState : public ITypedEnemyState<Boss> {
@@ -148,6 +148,17 @@ private:
     float elapsedTime = 0.0f;
     float spellDuration = 0.0f;
     float nextSummonCheck = 0.0f;
+
+public:
+    void Enter(Boss* enemy) override;
+    void Update(Boss* enemy, float deltaTime) override;
+    void Exit(Boss* enemy) override;
+};
+
+class BossPunchState : public ITypedEnemyState<Boss> {
+private:
+    float elapsedTime = 0.0f;
+    bool readyAnimationComplete = false;
 
 public:
     void Enter(Boss* enemy) override;

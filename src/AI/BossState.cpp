@@ -10,6 +10,7 @@
 #include "raymath.h"
 
 #include <algorithm>
+#include <array>
 
 namespace {
     constexpr int BOSS_IDLE_MIN_MILLISECONDS = 3000;
@@ -19,12 +20,48 @@ namespace {
     constexpr int BOSS_SPELL_MIN_MILLISECONDS = 4000;
     constexpr int BOSS_SPELL_MAX_MILLISECONDS = 6000;
     constexpr float BOSS_SPELL_SUMMON_INTERVAL = 0.5f;
+    constexpr int BOSS_PUNCH_READY_FRAME_COUNT = 3;
+    constexpr int BOSS_PUNCH_PLAY_FRAME_COUNT = 6;
+    constexpr int BOSS_PUNCHES_PER_STATE = 5;
+    constexpr float BOSS_PUNCH_FRAME_DURATION = 0.11f;
+
+    enum class BossOffense {
+        Chase,
+        Spell,
+        Punch
+    };
+
+    struct BossOffenseChoice {
+        BossOffense offense;
+        int probabilityPercent;
+    };
+
+    // Offense probabilities after each idle phase:
+    // Chase: 40%, Spell: 30%, Punch: 30%.
+    constexpr std::array<BossOffenseChoice, 3> BOSS_OFFENSE_CHOICES = {{
+        { BossOffense::Chase, 0 },
+        { BossOffense::Spell, 0 },
+        { BossOffense::Punch, 100 }
+    }};
 
     float RollDuration(int minimumMilliseconds, int maximumMilliseconds) {
         return (float)GetRandomValue(
             minimumMilliseconds,
             maximumMilliseconds
         ) / 1000.0f;
+    }
+
+    BossOffense RollBossOffense() {
+        int roll = GetRandomValue(1, 100);
+        int cumulativeProbability = 0;
+        for (const BossOffenseChoice& choice : BOSS_OFFENSE_CHOICES) {
+            cumulativeProbability += choice.probabilityPercent;
+            if (roll <= cumulativeProbability) {
+                return choice.offense;
+            }
+        }
+
+        return BossOffense::Chase;
     }
 }
 
@@ -42,9 +79,18 @@ void BossIdlingState::Enter(Boss* enemy) {
 void BossIdlingState::Update(Boss* enemy, float deltaTime) {
     elapsedTime += std::max(0.0f, deltaTime);
     if (elapsedTime >= idleDuration) {
-        IEnemyState* nextState = GetRandomValue(0, 1) == 0
-            ? enemy->GetChaseState()
-            : enemy->GetSpellingState();
+        IEnemyState* nextState = enemy->GetChaseState();
+        switch (RollBossOffense()) {
+            case BossOffense::Spell:
+                nextState = enemy->GetSpellingState();
+                break;
+            case BossOffense::Punch:
+                nextState = enemy->GetPunchState();
+                break;
+            case BossOffense::Chase:
+            default:
+                break;
+        }
         enemy->ChangeState(nextState);
     }
 }
@@ -158,4 +204,37 @@ void BossSpellingState::Update(Boss* enemy, float deltaTime) {
 
 void BossSpellingState::Exit(Boss* enemy) {
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
+}
+
+// Boss Punch State (animation test only; no hitbox or damage yet)
+
+void BossPunchState::Enter(Boss* enemy) {
+    elapsedTime = 0.0f;
+    readyAnimationComplete = false;
+    enemy->EndPathFinding();
+    enemy->SetCurrentVelocity({ 0.0f, 0.0f });
+    enemy->BeginPunchReadyAnimation();
+}
+
+void BossPunchState::Update(Boss* enemy, float deltaTime) {
+    elapsedTime += std::max(0.0f, deltaTime);
+
+    constexpr float READY_DURATION =
+        BOSS_PUNCH_READY_FRAME_COUNT * BOSS_PUNCH_FRAME_DURATION;
+    constexpr float PLAY_DURATION = BOSS_PUNCH_PLAY_FRAME_COUNT *
+        BOSS_PUNCH_FRAME_DURATION * BOSS_PUNCHES_PER_STATE;
+
+    if (!readyAnimationComplete && elapsedTime >= READY_DURATION) {
+        readyAnimationComplete = true;
+        enemy->BeginPunchPlayAnimation();
+    }
+
+    if (elapsedTime >= READY_DURATION + PLAY_DURATION) {
+        enemy->ChangeState(enemy->GetIdlingState());
+    }
+}
+
+void BossPunchState::Exit(Boss* enemy) {
+    enemy->SetCurrentVelocity({ 0.0f, 0.0f });
+    enemy->ResetAnimationCycle();
 }
