@@ -347,6 +347,7 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
         }
     }
 
+    ProcessPendingAdditions();
     ProcessPendingMapObjectDestructions();
     ProcessPendingRemovals();
 }
@@ -531,6 +532,11 @@ void LevelManager::ClearLevel() {
     pendingRemoval.clear();
     enemyPathManager.Clear();
 
+    for (GameObject* entity : pendingAddition) {
+        delete entity;
+    }
+    pendingAddition.clear();
+
     for (auto* entity : levelEntities) {
         delete entity;
     }
@@ -556,6 +562,42 @@ void LevelManager::AddEntity(GameObject* entity) {
             MarkNavigationChanged();
         }
     }
+}
+
+bool LevelManager::QueueEnemySpawn(
+    MapObjectId enemyType,
+    Vector2 position,
+    TeamManager* teamManager
+) {
+    if (enemyType != MapObjectId::Chaser &&
+        enemyType != MapObjectId::Range &&
+        enemyType != MapObjectId::Diver) {
+        return false;
+    }
+
+    GameObject* entity = EntityFactory::CreateEntity(
+        enemyType,
+        position,
+        { -1, -1 },
+        teamManager,
+        GetLevelAccessBundle()
+    );
+    if (!entity ||
+        !IsValidSpawnLocation(entity) ||
+        static_cast<Enemy*>(entity)->CheckCollision(levelEntities)) {
+        delete entity;
+        return false;
+    }
+
+    pendingAddition.push_back(entity);
+    return true;
+}
+
+void LevelManager::ProcessPendingAdditions() {
+    for (GameObject* entity : pendingAddition) {
+        AddEntity(entity);
+    }
+    pendingAddition.clear();
 }
 
 bool LevelManager::IsSolidCollision(Rectangle box) const {

@@ -117,7 +117,7 @@ void Lance::ExecuteUltimateAction() {
     const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
     for (GameObject* obj : entities) {
         Enemy* enemy = dynamic_cast<Enemy*>(obj);
-        if (enemy && !enemy->IsDead()) {
+        if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {
             enemy->GetStatusComponent().AddEffect(EffectType::FREEZE, 5.0f, 0.0f);
         }
     }

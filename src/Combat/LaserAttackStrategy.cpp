@@ -77,6 +77,7 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
     for (auto* entity : entities) {
         if (entity->GetObjectType() == GameObjectType::Enemy) {
             Enemy* e = static_cast<Enemy*>(entity);
+            if (!e->IsEnabled()) continue;
             if (CheckCollisionSegmentRec(barrelTip, laserEndPoint, e->GetBoundingBox())) {
                 e->TakeDamage(damage); // Piercing laser damage
                 // Add Impact Effect visually

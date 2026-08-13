@@ -19,6 +19,13 @@ GameObject* CreateHubPaladinStand(PaladinId id, Vector2 position) {
         AssetManager::GetInstance().GetTexture(definition.idleTextureKey)
     );
 }
+
+Enemy* PrepareEnemySpawn(Enemy* enemy) {
+    if (enemy) {
+        enemy->BeginSpawnSequence();
+    }
+    return enemy;
+}
 }
 
 GameObject* EntityFactory::CreateEntity(
@@ -42,35 +49,35 @@ GameObject* EntityFactory::CreateEntity(
         case MapObjectId::NPC:
             return new NPC(position);
         case MapObjectId::Chaser:
-            return new EnemyChaser(
+            return PrepareEnemySpawn(new EnemyChaser(
                 position,
                 teamManager,
                 levelAccess.removal,
                 levelAccess.pathFinding
-            );
+            ));
         case MapObjectId::Boss:
-            return new Boss(
+            return PrepareEnemySpawn(new Boss(
                 position,
                 teamManager,
                 levelAccess.removal,
                 levelAccess.pathFinding
-            );
+            ));
         case MapObjectId::Range:
-            return new EnemyRange(
+            return PrepareEnemySpawn(new EnemyRange(
                 position,
                 teamManager,
                 levelAccess.removal,
                 levelAccess.pathFinding,
                 levelAccess.lineOfSight
-            );
+            ));
         case MapObjectId::Diver:
-            return new EnemyDiver(
+            return PrepareEnemySpawn(new EnemyDiver(
                 position,
                 teamManager,
                 levelAccess.removal,
                 levelAccess.pathFinding,
                 levelAccess.lineOfSight
-            );
+            ));
         case MapObjectId::HubLanceStand:
             return CreateHubPaladinStand(PaladinId::Lance, position);
         case MapObjectId::HubKeithStand:

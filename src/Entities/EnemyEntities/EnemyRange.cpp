@@ -65,9 +65,15 @@ EnemyRange::~EnemyRange() {
 }
 
 void EnemyRange::Update(float deltaTime) {
+    Vector2 updateStartPosition = position;
+    if (UpdateSpawnSequence(deltaTime)) {
+        UpdateMovementAnimationFlag(updateStartPosition);
+        return;
+    }
     UpdateKnockback(deltaTime);
     
     if (statusComponent.Update(deltaTime, this)) {
+        UpdateMovementAnimationFlag(updateStartPosition);
         return;
     }
     
@@ -78,6 +84,8 @@ void EnemyRange::Update(float deltaTime) {
     
     if (health <= 0) return;
 
+    UpdateMovementAnimationFlag(updateStartPosition);
+
     if (targetTeam && targetTeam->GetActivePaladin()) {
         Vector2 targetPos = targetTeam->GetActivePaladin()->GetPosition();
         facingLeft = targetPos.x < position.x;
@@ -87,7 +95,7 @@ void EnemyRange::Update(float deltaTime) {
         if (facingLeft) weaponAngle += 180.0f;
     }
     
-    if (currentState == chaseState.get()) {
+    if (IsMovingForAnimation()) {
         runFrameTime += deltaTime;
         if (runFrameTime >= 0.08f) {
             currentRunFrame = (currentRunFrame + 1) % 8;
@@ -99,10 +107,15 @@ void EnemyRange::Update(float deltaTime) {
 }
 
 void EnemyRange::Draw() {
+    if (!ShouldDrawDuringSpawn()) {
+        DrawSpawnEffect();
+        return;
+    }
+
     Texture2D texToDraw = sprites.idle;
     if (health <= 0) {
         texToDraw = sprites.down;
-    } else if (currentState == chaseState.get()) {
+    } else if (IsMovingForAnimation()) {
         texToDraw = sprites.run;
     }
 
@@ -173,6 +186,7 @@ void EnemyRange::Draw() {
         4,
         RED
     );
+    DrawSpawnEffect();
 }
 
 

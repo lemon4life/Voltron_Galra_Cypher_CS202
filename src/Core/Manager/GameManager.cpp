@@ -228,6 +228,7 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
                     if (CheckCollisionRecs(pBox, entity->GetBoundingBox())) {
                         if (entity->GetObjectType() == GameObjectType::Enemy) {
                             Enemy* e = static_cast<Enemy*>(entity);
+                            if (!e->IsEnabled()) continue;
                             if (!(*it)->IsEnemyProjectile()) {
                                 e->TakeDamage((*it)->GetDamage());
                                 Vector2 kdir = Vector2Subtract(e->GetPosition(), (*it)->GetPosition());

@@ -62,6 +62,7 @@ protected:
 
     EnemySprites sprites;
     bool facingLeft = false;
+    bool movedThisFrame = false;
     float runFrameTime = 0.0f;
     int currentRunFrame = 0;
     
@@ -86,6 +87,9 @@ protected:
     IEnemyPathAccess& pathAccess;
 
 private:
+    bool spawnSequenceActive = false;
+    float spawnSequenceElapsed = 0.0f;
+    Texture2D spawnEffectTexture = { 0 };
     bool usePathFinding = false;
     std::deque<Vector2> targetPositions;
     EnemyPathStatus pathStatus = EnemyPathStatus::Pending;
@@ -123,6 +127,11 @@ public:
     void ChangeState(IEnemyState* newState);
 
     virtual void TakeDamage(int amount);
+    void BeginSpawnSequence();
+    bool UpdateSpawnSequence(float deltaTime);
+    bool IsEnabled() const { return !spawnSequenceActive; }
+    bool ShouldDrawDuringSpawn() const;
+    void DrawSpawnEffect() const;
     void ApplyKnockback(Vector2 dir, float force);
     void ApplyCollisionPush(Vector2 dir, float distance);
     void UpdateKnockback(float deltaTime);
@@ -170,6 +179,14 @@ public:
 
     StatusComponent& GetStatusComponent() { return statusComponent; }
     void SetCurrentVelocity(Vector2 v) { currentVelocity = v; }
+    bool IsMovingForAnimation() const { return movedThisFrame; }
+    void UpdateMovementAnimationFlag(Vector2 updateStartPosition) {
+        constexpr float MOVEMENT_EPSILON_SQUARED = 0.0001f;
+        float deltaX = position.x - updateStartPosition.x;
+        float deltaY = position.y - updateStartPosition.y;
+        movedThisFrame = deltaX * deltaX + deltaY * deltaY >
+            MOVEMENT_EPSILON_SQUARED;
+    }
 
     EnemyCollisionProfile GetCollisionProfile() const {
         return collisionProfile;

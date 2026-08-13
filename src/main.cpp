@@ -338,7 +338,7 @@ int main() {
                 for (auto* entity : gameManager.GetLevelEntities()) {
                     if (entity->GetObjectType() == GameObjectType::Enemy) {
                         Enemy* enemy = static_cast<Enemy*>(entity);
-                        if (enemy->IsDead()) continue;
+                        if (enemy->IsDead() || !enemy->IsEnabled()) continue;
                         
                         Vector2 toEnemy = {enemy->GetPosition().x - playerPos.x, enemy->GetPosition().y - playerPos.y};
                         float dist = Vector2Length(toEnemy);

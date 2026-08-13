@@ -1088,7 +1088,8 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
 
     for (Enemy* otherEnemy : enemies) {
         if (!otherEnemy) continue;
-        if (otherEnemy == &enemy || otherEnemy->IsDead()) continue;
+        if (otherEnemy == &enemy || otherEnemy->IsDead() ||
+            !otherEnemy->IsEnabled()) continue;
         if (!ContainsRectangle(
                 searchBounds,
                 otherEnemy->GetCollisionBox())) {
@@ -1226,7 +1227,8 @@ void EnemyPathManager::Update(LevelManager& levelManager, float deltaTime) {
         if (nextEnemyIndex >= (int)enemies.size()) nextEnemyIndex = 0;
         Enemy* enemy = enemies[nextEnemyIndex++];
         ++enemiesInspected;
-        if (!enemy || enemy->IsDead() || !enemy->GetTargetTeam()) continue;
+        if (!enemy || enemy->IsDead() || !enemy->IsEnabled() ||
+            !enemy->GetTargetTeam()) continue;
 
         Paladin* target = enemy->GetTargetTeam()->GetActivePaladin();
         if (!target) continue;

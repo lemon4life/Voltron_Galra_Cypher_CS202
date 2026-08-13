@@ -62,9 +62,11 @@ private:
 
     // Enemy pathfinding and deferred object/entity removal.
     void ProcessPendingMapObjectDestructions();
+    void ProcessPendingAdditions();
     void ProcessPendingRemovals();
     std::vector<PendingMapObjectDestruction> pendingMapObjectDestructions;
     std::vector<GameObject*> pendingRemoval;
+    std::vector<GameObject*> pendingAddition;
     EnemyPathManager enemyPathManager;
 
 public:
@@ -94,6 +96,11 @@ public:
     void UpdateLevel(float deltaTime, Vector2 playerPos = {0,0});
     void ClearLevel();
     void AddEntity(GameObject* entity);
+    bool QueueEnemySpawn(
+        MapObjectId enemyType,
+        Vector2 position,
+        TeamManager* teamManager
+    );
     bool IsValidSpawnLocation(const GameObject* entity) const;
     bool IsSolidCollision(Rectangle box) const;
 

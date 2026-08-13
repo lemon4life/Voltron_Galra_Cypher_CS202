@@ -88,7 +88,8 @@ void Rover::Update(float deltaTime) {
         for (const auto& e : entities) {
             if (e->GetObjectType() != GameObjectType::Enemy) continue;
             Enemy* enemyPtr = static_cast<Enemy*>(e);
-            if (!enemyPtr || enemyPtr->IsDead()) continue;
+            if (!enemyPtr || enemyPtr->IsDead() ||
+                !enemyPtr->IsEnabled()) continue;
             
             Vector2 ePos = enemyPtr->GetPosition();
             float d = Vector2Distance(position, ePos);

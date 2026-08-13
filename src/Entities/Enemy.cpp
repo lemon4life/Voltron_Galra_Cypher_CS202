@@ -1,6 +1,7 @@
 #include "Entities/Enemy.h"
 #include "AI/EnemyCollision.h"
 #include "Core/Constants.h"
+#include "Core/Manager/AssetManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "raymath.h"
@@ -17,6 +18,12 @@ namespace {
     constexpr Color DEBUG_CURRENT_TARGET_COLOR = { 80, 255, 100, 255 };
     constexpr Color DEBUG_PENDING_COLOR = { 40, 220, 255, 255 };
     constexpr Color DEBUG_UNREACHABLE_COLOR = { 255, 60, 60, 255 };
+    constexpr int SPAWN_EFFECT_FRAME_COUNT = 9;
+    constexpr int SPAWN_BODY_VISIBLE_FRAME = 3;
+    constexpr float SPAWN_EFFECT_FRAME_WIDTH = 64.0f;
+    constexpr float SPAWN_EFFECT_FRAME_HEIGHT = 48.0f;
+    constexpr float SPAWN_EFFECT_FRAME_DURATION = 0.1f;
+    constexpr float SPAWN_POST_EFFECT_DELAY = 1.0f;
 }
 
 Enemy::Enemy(
@@ -65,24 +72,6 @@ Enemy::~Enemy() {
     EndPathFinding();
 }
 
-// void Enemy::Update(float deltaTime) {
-//     if (currentState) {
-//         currentState->Update(this, deltaTime);
-//     }
-// }
-
-// void Enemy::Draw() {
-//     Color col = (enemyType== EnemyType::BOSS) ? ORANGE : PURPLE;
-//     DrawRectangleRec(GetBoundingBox(), col);
-    
-//     // Draw Health Bar
-//     float hpPercent = (float)health / maxHealth;
-//     float barWidth = (enemyType == EnemyType::BOSS) ? 64.0f : 32.0f;
-//     float xOffset = (enemyType == EnemyType::BOSS) ? 32.0f : 16.0f;
-//     float yOffset = (enemyType == EnemyType::BOSS) ? 36.0f : 20.0f;
-//     DrawRectangle(position.x - xOffset, position.y - yOffset, barWidth * hpPercent, 4, RED);
-// }
-
 void Enemy::ChangeState(IEnemyState* newState) {
     if (!newState || currentState == newState) return;
 
@@ -108,7 +97,7 @@ void Enemy::SetMaxHealth(int value) {
 }
 
 void Enemy::TakeDamage(int amount) {
-    if (health <= 0) return;
+    if (!IsEnabled() || health <= 0) return;
 
     health -= amount;
     if (health < 0) health = 0;
@@ -118,6 +107,86 @@ void Enemy::TakeDamage(int amount) {
         deathNotified = true;
         removalAccess.QueueRemoval(this);
     }
+}
+
+void Enemy::BeginSpawnSequence() {
+    EndPathFinding();
+    spawnSequenceActive = true;
+    spawnSequenceElapsed = 0.0f;
+    spawnEffectTexture = AssetManager::GetInstance().GetTexture(
+        "Enemy_Spawn"
+    );
+    currentVelocity = { 0.0f, 0.0f };
+    knockbackVelocity = { 0.0f, 0.0f };
+    movedThisFrame = false;
+}
+
+bool Enemy::UpdateSpawnSequence(float deltaTime) {
+    if (!spawnSequenceActive) return false;
+
+    currentVelocity = { 0.0f, 0.0f };
+    knockbackVelocity = { 0.0f, 0.0f };
+    movedThisFrame = false;
+    spawnSequenceElapsed += std::max(0.0f, deltaTime);
+
+    constexpr float EFFECT_DURATION =
+        SPAWN_EFFECT_FRAME_COUNT * SPAWN_EFFECT_FRAME_DURATION;
+    if (spawnSequenceElapsed >= EFFECT_DURATION + SPAWN_POST_EFFECT_DELAY) {
+        spawnSequenceActive = false;
+        return false;
+    }
+
+    return true;
+}
+
+bool Enemy::ShouldDrawDuringSpawn() const {
+    if (!spawnSequenceActive) return true;
+
+    return spawnSequenceElapsed >=
+        SPAWN_BODY_VISIBLE_FRAME * SPAWN_EFFECT_FRAME_DURATION;
+}
+
+void Enemy::DrawSpawnEffect() const {
+    constexpr float EFFECT_DURATION =
+        SPAWN_EFFECT_FRAME_COUNT * SPAWN_EFFECT_FRAME_DURATION;
+    if (!spawnSequenceActive ||
+        spawnSequenceElapsed >= EFFECT_DURATION ||
+        spawnEffectTexture.id == 0) {
+        return;
+    }
+
+    int frame = std::min(
+        SPAWN_EFFECT_FRAME_COUNT - 1,
+        (int)(spawnSequenceElapsed / SPAWN_EFFECT_FRAME_DURATION)
+    );
+    Rectangle hostFeet = GetCollisionBox();
+    Vector2 effectFootAnchor = {
+        hostFeet.x + hostFeet.width * 0.5f,
+        hostFeet.y + hostFeet.height
+    };
+    Rectangle source = {
+        frame * SPAWN_EFFECT_FRAME_WIDTH,
+        0.0f,
+        SPAWN_EFFECT_FRAME_WIDTH,
+        SPAWN_EFFECT_FRAME_HEIGHT
+    };
+    Rectangle destination = {
+        effectFootAnchor.x,
+        effectFootAnchor.y,
+        SPAWN_EFFECT_FRAME_WIDTH,
+        SPAWN_EFFECT_FRAME_HEIGHT
+    };
+    DrawTexturePro(
+        spawnEffectTexture,
+        source,
+        destination,
+        {
+            SPAWN_EFFECT_FRAME_WIDTH * 0.5f,
+            SPAWN_EFFECT_FRAME_HEIGHT
+        },
+        0.0f,
+        WHITE
+    );
 }
 
 Rectangle Enemy::GetBoundingBox() const {

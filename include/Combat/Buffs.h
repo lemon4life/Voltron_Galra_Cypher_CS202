@@ -50,7 +50,7 @@ public:
         const auto& entities = GameManager::GetInstance().GetLevelEntities();
         for (GameObject* obj : entities) {
             Enemy* enemy = dynamic_cast<Enemy*>(obj);
-            if (enemy && !enemy->IsDead()) {
+            if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {
                 if (CheckCollisionCircles(activePaladin->GetPosition(), skillRadius, enemy->GetPosition(), 15.0f)) {
                     enemy->GetStatusComponent().AddEffect(EffectType::BURN, 5.0f, 5.0f);
                     

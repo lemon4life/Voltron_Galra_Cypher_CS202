@@ -41,7 +41,7 @@ void Pidge::UpdateInactive(float deltaTime) {
             for (const auto& e : entities) {
                 if (e->GetObjectType() == GameObjectType::Enemy) {
                     Enemy* enemy = static_cast<Enemy*>(e);
-                    if (!enemy || enemy->IsDead()) continue;
+                    if (!enemy || enemy->IsDead() || !enemy->IsEnabled()) continue;
                     
                     if (CheckCollisionCircles(venomZonePos, zoneRadius, enemy->GetPosition(), 16.0f)) {
                         enemy->GetStatusComponent().AddEffect(EffectType::POISON, 1.1f, 5.0f);
@@ -72,7 +72,7 @@ void Pidge::Update(float deltaTime) {
             for (const auto& e : entities) {
                 if (e->GetObjectType() == GameObjectType::Enemy) {
                     Enemy* enemy = static_cast<Enemy*>(e);
-                    if (!enemy || enemy->IsDead()) continue;
+                    if (!enemy || enemy->IsDead() || !enemy->IsEnabled()) continue;
                     
                     if (CheckCollisionCircles(venomZonePos, zoneRadius, enemy->GetPosition(), 16.0f)) {
                         enemy->GetStatusComponent().AddEffect(EffectType::POISON, 1.1f, 5.0f);

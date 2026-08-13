@@ -142,3 +142,14 @@ public:
     void Update(Boss* enemy, float deltaTime) override;
     void Exit(Boss* enemy) override;
 };
+
+class BossSpellingState : public ITypedEnemyState<Boss> {
+private:
+    float elapsedTime = 0.0f;
+    bool hasSummoned = false;
+
+public:
+    void Enter(Boss* enemy) override;
+    void Update(Boss* enemy, float deltaTime) override;
+    void Exit(Boss* enemy) override;
+};

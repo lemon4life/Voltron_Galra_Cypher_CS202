@@ -27,6 +27,8 @@ bool EnemyCollision::CheckPlayerCollision(
     const Enemy& enemy,
     const Paladin& player
 ) {
+    if (!enemy.IsEnabled()) return false;
+
     return CheckCollisionRecs(
         enemy.GetContactAttackBoxAt(enemy.GetPosition()),
         player.GetCollisionBox()
@@ -37,7 +39,7 @@ bool EnemyCollision::CheckEnemyCollision(
     const Enemy& enemy,
     const Enemy& other
 ) {
-    if (&enemy == &other || other.IsDead()) {
+    if (&enemy == &other || other.IsDead() || !other.IsEnabled()) {
         return false;
     }
 

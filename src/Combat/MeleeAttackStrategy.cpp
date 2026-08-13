@@ -92,6 +92,7 @@ void MeleeAttackStrategy::Update(float deltaTime) {
 
                 if (entity->GetObjectType() == GameObjectType::Enemy) {
                     Enemy& enemy = static_cast<Enemy&>(*entity);
+                    if (!enemy.IsEnabled()) continue;
                     enemy.TakeDamage(damage);
                     enemy.ApplyKnockback(aimDir, MELEE_KNOCKBACK_FORCE);
                     damagedObject = true;

@@ -1,6 +1,8 @@
 #include "Entities/EnemyEntities/Boss.h"
 
 #include "Core/Manager/AssetManager.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 
@@ -16,10 +18,12 @@ namespace {
     constexpr float BOSS_ATTACK_COOLDOWN = 0.8f;
     constexpr int BOSS_IDLE_FRAME_COUNT = 10;
     constexpr int BOSS_RUN_FRAME_COUNT = 6;
+    constexpr int BOSS_SPELL_FRAME_COUNT = 6;
     constexpr float BOSS_FRAME_WIDTH = 64.0f;
     constexpr float BOSS_FRAME_HEIGHT = 72.0f;
     constexpr float BOSS_IDLE_FRAME_DURATION = 0.18f;
     constexpr float BOSS_RUN_FRAME_DURATION = 0.11f;
+    constexpr float BOSS_SPELL_FRAME_DURATION = 0.11f;
     constexpr float BOSS_KNOCKBACK_RESISTANCE = 1.0f;
 
     // Across the ten idle and six running frames, visible pixels occupy the
@@ -37,6 +41,9 @@ namespace {
     constexpr float BOSS_HEALTH_BAR_WIDTH = BOSS_FRAME_WIDTH;
     constexpr float BOSS_HEALTH_BAR_HEIGHT = 6.0f;
     constexpr float BOSS_HEALTH_BAR_GAP = 8.0f;
+    constexpr int BOSS_SUMMON_ATTEMPTS = 12;
+    constexpr int BOSS_SUMMON_MIN_RADIUS_TENTHS = 560;
+    constexpr int BOSS_SUMMON_MAX_RADIUS_TENTHS = 960;
 }
 
 Boss::Boss(
@@ -63,8 +70,10 @@ Boss::Boss(
 
     idleState = std::make_unique<BossIdlingState>();
     chaseState = std::make_unique<BossChaseState>();
+    spellingState = std::make_unique<BossSpellingState>();
 
     SetEnemySprites(AssetManager::GetInstance().GetBossSprites());
+    spellTexture = AssetManager::GetInstance().GetTexture("Boss_Spell");
 
     ChangeState(GetIdlingState());
 }
@@ -77,9 +86,15 @@ Boss::~Boss() {
 }
 
 void Boss::Update(float deltaTime) {
+    Vector2 updateStartPosition = position;
+    if (UpdateSpawnSequence(deltaTime)) {
+        UpdateMovementAnimationFlag(updateStartPosition);
+        return;
+    }
     UpdateKnockback(deltaTime);
     
     if (statusComponent.Update(deltaTime, this)) {
+        UpdateMovementAnimationFlag(updateStartPosition);
         return;
     }
     
@@ -89,18 +104,21 @@ void Boss::Update(float deltaTime) {
 
     if (health <= 0) return;
 
+    UpdateMovementAnimationFlag(updateStartPosition);
+
     if (targetTeam && targetTeam->GetActivePaladin()) {
         facingLeft = targetTeam->GetActivePaladin()->GetPosition().x <
             position.x;
     }
 
-    bool useRunAnimation = currentState == chaseState.get();
-    int frameCount = useRunAnimation
-        ? BOSS_RUN_FRAME_COUNT
-        : BOSS_IDLE_FRAME_COUNT;
-    float frameDuration = useRunAnimation
-        ? BOSS_RUN_FRAME_DURATION
-        : BOSS_IDLE_FRAME_DURATION;
+    bool useSpellAnimation = IsSpelling();
+    bool useRunAnimation = !useSpellAnimation && IsMovingForAnimation();
+    int frameCount = useSpellAnimation
+        ? BOSS_SPELL_FRAME_COUNT
+        : (useRunAnimation ? BOSS_RUN_FRAME_COUNT : BOSS_IDLE_FRAME_COUNT);
+    float frameDuration = useSpellAnimation
+        ? BOSS_SPELL_FRAME_DURATION
+        : (useRunAnimation ? BOSS_RUN_FRAME_DURATION : BOSS_IDLE_FRAME_DURATION);
     currentRunFrame %= frameCount;
     runFrameTime += deltaTime;
     while (runFrameTime >= frameDuration) {
@@ -110,14 +128,20 @@ void Boss::Update(float deltaTime) {
 }
 
 void Boss::Draw() {
-    bool useRunAnimation = currentState == chaseState.get();
-    int frameCount = useRunAnimation
-        ? BOSS_RUN_FRAME_COUNT
-        : BOSS_IDLE_FRAME_COUNT;
+    if (!ShouldDrawDuringSpawn()) {
+        DrawSpawnEffect();
+        return;
+    }
+
+    bool useSpellAnimation = IsSpelling();
+    bool useRunAnimation = !useSpellAnimation && IsMovingForAnimation();
+    int frameCount = useSpellAnimation
+        ? BOSS_SPELL_FRAME_COUNT
+        : (useRunAnimation ? BOSS_RUN_FRAME_COUNT : BOSS_IDLE_FRAME_COUNT);
     int frameIndex = currentRunFrame % frameCount;
-    Texture2D texture = useRunAnimation
-        ? sprites.run
-        : sprites.idle;
+    Texture2D texture = useSpellAnimation
+        ? spellTexture
+        : (useRunAnimation ? sprites.run : sprites.idle);
     // Invert the sheet's authored direction to match the Boss target facing.
     bool flipSprite = facingLeft;
 
@@ -167,5 +191,43 @@ void Boss::Draw() {
         },
         RED
     );
+    DrawSpawnEffect();
+}
 
+bool Boss::TrySummonRandomEnemy() {
+    LevelManager* levelManager =
+        GameManager::GetInstance().GetLevelManager();
+    if (!levelManager || !targetTeam) return false;
+
+    constexpr MapObjectId SUMMON_TYPES[] = {
+        MapObjectId::Chaser,
+        MapObjectId::Range,
+        MapObjectId::Diver
+    };
+    MapObjectId summonType = SUMMON_TYPES[GetRandomValue(0, 2)];
+
+    for (int attempt = 0; attempt < BOSS_SUMMON_ATTEMPTS; ++attempt) {
+        float angle = (float)GetRandomValue(0, 359) * DEG2RAD;
+        float radius = (float)GetRandomValue(
+            BOSS_SUMMON_MIN_RADIUS_TENTHS,
+            BOSS_SUMMON_MAX_RADIUS_TENTHS
+        ) / 10.0f;
+        Vector2 summonPosition = {
+            position.x + std::cos(angle) * radius,
+            position.y + std::sin(angle) * radius
+        };
+        if (levelManager->QueueEnemySpawn(
+                summonType,
+                summonPosition,
+                targetTeam)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void Boss::ResetAnimationCycle() {
+    currentRunFrame = 0;
+    runFrameTime = 0.0f;
 }

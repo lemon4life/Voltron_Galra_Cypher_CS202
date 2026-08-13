@@ -59,7 +59,7 @@ void Keith::ExecuteUltimateAction() {
     const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
     for (GameObject* obj : entities) {
         Enemy* enemy = dynamic_cast<Enemy*>(obj);
-        if (enemy && !enemy->IsDead()) {
+        if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {
             Vector2 pivot = { position.x, position.y + 17.0f };
             Vector2 offset = Vector2Subtract(enemy->GetPosition(), pivot);
             
