@@ -159,11 +159,7 @@ void Enemy::DrawSpawnEffect() const {
         SPAWN_EFFECT_FRAME_COUNT - 1,
         (int)(spawnSequenceElapsed / SPAWN_EFFECT_FRAME_DURATION)
     );
-    Rectangle hostFeet = GetCollisionBox();
-    Vector2 effectFootAnchor = {
-        hostFeet.x + hostFeet.width * 0.5f,
-        hostFeet.y + hostFeet.height
-    };
+    Vector2 effectFootAnchor = GetRenderFootPosition();
     Rectangle source = {
         frame * SPAWN_EFFECT_FRAME_WIDTH,
         0.0f,

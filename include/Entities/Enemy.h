@@ -54,6 +54,7 @@ protected:
     float dazeDuration;
     float knockbackResistance;
     Vector2 size;
+    Vector2 renderFootOffset = { 0.0f, 0.0f };
     EnemyCollisionProfile collisionProfile;
     Vector2 knockbackVelocity;
     Vector2 currentVelocity = {0.0f, 0.0f};
@@ -176,6 +177,15 @@ public:
     }
     Vector2 GetSize() const { return size; }
     void SetSize(Vector2 value) { size = value; }
+    Vector2 GetRenderFootPosition() const {
+        return {
+            position.x + renderFootOffset.x,
+            position.y + renderFootOffset.y
+        };
+    }
+    void SetRenderFootOffset(Vector2 offset) {
+        renderFootOffset = offset;
+    }
 
     StatusComponent& GetStatusComponent() { return statusComponent; }
     void SetCurrentVelocity(Vector2 v) { currentVelocity = v; }

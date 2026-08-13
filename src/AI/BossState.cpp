@@ -16,8 +16,9 @@ namespace {
     constexpr int BOSS_IDLE_MAX_MILLISECONDS = 5000;
     constexpr int BOSS_CHASE_MIN_MILLISECONDS = 5000;
     constexpr int BOSS_CHASE_MAX_MILLISECONDS = 7000;
-    constexpr float BOSS_SPELL_DURATION = 2.0f;
-    constexpr float BOSS_SPELL_SUMMON_TIME = 0.66f;
+    constexpr int BOSS_SPELL_MIN_MILLISECONDS = 4000;
+    constexpr int BOSS_SPELL_MAX_MILLISECONDS = 6000;
+    constexpr float BOSS_SPELL_SUMMON_INTERVAL = 0.5f;
 
     float RollDuration(int minimumMilliseconds, int maximumMilliseconds) {
         return (float)GetRandomValue(
@@ -129,7 +130,11 @@ void BossChaseState::Exit(Boss* enemy) {
 
 void BossSpellingState::Enter(Boss* enemy) {
     elapsedTime = 0.0f;
-    hasSummoned = false;
+    spellDuration = RollDuration(
+        BOSS_SPELL_MIN_MILLISECONDS,
+        BOSS_SPELL_MAX_MILLISECONDS
+    );
+    nextSummonCheck = BOSS_SPELL_SUMMON_INTERVAL;
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
     enemy->ResetAnimationCycle();
@@ -138,11 +143,15 @@ void BossSpellingState::Enter(Boss* enemy) {
 void BossSpellingState::Update(Boss* enemy, float deltaTime) {
     elapsedTime += std::max(0.0f, deltaTime);
 
-    if (!hasSummoned && elapsedTime >= BOSS_SPELL_SUMMON_TIME) {
-        hasSummoned = enemy->TrySummonRandomEnemy();
+    while (nextSummonCheck <= spellDuration &&
+           elapsedTime >= nextSummonCheck) {
+        if (GetRandomValue(0, 1) == 0) {
+            enemy->TrySummonRandomEnemy();
+        }
+        nextSummonCheck += BOSS_SPELL_SUMMON_INTERVAL;
     }
 
-    if (elapsedTime >= BOSS_SPELL_DURATION) {
+    if (elapsedTime >= spellDuration) {
         enemy->ChangeState(enemy->GetIdlingState());
     }
 }

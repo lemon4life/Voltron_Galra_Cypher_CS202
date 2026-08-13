@@ -30,6 +30,10 @@ namespace {
     // combined x=8..54 and y=3..71 bounds inside each 64x72 cell.
     constexpr Vector2 BOSS_SIZE = { 47.0f, 69.0f };
     constexpr Vector2 BOSS_DRAW_ORIGIN = { 31.5f, 37.5f };
+    constexpr Vector2 BOSS_RENDER_FOOT_OFFSET = {
+        0.0f,
+        BOSS_FRAME_HEIGHT - BOSS_DRAW_ORIGIN.y
+    };
 
     // The bottom twelve source rows contain the stable foot silhouette. Its
     // center is 28.5 pixels below the recalculated visible-body center.
@@ -65,6 +69,7 @@ Boss::Boss(
 {
     enemyType = EnemyType::BOSS;
     size = BOSS_SIZE;
+    SetRenderFootOffset(BOSS_RENDER_FOOT_OFFSET);
     SetCollisionProfile(BOSS_COLLISION_PROFILE);
     SetKnockbackResistance(BOSS_KNOCKBACK_RESISTANCE);
 

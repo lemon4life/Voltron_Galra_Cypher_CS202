@@ -29,6 +29,7 @@ namespace {
     constexpr float DIVER_KNOCKBACK_RESISTANCE = 0.50f;
 
     constexpr Vector2 DIVER_SIZE = { 24.0f, 24.0f };
+    constexpr Vector2 DIVER_RENDER_FOOT_OFFSET = { 0.0f, 16.0f };
     constexpr EnemyCollisionProfile DIVER_COLLISION_PROFILE = {
         { 18.0f, 8.0f },
         { 0.0f, 8.0f }
@@ -60,6 +61,7 @@ EnemyDiver::EnemyDiver(
     lungingState = std::make_unique<EnemyDiverLungingState>();
     enemyType = EnemyType::DIVER;
     size = DIVER_SIZE;
+    SetRenderFootOffset(DIVER_RENDER_FOOT_OFFSET);
     SetCollisionProfile(DIVER_COLLISION_PROFILE);
     SetKnockbackResistance(DIVER_KNOCKBACK_RESISTANCE);
 

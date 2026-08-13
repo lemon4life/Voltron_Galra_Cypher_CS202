@@ -20,6 +20,7 @@ namespace {
     constexpr float RANGE_PROJECTILE_RADIUS = 5.0f;
     constexpr float RANGE_KNOCKBACK_RESISTANCE = 0.10f;
     constexpr Vector2 RANGE_SIZE = { 24.0f, 24.0f };
+    constexpr Vector2 RANGE_RENDER_FOOT_OFFSET = { 0.0f, 16.0f };
     constexpr EnemyCollisionProfile RANGE_COLLISION_PROFILE = {
         { 18.0f, 8.0f },
         { 0.0f, 8.0f }
@@ -50,6 +51,7 @@ EnemyRange::EnemyRange(
     enemyType = EnemyType::RANGE;
     kinematics.SetType(WeaponKinematicsType::Ranged);
     size = RANGE_SIZE;
+    SetRenderFootOffset(RANGE_RENDER_FOOT_OFFSET);
     SetCollisionProfile(RANGE_COLLISION_PROFILE);
     SetKnockbackResistance(RANGE_KNOCKBACK_RESISTANCE);
 

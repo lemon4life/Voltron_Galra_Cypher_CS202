@@ -146,7 +146,8 @@ public:
 class BossSpellingState : public ITypedEnemyState<Boss> {
 private:
     float elapsedTime = 0.0f;
-    bool hasSummoned = false;
+    float spellDuration = 0.0f;
+    float nextSummonCheck = 0.0f;
 
 public:
     void Enter(Boss* enemy) override;
