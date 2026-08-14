@@ -26,7 +26,7 @@ namespace Constants {
     constexpr Vector2 KNIGHT_PROJECTILE_OFFSET = { 27.0f, 4.0f };
 
     // Dungeon Generation Constants
-    constexpr int MAX_ROOM_TILE_SIZE = 32;
+    constexpr int MAX_ROOM_TILE_SIZE = 31;
     constexpr int NORMAL_ROOM_TILE_SIZE = 20;
     constexpr int CORRIDOR_LENGTH = 5;
     constexpr int CORRIDOR_WIDTH = 5;

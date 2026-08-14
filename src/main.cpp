@@ -28,6 +28,7 @@
 #include "UI/UIManager.h"
 #include "UI/MinimapRenderer.h"
 #include "UI/adminGUI/AdminPanel.h"
+#include "Core/Level/RoomEditorState.h"
 #include "Core/AimStrategy/MouseAimStrategy.h"
 #include "Core/AimStrategy/AutoAimStrategy.h"
 
@@ -226,6 +227,9 @@ int main() {
     mainMenu.Initialize();
     AssetManager::GetInstance().QueueCharacterAssets();
 
+    RoomEditorState roomEditor;
+    roomEditor.Initialize();
+
     PauseMenu pauseMenu;
     SettingsMenu settingsMenu;
     PaladinSelectionMenu paladinSelectionMenu;
@@ -415,7 +419,10 @@ int main() {
                         );
                     }
                     gameManager.SetState(continueState);
+                } else if (menuAction == MainMenuAction::OpenEditor) {
+                    gameManager.SetState(GameState::ROOM_EDITOR);
                 }
+                
                 if (mainMenu.ConsumeQuitRequest()) {
                     quitRequested = true;
                 }
@@ -577,6 +584,9 @@ int main() {
                 }
                 break;
             }
+            case GameState::ROOM_EDITOR:
+                roomEditor.Update(deltaTime);
+                break;
             case GameState::GAME_OVER:
                 if (IsKeyPressed(KEY_R)) {
                     ResetGame(teamManager, &levelManager, &waveManager);
@@ -614,7 +624,7 @@ int main() {
 
         if (renderState == GameState::HUB ||
             renderState == GameState::GAMEPLAY) {
-            BeginMode2D(CameraManager::GetInstance().GetCamera());
+            BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
             ClearBackground(BLACK);
             levelManager.DrawLevelBase();
 
@@ -687,15 +697,20 @@ int main() {
                     int currentGridY = 3;
                     auto paladin = teamManager->GetActivePaladin();
                     if (paladin) {
-                        float tileW = Constants::TILE_SIZE * Constants::GLOBAL_SCALE;
+                        float tileW = Constants::RENDER_TILE_SIZE;
                         int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
                         currentGridX = (int)(paladin->GetPosition().x / (roomOuterSize * tileW));
                         currentGridY = (int)(paladin->GetPosition().y / (roomOuterSize * tileW));
                     }
+                    float padding = 10.0f;
+                    float minimapSize = 100.0f;
+                    float anchorX = (GetScreenWidth() - uiCamera.offset.x) / viewportScale - minimapSize - padding;
+                    float anchorY = padding - uiCamera.offset.y / viewportScale;
                     MinimapRenderer::Draw(
                         levelManager.GetLevelMap(),
                         currentGridX,
-                        currentGridY
+                        currentGridY,
+                        { anchorX, anchorY }
                     );
                 }
             } else if (renderState == GameState::HUB &&
@@ -718,8 +733,10 @@ int main() {
             UIUtils::DrawCenteredText("PixeloidBold", "MISSION ACCOMPLISHED", { 400, 200 }, UIUtils::FontSize::TITLE, GOLD);
             UIUtils::DrawCenteredText("PixeloidSans", "Press R to return to Main Menu", { 400, 300 }, UIUtils::FontSize::BODY, DARKGRAY);
             EndMode2D();
-        } else {
+        } else if (renderState == GameState::MAIN_MENU) {
             mainMenu.Draw(GetScreenWidth(), GetScreenHeight());
+        } else if (renderState == GameState::ROOM_EDITOR) {
+            roomEditor.Draw();
         }
 
         if (state == GameState::PAUSE) {

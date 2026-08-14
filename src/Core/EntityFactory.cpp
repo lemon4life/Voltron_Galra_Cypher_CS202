@@ -40,6 +40,9 @@ GameObject* EntityFactory::CreateEntity(
         case MapObjectId::Prop1:
         case MapObjectId::Prop2:
         case MapObjectId::MockWall:
+        case MapObjectId::PotEX:
+        case MapObjectId::PotHP:
+        case MapObjectId::PotQuint:
             return new Prop(
                 position,
                 cell,

@@ -35,7 +35,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE include src)
 # dependencies (like OpenGL, Cocoa/IOKit on macOS, etc.)
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
 
-# Copy assets folder to the build directory so relative paths resolve correctly when running
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
+# Copy assets folder to the build directory after building so new assets are always included
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets
+    ${CMAKE_CURRENT_BINARY_DIR}/assets
+)
 # Added Core singletons (GameManager, AudioManager)

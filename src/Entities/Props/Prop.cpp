@@ -83,16 +83,25 @@ void Prop::DrawBaseLayer() {
     if (tex.id != 0) {
         float frameWidth = (float)tex.width / frames;
         float frameHeight = (float)tex.height;
-        float splitY = frameHeight * 0.5f;
-
-        Rectangle src = {currentFrame * frameWidth, splitY, frameWidth, frameHeight - splitY};
         
-        Rectangle bounds = GetBoundingBox();
-        float visualHeight = bounds.height / 0.75f;
-        float destHeight = visualHeight * 0.5f;
-        Rectangle dest = {bounds.x, bounds.y + bounds.height - destHeight, bounds.width, destHeight};
+        bool isPot = (propType == MapObjectId::PotEX || propType == MapObjectId::PotHP || propType == MapObjectId::PotQuint);
+        
+        if (isPot) {
+            Rectangle src = {currentFrame * frameWidth, 0.0f, frameWidth, frameHeight};
+            Rectangle bounds = GetBoundingBox();
+            Rectangle dest = {bounds.x + bounds.width/2.0f - frameWidth/2.0f, bounds.y + bounds.height/2.0f - frameHeight/2.0f, frameWidth, frameHeight};
+            DrawTexturePro(tex, src, dest, {0,0}, 0.0f, WHITE);
+        } else {
+            float splitY = frameHeight * 0.5f;
+            Rectangle src = {currentFrame * frameWidth, splitY, frameWidth, frameHeight - splitY};
+            
+            Rectangle bounds = GetBoundingBox();
+            float visualHeight = bounds.height / 0.75f;
+            float destHeight = visualHeight * 0.5f;
+            Rectangle dest = {bounds.x, bounds.y + bounds.height - destHeight, bounds.width, destHeight};
 
-        DrawTexturePro(tex, src, dest, {0,0}, 0.0f, WHITE);
+            DrawTexturePro(tex, src, dest, {0,0}, 0.0f, WHITE);
+        }
     }
 }
 

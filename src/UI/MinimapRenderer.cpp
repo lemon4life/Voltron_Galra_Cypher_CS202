@@ -5,12 +5,11 @@
 
 #include<cmath>
 
-void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int currentGridY) {
+void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int currentGridY, Vector2 anchor) {
     if (levelMap.grid.empty() || levelMap.generatedNodes.empty()) return;
 
-    float minimapSize = 150.0f;
-    float padding = 10.0f;
-    Vector2 anchor = { Constants::GAME_WIDTH - minimapSize - padding, padding };
+    float minimapSize = 100.0f; // Shrink to prevent overlap with Stats HUD
+
     
     // Draw background panel
     DrawRectangle(anchor.x - 2, anchor.y - 2, minimapSize + 4, minimapSize + 4, Fade(WHITE, 0.15f));
@@ -100,8 +99,8 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
         bool isCurrent = (dx == 0 && dy == 0);
         
         if (isCurrent) {
-            roomColor = WHITE;
-            borderColor = WHITE;
+            roomColor = SKYBLUE;
+            borderColor = BLUE;
         } else if (!node->isDiscovered) {
             roomColor = Fade(DARKGRAY, 0.9f);
             borderColor = DARKGRAY;

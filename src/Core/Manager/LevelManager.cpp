@@ -34,7 +34,7 @@
         if (!file.is_open()) {
             std::cerr << "Failed to open level layer: " << filepath
                       << std::endl;
-            return false;
+            return true;
         }
 
         output.clear();
@@ -55,14 +55,14 @@
                     std::cerr << "Invalid CSV value in " << filepath
                               << std::endl;
                     output.clear();
-                    return false;
+                    return true;
                 }
             }
 
             if (row.empty()) {
                 std::cerr << "Empty CSV row in " << filepath << std::endl;
                 output.clear();
-                return false;
+                return true;
             }
             if (expectedColumns == 0) {
                 expectedColumns = row.size();
@@ -70,7 +70,7 @@
                 std::cerr << "Non-rectangular CSV layer: " << filepath
                           << std::endl;
                 output.clear();
-                return false;
+                return true;
             }
             output.push_back(std::move(row));
         }
@@ -80,7 +80,6 @@
 
 LevelManager::LevelManager()
     : levelWidth(0.0f), levelHeight(0.0f), gridRows(0), gridCols(0) {
-    tileset = LoadTexture("assets/tileset/Galra_ship_Tileset.png");
     floorTileset = LoadTexture("assets/tileset/Galra_Floors.png");
     wallTileset = LoadTexture("assets/tileset/Galra_Walls.png");
     prop1Texture = LoadTexture("assets/Objects/tall_object_1_8.png");
@@ -120,7 +119,7 @@ bool LevelManager::LoadObjectGrid(const std::string& filepath) {
     std::string objectLayerPath = filepath;
     size_t layerNamePosition = objectLayerPath.find("Layer 1");
     if (layerNamePosition == std::string::npos) {
-        return false;
+        return true;
     }
 
     objectLayerPath.replace(
@@ -131,7 +130,7 @@ bool LevelManager::LoadObjectGrid(const std::string& filepath) {
 
     std::ifstream objectFile(objectLayerPath);
     if (!objectFile.is_open()) {
-        return false;
+        return true;
     }
 
     bool dimensionsMatch = true;
@@ -383,11 +382,11 @@ void LevelManager::DrawLevelBase() {
             }
         }
     } else {
-        Rectangle wallTopSrc[2] = { {0, 0, 16, 16}, {16, 0, 16, 16} };
-        Rectangle wallFrontFaceSrc[2] = { {0, 16, 16, 16}, {16, 16, 16, 16} };
+        Rectangle wallTopSrc[2] = { {0.1f, 0.1f, 15.8f, 15.8f}, {16.1f, 0.1f, 15.8f, 15.8f} };
+        Rectangle wallFrontFaceSrc[2] = { {0.1f, 16.1f, 15.8f, 15.8f}, {16.1f, 16.1f, 15.8f, 15.8f} };
         Rectangle floorSrc[6];
         for(int i = 0; i < 6; ++i) {
-            floorSrc[i] = { (float)(i * 16), 0.0f, 16.0f, 16.0f };
+            floorSrc[i] = { (float)(i * 16) + 0.1f, 0.1f, 15.8f, 15.8f };
         }
         
         auto hash = [](int x, int y) -> int {
@@ -602,13 +601,25 @@ void LevelManager::ProcessPendingAdditions() {
 
 bool LevelManager::IsSolidCollision(Rectangle box) const {
     if (IsProceduralDungeon()) {
-        for (const auto& wallRect : currentRoomWalls) {
-            if (CheckCollisionRecs(box, wallRect)) {
-                return true;
+        // First: do a fast O(1) tile-based lookup for wall and void tiles.
+        // Check all 4 corners + centre of the query box against the baked room data.
+        if (activeRoom) {
+            float ts = Constants::RENDER_TILE_SIZE;
+            // Sample the 4 corners (slightly inset) and centre
+            float cx[5] = { box.x + 1.f, box.x + box.width - 1.f, box.x + 1.f, box.x + box.width - 1.f, box.x + box.width * 0.5f };
+            float cy[5] = { box.y + 1.f, box.y + 1.f, box.y + box.height - 1.f, box.y + box.height - 1.f, box.y + box.height * 0.5f };
+            for (int i = 0; i < 5; ++i) {
+                int tx = (int)std::floor((cx[i] - roomOffset.x) / ts);
+                int ty = (int)std::floor((cy[i] - roomOffset.y) / ts);
+                if (tx < 0 || ty < 0 || tx >= activeRoom->width || ty >= activeRoom->height) {
+                    return true; // Out of map bounds = solid
+                }
+                int tile = activeRoom->layer0_tiles[ty][tx];
+                if (tile == 1 || tile == 2) return true; // Wall or void
             }
         }
-        
-        // Check props (entities) in procedural dungeon
+
+        // Then: check entity colliders (boxes and closed door gates)
         for (const auto* entity : levelEntities) {
             if (entity->GetObjectType() == GameObjectType::Box) {
                 if (CheckCollisionRecs(box, entity->GetBoundingBox())) {
@@ -690,7 +701,7 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
 }
 
 bool LevelManager::IsSolidMapObject(MapObjectId objectId) const {
-    if (objectId == MapObjectId::DestructibleBox || objectId == MapObjectId::Prop1 || objectId == MapObjectId::Prop2) {
+    if (objectId == MapObjectId::DestructibleBox || objectId == MapObjectId::Prop1 || objectId == MapObjectId::Prop2 || objectId == MapObjectId::MockWall) {
         return true; // DestructibleBox occupies one solid cell.
     }
 
@@ -964,6 +975,37 @@ void LevelManager::QueueMapObjectDestruction(
     }
 }
 
+void RoomNode::CalculateWalkableGrid(LevelManager* lm) {
+    availableSpawnNodes.clear();
+    float tileW = Constants::RENDER_TILE_SIZE;
+    int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
+    int currentRoomSize = 15;
+    if (type == RoomType::BOSS) currentRoomSize = 25;
+    else if (type == RoomType::BATTLE) currentRoomSize = 20;
+    int offset = (Constants::MAX_ROOM_TILE_SIZE - currentRoomSize) / 2;
+    
+    int startX = gridX * roomOuterSize + offset;
+    int startY = gridY * roomOuterSize + offset;
+    
+    // We only care about the physical room interior (inset by 2 tiles to avoid spawning on the edges)
+    float minX = (startX + 2.0f) * tileW;
+    float maxX = (startX + currentRoomSize - 3.0f) * tileW;
+    float minY = (startY + 2.0f) * tileW;
+    float maxY = (startY + currentRoomSize - 3.0f) * tileW;
+
+    // Use a grid size of half a tile for high resolution safe-spot finding
+    float gridSize = tileW / 2.0f;
+    for (float y = minY; y <= maxY; y += gridSize) {
+        for (float x = minX; x <= maxX; x += gridSize) {
+            // Hitbox for enemy spawning (typical 32x32 size for standard enemies)
+            Rectangle hitbox = { x - 16.0f, y - 16.0f, 32.0f, 32.0f };
+            if (!lm->IsSolidCollision(hitbox)) {
+                availableSpawnNodes.push_back({ x, y });
+            }
+        }
+    }
+}
+
 void LevelManager::GenerateDungeon(TeamManager* teamManager) {
     ClearLevel();
     levelMode = LevelMode::Procedural;
@@ -999,10 +1041,16 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
                 int propId = activeRoom->layer2_props[y][x];
                 if (propId > 0) {
                     MapObjectId type = MapObjectId::Empty;
-                    if (propId == 1) type = MapObjectId::DestructibleBox;
-                    else if (propId == 2) type = MapObjectId::Prop1;
-                    else if (propId == 3) type = MapObjectId::Prop2;
-                    else if (propId == 4) type = MapObjectId::MockWall;
+                    if (propId == 5) type = MapObjectId::DestructibleBox;
+                    else if (propId == 6) type = MapObjectId::Prop2;
+                    else if (propId == 7) type = MapObjectId::PotEX;
+                    else if (propId == 8) type = MapObjectId::PotHP;
+                    else if (propId == 9) type = MapObjectId::PotQuint;
+                    else if (propId == 10) type = MapObjectId::Prop1;
+                    else if (propId == 1) type = MapObjectId::MockWall; // Backward compat
+                    else if (propId == 2) type = MapObjectId::Prop1; // Backward compat
+                    else if (propId == 3) type = MapObjectId::Prop2; // Backward compat
+                    else if (propId == 4) type = MapObjectId::MockWall; // Backward compat
 
                     if (type != MapObjectId::Empty) {
                         Vector2 worldPos = {
@@ -1027,9 +1075,9 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
             int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
             int startX = node->gridX * roomOuterSize;
             int startY = node->gridY * roomOuterSize;
-            int currentRoomSize = (node->type == RoomType::BATTLE || node->type == RoomType::BOSS) 
-                                  ? Constants::MAX_ROOM_TILE_SIZE 
-                                  : Constants::NORMAL_ROOM_TILE_SIZE;
+            int currentRoomSize = 15;
+            if (node->type == RoomType::BOSS) currentRoomSize = 25;
+            else if (node->type == RoomType::BATTLE) currentRoomSize = 20;
             int offset = (Constants::MAX_ROOM_TILE_SIZE - currentRoomSize) / 2;
             
             for (int y = 0; y < currentRoomSize; ++y) {
@@ -1045,6 +1093,33 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
                     }
                 }
             }
+            
+            // Calculate walkable grid for this room now that all entities (props, doors) are spawned
+            node->CalculateWalkableGrid(this);
         }
     }
+}
+
+bool LevelManager::GetSafeSpawnPosition(std::shared_ptr<RoomNode> room, Vector2& outPos) {
+    if (!room) return false;
+    
+    if (room->availableSpawnNodes.empty()) {
+        // Fallback if no valid spawns are left in this room
+        float tileW = Constants::RENDER_TILE_SIZE;
+        int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
+        outPos = {
+            (room->gridX * roomOuterSize + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW,
+            (room->gridY * roomOuterSize + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW
+        };
+        return true;
+    }
+    
+    int index = GetRandomValue(0, room->availableSpawnNodes.size() - 1);
+    outPos = room->availableSpawnNodes[index];
+    
+    // Swap with back and pop to guarantee no other enemy spawns on the exact same tile
+    std::swap(room->availableSpawnNodes[index], room->availableSpawnNodes.back());
+    room->availableSpawnNodes.pop_back();
+    
+    return true;
 }

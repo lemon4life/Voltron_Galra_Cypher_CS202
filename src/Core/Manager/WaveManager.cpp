@@ -190,11 +190,27 @@ void WaveManager::SpawnEnemy(
 
     bool spawned = false;
     int attempts = 0;
-    while (!spawned && attempts < 50) {
-        Rectangle bounds = levelManager->GetCurrentRoomBounds();
-        float randX = bounds.x + 32.0f + (float)(rand() % (int)std::max(1.0f, bounds.width - 64.0f));
-        float randY = bounds.y + 32.0f + (float)(rand() % (int)std::max(1.0f, bounds.height - 64.0f));
-        Vector2 spawnPos = { randX, randY };
+    while (!spawned && attempts < 10) {
+        Vector2 spawnPos;
+        bool foundSafePos = false;
+        
+        if (levelManager->IsProceduralDungeon()) {
+            foundSafePos = levelManager->GetSafeSpawnPosition(levelManager->GetCurrentlyLockedRoom(), spawnPos);
+        } else {
+            Rectangle bounds = levelManager->GetCurrentRoomBounds();
+            spawnPos.x = bounds.x + 32.0f + (float)(rand() % (int)std::max(1.0f, bounds.width - 64.0f));
+            spawnPos.y = bounds.y + 32.0f + (float)(rand() % (int)std::max(1.0f, bounds.height - 64.0f));
+            foundSafePos = true;
+        }
+
+        if (!foundSafePos) {
+            // Failed to find safe spot, skip this enemy
+            if (rangeEnemiesToSpawn > 0) rangeEnemiesToSpawn--;
+            else if (diverEnemiesToSpawn > 0) diverEnemiesToSpawn--;
+            enemiesToSpawn--;
+            spawnTimer = 0.07f;
+            return;
+        }
 
         if (Vector2Distance(
                 spawnPos,
@@ -246,6 +262,14 @@ void WaveManager::SpawnEnemy(
             }
         }
         attempts++;
+    }
+    
+    if (!spawned) {
+        // Skip it if we couldn't spawn it safely after max attempts
+        if (rangeEnemiesToSpawn > 0) rangeEnemiesToSpawn--;
+        else if (diverEnemiesToSpawn > 0) diverEnemiesToSpawn--;
+        enemiesToSpawn--;
+        spawnTimer = 0.07f;
     }
 }
 

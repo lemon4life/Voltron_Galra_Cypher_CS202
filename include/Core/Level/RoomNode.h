@@ -38,9 +38,12 @@ struct RoomNode {
     bool isCleared;
     
     std::vector<DoorGate*> doors;
+    std::vector<Vector2> availableSpawnNodes;
 
     RoomNode(int x, int y, RoomType t = RoomType::BATTLE)
         : type(t), gridX(x), gridY(y),
           north(nullptr), south(nullptr), east(nullptr), west(nullptr),
           isDiscovered(false), isCleared(false), state(RoomState::IDLE) {}
+          
+    void CalculateWalkableGrid(class LevelManager* lm);
 };

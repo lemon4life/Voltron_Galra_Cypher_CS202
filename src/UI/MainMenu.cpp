@@ -43,6 +43,7 @@ void MainMenu::RebuildButtons() {
     }
     titles.push_back("Start Game");
     titles.push_back("Settings");
+    titles.push_back("Room Editor");
     titles.push_back("About us");
     titles.push_back("Exit Game");
 
@@ -128,15 +129,20 @@ void MainMenu::Update(float deltaTime) {
                 btn.currentColor.a = (unsigned char)Lerp(btn.currentColor.a, hoverColor.a, 15.0f * deltaTime);
 
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                    AudioManager::GetInstance().PlayRandomClick();
-                    if (btn.text == "Continue") {
-                        pendingAction = MainMenuAction::Continue;
-                    } else if (btn.text == "Start Game") {
+                    if (btn.text == "Start Game") {
+                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
                         pendingAction = MainMenuAction::StartGame;
+                    } else if (btn.text == "Continue") {
+                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
+                        pendingAction = MainMenuAction::Continue;
                     } else if (btn.text == "Settings") {
+                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
                         GameManager::GetInstance().SetState(GameState::SETTINGS);
-                    } else if (btn.text == "About us") {
+                    } else if (btn.text == "Room Editor") {
+                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
+                        pendingAction = MainMenuAction::OpenEditor;
                     } else if (btn.text == "Exit Game") {
+                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
                         quitRequested = true;
                     }
                 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "raylib.h"
 #include <vector>
+#include <memory>
 #include "Core/DepthRenderItem.h"
 
 #include<memory>
@@ -11,6 +12,7 @@ enum class GameState {
     GAMEPLAY,
     PAUSE,
     SETTINGS,
+    ROOM_EDITOR,
     GAME_OVER,
     VICTORY
 };

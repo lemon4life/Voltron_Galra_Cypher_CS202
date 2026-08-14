@@ -129,9 +129,18 @@ void AssetManager::QueueCharacterAssets() {
     add("Paladin_Pidge_Parry", "assets/sprites/Pidge/Parry.png", true);
     add("Paladin_Pidge_Down", "assets/sprites/Pidge/Down.png", true);
 
-    // UI and Effects
+    // UI, Objects and Effects
     add("Player_Circle", "assets/UI/Player_Circle.png");
     add("box", "assets/Objects/box.png", true);
+    add("object_2", "assets/Objects/object_2.png", true);
+    add("pot_ex", "assets/Objects/pot_ex.png", true);
+    add("pot_hp", "assets/Objects/pot_hp.png", true);
+    add("pot_quint", "assets/Objects/pot_quint.png", true);
+    add("tall_object_1_8", "assets/Objects/tall_object_1_8.png", true);
+    add("Transfer_gate", "assets/Objects/Transfer_gate.png", true);
+    add("Galra_Floors", "assets/tileset/Galra_Floors.png", true);
+    add("Galra_Walls", "assets/tileset/Galra_Walls.png", true);
+    
     add("Run_Dust", "assets/UI/Run_Dust.png");
 
     add("Knight_Idle", "assets/sprites/Enemy/Knight.png", true);

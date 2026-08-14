@@ -75,7 +75,11 @@ public:
 
     void LoadLevel(const std::string& filepath, TeamManager* teamManager);
 
+    // Helper for safe spawning
+    bool GetSafeSpawnPosition(std::shared_ptr<RoomNode> room, Vector2& outPos);
+
     const LevelMap& GetLevelMap() const { return levelMap; }
+    std::shared_ptr<RoomNode> GetCurrentlyLockedRoom() const { return currentlyLockedRoom; }
     RoomState GetActiveRoomState() const { return (currentlyLockedRoom) ? currentlyLockedRoom->state : RoomState::IDLE; }
     void SetActiveRoomState(RoomState s) {
         if (currentlyLockedRoom && currentlyLockedRoom->state != s) {
