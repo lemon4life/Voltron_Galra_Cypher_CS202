@@ -37,6 +37,8 @@ struct RoomNode {
     Rectangle triggerBounds; // in absolute world coords
     bool isCleared;
     
+    Rectangle GetWorldBounds() const;
+
     std::vector<DoorGate*> doors;
     std::vector<Vector2> availableSpawnNodes;
 

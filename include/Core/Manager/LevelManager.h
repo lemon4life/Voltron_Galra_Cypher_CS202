@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <unordered_set>
+#include <memory>
 #include "raylib.h"
 #include "Core/LevelAccess.h"
 #include "Entities/GameObject.h"
@@ -65,7 +67,7 @@ private:
     void ProcessPendingAdditions();
     void ProcessPendingRemovals();
     std::vector<PendingMapObjectDestruction> pendingMapObjectDestructions;
-    std::vector<GameObject*> pendingRemoval;
+    std::unordered_set<GameObject*> pendingRemoval;
     std::vector<GameObject*> pendingAddition;
     EnemyPathManager enemyPathManager;
 

@@ -14,17 +14,22 @@
 #include <cmath>
 #include <algorithm>
 #include <utility>
+#include <unordered_set>
+
+namespace {
+    auto pos_hash = [](int x, int y) -> int {
+        unsigned int h = (unsigned int)(x * 374761393 ^ y * 668265263);
+        h = (h ^ (h >> 13)) * 1274126177;
+        return h ^ (h >> 16);
+    };
+}
 
     constexpr float COLLISION_EDGE_PADDING = 0.001f;
     constexpr float PARTIAL_WALL_WIDTH = 9.0f;
     constexpr float RIGHT_PARTIAL_WALL_OFFSET = Constants::RENDER_TILE_SIZE - PARTIAL_WALL_WIDTH;
     constexpr int DRAW_PADDING_TILES = 20;
 
-    bool IsNavigationObstacle(const GameObject* entity) {
-        return entity &&
-            (entity->GetObjectType() == GameObjectType::Box ||
-             entity->GetObjectType() == GameObjectType::DoorGate);
-    }
+
 
     bool LoadCsvGrid(
         const std::string& filepath,
@@ -300,8 +305,9 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
                         MarkNavigationChanged();
 
                         // Nudge player to room center so they don't get stuck inside a door collider
-                        float roomCenterX = (node->gridX * (Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH) + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * Constants::RENDER_TILE_SIZE;
-                        float roomCenterY = (node->gridY * (Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH) + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * Constants::RENDER_TILE_SIZE;
+                        Rectangle bounds = node->GetWorldBounds();
+                        float roomCenterX = bounds.x + bounds.width / 2.0f;
+                        float roomCenterY = bounds.y + bounds.height / 2.0f;
                         
                         // Move toward center, but only if currently overlapping a door
                         bool overlappingDoor = false;
@@ -331,6 +337,7 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
         if ((*it)->GetObjectType() == GameObjectType::Enemy) {
             Enemy* e = static_cast<Enemy*>(*it);
             if (e->IsDead()) {
+                QueueRemoval(e);
                 continue;
             }
         }
@@ -359,13 +366,10 @@ void LevelManager::DrawLevelBase() {
             // Draw EXIT gate if this room is an EXIT room
             for (const auto& node : levelMap.generatedNodes) {
                 if (node->type == RoomType::EXIT) {
+                    Rectangle bounds = node->GetWorldBounds();
+                    float roomCenterX = bounds.x + bounds.width / 2.0f;
+                    float roomCenterY = bounds.y + bounds.height / 2.0f;
                     float tileW = Constants::RENDER_TILE_SIZE;
-                    int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
-                    float startX = node->gridX * roomOuterSize * tileW;
-                    float startY = node->gridY * roomOuterSize * tileW;
-                    
-                    float roomCenterX = startX + (Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW;
-                    float roomCenterY = startY + (Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW;
                     
                     Rectangle destRec = {
                         roomCenterX - tileW * 2.0f,
@@ -389,12 +393,6 @@ void LevelManager::DrawLevelBase() {
             floorSrc[i] = { (float)(i * 16) + 0.1f, 0.1f, 15.8f, 15.8f };
         }
         
-        auto hash = [](int x, int y) -> int {
-            unsigned int h = (unsigned int)(x * 374761393 ^ y * 668265263);
-            h = (h ^ (h >> 13)) * 1274126177;
-            return h ^ (h >> 16);
-        };
-
         for (int layer = 1; layer <= 2; ++layer) {
             const auto& currentGrid = (layer == 1) ? mapGridLayer1 : mapGridLayer2;
             if (currentGrid.empty()) continue;
@@ -413,7 +411,7 @@ void LevelManager::DrawLevelBase() {
                                 Constants::RENDER_TILE_SIZE,
                                 Constants::RENDER_TILE_SIZE
                             };
-                            int variant = std::abs(hash(c, r)) % 6;
+                            int variant = pos_hash(c, r) % 6;
                             DrawTexturePro(floorTileset, floorSrc[variant], destRec, {0,0}, 0.0f, WHITE);
                         }
                     }
@@ -437,7 +435,7 @@ void LevelManager::DrawLevelBase() {
                             Constants::RENDER_TILE_SIZE,
                             Constants::RENDER_TILE_SIZE
                         };
-                        int variant = std::abs(hash(c, r)) % 2;
+                        int variant = std::abs(pos_hash(c, r)) % 2;
                         // Depth logic for legacy map (front faces go to base layer)
                         bool tileBelowIsFloor = true; // Always draw fronts for legacy map border walls
                         if (r + 1 >= 0 && r + 1 < gridRows && c >= 0 && c < (int)currentGrid[r+1].size()) {
@@ -475,11 +473,6 @@ void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
             TilemapRenderer::GetRoomDepthRenderItems(*activeRoom, roomOffset, wallTileset, prop1Texture, prop2Texture, boxTexture, items);
         }
     } else {
-        auto hash = [](int x, int y) -> int {
-            unsigned int h = (unsigned int)(x * 374761393 ^ y * 668265263);
-            h = (h ^ (h >> 13)) * 1274126177;
-            return h ^ (h >> 16);
-        };
         Rectangle wallTopSrc[2] = { {0, 0, 16, 16}, {16, 0, 16, 16} };
         for (int layer = 1; layer <= 2; ++layer) {
             const auto& currentGrid = (layer == 1) ? mapGridLayer1 : mapGridLayer2;
@@ -495,14 +488,14 @@ void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
                         float ySort = std::floor((float)(r + 1) * Constants::RENDER_TILE_SIZE);
                         items.push_back({
                             ySort,
-                            [this, c, r, hash, wallTopSrc]() {
+                            [this, c, r, wallTopSrc]() {
                                 Rectangle destRec = {
                                     std::floor((float)c * Constants::RENDER_TILE_SIZE),
                                     std::floor((float)r * Constants::RENDER_TILE_SIZE),
                                     Constants::RENDER_TILE_SIZE,
                                     Constants::RENDER_TILE_SIZE
                                 };
-                                int variant = std::abs(hash(c, r)) % 2;
+                                int variant = std::abs(pos_hash(c, r)) % 2;
                                 DrawTexturePro(wallTileset, wallTopSrc[variant], destRec, {0,0}, 0.0f, WHITE);
                             }
                         });
@@ -557,7 +550,7 @@ void LevelManager::ClearLevel() {
 void LevelManager::AddEntity(GameObject* entity) {
     if (entity) {
         levelEntities.push_back(entity);
-        if (IsNavigationObstacle(entity)) {
+        if (entity && entity->IsSolidNavigationObstacle()) {
             MarkNavigationChanged();
         }
     }
@@ -713,44 +706,76 @@ bool LevelManager::HasClearLineOfSight(
     Vector2 end,
     float projectileRadius
 ) const {
-    constexpr float MAX_PROBE_SPACING = 8.0f;
-
-    Vector2 segment = {
-        end.x - start.x,
-        end.y - start.y
-    };
-    float distance = std::sqrt(segment.x * segment.x + segment.y * segment.y);
+    float tileW = Constants::RENDER_TILE_SIZE;
     float radius = std::max(projectileRadius, COLLISION_EDGE_PADDING);
-    if (distance <= COLLISION_EDGE_PADDING) {
-        Rectangle probe = {
-            start.x - radius,
-            start.y - radius,
-            radius * 2.0f,
-            radius * 2.0f
-        };
-        return !IsSolidCollision(probe);
+
+    if (IsProceduralDungeon() && activeRoom) {
+        int x0 = (int)std::floor((start.x - roomOffset.x) / tileW);
+        int y0 = (int)std::floor((start.y - roomOffset.y) / tileW);
+        int x1 = (int)std::floor((end.x - roomOffset.x) / tileW);
+        int y1 = (int)std::floor((end.y - roomOffset.y) / tileW);
+
+        int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+        int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+        int err = dx + dy, e2;
+
+        while (true) {
+            if (y0 >= 0 && y0 < activeRoom->height && x0 >= 0 && x0 < activeRoom->width) {
+                int tile = activeRoom->layer0_tiles[y0][x0];
+                if (tile == 1 || tile == 2) return false;
+            } else {
+                return false;
+            }
+            if (x0 == x1 && y0 == y1) break;
+            e2 = 2 * err;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
+    } else {
+        int x0 = (int)std::floor(start.x / tileW);
+        int y0 = (int)std::floor(start.y / tileW);
+        int x1 = (int)std::floor(end.x / tileW);
+        int y1 = (int)std::floor(end.y / tileW);
+
+        int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+        int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+        int err = dx + dy, e2;
+
+        while (true) {
+            if (y0 >= 0 && y0 < gridRows && x0 >= 0 && x0 < gridCols) {
+                int t1 = 0, t2 = 0;
+                if (y0 < (int)mapGridLayer1.size() && x0 < (int)mapGridLayer1[y0].size()) t1 = mapGridLayer1[y0][x0];
+                if (y0 < (int)mapGridLayer2.size() && x0 < (int)mapGridLayer2[y0].size()) t2 = mapGridLayer2[y0][x0];
+                if (t1 == 0 || t2 == 0) return false;
+                if (t1 >= 4 && t1 <= 11) return false;
+                if (t2 >= 4 && t2 <= 11) return false;
+                if ((t1 >= 1 && t1 <= 3) || (t2 >= 1 && t2 <= 3) || (t1 >= 12 && t1 <= 14) || (t2 >= 12 && t2 <= 14)) return false;
+            } else {
+                return false;
+            }
+            if (x0 == x1 && y0 == y1) break;
+            e2 = 2 * err;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
     }
 
+    constexpr float MAX_PROBE_SPACING = 8.0f;
+    Vector2 segment = { end.x - start.x, end.y - start.y };
+    float distance = std::sqrt(segment.x * segment.x + segment.y * segment.y);
     int probeCount = std::max(1, (int)std::ceil(distance / MAX_PROBE_SPACING));
 
-    // Entities are not part of IsSolidCollision, so both endpoints can be
-    // checked safely. This catches a shooter, muzzle, or target overlapping
-    // actual level geometry.
     for (int probeIndex = 0; probeIndex <= probeCount; ++probeIndex) {
         float amount = (float)probeIndex / (float)probeCount;
-        Vector2 point = {
-            start.x + segment.x * amount,
-            start.y + segment.y * amount
-        };
-        Rectangle probe = {
-            point.x - radius,
-            point.y - radius,
-            radius * 2.0f,
-            radius * 2.0f
-        };
+        Vector2 point = { start.x + segment.x * amount, start.y + segment.y * amount };
+        Rectangle probe = { point.x - radius, point.y - radius, radius * 2.0f, radius * 2.0f };
 
-        if (IsSolidCollision(probe)) {
-            return false;
+        for (const auto& entity : levelEntities) {
+            if (entity && entity->IsSolidNavigationObstacle()) {
+                if (CheckCollisionRecs(probe, entity->GetCollisionBox())) {
+                    return false;
+                }
+            }
         }
     }
 
@@ -831,16 +856,27 @@ void LevelManager::ProcessPendingMapObjectDestructions() {
 }
 
 void LevelManager::ProcessPendingRemovals() {
-    for (GameObject* entity : pendingRemoval) {
-        auto it = std::find(levelEntities.begin(), levelEntities.end(), entity);
-        if (it != levelEntities.end()) {
-            bool navigationObstacle = IsNavigationObstacle(*it);
-            delete *it;
-            levelEntities.erase(it);
-            if (navigationObstacle) {
-                MarkNavigationChanged();
-            }
-        }
+    if (pendingRemoval.empty()) return;
+
+    bool navChanged = false;
+
+    levelEntities.erase(
+        std::remove_if(levelEntities.begin(), levelEntities.end(),
+            [this, &navChanged](GameObject* entity) {
+                if (pendingRemoval.count(entity)) {
+                    if (entity->IsSolidNavigationObstacle()) {
+                        navChanged = true;
+                    }
+                    delete entity;
+                    return true;
+                }
+                return false;
+            }),
+        levelEntities.end()
+    );
+
+    if (navChanged) {
+        MarkNavigationChanged();
     }
     pendingRemoval.clear();
 }
@@ -863,20 +899,7 @@ Rectangle LevelManager::GetLevelBounds() const {
 
 Rectangle LevelManager::GetCurrentRoomBounds() const {
     if (IsProceduralDungeon() && currentlyLockedRoom && currentlyLockedRoom->state == RoomState::LOCKED) {
-        float tileW = Constants::RENDER_TILE_SIZE;
-        int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
-        
-        int currentRoomSize = (currentlyLockedRoom->type == RoomType::BATTLE || currentlyLockedRoom->type == RoomType::BOSS) 
-                              ? Constants::MAX_ROOM_TILE_SIZE 
-                              : Constants::NORMAL_ROOM_TILE_SIZE;
-        int offset = (Constants::MAX_ROOM_TILE_SIZE - currentRoomSize) / 2;
-                              
-        float startX = (currentlyLockedRoom->gridX * roomOuterSize + offset) * tileW;
-        float startY = (currentlyLockedRoom->gridY * roomOuterSize + offset) * tileW;
-        float roomW = currentRoomSize * tileW;
-        float roomH = currentRoomSize * tileW;
-        
-        return { startX + tileW, startY + tileW, roomW - 2 * tileW, roomH - 2 * tileW };
+        return currentlyLockedRoom->GetWorldBounds();
     }
     return { 0.0f, 0.0f, levelWidth, levelHeight };
 }
@@ -887,14 +910,9 @@ bool LevelManager::IsPlayerInExitRoom(Vector2 playerPos) const {
     Rectangle playerBox = { playerPos.x - 8, playerPos.y - 8, 16, 16 };
     for (const auto& node : levelMap.generatedNodes) {
         if (node->type == RoomType::EXIT) {
-            float tileW = Constants::RENDER_TILE_SIZE;
-            int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
-            float startX = node->gridX * roomOuterSize * tileW;
-            float startY = node->gridY * roomOuterSize * tileW;
-            
-            // Define the center interactable blue rectangle
-            float roomCenterX = startX + (Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW;
-            float roomCenterY = startY + (Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW;
+            Rectangle bounds = node->GetWorldBounds();
+            float roomCenterX = bounds.x + bounds.width / 2.0f;
+            float roomCenterY = bounds.y + bounds.height / 2.0f;
             Rectangle exitGate = { roomCenterX - 32, roomCenterY - 32, 64, 64 };
             
             if (CheckCollisionRecs(playerBox, exitGate)) {
@@ -926,14 +944,8 @@ Vector2 LevelManager::GetLocalDirection(
 }
 
 void LevelManager::QueueRemoval(GameObject* entity) {
-    if (!entity) return;
-
-    if (std::find(levelEntities.begin(), levelEntities.end(), entity) == levelEntities.end()) {
-        return;
-    }
-
-    if (std::find(pendingRemoval.begin(), pendingRemoval.end(), entity) == pendingRemoval.end()) {
-        pendingRemoval.push_back(entity);
+    if (entity) {
+        pendingRemoval.insert(entity);
     }
 }
 
@@ -975,23 +987,35 @@ void LevelManager::QueueMapObjectDestruction(
     }
 }
 
-void RoomNode::CalculateWalkableGrid(LevelManager* lm) {
-    availableSpawnNodes.clear();
+Rectangle RoomNode::GetWorldBounds() const {
     float tileW = Constants::RENDER_TILE_SIZE;
     int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
+    
     int currentRoomSize = 15;
     if (type == RoomType::BOSS) currentRoomSize = 25;
     else if (type == RoomType::BATTLE) currentRoomSize = 20;
+    
     int offset = (Constants::MAX_ROOM_TILE_SIZE - currentRoomSize) / 2;
+                          
+    float startX = (gridX * roomOuterSize + offset) * tileW;
+    float startY = (gridY * roomOuterSize + offset) * tileW;
+    float roomW = currentRoomSize * tileW;
+    float roomH = currentRoomSize * tileW;
     
-    int startX = gridX * roomOuterSize + offset;
-    int startY = gridY * roomOuterSize + offset;
+    return { startX + tileW, startY + tileW, roomW - 2 * tileW, roomH - 2 * tileW };
+}
+
+void RoomNode::CalculateWalkableGrid(LevelManager* lm) {
+    availableSpawnNodes.clear();
     
-    // We only care about the physical room interior (inset by 2 tiles to avoid spawning on the edges)
-    float minX = (startX + 2.0f) * tileW;
-    float maxX = (startX + currentRoomSize - 3.0f) * tileW;
-    float minY = (startY + 2.0f) * tileW;
-    float maxY = (startY + currentRoomSize - 3.0f) * tileW;
+    Rectangle bounds = GetWorldBounds();
+    
+    // We only care about the physical room interior (inset by 1 tile from the interior bounds to avoid spawning on the edges)
+    float tileW = Constants::RENDER_TILE_SIZE;
+    float minX = bounds.x + tileW;
+    float maxX = bounds.x + bounds.width - 2.0f * tileW;
+    float minY = bounds.y + tileW;
+    float maxY = bounds.y + bounds.height - 2.0f * tileW;
 
     // Use a grid size of half a tile for high resolution safe-spot finding
     float gridSize = tileW / 2.0f;
@@ -1023,10 +1047,9 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
 
     // Teleport player to spawn room center
     if (levelMap.spawnRoom) {
-        float tileW = Constants::RENDER_TILE_SIZE;
-        int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
-        float spawnWorldX = (levelMap.spawnRoom->gridX * roomOuterSize + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW;
-        float spawnWorldY = (levelMap.spawnRoom->gridY * roomOuterSize + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW;
+        Rectangle bounds = levelMap.spawnRoom->GetWorldBounds();
+        float spawnWorldX = bounds.x + bounds.width / 2.0f;
+        float spawnWorldY = bounds.y + bounds.height / 2.0f;
         teamManager->GetActivePaladin()->SetPosition({spawnWorldX, spawnWorldY});
 
         // Auto-discover spawn room and mark it cleared (no combat in spawn)
@@ -1047,10 +1070,6 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
                     else if (propId == 8) type = MapObjectId::PotHP;
                     else if (propId == 9) type = MapObjectId::PotQuint;
                     else if (propId == 10) type = MapObjectId::Prop1;
-                    else if (propId == 1) type = MapObjectId::MockWall; // Backward compat
-                    else if (propId == 2) type = MapObjectId::Prop1; // Backward compat
-                    else if (propId == 3) type = MapObjectId::Prop2; // Backward compat
-                    else if (propId == 4) type = MapObjectId::MockWall; // Backward compat
 
                     if (type != MapObjectId::Empty) {
                         Vector2 worldPos = {
@@ -1071,21 +1090,19 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
         
         // Instantiate DoorGates for each RoomNode
         for (auto& node : levelMap.generatedNodes) {
+            Rectangle bounds = node->GetWorldBounds();
             float tileW = Constants::RENDER_TILE_SIZE;
-            int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
-            int startX = node->gridX * roomOuterSize;
-            int startY = node->gridY * roomOuterSize;
-            int currentRoomSize = 15;
-            if (node->type == RoomType::BOSS) currentRoomSize = 25;
-            else if (node->type == RoomType::BATTLE) currentRoomSize = 20;
-            int offset = (Constants::MAX_ROOM_TILE_SIZE - currentRoomSize) / 2;
+            
+            int gridStartX = (int)((bounds.x - tileW) / tileW);
+            int gridStartY = (int)((bounds.y - tileW) / tileW);
+            int currentRoomSize = (int)(bounds.width / tileW) + 2;
             
             for (int y = 0; y < currentRoomSize; ++y) {
                 for (int x = 0; x < currentRoomSize; ++x) {
-                    if (activeRoom->layer1_objects[startY + offset + y][startX + offset + x] == 20) {
+                    if (activeRoom->layer1_objects[gridStartY + y][gridStartX + x] == 20) {
                         Vector2 worldPos = {
-                            (startX + offset + x) * tileW,
-                            (startY + offset + y) * tileW
+                            (gridStartX + x) * tileW,
+                            (gridStartY + y) * tileW
                         };
                         DoorGate* door = new DoorGate(worldPos);
                         AddEntity(door);
@@ -1105,11 +1122,10 @@ bool LevelManager::GetSafeSpawnPosition(std::shared_ptr<RoomNode> room, Vector2&
     
     if (room->availableSpawnNodes.empty()) {
         // Fallback if no valid spawns are left in this room
-        float tileW = Constants::RENDER_TILE_SIZE;
-        int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
+        Rectangle bounds = room->GetWorldBounds();
         outPos = {
-            (room->gridX * roomOuterSize + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW,
-            (room->gridY * roomOuterSize + Constants::MAX_ROOM_TILE_SIZE / 2.0f) * tileW
+            bounds.x + bounds.width / 2.0f,
+            bounds.y + bounds.height / 2.0f
         };
         return true;
     }

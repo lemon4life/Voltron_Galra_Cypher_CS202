@@ -27,6 +27,7 @@ public:
     void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
 
     bool IsSolid() const { return state != State::OPEN; }
+    bool IsSolidNavigationObstacle() const override { return IsSolid(); }
 
 private:
     State state;
