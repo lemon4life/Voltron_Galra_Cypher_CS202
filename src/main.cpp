@@ -114,6 +114,18 @@ namespace {
         return nearest;
     }
 
+    void DrawInteractionPrompt(const std::string& text) {
+        float textWidth = UIUtils::MeasureText("PixeloidSans", text, UIUtils::FontSize::SMALL).x;
+        Rectangle background = {
+            (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
+            Constants::GAME_HEIGHT - 44.0f,
+            textWidth + 20.0f,
+            28.0f
+        };
+        UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
+        UIUtils::DrawCenteredText("PixeloidSans", text, { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
+    }
+
     void DrawHubInteractionPrompt(GameObject* interactable) {
         if (!interactable) {
             return;
@@ -126,15 +138,7 @@ namespace {
                    stand->GetDisplayName();
         }
 
-        float textWidth = UIUtils::MeasureText("PixeloidSans", text, UIUtils::FontSize::SMALL).x;
-        Rectangle background = {
-            (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
-            Constants::GAME_HEIGHT - 44.0f,
-            textWidth + 20.0f,
-            28.0f
-        };
-        UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
-        UIUtils::DrawCenteredText("PixeloidSans", text, { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
+        DrawInteractionPrompt(text);
     }
 
     void ResetGame(
@@ -147,6 +151,7 @@ namespace {
             paladin->ResetStats();
         }
         GameManager::GetInstance().ClearProjectiles();
+        GameManager::GetInstance().ResetFloorCount();
         levelManager->GenerateDungeon(teamManager);
         waveManager->Reset(0, 0, 0);
         AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
@@ -185,6 +190,7 @@ namespace {
         GameManager::GetInstance().ResetTransientState();
         ParticleManager::GetInstance().Clear();
         DialogueManager::GetInstance().ResetSession();
+        GameManager::GetInstance().ResetFloorCount();
         levelManager->LoadLevel(HUB_LEVEL_PATH, teamManager);
         teamManager->ResetForNewGame(GetLevelCenter(*levelManager));
         waveManager->Reset(0, 0, 0);
@@ -526,10 +532,17 @@ int main() {
                     }
                     teamManager->Update(deltaTime);
                     
-                    if (InputManager::IsInteractPressed()) {
-                        if (levelManager.IsPlayerInExitRoom(teamManager->GetActivePaladin()->GetPosition())) {
-                            ReturnToHub(teamManager, &levelManager);
-                            break;
+                    if (levelManager.IsPlayerInExitRoom(teamManager->GetActivePaladin()->GetPosition())) {
+                        if (InputManager::IsInteractPressed()) {
+                            GameManager::GetInstance().AdvanceFloorCount();
+                            if (GameManager::GetInstance().GetCurrentFloor() > GameManager::MAX_FLOORS) {
+                                ReturnToHub(teamManager, &levelManager);
+                                break;
+                            } else {
+                                GameManager::GetInstance().ClearProjectiles();
+                                levelManager.GenerateDungeon(teamManager);
+                                waveManager.Reset(0, 0, 0);
+                            }
                         }
                     }
                     
@@ -710,8 +723,13 @@ int main() {
                         levelManager.GetLevelMap(),
                         currentGridX,
                         currentGridY,
-                        { anchorX, anchorY }
+                        { anchorX, anchorY },
+                        gameManager.GetCurrentFloor()
                     );
+                    
+                    if (levelManager.IsPlayerInExitRoom(teamManager->GetActivePaladin()->GetPosition())) {
+                        DrawInteractionPrompt("Press F to go to the next floor");
+                    }
                 }
             } else if (renderState == GameState::HUB &&
                        !paladinSelectionMenu.IsOpen()) {

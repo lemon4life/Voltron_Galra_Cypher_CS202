@@ -243,6 +243,11 @@ void WaveManager::SpawnEnemy(
                 levelManager->GetLevelAccessBundle()
             );
             if (newEnemy) {
+                // Apply Roguelike scaling buff
+                int currentFloor = GameManager::GetInstance().GetCurrentFloor();
+                float floorMultiplier = 1.0f + ((currentFloor - 1) * 0.3f);
+                static_cast<Enemy*>(newEnemy)->ApplyStatMultiplier(floorMultiplier);
+
                 if (levelManager->IsValidSpawnLocation(newEnemy)) {
                     levelManager->AddEntity(newEnemy);
                     if (spawnType == MapObjectId::Range &&

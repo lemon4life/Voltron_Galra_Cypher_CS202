@@ -46,6 +46,8 @@ private:
     int targetFPS;
     float hitstopTimer;
     
+    int currentFloor;
+    
     float levelWidth = 0.0f;
     float levelHeight = 0.0f;
 
@@ -58,6 +60,8 @@ public:
     static GameManager& GetInstance();
 
     // Delete copy and assignment operators to enforce singleton behavior
+    static constexpr int MAX_FLOORS = 3;
+
     GameManager(const GameManager&) = delete;
     GameManager& operator=(const GameManager&) = delete;
     GameManager(GameManager&&) = delete;
@@ -66,6 +70,12 @@ public:
     // --- Accessors ---
     void TriggerHitstop(float duration) { hitstopTimer = duration; }
     float GetHitstopTimer() const { return hitstopTimer; }
+    void ClearHitstop() { hitstopTimer = 0.0f; }
+
+    int GetCurrentFloor() const { return currentFloor; }
+    void AdvanceFloorCount() { currentFloor++; }
+    void ResetFloorCount() { currentFloor = 1; }
+
     void UpdateHitstop(float dt) { if (hitstopTimer > 0.0f) hitstopTimer -= dt; }
 
     GameState GetState() const { return currentState; }

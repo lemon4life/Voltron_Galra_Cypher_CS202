@@ -12,6 +12,7 @@ GameManager::GameManager()
       bulletImpactTex{},
       targetFPS(0),
       hitstopTimer(0.0f),
+      currentFloor(1),
       levelManager(nullptr) {
     // Starts in MAIN_MENU state by default
 }

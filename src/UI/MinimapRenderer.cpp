@@ -5,7 +5,9 @@
 
 #include<cmath>
 
-void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int currentGridY, Vector2 anchor) {
+#include "Core/Manager/GameManager.h"
+
+void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int currentGridY, Vector2 anchor, int currentFloor) {
     if (levelMap.grid.empty() || levelMap.generatedNodes.empty()) return;
 
     float minimapSize = 100.0f; // Shrink to prevent overlap with Stats HUD
@@ -143,6 +145,5 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
     }
     
     // Draw minimap label    
-    Font fontSans = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
-    UIUtils::DrawText("PixeloidSans", "MAP", { anchor.x + 4, anchor.y + minimapSize - 14 }, static_cast<UIUtils::FontSize>(10), Fade(WHITE, 0.5f));
+    UIUtils::DrawText("PixeloidSans", TextFormat("FLOOR: %d / %d", currentFloor, GameManager::MAX_FLOORS), { anchor.x + 4, anchor.y + minimapSize - 14 }, static_cast<UIUtils::FontSize>(10), Fade(WHITE, 0.5f));
 }

@@ -4,5 +4,5 @@
 
 class MinimapRenderer {
 public:
-    static void Draw(const LevelMap& levelMap, int currentGridX, int currentGridY, Vector2 anchor);
+    static void Draw(const LevelMap& levelMap, int currentGridX, int currentGridY, Vector2 anchor, int currentFloor);
 };
