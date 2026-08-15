@@ -172,27 +172,36 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
 
     for (auto it = activeProjectiles.begin(); it != activeProjectiles.end();) {
         (*it)->Update(deltaTime);
+
+        if (!(*it)->IsActive()) {
+            delete *it;
+            it = activeProjectiles.erase(it);
+            continue;
+        }
         
         bool hitSomething = false;
         Rectangle pBox = (*it)->GetBoundingBox();
+        bool ignoresWorldCollision = (*it)->IgnoresWorldCollision();
 
         // Damage box entities before the solid object-grid cell consumes the projectile.
-        for (GameObject* entity : entities) {
-            if (entity->GetObjectType() != GameObjectType::Box) {
-                continue;
-            }
-            if (!CheckCollisionRecs(pBox, entity->GetBoundingBox())) {
-                continue;
-            }
+        if (!ignoresWorldCollision) {
+            for (GameObject* entity : entities) {
+                if (entity->GetObjectType() != GameObjectType::Box) {
+                    continue;
+                }
+                if (!CheckCollisionRecs(pBox, entity->GetBoundingBox())) {
+                    continue;
+                }
 
-            Prop& box = static_cast<Prop&>(*entity);
-            box.TakeDamage((*it)->GetDamage());
-            AddImpactEffect({
-                pBox.x + pBox.width / 2.0f,
-                pBox.y + pBox.height / 2.0f
-            });
-            hitSomething = true;
-            break;
+                Prop& box = static_cast<Prop&>(*entity);
+                box.TakeDamage((*it)->GetDamage());
+                AddImpactEffect({
+                    pBox.x + pBox.width / 2.0f,
+                    pBox.y + pBox.height / 2.0f
+                });
+                hitSomething = true;
+                break;
+            }
         }
 
         // We no longer skip all collision checks here. Returning weapons must hit enemies and boxes.
@@ -236,7 +245,10 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
         // Check collision with environment and enemies (if it's a player projectile)
         if (!hitSomething) {
             // First check level manager for static walls, ONLY if it's not returning
-            if (levelManager && !(*it)->IsReturning() && levelManager->IsSolidCollision(pBox)) {
+            if (levelManager &&
+                !ignoresWorldCollision &&
+                !(*it)->IsReturning() &&
+                levelManager->IsSolidCollision(pBox)) {
                 hitSomething = true;
                 if (!(*it)->IsEnemyProjectile()) {
                     AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});

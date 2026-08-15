@@ -32,6 +32,7 @@ public:
     int GetDamage() const { return damage; }
     bool IsEnemyProjectile() const { return isEnemyProj; }
     Vector2 GetVelocity() const { return velocity; }
+    virtual bool IgnoresWorldCollision() const { return false; }
     
     // Boomerang methods
     void SetReturning(bool returning) { isReturning = returning; }

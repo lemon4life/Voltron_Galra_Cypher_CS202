@@ -161,6 +161,7 @@ void AssetManager::QueueCharacterAssets() {
     add("Boss_Punch_Ready", "assets/sprites/Enemy/Boss/Boss-punch-ready.png", true);
     add("Boss_Punch_Body", "assets/sprites/Enemy/Boss/Boss-punch-body.png", true);
     add("Boss_Punch_Hand", "assets/sprites/Enemy/Boss/Hand.png", true);
+    add("Boss_Fire_Punch", "assets/sprites/Enemy/Boss/Fire-Punch.png", true);
     add("Enemy_Spawn", "assets/sprites/Effects/Spawn.png", true);
 }
 

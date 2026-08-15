@@ -234,6 +234,10 @@ void BossPunchState::Update(Boss* enemy, float deltaTime) {
 
         if (frameIndex >= BOSS_PUNCH_PLAY_FRAME_COUNT) {
             frameIndex = 0;
+            enemy->FirePunchProjectile(
+                bulletSpeed,
+                changeAngleDegreesPerSecond
+            );
             ++completedPunches;
             if (completedPunches >= BOSS_PUNCHES_PER_STATE) {
                 enemy->ChangeState(enemy->GetIdlingState());

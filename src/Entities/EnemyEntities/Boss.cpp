@@ -4,6 +4,7 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
+#include "Entities/BossFirePunchProjectile.h"
 #include "Entities/Player/Paladin.h"
 
 #include "raymath.h"
@@ -36,6 +37,7 @@ namespace {
     constexpr Vector2 BOSS_DRAW_ORIGIN = { 31.5f, 37.5f };
     constexpr Vector2 BOSS_PUNCH_BODY_HAND_ROOT = { 13.0f, 43.0f };
     constexpr Vector2 BOSS_PUNCH_HAND_ROOT = { 8.0f, 7.0f };
+    constexpr Vector2 BOSS_PUNCH_HAND_LAUNCH_PIXEL = { 53.0f, 7.0f };
     constexpr Vector2 BOSS_RENDER_FOOT_OFFSET = {
         0.0f,
         BOSS_FRAME_HEIGHT - BOSS_DRAW_ORIGIN.y
@@ -54,6 +56,92 @@ namespace {
     constexpr int BOSS_SUMMON_ATTEMPTS = 12;
     constexpr int BOSS_SUMMON_MIN_RADIUS_TENTHS = 560;
     constexpr int BOSS_SUMMON_MAX_RADIUS_TENTHS = 960;
+
+    struct BossPunchHandPose {
+        Vector2 anchorWorld;
+        Vector2 origin;
+        float angleDegrees;
+    };
+
+    BossPunchHandPose CalculatePunchHandPose(
+        Vector2 bossPosition,
+        bool flipSprite,
+        const Paladin* target
+    ) {
+        Vector2 bodyDrawPosition = {
+            std::round(bossPosition.x),
+            std::round(bossPosition.y)
+        };
+        float bodyRootX = flipSprite
+            ? BOSS_FRAME_WIDTH - 1.0f - BOSS_PUNCH_BODY_HAND_ROOT.x
+            : BOSS_PUNCH_BODY_HAND_ROOT.x;
+        Vector2 handAnchorWorld = {
+            bodyDrawPosition.x - BOSS_DRAW_ORIGIN.x + bodyRootX,
+            bodyDrawPosition.y - BOSS_DRAW_ORIGIN.y +
+                BOSS_PUNCH_BODY_HAND_ROOT.y
+        };
+
+        float handAngle = flipSprite ? 180.0f : 0.0f;
+        if (target) {
+            Vector2 targetDirection = Vector2Subtract(
+                target->GetPosition(),
+                handAnchorWorld
+            );
+            if (Vector2Length(targetDirection) > 0.0f) {
+                handAngle = std::atan2(
+                    targetDirection.y,
+                    targetDirection.x
+                ) * RAD2DEG + (flipSprite ? 180.0f : 0.0f);
+            }
+        }
+
+        return {
+            handAnchorWorld,
+            {
+                flipSprite
+                    ? BOSS_PUNCH_HAND_FRAME_WIDTH - 1.0f -
+                        BOSS_PUNCH_HAND_ROOT.x
+                    : BOSS_PUNCH_HAND_ROOT.x,
+                BOSS_PUNCH_HAND_ROOT.y
+            },
+            handAngle
+        };
+    }
+
+    Vector2 RotatePunchOffset(Vector2 offset, float angleDegrees) {
+        float angleRadians = angleDegrees * DEG2RAD;
+        float cosine = std::cos(angleRadians);
+        float sine = std::sin(angleRadians);
+        return {
+            offset.x * cosine - offset.y * sine,
+            offset.x * sine + offset.y * cosine
+        };
+    }
+
+    Vector2 CalculateFirePunchLaunchPosition(
+        const BossPunchHandPose& handPose,
+        bool flipSprite
+    ) {
+        Vector2 mirroredLaunchPixel = {
+            flipSprite
+                ? BOSS_PUNCH_HAND_FRAME_WIDTH - 1.0f -
+                    BOSS_PUNCH_HAND_LAUNCH_PIXEL.x
+                : BOSS_PUNCH_HAND_LAUNCH_PIXEL.x,
+            BOSS_PUNCH_HAND_LAUNCH_PIXEL.y
+        };
+        Vector2 launchOffset = {
+            mirroredLaunchPixel.x - handPose.origin.x,
+            mirroredLaunchPixel.y - handPose.origin.y
+        };
+        Vector2 rotatedOffset = RotatePunchOffset(
+            launchOffset,
+            handPose.angleDegrees
+        );
+        return {
+            handPose.anchorWorld.x + rotatedOffset.x,
+            handPose.anchorWorld.y + rotatedOffset.y
+        };
+    }
 }
 
 Boss::Boss(
@@ -94,6 +182,9 @@ Boss::Boss(
     );
     punchHandTexture = AssetManager::GetInstance().GetTexture(
         "Boss_Punch_Hand"
+    );
+    firePunchTexture = AssetManager::GetInstance().GetTexture(
+        "Boss_Fire_Punch"
     );
 
     ChangeState(GetIdlingState());
@@ -219,40 +310,14 @@ void Boss::Draw() {
             punchHandTexture.height >=
                 (int)BOSS_PUNCH_HAND_FRAME_HEIGHT;
         if (!isReady && validHandTexture) {
-            float bodyRootX = flipSprite
-                ? BOSS_FRAME_WIDTH - 1.0f -
-                    BOSS_PUNCH_BODY_HAND_ROOT.x
-                : BOSS_PUNCH_BODY_HAND_ROOT.x;
-            Vector2 handAnchorWorld = {
-                bodyDrawPosition.x - BOSS_DRAW_ORIGIN.x + bodyRootX,
-                bodyDrawPosition.y - BOSS_DRAW_ORIGIN.y +
-                    BOSS_PUNCH_BODY_HAND_ROOT.y
-            };
-
-            float handAngle = flipSprite ? 180.0f : 0.0f;
             Paladin* activePaladin = targetTeam
                 ? targetTeam->GetActivePaladin()
                 : nullptr;
-            if (activePaladin) {
-                Vector2 targetDirection = Vector2Subtract(
-                    activePaladin->GetPosition(),
-                    handAnchorWorld
-                );
-                if (Vector2Length(targetDirection) > 0.0f) {
-                    handAngle = std::atan2(
-                        targetDirection.y,
-                        targetDirection.x
-                    ) * RAD2DEG + (flipSprite ? 180.0f : 0.0f);
-                }
-            }
-
-            Vector2 handOrigin = {
-                flipSprite
-                    ? BOSS_PUNCH_HAND_FRAME_WIDTH - 1.0f -
-                        BOSS_PUNCH_HAND_ROOT.x
-                    : BOSS_PUNCH_HAND_ROOT.x,
-                BOSS_PUNCH_HAND_ROOT.y
-            };
+            BossPunchHandPose handPose = CalculatePunchHandPose(
+                position,
+                flipSprite,
+                activePaladin
+            );
 
             DrawTexturePro(
                 punchHandTexture,
@@ -265,13 +330,13 @@ void Boss::Draw() {
                     BOSS_PUNCH_HAND_FRAME_HEIGHT
                 },
                 {
-                    handAnchorWorld.x,
-                    handAnchorWorld.y,
+                    handPose.anchorWorld.x,
+                    handPose.anchorWorld.y,
                     BOSS_PUNCH_HAND_FRAME_WIDTH,
                     BOSS_PUNCH_HAND_FRAME_HEIGHT
                 },
-                handOrigin,
-                handAngle,
+                handPose.origin,
+                handPose.angleDegrees,
                 tint
             );
         }
@@ -348,6 +413,52 @@ bool Boss::TrySummonRandomEnemy() {
     }
 
     return false;
+}
+
+void Boss::FirePunchProjectile(
+    float bulletSpeed,
+    float changeAngleDegreesPerSecond
+) {
+    if (!targetTeam || firePunchTexture.id == 0) return;
+
+    Paladin* activePaladin = targetTeam->GetActivePaladin();
+    if (!activePaladin) return;
+
+    BossPunchHandPose handPose = CalculatePunchHandPose(
+        position,
+        facingLeft,
+        activePaladin
+    );
+    Vector2 launchPosition = CalculateFirePunchLaunchPosition(
+        handPose,
+        facingLeft
+    );
+
+    GameManager& gameManager = GameManager::GetInstance();
+    LevelManager* levelManager = gameManager.GetLevelManager();
+    Rectangle mapBounds = levelManager
+        ? levelManager->GetLevelBounds()
+        : Rectangle{
+            0.0f,
+            0.0f,
+            gameManager.GetLevelWidth(),
+            gameManager.GetLevelHeight()
+        };
+    Rectangle roomBounds = levelManager
+        ? levelManager->GetCurrentRoomBounds()
+        : mapBounds;
+
+    gameManager.AddProjectile(new BossFirePunchProjectile(
+        launchPosition,
+        activePaladin->GetPosition(),
+        targetTeam,
+        bulletSpeed,
+        changeAngleDegreesPerSecond,
+        GetDamage(),
+        firePunchTexture,
+        roomBounds,
+        mapBounds
+    ));
 }
 
 void Boss::ResetAnimationCycle() {

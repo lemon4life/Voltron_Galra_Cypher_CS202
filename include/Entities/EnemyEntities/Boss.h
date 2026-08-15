@@ -10,6 +10,7 @@ private:
     Texture2D punchReadyTexture = { 0 };
     Texture2D punchBodyTexture = { 0 };
     Texture2D punchHandTexture = { 0 };
+    Texture2D firePunchTexture = { 0 };
 
 public:
     Boss(
@@ -31,5 +32,9 @@ public:
     bool IsSpelling() const { return currentState == spellingState.get(); }
     bool IsPunching() const { return currentState == punchState.get(); }
     bool TrySummonRandomEnemy();
+    void FirePunchProjectile(
+        float bulletSpeed,
+        float changeAngleDegreesPerSecond
+    );
     void ResetAnimationCycle();
 };
