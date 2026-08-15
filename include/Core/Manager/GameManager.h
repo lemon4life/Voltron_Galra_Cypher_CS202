@@ -1,6 +1,7 @@
 #pragma once
 #include "raylib.h"
 #include <vector>
+#include <deque>
 #include <memory>
 #include "Core/DepthRenderItem.h"
 
@@ -25,6 +26,14 @@ struct ImpactEffect {
     int numFrames;
     Texture2D texture;
     bool drawBehind;
+    Color tint = WHITE;
+};
+
+struct QuintessenceOrb {
+    Vector2 position;
+    Vector2 velocity;
+    bool isAttracted;
+    std::deque<Vector2> positionHistory;
 };
 
 class Projectile; // Forward declaration
@@ -40,6 +49,7 @@ private:
     std::vector<GameObject*> levelEntities;
     std::vector<Projectile*> activeProjectiles;
     std::vector<ImpactEffect> activeEffects;
+    std::vector<QuintessenceOrb> activeOrbs;
     std::vector<std::unique_ptr<Rover>> activeRovers;
     Texture2D bulletImpactTex;
     std::unique_ptr<IGameState> currentStateObj;
@@ -96,6 +106,12 @@ public:
     float GetLevelHeight() const { return levelHeight; }
 
     const std::vector<GameObject*>& GetLevelEntities() const;
+    void ResetTransientState();
+
+    void SpawnQuintessenceOrb(Vector2 pos);
+    void UpdateOrbs(float deltaTime, class TeamManager* teamManager);
+    void DrawOrbs();
+    void ClearOrbs() { activeOrbs.clear(); }
     void SetLevelEntities(const std::vector<GameObject*>& entities) { levelEntities = entities; }
 
     void SetLevelManager(LevelManager* lm) { levelManager = lm; }
@@ -109,13 +125,12 @@ public:
     void UpdateEffects(float deltaTime);
     void DrawEffects(bool background);
     void SetBulletImpactTexture(Texture2D tex) { bulletImpactTex = tex; }
-    void AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime, bool drawBehind = false);
+    void AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime, bool drawBehind = false, Color tint = WHITE);
     void AddImpactEffect(Vector2 pos);
     void DrawProjectiles();
     void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
     void DrawDebugOverlays(class TeamManager* teamManager) const;
     void ClearProjectiles();
-    void ResetTransientState();
     
     // Pidge skills
     void AddRover(std::unique_ptr<Rover> rover);

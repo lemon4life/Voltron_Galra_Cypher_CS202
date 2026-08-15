@@ -36,6 +36,7 @@ public:
 
     void LoadSound(const std::string& name, const std::string& filepath);
     void PlaySoundEffect(const std::string& name);
+    void PlaySoundEffectVolume(const std::string& name, float volumeScale);
     void PlaySoundEffectPitch(const std::string& name, float pitch);
 
     enum class MusicFadeState { NONE, FADING_OUT, FADING_IN };

@@ -5,6 +5,9 @@
 #include "Entities/GameObject.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/ParticleManager.h"
+#include "Core/Manager/AssetManager.h"
+#include "Core/Manager/AudioManager.h"
+#include "Core/Manager/TeamManager.h"
 #include "raymath.h"
 #include "Core/Constants.h"
 
@@ -338,10 +341,11 @@ void GameManager::ClearProjectiles() {
 void GameManager::ResetTransientState() {
     ClearProjectiles();
     activeEffects.clear();
+    ClearOrbs();
     hitstopTimer = 0.0f;
 }
 
-void GameManager::AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime, bool drawBehind) {
+void GameManager::AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime, bool drawBehind, Color tint) {
     ImpactEffect effect;
     effect.position = pos;
     effect.maxLifetime = lifetime;
@@ -350,6 +354,7 @@ void GameManager::AddEffect(Vector2 pos, Texture2D tex, int frames, float lifeti
     effect.numFrames = frames;
     effect.texture = tex;
     effect.drawBehind = drawBehind;
+    effect.tint = tint;
     activeEffects.push_back(effect);
 }
 
@@ -373,6 +378,85 @@ void GameManager::UpdateEffects(float deltaTime) {
     }
 }
 
+void GameManager::SpawnQuintessenceOrb(Vector2 pos) {
+    QuintessenceOrb orb;
+    orb.position = pos;
+    orb.velocity = { (float)GetRandomValue(-100, 100), (float)GetRandomValue(-100, 100) };
+    orb.isAttracted = false;
+    orb.positionHistory.clear();
+    activeOrbs.push_back(orb);
+}
+
+void GameManager::UpdateOrbs(float deltaTime, TeamManager* teamManager) {
+    Paladin* player = teamManager->GetActivePaladin();
+    if (!player) return;
+
+    Vector2 playerPos = player->GetPosition();
+
+    for (auto it = activeOrbs.begin(); it != activeOrbs.end(); ) {
+        // Friction / Deceleration of initial pop
+        if (!it->isAttracted) {
+            it->velocity.x -= it->velocity.x * 4.0f * deltaTime;
+            it->velocity.y -= it->velocity.y * 4.0f * deltaTime;
+        }
+
+        it->position.x += it->velocity.x * deltaTime;
+        it->position.y += it->velocity.y * deltaTime;
+
+        // Check distance to player
+        float dx = playerPos.x - it->position.x;
+        float dy = playerPos.y - it->position.y;
+        float distSq = dx * dx + dy * dy;
+
+        // Attract distance
+        if (distSq < 75.0f * 75.0f) {
+            it->isAttracted = true;
+        }
+
+        if (it->isAttracted) {
+            float speed = 400.0f;
+            float dist = std::sqrt(distSq);
+            if (dist > 0) {
+                it->velocity.x = (dx / dist) * speed;
+                it->velocity.y = (dy / dist) * speed;
+            }
+        }
+        
+        it->positionHistory.push_front(it->position);
+        if (it->positionHistory.size() > 12) {
+            it->positionHistory.pop_back();
+        }
+
+        // Collect distance
+        if (distSq < 20.0f * 20.0f) {
+            teamManager->AddQuintessence(10.0f);
+            AudioManager::GetInstance().PlaySoundEffect("fx_energy");
+            it = activeOrbs.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void GameManager::DrawOrbs() {
+    Texture2D tex = AssetManager::GetInstance().GetTexture("Quint_Orb");
+    for (const auto& orb : activeOrbs) {
+        if (orb.positionHistory.size() > 1) {
+            for (size_t i = 0; i < orb.positionHistory.size() - 1; ++i) {
+                float progress = 1.0f - ((float)i / orb.positionHistory.size());
+                float thickness = progress * 6.0f;
+                Color trailColor = ColorAlpha(SKYBLUE, progress * 0.8f);
+                DrawLineEx(orb.positionHistory[i], orb.positionHistory[i+1], thickness, trailColor);
+            }
+        }
+        
+        Rectangle dest = { orb.position.x, orb.position.y, (float)tex.width, (float)tex.height };
+        Rectangle src = { 0, 0, (float)tex.width, (float)tex.height };
+        Vector2 origin = { (float)tex.width / 2.0f, (float)tex.height / 2.0f };
+        DrawTexturePro(tex, src, dest, origin, 0.0f, WHITE);
+    }
+}
+
 void GameManager::DrawEffects(bool background) {
     for (const auto& effect : activeEffects) {
         if (effect.drawBehind == background && effect.texture.id != 0) {
@@ -382,7 +466,7 @@ void GameManager::DrawEffects(bool background) {
             Rectangle dest = { effect.position.x, effect.position.y, frameWidth, frameHeight };
             Vector2 origin = { frameWidth / 2.0f, frameHeight / 2.0f };
             
-            DrawTexturePro(effect.texture, source, dest, origin, 0.0f, WHITE);
+            DrawTexturePro(effect.texture, source, dest, origin, 0.0f, effect.tint);
         }
     }
 }

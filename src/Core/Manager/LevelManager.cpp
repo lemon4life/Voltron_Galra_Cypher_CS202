@@ -1,6 +1,8 @@
 #include "Core/Manager/LevelManager.h"
 #include "Core/Constants.h"
 #include "Core/Manager/GameManager.h"
+#include "Core/Manager/AssetManager.h"
+#include "Core/Manager/AudioManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 #include "Core/EntityFactory.h"
@@ -341,6 +343,21 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
         if ((*it)->GetObjectType() == GameObjectType::Enemy) {
             Enemy* e = static_cast<Enemy*>(*it);
             if (e->IsDead()) {
+                CorpseDecal corpse;
+                corpse.position = e->GetPosition();
+                corpse.texture = AssetManager::GetInstance().GetTexture("Enemy_Down");
+                corpse.facingLeft = e->IsFacingLeft();
+                corpse.heightOffset = -5.0f;
+                corpse.verticalVelocity = -80.0f;
+                corpse.slideVelocity = e->GetKnockbackVelocity();
+                corpse.settled = false;
+                corpses.push_back(corpse);
+
+                GameManager::GetInstance().SpawnQuintessenceOrb(e->GetPosition());
+
+                int randNum = GetRandomValue(0, 5);
+                AudioManager::GetInstance().PlaySoundEffectVolume("enemy_dead_" + std::to_string(randNum), 0.5f);
+
                 QueueRemoval(e);
                 continue;
             }
@@ -354,6 +371,49 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
         (*it)->Update(deltaTime);
         if (updatingDoor && doorWasSolid != updatingDoor->IsSolid()) {
             MarkNavigationChanged();
+        }
+    }
+
+    for (auto& corpse : corpses) {
+        if (!corpse.settled) {
+            // 1. Horizontal Sliding, Collision & Friction
+            Rectangle corpseBox = { corpse.position.x - 8.0f, corpse.position.y - 8.0f, 16.0f, 16.0f };
+
+            // X-axis collision
+            corpse.position.x += corpse.slideVelocity.x * deltaTime;
+            corpseBox.x = corpse.position.x - 8.0f;
+            if (IsSolidCollision(corpseBox)) {
+                corpse.position.x -= corpse.slideVelocity.x * deltaTime; // revert X
+                corpse.slideVelocity.x *= -0.5f; // bounce and dampen
+                corpseBox.x = corpse.position.x - 8.0f; // reset box X for Y check
+            }
+
+            // Y-axis collision
+            corpse.position.y += corpse.slideVelocity.y * deltaTime;
+            corpseBox.y = corpse.position.y - 8.0f;
+            if (IsSolidCollision(corpseBox)) {
+                corpse.position.y -= corpse.slideVelocity.y * deltaTime; // revert Y
+                corpse.slideVelocity.y *= -0.5f; // bounce and dampen
+            }
+            
+            // High friction to make them skid to a halt quickly
+            corpse.slideVelocity.x -= corpse.slideVelocity.x * 8.0f * deltaTime;
+            corpse.slideVelocity.y -= corpse.slideVelocity.y * 8.0f * deltaTime;
+
+            // 2. Gravity & Bouncing
+            corpse.verticalVelocity += 800.0f * deltaTime; // Gravity
+            corpse.heightOffset += corpse.verticalVelocity * deltaTime; 
+            
+            // Check for ground collision (heightOffset >= 0)
+            if (corpse.heightOffset >= 0.0f) {
+                corpse.heightOffset = 0.0f;
+                corpse.verticalVelocity *= -0.15f; // Weaker bounce
+                
+                // Settle when both bouncing and sliding stop
+                if (std::abs(corpse.verticalVelocity) < 30.0f && (std::abs(corpse.slideVelocity.x) < 10.0f && std::abs(corpse.slideVelocity.y) < 10.0f)) {
+                    corpse.settled = true;
+                }
+            }
         }
     }
 
@@ -469,6 +529,24 @@ void LevelManager::DrawLevelBase() {
             static_cast<DoorGate*>(entity)->DrawBaseLayer();
         }
     }
+
+    // Render Corpses
+    for (const auto& corpse : corpses) {
+        Rectangle destRec = {
+            corpse.position.x,
+            corpse.position.y + corpse.heightOffset,
+            (float)corpse.texture.width,
+            (float)corpse.texture.height
+        };
+        Rectangle sourceRec = {
+            0.0f,
+            0.0f,
+            corpse.facingLeft ? -(float)corpse.texture.width : (float)corpse.texture.width,
+            (float)corpse.texture.height
+        };
+        Vector2 origin = { destRec.width / 2.0f, destRec.height / 2.0f };
+        DrawTexturePro(corpse.texture, sourceRec, destRec, origin, 0.0f, Color{130, 130, 130, 255});
+    }
 }
 
 void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
@@ -537,6 +615,7 @@ void LevelManager::ClearLevel() {
         delete entity;
     }
     levelEntities.clear();
+    corpses.clear();
     mapGridLayer1.clear();
     mapGridLayer2.clear();
     mapObjectGrid.clear();

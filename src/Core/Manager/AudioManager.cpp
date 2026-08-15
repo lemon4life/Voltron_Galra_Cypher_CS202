@@ -58,6 +58,13 @@ void AudioManager::Initialize() {
     LoadMusic("bgm_starter_menu", "assets/audio/BGM/bgm_starter_menu.mp3");
     LoadMusic("bgm_story_mode", "assets/audio/BGM/bgm_story_mode.mp3");
     LoadMusic("bgm_battle", "assets/audio/BGM/bgm_battle.mp3");
+
+    // Load Enemy SFX
+    for (int i = 0; i <= 5; ++i) {
+        LoadSound("enemy_dead_" + std::to_string(i), "assets/audio/SFX/fx_dead_" + std::to_string(i) + ".wav");
+    }
+    
+    LoadSound("fx_energy", "assets/audio/SFX/fx_energy.wav");
     LoadMusic("bgm_boss_theme", "assets/audio/BGM/bgm_boss_theme.mp3");
 
     currentFootstepIndex = 0;
@@ -100,6 +107,14 @@ void AudioManager::LoadSound(const std::string& name, const std::string& filepat
 void AudioManager::PlaySoundEffect(const std::string& name) {
     if (sounds.find(name) != sounds.end()) {
         SetSoundPitch(sounds[name], 1.0f); // Reset pitch in case it was altered
+        ::PlaySound(sounds[name]);
+    }
+}
+
+void AudioManager::PlaySoundEffectVolume(const std::string& name, float volumeScale) {
+    if (sounds.find(name) != sounds.end()) {
+        SetSoundPitch(sounds[name], 1.0f);
+        ::SetSoundVolume(sounds[name], soundEffectsVolume * volumeScale);
         ::PlaySound(sounds[name]);
     }
 }

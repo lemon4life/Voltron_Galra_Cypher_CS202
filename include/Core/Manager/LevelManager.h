@@ -29,7 +29,18 @@ private:
         GameObjectCell cell;
     };
 
+    struct CorpseDecal {
+        Vector2 position;
+        Texture2D texture;
+        bool facingLeft;
+        float heightOffset;     // Simulated Z-axis (negative is up)
+        float verticalVelocity; 
+        Vector2 slideVelocity;
+        bool settled;           // Stops updating once finished bouncing
+    };
+
     std::vector<GameObject*> levelEntities;
+    std::vector<CorpseDecal> corpses;
     float levelWidth;
     float levelHeight;
     int gridRows;

@@ -131,6 +131,7 @@ public:
     void BeginSpawnSequence();
     bool UpdateSpawnSequence(float deltaTime);
     bool IsEnabled() const { return !spawnSequenceActive; }
+    bool IsFacingLeft() const { return facingLeft; }
     bool ShouldDrawDuringSpawn() const;
     void DrawSpawnEffect() const;
     void ApplyKnockback(Vector2 dir, float force);
@@ -168,6 +169,7 @@ public:
     float GetDazeDuration() const { return dazeDuration; }
     void SetDazeDuration(float duration) { dazeDuration = duration; }
     bool IsKnockedBack() const { return knockbackVelocity.x != 0.0f || knockbackVelocity.y != 0.0f; }
+    Vector2 GetKnockbackVelocity() const { return knockbackVelocity; }
 
     // Scalar scaling for Roguelike progression
     void ApplyStatMultiplier(float multiplier);

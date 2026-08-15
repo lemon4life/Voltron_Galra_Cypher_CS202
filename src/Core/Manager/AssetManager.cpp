@@ -119,6 +119,7 @@ void AssetManager::QueueCharacterAssets() {
     add("Lance_Down", "assets/sprites/Lance/Down.png");
     add("Keith_Down", "assets/sprites/Keith/Down.png");
     add("Hunk_Down", "assets/sprites/Hunk/Down.png");
+    add("Enemy_Down", "assets/sprites/Enemy/Knight_down.png", true);
 
     // Pidge
     add("Paladin_Pidge_Idle", "assets/sprites/Pidge/Idle_Sheet.png", true);
@@ -128,6 +129,9 @@ void AssetManager::QueueCharacterAssets() {
     add("Paladin_Pidge_DashBack", "assets/sprites/Pidge/Dash_back.png", true);
     add("Paladin_Pidge_Parry", "assets/sprites/Pidge/Parry.png", true);
     add("Paladin_Pidge_Down", "assets/sprites/Pidge/Down.png", true);
+
+    // Objects
+    add("Quint_Orb", "assets/Objects/quint.png", true);
 
     // UI, Objects and Effects
     add("Player_Circle", "assets/UI/Player_Circle.png");

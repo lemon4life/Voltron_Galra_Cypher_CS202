@@ -428,11 +428,6 @@ void Paladin::OnHitEnemy(int damage) {
     if (exEnergy > maxExEnergy) {
         exEnergy = maxExEnergy;
     }
-
-    // Also award Quintessence to team pool
-    if (teamManager) {
-        teamManager->AddQuintessence((float)damage * 0.05f); // Slower Quintessence generation
-    }
 }
 
 void Paladin::SetParrying(bool parry) {

@@ -46,6 +46,7 @@ void GameplayState::Update(float deltaTime) {
         GameManager::GetInstance().UpdateAssists(deltaTime, teamManager);
         waveManager->Update(deltaTime, teamManager, levelManager);
     }
+    GameManager::GetInstance().UpdateOrbs(deltaTime, teamManager);
     GameManager::GetInstance().UpdateEffects(deltaTime);
     ParticleManager::GetInstance().Update(deltaTime);
 }
@@ -54,6 +55,8 @@ void GameplayState::Draw() {
     BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
 
     levelManager->DrawLevelBase();
+
+    GameManager::GetInstance().DrawEffects(true);
 
     std::vector<DepthRenderItem> renderItems;
     
@@ -78,6 +81,8 @@ void GameplayState::Draw() {
         }
     }
 
+    GameManager::GetInstance().DrawEffects(false);
+    GameManager::GetInstance().DrawOrbs();
     ParticleManager::GetInstance().Draw();
 
     if (Constants::isAutoAimEnabled) {
