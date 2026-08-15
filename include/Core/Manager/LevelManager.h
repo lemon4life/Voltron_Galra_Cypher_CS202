@@ -74,6 +74,7 @@ private:
 public:
     LevelManager();
     ~LevelManager();
+    void InitializeAssets();
 
     void LoadLevel(const std::string& filepath, TeamManager* teamManager);
 

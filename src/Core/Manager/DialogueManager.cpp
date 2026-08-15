@@ -30,6 +30,8 @@ void DialogueManager::InitializeAssets() {
     for (auto& pair : portraits) {
         SetTextureFilter(pair.second, TEXTURE_FILTER_BILINEAR); // High HD filtering
     }
+    
+    LoadDialogueTree("assets/story/intro.txt");
 }
 
 void DialogueManager::LoadDialogueTree(const std::string& filepath) {
@@ -96,7 +98,6 @@ void DialogueManager::StartDialogue() {
 }
 
 void DialogueManager::ResetSession() {
-    currentTree.clear();
     isDialogueActive = false;
     currentNode = 0;
     selectedOption = 0;
@@ -107,7 +108,11 @@ void DialogueManager::ResetSession() {
 }
 
 void DialogueManager::Update(float deltaTime) {
-    if (!isDialogueActive || currentTree.empty()) return;
+    if (!isDialogueActive) return;
+    if (currentTree.empty()) {
+        isDialogueActive = false;
+        return;
+    }
 
     const DialogueNode& node = currentTree[currentNode];
     bool isTyping = (visibleCharCount < (int)node.text.length());
@@ -191,7 +196,11 @@ void DialogueManager::Update(float deltaTime) {
 }
 
 void DialogueManager::Draw(int screenWidth, int screenHeight) {
-    if (!isDialogueActive || currentTree.empty()) return;
+    if (!isDialogueActive) return;
+    if (currentTree.empty()) {
+        isDialogueActive = false;
+        return;
+    }
 
     const DialogueNode& node = currentTree[currentNode];
     constexpr float MARGIN = 10.0f;

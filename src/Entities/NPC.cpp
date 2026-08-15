@@ -12,6 +12,7 @@ NPC::NPC(Vector2 pos)
       numFrames(4) {
     if (alluraSprite.id == 0) {
         alluraSprite = LoadTexture("assets/sprites/Allura/Idle_Sheet.png");
+        SetTextureFilter(alluraSprite, TEXTURE_FILTER_POINT);
     }
 }
 
@@ -25,12 +26,13 @@ void NPC::Update(float deltaTime) {
 
 void NPC::Draw() {
     if (alluraSprite.id != 0) {
-        float frameWidth = (float)alluraSprite.width / numFrames;
+        int frameWidthI  = alluraSprite.width / numFrames;   // integer — no fractional source rect
+        float frameWidth  = (float)frameWidthI;
         float frameHeight = (float)alluraSprite.height;
 
-        Rectangle source = { (float)currentFrame * frameWidth, 0.0f, frameWidth, frameHeight };
-        Rectangle dest = { std::round(position.x), std::round(position.y), frameWidth, frameHeight };
-        Vector2 origin = { frameWidth / 2.0f, frameHeight / 2.0f };
+        Rectangle source = { (float)(currentFrame * frameWidthI), 0.0f, frameWidth, frameHeight };
+        Rectangle dest   = { std::round(position.x), std::round(position.y), frameWidth, frameHeight };
+        Vector2 origin   = { frameWidth / 2.0f, frameHeight / 2.0f };
         DrawTexturePro(alluraSprite, source, dest, origin, 0.0f, WHITE);
     } else {
         DrawRectangleRec(GetBoundingBox(), BLUE);

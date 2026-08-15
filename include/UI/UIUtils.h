@@ -21,4 +21,8 @@ namespace UIUtils {
     void DrawSegmentedProgressBar(Rectangle bounds, float currentVal, float maxVal, int segments, Color bgColor, Color fillColor, Color dividerColor);
     void DrawPanel(Rectangle bounds, Color color = ColorAlpha(BLACK, 0.6f));
     bool IsHovered(Rectangle bounds);
+    
+    // UI Camera Helpers
+    Camera2D CreateCenteredUICamera(float scale);
+    Vector2 GetVirtualMousePosition(const Camera2D& camera);
 }

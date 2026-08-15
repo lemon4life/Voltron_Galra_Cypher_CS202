@@ -41,44 +41,51 @@ void LevelMap::Generate(int width, int height) {
     generatedNodes.push_back(spawnRoom);
     
     int roomsToGenerate = 7;
-    int currentX = cx;
-    int currentY = cy;
-    
-    std::shared_ptr<RoomNode> currentNode = spawnRoom;
     
     while (generatedNodes.size() < roomsToGenerate) {
-        // Pick random direction
-        int dir = GetRandomValue(0, 3);
-        int dx = 0, dy = 0;
-        if (dir == 0) dy = -1; // North
-        else if (dir == 1) dy = 1; // South
-        else if (dir == 2) dx = 1; // East
-        else dx = -1; // West
+        struct OpenSlot {
+            int x, y;
+            std::shared_ptr<RoomNode> neighbor;
+            int dx, dy; // direction from neighbor to this slot
+        };
+        std::vector<OpenSlot> openSlots;
         
-        int nx = currentX + dx;
-        int ny = currentY + dy;
-        
-        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-            std::shared_ptr<RoomNode> nextNode = grid[ny][nx];
-            if (!nextNode) {
-                RoomType type = RoomType::BATTLE;
-                if (generatedNodes.size() == roomsToGenerate - 2) type = RoomType::BOSS;
-                else if (generatedNodes.size() == roomsToGenerate - 1) type = RoomType::EXIT;
-                nextNode = std::make_shared<RoomNode>(nx, ny, type);
-                grid[ny][nx] = nextNode;
-                generatedNodes.push_back(nextNode);
-            }
+        for (auto& node : generatedNodes) {
+            int nx = node->gridX;
+            int ny = node->gridY;
             
-            // Link them
-            if (dy == -1) { currentNode->north = nextNode; nextNode->south = currentNode; }
-            if (dy == 1) { currentNode->south = nextNode; nextNode->north = currentNode; }
-            if (dx == 1) { currentNode->east = nextNode; nextNode->west = currentNode; }
-            if (dx == -1) { currentNode->west = nextNode; nextNode->east = currentNode; }
-            
-            currentX = nx;
-            currentY = ny;
-            currentNode = nextNode;
+            // Check North
+            if (ny - 1 >= 0 && !grid[ny - 1][nx]) openSlots.push_back({nx, ny - 1, node, 0, -1});
+            // Check South
+            if (ny + 1 < height && !grid[ny + 1][nx]) openSlots.push_back({nx, ny + 1, node, 0, 1});
+            // Check West
+            if (nx - 1 >= 0 && !grid[ny][nx - 1]) openSlots.push_back({nx - 1, ny, node, -1, 0});
+            // Check East
+            if (nx + 1 < width && !grid[ny][nx + 1]) openSlots.push_back({nx + 1, ny, node, 1, 0});
         }
+        
+        if (openSlots.empty()) {
+            printf("LevelMap::Generate: FAILED to find open slots, generatedNodes = %zu\n", generatedNodes.size());
+            break;
+        }
+        
+        // Pick a random open slot
+        int randIdx = GetRandomValue(0, openSlots.size() - 1);
+        OpenSlot slot = openSlots[randIdx];
+        
+        RoomType type = RoomType::BATTLE;
+        if (generatedNodes.size() == roomsToGenerate - 2) type = RoomType::BOSS;
+        else if (generatedNodes.size() == roomsToGenerate - 1) type = RoomType::EXIT;
+        
+        std::shared_ptr<RoomNode> nextNode = std::make_shared<RoomNode>(slot.x, slot.y, type);
+        grid[slot.y][slot.x] = nextNode;
+        generatedNodes.push_back(nextNode);
+        
+        // Link them
+        if (slot.dy == -1) { slot.neighbor->north = nextNode; nextNode->south = slot.neighbor; }
+        if (slot.dy == 1) { slot.neighbor->south = nextNode; nextNode->north = slot.neighbor; }
+        if (slot.dx == 1) { slot.neighbor->east = nextNode; nextNode->west = slot.neighbor; }
+        if (slot.dx == -1) { slot.neighbor->west = nextNode; nextNode->east = slot.neighbor; }
     }
 }
 

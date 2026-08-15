@@ -31,7 +31,7 @@ class Projectile; // Forward declaration
 class LevelManager; // Forward declaration
 class GameObject; // Forward declaration
 class Rover; // Forward declaration
-
+class IGameState; // Forward declaration
 
 class GameManager {
 private:
@@ -42,6 +42,7 @@ private:
     std::vector<ImpactEffect> activeEffects;
     std::vector<std::unique_ptr<Rover>> activeRovers;
     Texture2D bulletImpactTex;
+    std::unique_ptr<IGameState> currentStateObj;
 
     int targetFPS;
     float hitstopTimer;
@@ -78,8 +79,12 @@ public:
 
     void UpdateHitstop(float dt) { if (hitstopTimer > 0.0f) hitstopTimer -= dt; }
 
-    GameState GetState() const { return currentState; }
-    void SetState(GameState newState) { currentState = newState; }
+    void SetState(GameState newState);
+    GameState GetState() const;
+    
+    void SetCurrentStateObj(std::unique_ptr<IGameState> state);
+    IGameState* GetCurrentStateObj() const;
+    std::unique_ptr<IGameState> TakeCurrentStateObj();
     bool PauseGame();
     bool ResumeGame();
     bool IsPaused() const;

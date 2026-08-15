@@ -2,7 +2,8 @@
 #include "Entities/Player/Paladin.h"
 #include "raylib.h"
 #include "Core/Manager/GameManager.h"
-
+#include "Core/Manager/InputManager.h"
+#include "Core/Constants.h"
 #include <algorithm>
 
 TeamManager::TeamManager()
@@ -11,7 +12,9 @@ TeamManager::TeamManager()
       maxSharedArmor(0),
       sharedUltimateDecibels(0.0f),
       timeSinceLastDamage(0.0f),
-      armorRegenTimer(0.0f)
+      armorRegenTimer(0.0f),
+      autoStrategy(std::make_unique<AutoAimStrategy>()),
+      mouseStrategy(std::make_unique<MouseAimStrategy>())
 {
 }
 
@@ -29,6 +32,15 @@ void TeamManager::AddMember(Paladin* paladin) {
         team.push_back(paladin);
     }
     paladin->SetTeamManager(this);
+}
+
+void TeamManager::RefreshAimStrategies() {
+    bool useAuto = Constants::isAutoAimEnabled ||
+                   InputManager::GetMode() == InputMode::KEYBOARD_ONLY;
+    IAimStrategy* chosen = useAuto ? autoStrategy.get() : mouseStrategy.get();
+    for (auto* p : team) {
+        p->SetCurrentAimStrategy(chosen);
+    }
 }
 
 Paladin* TeamManager::GetActivePaladin() const {

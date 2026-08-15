@@ -85,13 +85,17 @@ namespace {
 
 LevelManager::LevelManager()
     : levelWidth(0.0f), levelHeight(0.0f), gridRows(0), gridCols(0) {
+    // Textures must be loaded after InitWindow() — call InitializeAssets() explicitly.
+}
+
+void LevelManager::InitializeAssets() {
     floorTileset = LoadTexture("assets/tileset/Galra_Floors.png");
     wallTileset = LoadTexture("assets/tileset/Galra_Walls.png");
     prop1Texture = LoadTexture("assets/Objects/tall_object_1_8.png");
     prop2Texture = LoadTexture("assets/Objects/object_2.png");
     boxTexture = LoadTexture("assets/Objects/box.png");
     gateTexture = LoadTexture("assets/Objects/Transfer_gate.png");
-    
+
     SetTextureFilter(tileset, TEXTURE_FILTER_POINT);
     SetTextureFilter(floorTileset, TEXTURE_FILTER_POINT);
     SetTextureFilter(wallTileset, TEXTURE_FILTER_POINT);
@@ -1031,15 +1035,22 @@ void RoomNode::CalculateWalkableGrid(LevelManager* lm) {
 }
 
 void LevelManager::GenerateDungeon(TeamManager* teamManager) {
+    printf("GenerateDungeon: Start\n");
     ClearLevel();
+    printf("GenerateDungeon: Cleared level\n");
     levelMode = LevelMode::Procedural;
     currentlyLockedRoom = nullptr;
 
+    printf("GenerateDungeon: Generating map\n");
     levelMap.Generate(7, 7);
+    printf("GenerateDungeon: Baking level\n");
     activeRoom = levelMap.BakeLevel();
+    printf("GenerateDungeon: Map baked\n");
     roomOffset = {0.0f, 0.0f};
     
+    printf("GenerateDungeon: Generating walls\n");
     currentRoomWalls = activeRoom->GenerateWallColliders(roomOffset, Constants::RENDER_TILE_SIZE, 1.0f);
+    printf("GenerateDungeon: Walls generated\n");
     
     levelWidth = activeRoom->width * Constants::RENDER_TILE_SIZE;
     levelHeight = activeRoom->height * Constants::RENDER_TILE_SIZE;
@@ -1057,6 +1068,7 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
         levelMap.spawnRoom->state = RoomState::CLEARED;
     }
 
+    printf("GenerateDungeon: Spawning props\n");
     // Instantiate procedural props as actual game entities
     if (activeRoom) {
         for (int y = 0; y < activeRoom->height; ++y) {
@@ -1088,6 +1100,7 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
             }
         }
         
+        printf("GenerateDungeon: Spawning doors\n");
         // Instantiate DoorGates for each RoomNode
         for (auto& node : levelMap.generatedNodes) {
             Rectangle bounds = node->GetWorldBounds();
@@ -1115,6 +1128,7 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
             node->CalculateWalkableGrid(this);
         }
     }
+    printf("GenerateDungeon: Done\n");
 }
 
 bool LevelManager::GetSafeSpawnPosition(std::shared_ptr<RoomNode> room, Vector2& outPos) {

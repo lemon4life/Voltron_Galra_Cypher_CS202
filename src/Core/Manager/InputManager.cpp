@@ -1,4 +1,5 @@
 #include "Core/Manager/InputManager.h"
+#include <cstdio>
 #include "raymath.h"
 #include "Core/Constants.h"
 

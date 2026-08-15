@@ -1,4 +1,5 @@
 #include "UI/UIUtils.h"
+#include "Core/Constants.h"
 #include "Core/Manager/AssetManager.h"
 #include <algorithm>
 
@@ -58,7 +59,27 @@ namespace UIUtils {
     }
 
     bool IsHovered(Rectangle bounds) {
-        return CheckCollisionPointRec(GetMousePosition(), bounds);
+        Vector2 mousePos = GetMousePosition();
+        return CheckCollisionPointRec(mousePos, bounds);
+    }
+    
+    Camera2D CreateCenteredUICamera(float scale) {
+        Camera2D camera = {};
+        camera.zoom = scale;
+        camera.offset = {
+            (GetScreenWidth()  - Constants::GAME_WIDTH  * scale) * 0.5f,
+            (GetScreenHeight() - Constants::GAME_HEIGHT * scale) * 0.5f
+        };
+        return camera;
+    }
+
+    Vector2 GetVirtualMousePosition(const Camera2D& camera) {
+        Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
+        if (mousePosition.x < 0.0f || mousePosition.x > Constants::GAME_WIDTH ||
+            mousePosition.y < 0.0f || mousePosition.y > Constants::GAME_HEIGHT) {
+            return {-1.0f, -1.0f};
+        }
+        return mousePosition;
     }
 
 }
