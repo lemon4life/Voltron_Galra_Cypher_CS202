@@ -265,13 +265,7 @@ void GameApplication::RunLoop() {
 
             uiManager.Initialize();
             uiManager.SetTeamManager(teamManager.get());
-            for (auto* p : teamManager->GetTeam()) {
-                if (Constants::isAutoAimEnabled || InputManager::GetMode() == InputMode::KEYBOARD_ONLY) {
-                    p->SetCurrentAimStrategy(&autoStrategy);
-                } else {
-                    p->SetCurrentAimStrategy(&mouseStrategy);
-                }
-            }
+            teamManager->RefreshAimStrategies();
 
             levelManager.LoadLevel(
                 HUB_LEVEL_PATH,
@@ -306,6 +300,7 @@ void GameApplication::RunLoop() {
                 CameraManager::GetInstance().GetCamera()
             );
             
+            teamManager->RefreshAimStrategies();
             activePaladin->UpdateAim(mouseWorld);
 
             bool keyboardPauseRequested =
@@ -364,9 +359,11 @@ void GameApplication::RunLoop() {
         }
 
         if (systemInitialized && teamManager && teamManager->GetActivePaladin()) {
+            Vector2 aimVec = teamManager->GetActivePaladin()->GetCurrentAimVector();
+            Vector2 targetPos = { teamManager->GetActivePaladin()->GetPosition().x + aimVec.x * 100.0f, teamManager->GetActivePaladin()->GetPosition().y + aimVec.y * 100.0f };
             CameraManager::GetInstance().UpdateCamera(
                 teamManager->GetActivePaladin()->GetPosition(),
-                GetScreenToWorld2D(GetMousePosition(), CameraManager::GetInstance().GetCamera()),
+                targetPos,
                 deltaTime,
                 levelManager.GetLevelBounds(),
                 gameManager.GetHitstopTimer() > 0.0f

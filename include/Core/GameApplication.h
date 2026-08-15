@@ -9,8 +9,6 @@
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/WaveManager.h"
 #include "Core/Level/RoomEditorState.h"
-#include "Core/AimStrategy/MouseAimStrategy.h"
-#include "Core/AimStrategy/AutoAimStrategy.h"
 #include "UI/MainMenu.h"
 #include "UI/PauseMenu.h"
 #include "UI/PaladinSelectionMenu.h"
@@ -51,9 +49,6 @@ private:
     LevelManager levelManager;
     WaveManager waveManager;
     std::unique_ptr<TeamManager> teamManager;
-
-    MouseAimStrategy mouseStrategy;
-    AutoAimStrategy autoStrategy;
 
     bool quitRequested;
     bool systemInitialized;
