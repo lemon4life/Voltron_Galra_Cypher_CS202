@@ -115,9 +115,7 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
         int startX = node->gridX * roomOuterSize;
         int startY = node->gridY * roomOuterSize;
         
-        int currentRoomSize = 15;
-        if (node->type == RoomType::BOSS) currentRoomSize = 25;
-        else if (node->type == RoomType::BATTLE) currentRoomSize = 20;
+        int currentRoomSize = node->roomSize;
         
         int offset = (Constants::MAX_ROOM_TILE_SIZE - currentRoomSize) / 2;
         
@@ -140,8 +138,8 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
         // Custom CSV Template Loading (skip for spawn — spawn keeps the default walled room above)
         if (node->type != RoomType::SPAWN) {
             std::string sizePrefix = "Small";
-            if (node->type == RoomType::BOSS) sizePrefix = "Large";
-            else if (node->type == RoomType::BATTLE) sizePrefix = "Medium";
+            if (node->roomSize == 25) sizePrefix = "Large";
+            else if (node->roomSize == 20) sizePrefix = "Medium";
             
             std::vector<std::string> templates;
             if (std::filesystem::exists("assets/level")) {

@@ -41,11 +41,20 @@ struct RoomNode {
 
     std::vector<DoorGate*> doors;
     std::vector<Vector2> availableSpawnNodes;
+    int roomSize;
 
     RoomNode(int x, int y, RoomType t = RoomType::BATTLE)
         : type(t), gridX(x), gridY(y),
           north(nullptr), south(nullptr), east(nullptr), west(nullptr),
-          isDiscovered(false), isCleared(false), state(RoomState::IDLE) {}
+          isDiscovered(false), isCleared(false), state(RoomState::IDLE) {
+          
+        if (t == RoomType::BOSS) roomSize = 25;
+        else if (t == RoomType::BATTLE) {
+            roomSize = (GetRandomValue(0, 1) == 0) ? 20 : 25;
+        } else {
+            roomSize = 15;
+        }
+    }
           
     void CalculateWalkableGrid(class LevelManager* lm);
 };

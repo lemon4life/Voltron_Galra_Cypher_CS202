@@ -1074,9 +1074,7 @@ Rectangle RoomNode::GetWorldBounds() const {
     float tileW = Constants::RENDER_TILE_SIZE;
     int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
     
-    int currentRoomSize = 15;
-    if (type == RoomType::BOSS) currentRoomSize = 25;
-    else if (type == RoomType::BATTLE) currentRoomSize = 20;
+    int currentRoomSize = this->roomSize;
     
     int offset = (Constants::MAX_ROOM_TILE_SIZE - currentRoomSize) / 2;
                           
