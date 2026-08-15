@@ -156,12 +156,24 @@ public:
 };
 
 class BossPunchState : public ITypedEnemyState<Boss> {
+public:
+    enum class Phase {
+        Ready,
+        Punch
+    };
+
 private:
-    float elapsedTime = 0.0f;
-    bool readyAnimationComplete = false;
+    Phase phase = Phase::Ready;
+    float frameTimer = 0.0f;
+    int frameIndex = 0;
+    int completedPunches = 0;
 
 public:
     void Enter(Boss* enemy) override;
     void Update(Boss* enemy, float deltaTime) override;
     void Exit(Boss* enemy) override;
+
+    Phase GetPhase() const { return phase; }
+    int GetFrameIndex() const { return frameIndex; }
+    int GetCompletedPunches() const { return completedPunches; }
 };

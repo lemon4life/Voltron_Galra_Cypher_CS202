@@ -20,9 +20,9 @@ namespace {
     constexpr int BOSS_SPELL_MIN_MILLISECONDS = 4000;
     constexpr int BOSS_SPELL_MAX_MILLISECONDS = 6000;
     constexpr float BOSS_SPELL_SUMMON_INTERVAL = 0.5f;
-    constexpr int BOSS_PUNCH_READY_FRAME_COUNT = 3;
-    constexpr int BOSS_PUNCH_PLAY_FRAME_COUNT = 6;
-    constexpr int BOSS_PUNCHES_PER_STATE = 5;
+    constexpr int BOSS_PUNCH_READY_FRAME_COUNT = 10;
+    constexpr int BOSS_PUNCH_PLAY_FRAME_COUNT = 4;
+    constexpr int BOSS_PUNCHES_PER_STATE = 10;
     constexpr float BOSS_PUNCH_FRAME_DURATION = 0.11f;
 
     enum class BossOffense {
@@ -209,28 +209,37 @@ void BossSpellingState::Exit(Boss* enemy) {
 // Boss Punch State (animation test only; no hitbox or damage yet)
 
 void BossPunchState::Enter(Boss* enemy) {
-    elapsedTime = 0.0f;
-    readyAnimationComplete = false;
+    phase = Phase::Ready;
+    frameTimer = 0.0f;
+    frameIndex = 0;
+    completedPunches = 0;
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
-    enemy->BeginPunchReadyAnimation();
 }
 
 void BossPunchState::Update(Boss* enemy, float deltaTime) {
-    elapsedTime += std::max(0.0f, deltaTime);
+    frameTimer += std::max(0.0f, deltaTime);
 
-    constexpr float READY_DURATION =
-        BOSS_PUNCH_READY_FRAME_COUNT * BOSS_PUNCH_FRAME_DURATION;
-    constexpr float PLAY_DURATION = BOSS_PUNCH_PLAY_FRAME_COUNT *
-        BOSS_PUNCH_FRAME_DURATION * BOSS_PUNCHES_PER_STATE;
+    while (frameTimer >= BOSS_PUNCH_FRAME_DURATION) {
+        frameTimer -= BOSS_PUNCH_FRAME_DURATION;
+        ++frameIndex;
 
-    if (!readyAnimationComplete && elapsedTime >= READY_DURATION) {
-        readyAnimationComplete = true;
-        enemy->BeginPunchPlayAnimation();
-    }
+        if (phase == Phase::Ready) {
+            if (frameIndex >= BOSS_PUNCH_READY_FRAME_COUNT) {
+                phase = Phase::Punch;
+                frameIndex = 0;
+            }
+            continue;
+        }
 
-    if (elapsedTime >= READY_DURATION + PLAY_DURATION) {
-        enemy->ChangeState(enemy->GetIdlingState());
+        if (frameIndex >= BOSS_PUNCH_PLAY_FRAME_COUNT) {
+            frameIndex = 0;
+            ++completedPunches;
+            if (completedPunches >= BOSS_PUNCHES_PER_STATE) {
+                enemy->ChangeState(enemy->GetIdlingState());
+                return;
+            }
+        }
     }
 }
 
