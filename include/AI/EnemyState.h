@@ -168,7 +168,7 @@ private:
     int frameIndex = 0;
     int completedPunches = 0;
     float bulletSpeed = 400.0f;
-    float changeAngleDegreesPerSecond = 5.0f;
+    float changeAngleDegreesPerSecond = 30.0f;
 
 public:
     void Enter(Boss* enemy) override;

@@ -37,7 +37,7 @@ namespace {
     constexpr Vector2 BOSS_DRAW_ORIGIN = { 31.5f, 37.5f };
     constexpr Vector2 BOSS_PUNCH_BODY_HAND_ROOT = { 13.0f, 43.0f };
     constexpr Vector2 BOSS_PUNCH_HAND_ROOT = { 8.0f, 7.0f };
-    constexpr Vector2 BOSS_PUNCH_HAND_LAUNCH_PIXEL = { 53.0f, 7.0f };
+    constexpr Vector2 BOSS_PUNCH_HAND_LAUNCH_PIXEL = { 38.0f, 7.0f };
     constexpr Vector2 BOSS_RENDER_FOOT_OFFSET = {
         0.0f,
         BOSS_FRAME_HEIGHT - BOSS_DRAW_ORIGIN.y

@@ -22,8 +22,9 @@ namespace {
     constexpr float BOSS_SPELL_SUMMON_INTERVAL = 0.5f;
     constexpr int BOSS_PUNCH_READY_FRAME_COUNT = 10;
     constexpr int BOSS_PUNCH_PLAY_FRAME_COUNT = 4;
+    constexpr int BOSS_PUNCH_FIRE_FRAME_INDEX = 2;
     constexpr int BOSS_PUNCHES_PER_STATE = 10;
-    constexpr float BOSS_PUNCH_FRAME_DURATION = 0.11f;
+    constexpr float BOSS_PUNCH_FRAME_DURATION = 0.06f;
 
     enum class BossOffense {
         Chase,
@@ -232,12 +233,15 @@ void BossPunchState::Update(Boss* enemy, float deltaTime) {
             continue;
         }
 
-        if (frameIndex >= BOSS_PUNCH_PLAY_FRAME_COUNT) {
-            frameIndex = 0;
+        if (frameIndex == BOSS_PUNCH_FIRE_FRAME_INDEX) {
             enemy->FirePunchProjectile(
                 bulletSpeed,
                 changeAngleDegreesPerSecond
             );
+        }
+
+        if (frameIndex >= BOSS_PUNCH_PLAY_FRAME_COUNT) {
+            frameIndex = 0;
             ++completedPunches;
             if (completedPunches >= BOSS_PUNCHES_PER_STATE) {
                 enemy->ChangeState(enemy->GetIdlingState());

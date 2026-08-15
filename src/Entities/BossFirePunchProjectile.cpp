@@ -103,6 +103,8 @@ void BossFirePunchProjectile::Update(float deltaTime) {
     if (!IsActive()) return;
 
     float safeDeltaTime = std::max(0.0f, deltaTime);
+    // Steering is intentionally evaluated on every projectile update. The
+    // per-second limit is converted to this frame's permitted angle change.
     Paladin* target = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     if (target) {
         Vector2 targetDirection = {
