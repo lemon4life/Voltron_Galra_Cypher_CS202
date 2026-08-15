@@ -167,7 +167,11 @@ public:
     void ResetAttackCooldown();
     float GetDazeDuration() const { return dazeDuration; }
     void SetDazeDuration(float duration) { dazeDuration = duration; }
-    float GetKnockbackResistance() const { return knockbackResistance; }
+    bool IsKnockedBack() const { return knockbackVelocity.x != 0.0f || knockbackVelocity.y != 0.0f; }
+
+    // Scalar scaling for Roguelike progression
+    void ApplyStatMultiplier(float multiplier);
+
     void SetKnockbackResistance(float resistance);
     float GetKnockbackMultiplier() const {
         return 1.0f - knockbackResistance;

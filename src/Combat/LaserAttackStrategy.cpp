@@ -5,6 +5,7 @@
 #include "Core/Manager/AudioManager.h"
 #include "Entities/Enemy.h"
 #include "Entities/Player/Paladin.h"
+#include "Entities/Props/Prop.h"
 #include <cmath>
 #include <iostream>
 
@@ -72,7 +73,7 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
         }
     }
 
-    // Check intersection with all enemies
+    // Check intersection with all enemies and boxes
     const auto& entities = GameManager::GetInstance().GetLevelEntities();
     for (auto* entity : entities) {
         if (entity->GetObjectType() == GameObjectType::Enemy) {
@@ -85,6 +86,12 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
                 if (owner) {
                     owner->OnHitEnemy(damage);
                 }
+            }
+        } else if (entity->GetObjectType() == GameObjectType::Box) {
+            Prop* p = static_cast<Prop*>(entity);
+            if (CheckCollisionSegmentRec(barrelTip, laserEndPoint, p->GetBoundingBox())) {
+                p->TakeDamage(damage);
+                GameManager::GetInstance().AddImpactEffect({p->GetPosition().x, p->GetPosition().y});
             }
         }
     }

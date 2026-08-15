@@ -1,12 +1,34 @@
 #include "Core/AimStrategy/AutoAimStrategy.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Enemy.h"
+#include "Core/Manager/GameManager.h"
 #include "Core/Manager/InputManager.h"
 #include "raymath.h"
 
 Vector2 AutoAimStrategy::CalculateAimVector(Paladin* paladin) {
-    if (paladin->GetLockedEnemy() && !paladin->IsDoingUltimate()) {
-        Vector2 aimDir = Vector2Subtract(paladin->GetLockedEnemy()->GetPosition(), paladin->GetPosition());
+    float bestDist = 400.0f; // Targeting range
+    Enemy* bestTarget = nullptr;
+    Vector2 playerPos = paladin->GetPosition();
+    
+    for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
+        if (entity->GetObjectType() == GameObjectType::Enemy) {
+            Enemy* enemy = static_cast<Enemy*>(entity);
+            if (enemy->IsDead() || !enemy->IsEnabled()) continue;
+            
+            Vector2 toEnemy = {enemy->GetPosition().x - playerPos.x, enemy->GetPosition().y - playerPos.y};
+            float dist = Vector2Length(toEnemy);
+            
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestTarget = enemy;
+            }
+        }
+    }
+    
+    paladin->SetLockedEnemy(bestTarget);
+    
+    if (bestTarget && !paladin->IsDoingUltimate()) {
+        Vector2 aimDir = Vector2Subtract(bestTarget->GetPosition(), paladin->GetPosition());
         if (Vector2Length(aimDir) > 0.1f) {
             return Vector2Normalize(aimDir);
         }

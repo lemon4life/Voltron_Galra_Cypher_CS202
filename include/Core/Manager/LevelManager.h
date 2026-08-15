@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <unordered_set>
+#include <memory>
 #include "raylib.h"
 #include "Core/LevelAccess.h"
 #include "Entities/GameObject.h"
@@ -65,17 +67,22 @@ private:
     void ProcessPendingAdditions();
     void ProcessPendingRemovals();
     std::vector<PendingMapObjectDestruction> pendingMapObjectDestructions;
-    std::vector<GameObject*> pendingRemoval;
+    std::unordered_set<GameObject*> pendingRemoval;
     std::vector<GameObject*> pendingAddition;
     EnemyPathManager enemyPathManager;
 
 public:
     LevelManager();
     ~LevelManager();
+    void InitializeAssets();
 
     void LoadLevel(const std::string& filepath, TeamManager* teamManager);
 
+    // Helper for safe spawning
+    bool GetSafeSpawnPosition(std::shared_ptr<RoomNode> room, Vector2& outPos);
+
     const LevelMap& GetLevelMap() const { return levelMap; }
+    std::shared_ptr<RoomNode> GetCurrentlyLockedRoom() const { return currentlyLockedRoom; }
     RoomState GetActiveRoomState() const { return (currentlyLockedRoom) ? currentlyLockedRoom->state : RoomState::IDLE; }
     void SetActiveRoomState(RoomState s) {
         if (currentlyLockedRoom && currentlyLockedRoom->state != s) {

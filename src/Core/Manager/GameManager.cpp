@@ -1,10 +1,12 @@
 #include "Core/Manager/GameManager.h"
-#include "Core/Constants.h"
+#include "Core/Manager/LevelManager.h"
 #include "Entities/Projectile.h"
+#include "Core/State/IGameState.h"
 #include "Entities/GameObject.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/ParticleManager.h"
 #include "raymath.h"
+#include "Core/Constants.h"
 
 GameManager::GameManager()
     : currentState(GameState::MAIN_MENU),
@@ -12,6 +14,7 @@ GameManager::GameManager()
       bulletImpactTex{},
       targetFPS(0),
       hitstopTimer(0.0f),
+      currentFloor(1),
       levelManager(nullptr) {
     // Starts in MAIN_MENU state by default
 }
@@ -56,6 +59,26 @@ bool GameManager::IsPaused() const {
 
 GameState GameManager::GetPreviousGameState() const {
     return previousGameState;
+}
+
+GameState GameManager::GetState() const {
+    return currentState;
+}
+
+void GameManager::SetState(GameState newState) {
+    currentState = newState;
+}
+
+void GameManager::SetCurrentStateObj(std::unique_ptr<IGameState> state) {
+    currentStateObj = std::move(state);
+}
+
+IGameState* GameManager::GetCurrentStateObj() const {
+    return currentStateObj.get();
+}
+
+std::unique_ptr<IGameState> GameManager::TakeCurrentStateObj() {
+    return std::move(currentStateObj);
 }
 
 GameState GameManager::GetRenderState() const {

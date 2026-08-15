@@ -202,7 +202,7 @@ void UIManager::DrawTeamHUD(
 // --- Core UI Helpers ---
 
 void UIManager::DrawModalOverlay() {
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.6f));
+    DrawRectangle(0, 0, Constants::GAME_WIDTH, Constants::GAME_HEIGHT, Fade(BLACK, 0.6f));
 }
 
 void UIManager::DrawPopupFrame(Rectangle bounds, const char* title) {

@@ -374,3 +374,11 @@ EnemyMoveResult Enemy::UpdateMovement(Vector2 desiredVelocity, float deltaTime, 
     Vector2 displacement = { currentVelocity.x * deltaTime, currentVelocity.y * deltaTime };
     return EnemyCollision::MoveAgainstWalls(*this, displacement, pathAccess, response);
 }
+
+void Enemy::ApplyStatMultiplier(float multiplier) {
+    maxHealth = (int)(maxHealth * multiplier);
+    health = maxHealth;
+    damage = (int)(damage * multiplier);
+    // Slight speed buff (half of the multiplier scale)
+    speed *= (1.0f + (multiplier - 1.0f) * 0.5f);
+}

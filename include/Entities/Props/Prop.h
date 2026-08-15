@@ -28,6 +28,8 @@ public:
     
     // Support for unified depth rendering
     void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
+    
+    bool IsSolidNavigationObstacle() const override { return propType == MapObjectId::DestructibleBox; }
     void DrawBaseLayer(); // Draws the bottom 16x16
 
     void TakeDamage(int amount);

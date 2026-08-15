@@ -1,6 +1,7 @@
 #pragma once
 #include "raylib.h"
 #include <vector>
+#include <memory>
 #include "Core/DepthRenderItem.h"
 
 #include<memory>
@@ -11,6 +12,7 @@ enum class GameState {
     GAMEPLAY,
     PAUSE,
     SETTINGS,
+    ROOM_EDITOR,
     GAME_OVER,
     VICTORY
 };
@@ -29,7 +31,7 @@ class Projectile; // Forward declaration
 class LevelManager; // Forward declaration
 class GameObject; // Forward declaration
 class Rover; // Forward declaration
-
+class IGameState; // Forward declaration
 
 class GameManager {
 private:
@@ -40,9 +42,12 @@ private:
     std::vector<ImpactEffect> activeEffects;
     std::vector<std::unique_ptr<Rover>> activeRovers;
     Texture2D bulletImpactTex;
+    std::unique_ptr<IGameState> currentStateObj;
 
     int targetFPS;
     float hitstopTimer;
+    
+    int currentFloor;
     
     float levelWidth = 0.0f;
     float levelHeight = 0.0f;
@@ -56,6 +61,8 @@ public:
     static GameManager& GetInstance();
 
     // Delete copy and assignment operators to enforce singleton behavior
+    static constexpr int MAX_FLOORS = 3;
+
     GameManager(const GameManager&) = delete;
     GameManager& operator=(const GameManager&) = delete;
     GameManager(GameManager&&) = delete;
@@ -64,10 +71,20 @@ public:
     // --- Accessors ---
     void TriggerHitstop(float duration) { hitstopTimer = duration; }
     float GetHitstopTimer() const { return hitstopTimer; }
+    void ClearHitstop() { hitstopTimer = 0.0f; }
+
+    int GetCurrentFloor() const { return currentFloor; }
+    void AdvanceFloorCount() { currentFloor++; }
+    void ResetFloorCount() { currentFloor = 1; }
+
     void UpdateHitstop(float dt) { if (hitstopTimer > 0.0f) hitstopTimer -= dt; }
 
-    GameState GetState() const { return currentState; }
-    void SetState(GameState newState) { currentState = newState; }
+    void SetState(GameState newState);
+    GameState GetState() const;
+    
+    void SetCurrentStateObj(std::unique_ptr<IGameState> state);
+    IGameState* GetCurrentStateObj() const;
+    std::unique_ptr<IGameState> TakeCurrentStateObj();
     bool PauseGame();
     bool ResumeGame();
     bool IsPaused() const;

@@ -15,7 +15,7 @@ struct MenuButton {
 
 
 enum class MenuState { LOADING, TRANSITIONING, ACTIVE };
-enum class MainMenuAction { None, StartGame, Continue };
+enum class MainMenuAction { None, StartGame, Continue, OpenEditor };
 
 class MainMenu {
 private:

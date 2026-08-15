@@ -5,12 +5,13 @@
 
 #include<cmath>
 
-void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int currentGridY) {
+#include "Core/Manager/GameManager.h"
+
+void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int currentGridY, Vector2 anchor, int currentFloor) {
     if (levelMap.grid.empty() || levelMap.generatedNodes.empty()) return;
 
-    float minimapSize = 150.0f;
-    float padding = 10.0f;
-    Vector2 anchor = { Constants::GAME_WIDTH - minimapSize - padding, padding };
+    float minimapSize = 100.0f; // Shrink to prevent overlap with Stats HUD
+
     
     // Draw background panel
     DrawRectangle(anchor.x - 2, anchor.y - 2, minimapSize + 4, minimapSize + 4, Fade(WHITE, 0.15f));
@@ -100,8 +101,8 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
         bool isCurrent = (dx == 0 && dy == 0);
         
         if (isCurrent) {
-            roomColor = WHITE;
-            borderColor = WHITE;
+            roomColor = SKYBLUE;
+            borderColor = BLUE;
         } else if (!node->isDiscovered) {
             roomColor = Fade(DARKGRAY, 0.9f);
             borderColor = DARKGRAY;
@@ -144,6 +145,5 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
     }
     
     // Draw minimap label    
-    Font fontSans = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
-    UIUtils::DrawText("PixeloidSans", "MAP", { anchor.x + 4, anchor.y + minimapSize - 14 }, static_cast<UIUtils::FontSize>(10), Fade(WHITE, 0.5f));
+    UIUtils::DrawText("PixeloidSans", TextFormat("FLOOR: %d / %d", currentFloor, GameManager::MAX_FLOORS), { anchor.x + 4, anchor.y + minimapSize - 14 }, static_cast<UIUtils::FontSize>(10), Fade(WHITE, 0.5f));
 }

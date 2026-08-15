@@ -117,6 +117,15 @@ void Paladin::TakeDamage(int amount) {
     }
 }
 
+void Paladin::UpdateAim(Vector2 rawMouseWorld) {
+    if (Constants::isAutoAimEnabled) {
+        Vector2 aimVec = GetCurrentAimVector();
+        SetAimTarget({ position.x + aimVec.x * 100.0f, position.y + aimVec.y * 100.0f });
+    } else {
+        SetAimTarget(rawMouseWorld);
+    }
+}
+
 void Paladin::TickTimers(float deltaTime) {
     if (dashCooldown > 0.0f) dashCooldown -= deltaTime;
     

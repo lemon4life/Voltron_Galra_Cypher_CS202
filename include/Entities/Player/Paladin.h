@@ -147,6 +147,7 @@ public:
     void SetInvulnerabilityTimer(float val) { invulnerabilityTimer = val; }
     
     void SetAimTarget(Vector2 target) { if (!isParrying) aimTarget = target; }
+    void UpdateAim(Vector2 rawMouseWorld);
     Vector2 GetAimTarget() const { return aimTarget; }
     
     void SetLockedEnemy(class Enemy* target) { lockedEnemy = target; }
