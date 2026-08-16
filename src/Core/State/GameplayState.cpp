@@ -3,6 +3,7 @@
 #include "Core/Manager/ParticleManager.h"
 #include "Core/Manager/CameraManager.h"
 #include "Core/Manager/InputManager.h"
+#include "Core/Manager/DecalManager.h"
 #include "Core/Constants.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Enemy.h"
@@ -47,14 +48,15 @@ void GameplayState::Update(float deltaTime) {
         waveManager->Update(deltaTime, teamManager, levelManager);
     }
     GameManager::GetInstance().UpdateOrbs(deltaTime, teamManager);
+    DecalManager::GetInstance().Update(deltaTime);
     GameManager::GetInstance().UpdateEffects(deltaTime);
     ParticleManager::GetInstance().Update(deltaTime);
 }
 
 void GameplayState::Draw() {
     BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
-
     levelManager->DrawLevelBase();
+    DecalManager::GetInstance().Draw();
 
     GameManager::GetInstance().DrawEffects(true);
 

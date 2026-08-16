@@ -10,6 +10,7 @@
 #include "Core/Manager/EnemyPathManager.h"
 #include "Core/Level/Tilemap.h"
 #include "Core/DepthRenderItem.h"
+#include "Core/Level/ILevelProvider.h"
 
 class TeamManager;
 
@@ -29,18 +30,7 @@ private:
         GameObjectCell cell;
     };
 
-    struct CorpseDecal {
-        Vector2 position;
-        Texture2D texture;
-        bool facingLeft;
-        float heightOffset;     // Simulated Z-axis (negative is up)
-        float verticalVelocity; 
-        Vector2 slideVelocity;
-        bool settled;           // Stops updating once finished bouncing
-    };
-
     std::vector<GameObject*> levelEntities;
-    std::vector<CorpseDecal> corpses;
     float levelWidth;
     float levelHeight;
     int gridRows;
@@ -66,7 +56,8 @@ private:
     Vector2 nudgePosition = {0.0f, 0.0f};
     bool needsNudge = false;
     std::uint64_t navigationRevision = 0;
-
+    std::unique_ptr<ILevelProvider> currentLevelProvider;
+    std::vector<Vector2> staticSpawnNodes;
 
     bool LoadObjectGrid(const std::string& filepath);
     void SpawnGameObjects(TeamManager* teamManager);
@@ -91,6 +82,7 @@ public:
 
     // Helper for safe spawning
     bool GetSafeSpawnPosition(std::shared_ptr<RoomNode> room, Vector2& outPos);
+    bool GetGuaranteedSpawnPoint(Vector2& outPos);
 
     const LevelMap& GetLevelMap() const { return levelMap; }
     std::shared_ptr<RoomNode> GetCurrentlyLockedRoom() const { return currentlyLockedRoom; }

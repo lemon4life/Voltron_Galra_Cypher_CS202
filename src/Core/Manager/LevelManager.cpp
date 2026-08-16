@@ -4,12 +4,16 @@
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/TeamManager.h"
+#include "Core/Manager/DecalManager.h"
 #include "Entities/Player/Paladin.h"
 #include "Core/EntityFactory.h"
 #include "Entities/Enemy.h"
 #include "Entities/Props/Prop.h"
 #include "Entities/Props/DoorGate.h"
 
+#include "Core/Utils/MapLoader.h"
+#include "Core/Level/ProceduralLevelProvider.h"
+#include "Core/Level/StaticLevelProvider.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -30,60 +34,6 @@ namespace {
     constexpr float PARTIAL_WALL_WIDTH = 9.0f;
     constexpr float RIGHT_PARTIAL_WALL_OFFSET = Constants::RENDER_TILE_SIZE - PARTIAL_WALL_WIDTH;
     constexpr int DRAW_PADDING_TILES = 20;
-
-
-
-    bool LoadCsvGrid(
-        const std::string& filepath,
-        std::vector<std::vector<int>>& output
-    ) {
-        std::ifstream file(filepath);
-        if (!file.is_open()) {
-            std::cerr << "Failed to open level layer: " << filepath
-                      << std::endl;
-            return true;
-        }
-
-        output.clear();
-        std::string line;
-        std::size_t expectedColumns = 0;
-        while (std::getline(file, line)) {
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-
-            std::stringstream rowStream(line);
-            std::string cellString;
-            std::vector<int> row;
-            while (std::getline(rowStream, cellString, ',')) {
-                try {
-                    row.push_back(std::stoi(cellString));
-                } catch (...) {
-                    std::cerr << "Invalid CSV value in " << filepath
-                              << std::endl;
-                    output.clear();
-                    return true;
-                }
-            }
-
-            if (row.empty()) {
-                std::cerr << "Empty CSV row in " << filepath << std::endl;
-                output.clear();
-                return true;
-            }
-            if (expectedColumns == 0) {
-                expectedColumns = row.size();
-            } else if (row.size() != expectedColumns) {
-                std::cerr << "Non-rectangular CSV layer: " << filepath
-                          << std::endl;
-                output.clear();
-                return true;
-            }
-            output.push_back(std::move(row));
-        }
-
-        return !output.empty();
-    }
 
 LevelManager::LevelManager()
     : levelWidth(0.0f), levelHeight(0.0f), gridRows(0), gridCols(0) {
@@ -119,82 +69,7 @@ LevelManager::~LevelManager() {
 }
 
 bool LevelManager::LoadObjectGrid(const std::string& filepath) {
-    mapObjectGrid.clear();
-    mapObjectGrid.reserve(mapGridLayer1.size());
-    for (const auto& row : mapGridLayer1) {
-        mapObjectGrid.push_back(
-            std::vector<MapObjectId>(row.size(), MapObjectId::Empty)
-        );
-    }
-
-    std::string objectLayerPath = filepath;
-    size_t layerNamePosition = objectLayerPath.find("Layer 1");
-    if (layerNamePosition == std::string::npos) {
-        return true;
-    }
-
-    objectLayerPath.replace(
-        layerNamePosition,
-        std::string("Layer 1").size(),
-        "Game Objects"
-    );
-
-    std::ifstream objectFile(objectLayerPath);
-    if (!objectFile.is_open()) {
-        return true;
-    }
-
-    bool dimensionsMatch = true;
-    std::string line;
-    int rowIndex = 0;
-    while (std::getline(objectFile, line)) {
-        if (!line.empty() && line.back() == '\r') {
-            line.pop_back();
-        }
-
-        if (rowIndex >= (int)mapObjectGrid.size()) {
-            dimensionsMatch = false;
-            rowIndex++;
-            continue;
-        }
-
-        std::stringstream rowStream(line);
-        std::string cellString;
-        int columnIndex = 0;
-        while (std::getline(rowStream, cellString, ',')) {
-            if (columnIndex >= (int)mapObjectGrid[rowIndex].size()) {
-                dimensionsMatch = false;
-                columnIndex++;
-                continue;
-            }
-
-            try {
-                mapObjectGrid[rowIndex][columnIndex] =
-                    static_cast<MapObjectId>(std::stoi(cellString));
-            } catch (...) {
-                mapObjectGrid[rowIndex][columnIndex] = MapObjectId::Empty;
-            }
-            columnIndex++;
-        }
-
-        if (columnIndex != (int)mapObjectGrid[rowIndex].size()) {
-            dimensionsMatch = false;
-        }
-        rowIndex++;
-    }
-
-    if (rowIndex != (int)mapObjectGrid.size()) {
-        dimensionsMatch = false;
-    }
-
-    if (!dimensionsMatch) {
-        std::cerr
-            << "Game Objects layer dimensions do not match Layer 1: "
-            << objectLayerPath
-            << std::endl;
-    }
-
-    return dimensionsMatch;
+    return MapLoader::ParseObjectGrid(filepath, mapObjectGrid, mapGridLayer1);
 }
 
 void LevelManager::SpawnGameObjects(TeamManager* teamManager) {
@@ -229,13 +104,13 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
         return;
     }
 
-    if (!LoadCsvGrid(filepath, mapGridLayer1)) {
+    if (!MapLoader::ParseCSV(filepath, mapGridLayer1)) {
         return;
     }
 
     std::string layer2Path = filepath;
     layer2Path.replace(layer2Path.find("Layer 1"), 7, "Layer 2");
-    if (!LoadCsvGrid(layer2Path, mapGridLayer2)) {
+    if (!MapLoader::ParseCSV(layer2Path, mapGridLayer2)) {
         ClearLevel();
         return;
     }
@@ -278,6 +153,21 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
 
     // Store in GameManager for global access
     GameManager::GetInstance().SetLevelBounds(levelWidth, levelHeight);
+
+    currentLevelProvider = std::make_unique<StaticLevelProvider>(
+        mapGridLayer1, mapGridLayer2, mapObjectGrid,
+        floorTileset, wallTileset, gridRows, gridCols
+    );
+
+    staticSpawnNodes.clear();
+    float ts = Constants::RENDER_TILE_SIZE;
+    for (float y = ts; y < levelHeight - ts; y += ts/2.0f) {
+        for (float x = ts; x < levelWidth - ts; x += ts/2.0f) {
+            if (!IsSolidCollision({x - 16.0f, y - 16.0f, 32.0f, 32.0f})) {
+                staticSpawnNodes.push_back({x, y});
+            }
+        }
+    }
 }
 
 void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
@@ -343,15 +233,7 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
         if ((*it)->GetObjectType() == GameObjectType::Enemy) {
             Enemy* e = static_cast<Enemy*>(*it);
             if (e->IsDead()) {
-                CorpseDecal corpse;
-                corpse.position = e->GetPosition();
-                corpse.texture = AssetManager::GetInstance().GetTexture("Enemy_Down");
-                corpse.facingLeft = e->IsFacingLeft();
-                corpse.heightOffset = -5.0f;
-                corpse.verticalVelocity = -80.0f;
-                corpse.slideVelocity = e->GetKnockbackVelocity();
-                corpse.settled = false;
-                corpses.push_back(corpse);
+                DecalManager::GetInstance().AddCorpse(e->GetPosition(), AssetManager::GetInstance().GetTexture("Enemy_Down"), e->IsFacingLeft(), e->GetKnockbackVelocity());
 
                 GameManager::GetInstance().SpawnQuintessenceOrb(e->GetPosition());
 
@@ -374,48 +256,7 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
         }
     }
 
-    for (auto& corpse : corpses) {
-        if (!corpse.settled) {
-            // 1. Horizontal Sliding, Collision & Friction
-            Rectangle corpseBox = { corpse.position.x - 8.0f, corpse.position.y - 8.0f, 16.0f, 16.0f };
-
-            // X-axis collision
-            corpse.position.x += corpse.slideVelocity.x * deltaTime;
-            corpseBox.x = corpse.position.x - 8.0f;
-            if (IsSolidCollision(corpseBox)) {
-                corpse.position.x -= corpse.slideVelocity.x * deltaTime; // revert X
-                corpse.slideVelocity.x *= -0.5f; // bounce and dampen
-                corpseBox.x = corpse.position.x - 8.0f; // reset box X for Y check
-            }
-
-            // Y-axis collision
-            corpse.position.y += corpse.slideVelocity.y * deltaTime;
-            corpseBox.y = corpse.position.y - 8.0f;
-            if (IsSolidCollision(corpseBox)) {
-                corpse.position.y -= corpse.slideVelocity.y * deltaTime; // revert Y
-                corpse.slideVelocity.y *= -0.5f; // bounce and dampen
-            }
-            
-            // High friction to make them skid to a halt quickly
-            corpse.slideVelocity.x -= corpse.slideVelocity.x * 8.0f * deltaTime;
-            corpse.slideVelocity.y -= corpse.slideVelocity.y * 8.0f * deltaTime;
-
-            // 2. Gravity & Bouncing
-            corpse.verticalVelocity += 800.0f * deltaTime; // Gravity
-            corpse.heightOffset += corpse.verticalVelocity * deltaTime; 
-            
-            // Check for ground collision (heightOffset >= 0)
-            if (corpse.heightOffset >= 0.0f) {
-                corpse.heightOffset = 0.0f;
-                corpse.verticalVelocity *= -0.15f; // Weaker bounce
-                
-                // Settle when both bouncing and sliding stop
-                if (std::abs(corpse.verticalVelocity) < 30.0f && (std::abs(corpse.slideVelocity.x) < 10.0f && std::abs(corpse.slideVelocity.y) < 10.0f)) {
-                    corpse.settled = true;
-                }
-            }
-        }
-    }
+    // DecalManager now handles corpse physics
 
     ProcessPendingAdditions();
     ProcessPendingMapObjectDestructions();
@@ -423,103 +264,10 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
 }
 
 void LevelManager::DrawLevelBase() {
-    if (IsProceduralDungeon()) {
-        if (activeRoom) {
-            TilemapRenderer::DrawRoomBase(*activeRoom, roomOffset, floorTileset, wallTileset, prop1Texture, prop2Texture, boxTexture);
-            
-            // Draw EXIT gate if this room is an EXIT room
-            for (const auto& node : levelMap.generatedNodes) {
-                if (node->type == RoomType::EXIT) {
-                    Rectangle bounds = node->GetWorldBounds();
-                    float roomCenterX = bounds.x + bounds.width / 2.0f;
-                    float roomCenterY = bounds.y + bounds.height / 2.0f;
-                    float tileW = Constants::RENDER_TILE_SIZE;
-                    
-                    Rectangle destRec = {
-                        roomCenterX - tileW * 2.0f,
-                        roomCenterY - tileW * 2.0f,
-                        tileW * 4.0f,
-                        tileW * 4.0f
-                    };
-                    
-                    float frameWidth = gateTexture.width / 8.0f;
-                    int currentFrame = (int)(GetTime() * 10) % 8;
-                    Rectangle gateFrameSrc = {currentFrame * frameWidth, 0, frameWidth, (float)gateTexture.height};
-                    DrawTexturePro(gateTexture, gateFrameSrc, destRec, {0,0}, 0.0f, WHITE);
-                }
-            }
-        }
-    } else {
-        Rectangle wallTopSrc[2] = { {0.1f, 0.1f, 15.8f, 15.8f}, {16.1f, 0.1f, 15.8f, 15.8f} };
-        Rectangle wallFrontFaceSrc[2] = { {0.1f, 16.1f, 15.8f, 15.8f}, {16.1f, 16.1f, 15.8f, 15.8f} };
-        Rectangle floorSrc[6];
-        for(int i = 0; i < 6; ++i) {
-            floorSrc[i] = { (float)(i * 16) + 0.1f, 0.1f, 15.8f, 15.8f };
-        }
-        
-        for (int layer = 1; layer <= 2; ++layer) {
-            const auto& currentGrid = (layer == 1) ? mapGridLayer1 : mapGridLayer2;
-            if (currentGrid.empty()) continue;
+    if (currentLevelProvider) {
+        currentLevelProvider->DrawBase();
+    }
 
-            // Draw Floors pass
-            for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
-                for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
-                    if (r >= 0 && c >= 0 && r < gridRows && c < (int)currentGrid[r].size()) {
-                        int tileID = currentGrid[r][c];
-                        // Floor tiles: positive IDs that are NOT wall IDs (0, 4-11)
-                        bool isWallTile = (tileID == 0 || (tileID >= 4 && tileID <= 11));
-                        if (tileID > 0 && !isWallTile) {
-                            Rectangle destRec = {
-                                std::floor((float)c * Constants::RENDER_TILE_SIZE),
-                                std::floor((float)r * Constants::RENDER_TILE_SIZE),
-                                Constants::RENDER_TILE_SIZE,
-                                Constants::RENDER_TILE_SIZE
-                            };
-                            int variant = pos_hash(c, r) % 6;
-                            DrawTexturePro(floorTileset, floorSrc[variant], destRec, {0,0}, 0.0f, WHITE);
-                        }
-                    }
-                }
-            }
-            
-            // Draw Walls pass
-            for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
-                for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
-                    bool isWall = false;
-                    if (r >= 0 && c >= 0 && r < gridRows && c < (int)currentGrid[r].size()) {
-                        int tid = currentGrid[r][c];
-                        // Wall tile IDs: 0 (void/border) and 4-11 (solid walls)
-                        if (tid == 0 || (tid >= 4 && tid <= 11)) isWall = true;
-                    }
-                    
-                    if (isWall) {
-                        Rectangle destRec = {
-                            std::floor((float)c * Constants::RENDER_TILE_SIZE),
-                            std::floor((float)r * Constants::RENDER_TILE_SIZE),
-                            Constants::RENDER_TILE_SIZE,
-                            Constants::RENDER_TILE_SIZE
-                        };
-                        int variant = std::abs(pos_hash(c, r)) % 2;
-                        // Depth logic for legacy map (front faces go to base layer)
-                        bool tileBelowIsFloor = true; // Always draw fronts for legacy map border walls
-                        if (r + 1 >= 0 && r + 1 < gridRows && c >= 0 && c < (int)currentGrid[r+1].size()) {
-                            int belowTid = currentGrid[r+1][c];
-                            if (belowTid == 0 || (belowTid >= 4 && belowTid <= 11)) tileBelowIsFloor = false; // Only hide front if the tile immediately below is another wall
-                        }
-                        if (tileBelowIsFloor) {
-                            Rectangle destRecFace = {
-                                std::floor((float)c * Constants::RENDER_TILE_SIZE),
-                                std::floor((float)(r + 1) * Constants::RENDER_TILE_SIZE),
-                                Constants::RENDER_TILE_SIZE,
-                                Constants::RENDER_TILE_SIZE
-                            };
-                            DrawTexturePro(wallTileset, wallFrontFaceSrc[variant], destRecFace, {0,0}, 0.0f, WHITE);
-                        }
-                    }
-                }
-            }
-        }
-    } // End legacy map check
     
     // Draw base layer for dynamic props
     for (auto* entity : levelEntities) {
@@ -530,61 +278,12 @@ void LevelManager::DrawLevelBase() {
         }
     }
 
-    // Render Corpses
-    for (const auto& corpse : corpses) {
-        Rectangle destRec = {
-            corpse.position.x,
-            corpse.position.y + corpse.heightOffset,
-            (float)corpse.texture.width,
-            (float)corpse.texture.height
-        };
-        Rectangle sourceRec = {
-            0.0f,
-            0.0f,
-            corpse.facingLeft ? -(float)corpse.texture.width : (float)corpse.texture.width,
-            (float)corpse.texture.height
-        };
-        Vector2 origin = { destRec.width / 2.0f, destRec.height / 2.0f };
-        DrawTexturePro(corpse.texture, sourceRec, destRec, origin, 0.0f, Color{130, 130, 130, 255});
-    }
+    // DecalManager now handles corpse rendering
 }
 
 void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
-    if (IsProceduralDungeon()) {
-        if (activeRoom) {
-            TilemapRenderer::GetRoomDepthRenderItems(*activeRoom, roomOffset, wallTileset, prop1Texture, prop2Texture, boxTexture, items);
-        }
-    } else {
-        Rectangle wallTopSrc[2] = { {0, 0, 16, 16}, {16, 0, 16, 16} };
-        for (int layer = 1; layer <= 2; ++layer) {
-            const auto& currentGrid = (layer == 1) ? mapGridLayer1 : mapGridLayer2;
-            if (currentGrid.empty()) continue;
-            for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
-                for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
-                    bool isWall = false;
-                    if (r >= 0 && c >= 0 && r < gridRows && c < (int)currentGrid[r].size()) {
-                        int tid = currentGrid[r][c];
-                        if (tid == 0 || (tid >= 4 && tid <= 11)) isWall = true;
-                    }
-                    if (isWall) {
-                        float ySort = std::floor((float)(r + 1) * Constants::RENDER_TILE_SIZE);
-                        items.push_back({
-                            ySort,
-                            [this, c, r, wallTopSrc]() {
-                                Rectangle destRec = {
-                                    std::floor((float)c * Constants::RENDER_TILE_SIZE),
-                                    std::floor((float)r * Constants::RENDER_TILE_SIZE),
-                                    Constants::RENDER_TILE_SIZE,
-                                    Constants::RENDER_TILE_SIZE
-                                };
-                                int variant = std::abs(pos_hash(c, r)) % 2;
-                                DrawTexturePro(wallTileset, wallTopSrc[variant], destRec, {0,0}, 0.0f, WHITE);
-                            }
-                        });
-                    }
-                }
-            }
-        }
+    if (currentLevelProvider) {
+        currentLevelProvider->GetDepthRenderItems(items);
     }
 
     for (auto* entity : levelEntities) {
@@ -615,7 +314,7 @@ void LevelManager::ClearLevel() {
         delete entity;
     }
     levelEntities.clear();
-    corpses.clear();
+    DecalManager::GetInstance().Clear();
     mapGridLayer1.clear();
     mapGridLayer2.clear();
     mapObjectGrid.clear();
@@ -657,10 +356,7 @@ bool LevelManager::QueueEnemySpawn(
         teamManager,
         GetLevelAccessBundle()
     );
-    if (!entity ||
-        !IsValidSpawnLocation(entity) ||
-        static_cast<Enemy*>(entity)->CheckCollision(levelEntities)) {
-        delete entity;
+    if (!entity) {
         return false;
     }
 
@@ -676,102 +372,8 @@ void LevelManager::ProcessPendingAdditions() {
 }
 
 bool LevelManager::IsSolidCollision(Rectangle box) const {
-    if (IsProceduralDungeon()) {
-        // First: do a fast O(1) tile-based lookup for wall and void tiles.
-        // Check all 4 corners + centre of the query box against the baked room data.
-        if (activeRoom) {
-            float ts = Constants::RENDER_TILE_SIZE;
-            // Sample the 4 corners (slightly inset) and centre
-            float cx[5] = { box.x + 1.f, box.x + box.width - 1.f, box.x + 1.f, box.x + box.width - 1.f, box.x + box.width * 0.5f };
-            float cy[5] = { box.y + 1.f, box.y + 1.f, box.y + box.height - 1.f, box.y + box.height - 1.f, box.y + box.height * 0.5f };
-            for (int i = 0; i < 5; ++i) {
-                int tx = (int)std::floor((cx[i] - roomOffset.x) / ts);
-                int ty = (int)std::floor((cy[i] - roomOffset.y) / ts);
-                if (tx < 0 || ty < 0 || tx >= activeRoom->width || ty >= activeRoom->height) {
-                    return true; // Out of map bounds = solid
-                }
-                int tile = activeRoom->layer0_tiles[ty][tx];
-                if (tile == 1 || tile == 2) return true; // Wall or void
-            }
-        }
-
-        // Then: check entity colliders (boxes and closed door gates)
-        for (const auto* entity : levelEntities) {
-            if (entity->GetObjectType() == GameObjectType::Box) {
-                if (CheckCollisionRecs(box, entity->GetBoundingBox())) {
-                    return true;
-                }
-            } else if (entity->GetObjectType() == GameObjectType::DoorGate) {
-                if (static_cast<const DoorGate*>(entity)->IsSolid()) {
-                    if (CheckCollisionRecs(box, entity->GetBoundingBox())) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    // Find min and max tile indices that overlap with the box
-    // Box might have negative coords if outside, so use floor
-    int minCol = (int)std::floor((box.x + COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
-    int maxCol = (int)std::floor((box.x + box.width - COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
-    int minRow = (int)std::floor((box.y + COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
-    int maxRow = (int)std::floor((box.y + box.height - COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
-
-    for (int r = minRow; r <= maxRow; ++r) {
-        for (int c = minCol; c <= maxCol; ++c) {
-            int tileID1 = -1;
-            int tileID2 = -1;
-            MapObjectId mapObjectId = MapObjectId::Empty;
-            if (r >= 0 && c >= 0 && r < gridRows && c < gridCols) {
-                if (r < (int)mapGridLayer1.size() && c < (int)mapGridLayer1[r].size()) tileID1 = mapGridLayer1[r][c];
-                if (r < (int)mapGridLayer2.size() && c < (int)mapGridLayer2[r].size()) tileID2 = mapGridLayer2[r][c];
-                if (r < (int)mapObjectGrid.size() && c < (int)mapObjectGrid[r].size()) {
-                    mapObjectId = mapObjectGrid[r][c];
-                }
-            } else {
-                return true; // Out of bounds is fully solid void
-            }
-
-            int tileIDs[] = {tileID1, tileID2};
-            for (int tileID : tileIDs) {
-                if (tileID == 0) {
-                    return true; // Void is solid boundary
-                } else if (tileID >= 4 && tileID <= 11) {
-                    return true; // Fully solid
-                } else if (tileID >= 1 && tileID <= 3) {
-                    // Right 9px solid
-                    Rectangle solidPart = {
-                        (float)c * Constants::RENDER_TILE_SIZE + RIGHT_PARTIAL_WALL_OFFSET,
-                        (float)r * Constants::RENDER_TILE_SIZE,
-                        PARTIAL_WALL_WIDTH,
-                        Constants::RENDER_TILE_SIZE
-                    };
-                    if (CheckCollisionRecs(box, solidPart)) {
-                        return true;
-                    }
-                } else if (tileID >= 12 && tileID <= 14) {
-                    // Left 9px solid
-                    Rectangle solidPart = {
-                        (float)c * Constants::RENDER_TILE_SIZE,
-                        (float)r * Constants::RENDER_TILE_SIZE,
-                        PARTIAL_WALL_WIDTH,
-                        Constants::RENDER_TILE_SIZE
-                    };
-                    if (CheckCollisionRecs(box, solidPart)) {
-                        return true;
-                    }
-                }
-            }
-
-            if (mapObjectId == MapObjectId::DestructibleBox || mapObjectId == MapObjectId::Prop1 || mapObjectId == MapObjectId::Prop2) {
-                // Props are dynamic entities, they handle their own collision or are handled in Update/Physics.
-                // Depending on implementation, you might return false here if they aren't static solid.
-            } else if (IsSolidMapObject(mapObjectId)) {
-                return true;
-            }
-        }
+    if (currentLevelProvider) {
+        return currentLevelProvider->IsSolidCollision(box);
     }
     return false;
 }
@@ -1205,28 +807,52 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
             node->CalculateWalkableGrid(this);
         }
     }
+
+    currentLevelProvider = std::make_unique<ProceduralLevelProvider>(
+        activeRoom, roomOffset, levelEntities,
+        floorTileset, wallTileset, prop1Texture, prop2Texture,
+        boxTexture, gateTexture, levelMap
+    );
+
     printf("GenerateDungeon: Done\n");
 }
 
 bool LevelManager::GetSafeSpawnPosition(std::shared_ptr<RoomNode> room, Vector2& outPos) {
     if (!room) return false;
+
+    float ts = Constants::RENDER_TILE_SIZE;
+    Rectangle bounds = room->GetWorldBounds();
     
-    if (room->availableSpawnNodes.empty()) {
-        // Fallback if no valid spawns are left in this room
-        Rectangle bounds = room->GetWorldBounds();
-        outPos = {
-            bounds.x + bounds.width / 2.0f,
-            bounds.y + bounds.height / 2.0f
-        };
-        return true;
+    float startX = bounds.x + ts;
+    float endX = bounds.x + bounds.width - ts;
+    float startY = bounds.y + ts;
+    float endY = bounds.y + bounds.height - ts;
+
+    std::vector<Vector2> validSpots;
+    for (float y = startY; y < endY; y += ts/2.0f) {
+        for (float x = startX; x < endX; x += ts/2.0f) {
+            if (!IsSolidCollision({x - 16.0f, y - 16.0f, 32.0f, 32.0f})) {
+                validSpots.push_back({x, y});
+            }
+        }
     }
     
-    int index = GetRandomValue(0, room->availableSpawnNodes.size() - 1);
-    outPos = room->availableSpawnNodes[index];
+    if (validSpots.empty()) return false;
     
-    // Swap with back and pop to guarantee no other enemy spawns on the exact same tile
-    std::swap(room->availableSpawnNodes[index], room->availableSpawnNodes.back());
-    room->availableSpawnNodes.pop_back();
-    
+    outPos = validSpots[GetRandomValue(0, validSpots.size() - 1)];
     return true;
+}
+
+bool LevelManager::GetGuaranteedSpawnPoint(Vector2& outPos) {
+    if (IsProceduralDungeon()) {
+        return GetSafeSpawnPosition(currentlyLockedRoom, outPos);
+    } else {
+        if (staticSpawnNodes.empty()) return false;
+        int index = GetRandomValue(0, staticSpawnNodes.size() - 1);
+        outPos = staticSpawnNodes[index];
+        // Pop to prevent overlapping spawns
+        std::swap(staticSpawnNodes[index], staticSpawnNodes.back());
+        staticSpawnNodes.pop_back();
+        return true;
+    }
 }

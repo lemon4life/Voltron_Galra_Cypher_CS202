@@ -188,91 +188,59 @@ void WaveManager::SpawnEnemy(
         return;
     }
 
-    bool spawned = false;
-    int attempts = 0;
-    while (!spawned && attempts < 10) {
-        Vector2 spawnPos;
-        bool foundSafePos = false;
-        
-        if (levelManager->IsProceduralDungeon()) {
-            foundSafePos = levelManager->GetSafeSpawnPosition(levelManager->GetCurrentlyLockedRoom(), spawnPos);
-        } else {
-            Rectangle bounds = levelManager->GetCurrentRoomBounds();
-            spawnPos.x = bounds.x + 32.0f + (float)(rand() % (int)std::max(1.0f, bounds.width - 64.0f));
-            spawnPos.y = bounds.y + 32.0f + (float)(rand() % (int)std::max(1.0f, bounds.height - 64.0f));
-            foundSafePos = true;
-        }
-
-        if (!foundSafePos) {
-            // Failed to find safe spot, skip this enemy
-            if (rangeEnemiesToSpawn > 0) rangeEnemiesToSpawn--;
-            else if (diverEnemiesToSpawn > 0) diverEnemiesToSpawn--;
-            enemiesToSpawn--;
-            spawnTimer = 0.07f;
-            return;
-        }
-
-        if (Vector2Distance(
-                spawnPos,
-                teamManager->GetActivePaladin()->GetPosition()
-            ) > 150.0f) {
-            MapObjectId spawnType = MapObjectId::Chaser;
-
-            if (isBossRoom ||
-                (!levelManager->IsProceduralDungeon() && currentWave == 5)) {
-                spawnType = MapObjectId::Boss;
-            } else if (rangeEnemiesToSpawn > 0) {
-                spawnType = MapObjectId::Range;
-            } else if (diverEnemiesToSpawn > 0) {
-                spawnType = MapObjectId::Diver;
-            } else if (!levelManager->IsProceduralDungeon() &&
-                       currentWave >= 2 && currentWave <= 4 &&
-                       enemiesToSpawn == currentWave) {
-                spawnType = MapObjectId::Range;
-            } else if (!levelManager->IsProceduralDungeon() &&
-                       currentWave >= 3 && currentWave <= 4 &&
-                       enemiesToSpawn == currentWave - 1) {
-                spawnType = MapObjectId::Diver;
-            }
-
-            GameObject* newEnemy = EntityFactory::CreateEntity(
-                spawnType,
-                spawnPos,
-                {-1, -1},
-                teamManager,
-                levelManager->GetLevelAccessBundle()
-            );
-            if (newEnemy) {
-                // Apply Roguelike scaling buff
-                int currentFloor = GameManager::GetInstance().GetCurrentFloor();
-                float floorMultiplier = 1.0f + ((currentFloor - 1) * 0.3f);
-                static_cast<Enemy*>(newEnemy)->ApplyStatMultiplier(floorMultiplier);
-
-                if (levelManager->IsValidSpawnLocation(newEnemy)) {
-                    levelManager->AddEntity(newEnemy);
-                    if (spawnType == MapObjectId::Range &&
-                        rangeEnemiesToSpawn > 0) {
-                        rangeEnemiesToSpawn--;
-                    }
-                    if (spawnType == MapObjectId::Diver &&
-                        diverEnemiesToSpawn > 0) {
-                        diverEnemiesToSpawn--;
-                    }
-                    enemiesToSpawn--;
-                    spawnTimer = 0.07f;
-                    spawned = true;
-                } else {
-                    delete newEnemy;
-                }
-            }
-        }
-        attempts++;
-    }
-    
-    if (!spawned) {
-        // Skip it if we couldn't spawn it safely after max attempts
+    Vector2 spawnPos;
+    if (!levelManager->GetGuaranteedSpawnPoint(spawnPos)) {
+        // No spots left in the room at all
         if (rangeEnemiesToSpawn > 0) rangeEnemiesToSpawn--;
         else if (diverEnemiesToSpawn > 0) diverEnemiesToSpawn--;
+        enemiesToSpawn--;
+        spawnTimer = 0.07f;
+        return;
+    }
+
+    MapObjectId spawnType = MapObjectId::Chaser;
+
+    if (isBossRoom ||
+        (!levelManager->IsProceduralDungeon() && currentWave == 5)) {
+        spawnType = MapObjectId::Boss;
+    } else if (rangeEnemiesToSpawn > 0) {
+        spawnType = MapObjectId::Range;
+    } else if (diverEnemiesToSpawn > 0) {
+        spawnType = MapObjectId::Diver;
+    } else if (!levelManager->IsProceduralDungeon() &&
+               currentWave >= 2 && currentWave <= 4 &&
+               enemiesToSpawn == currentWave) {
+        spawnType = MapObjectId::Range;
+    } else if (!levelManager->IsProceduralDungeon() &&
+               currentWave >= 3 && currentWave <= 4 &&
+               enemiesToSpawn == currentWave - 1) {
+        spawnType = MapObjectId::Diver;
+    }
+
+    GameObject* newEnemy = EntityFactory::CreateEntity(
+        spawnType,
+        spawnPos,
+        {-1, -1},
+        teamManager,
+        levelManager->GetLevelAccessBundle()
+    );
+    if (newEnemy) {
+        // Apply Roguelike scaling buff
+        int currentFloor = GameManager::GetInstance().GetCurrentFloor();
+        float floorMultiplier = 1.0f + ((currentFloor - 1) * 0.3f);
+        static_cast<Enemy*>(newEnemy)->ApplyStatMultiplier(floorMultiplier);
+
+        // Unconditionally add to the level
+        levelManager->AddEntity(newEnemy);
+        
+        if (spawnType == MapObjectId::Range &&
+            rangeEnemiesToSpawn > 0) {
+            rangeEnemiesToSpawn--;
+        }
+        if (spawnType == MapObjectId::Diver &&
+            diverEnemiesToSpawn > 0) {
+            diverEnemiesToSpawn--;
+        }
         enemiesToSpawn--;
         spawnTimer = 0.07f;
     }

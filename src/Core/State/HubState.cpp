@@ -82,9 +82,9 @@ void HubState::Update(float deltaTime) {
     } else if (DialogueManager::GetInstance().IsMissionRequested()) {
         DialogueManager::GetInstance().ClearMissionRequest();
         GameManager::GetInstance().ClearProjectiles();
-        GameManager::GetInstance().AdvanceFloorCount();
+        GameManager::GetInstance().ResetFloorCount();
         levelManager->GenerateDungeon(teamManager);
-        waveManager->Reset(0, 0, 0);
+        waveManager->Reset(1, 0, 0);
         GameManager::GetInstance().SetState(GameState::GAMEPLAY);
     } else {
         levelManager->UpdateLevel(deltaTime, teamManager->GetActivePaladin()->GetPosition());
