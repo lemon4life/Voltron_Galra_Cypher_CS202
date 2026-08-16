@@ -15,13 +15,16 @@ GameplayState::GameplayState(TeamManager* teamManager, LevelManager* levelManage
 }
 
 void GameplayState::Update(float deltaTime) {
+    UltimateIntroManager::GetInstance().Update(deltaTime);
+    if (UltimateIntroManager::GetInstance().IsPlaying()) {
+        return; // Freeze gameplay while the cinematic plays
+    }
+
     if (InputManager::IsToggleAutoAimPressed()) {
         Constants::isAutoAimEnabled = !Constants::isAutoAimEnabled;
     }
 
-    if (UltimateIntroManager::GetInstance().IsPlaying()) {
-        UltimateIntroManager::GetInstance().Update(deltaTime);
-    } else if (GameManager::GetInstance().GetHitstopTimer() > 0.0f) {
+    if (GameManager::GetInstance().GetHitstopTimer() > 0.0f) {
         GameManager::GetInstance().UpdateHitstop(deltaTime);
     } else {
         levelManager->UpdateLevel(deltaTime, teamManager->GetActivePaladin()->GetPosition());
@@ -149,6 +152,8 @@ void GameplayState::Draw() {
         UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
         UIUtils::DrawCenteredText("PixeloidSans", "Press F to go to the next floor", { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
     }
+
+    UltimateIntroManager::GetInstance().Draw();
 
     EndMode2D();
 }

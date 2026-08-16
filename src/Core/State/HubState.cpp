@@ -165,7 +165,10 @@ void HubState::Draw() {
     BeginMode2D(uiCamera);
     if (DialogueManager::GetInstance().IsActive()) {
         DialogueManager::GetInstance().Draw(Constants::GAME_WIDTH, Constants::GAME_HEIGHT);
-    } else if (!paladinSelectionMenu->IsOpen()) {
+    } else if (paladinSelectionMenu->IsOpen()) {
+        Vector2 uiMousePosition = UIUtils::GetVirtualMousePosition(uiCamera);
+        paladinSelectionMenu->Draw(uiMousePosition, *teamManager);
+    } else {
         GameObject* interactable = FindNearestHubInteractable(
             GameManager::GetInstance().GetLevelEntities(),
             teamManager->GetActivePaladin()->GetPosition()

@@ -388,7 +388,8 @@ void GameApplication::RunLoop() {
         }
 
         // Global HUD layer — rendered on top of all states
-        if (systemInitialized && (state == GameState::HUB || state == GameState::GAMEPLAY)) {
+        bool hubModalOpenLocal = state == GameState::HUB && paladinSelectionMenu.IsOpen();
+        if (systemInitialized && (state == GameState::HUB || state == GameState::GAMEPLAY) && !hubModalOpenLocal) {
             BeginMode2D(uiCamera);
             uiManager.DrawHUD(GetScreenWidth(), GetScreenHeight(), uiMousePosition);
             EndMode2D();
