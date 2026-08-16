@@ -93,7 +93,7 @@ void UIManager::DrawTeamHUD(
 
     // --- Layer 0: Lowest Layer (Stats Shell Back) ---
     if (statsShellBack.id != 0) {
-        Rectangle sourceRec = {0, 0, shellWidth, 50.0f};
+        Rectangle sourceRec = {0, 0, shellWidth, 48.0f};
         DrawTextureRec(statsShellBack, sourceRec, {startX, startY}, WHITE);
     }
 
@@ -110,7 +110,7 @@ void UIManager::DrawTeamHUD(
         UIUtils::DrawText("PixeloidMono", TextFormat("%d", num), { dest.x + dest.width - 8 - numSize.x/2, dest.y + dest.height - 8 - numSize.y/2 }, static_cast<UIUtils::FontSize>(10), WHITE);
     };
 
-    Rectangle activeDest = {startX + 4, startY + 4, 90, 42};
+    Rectangle activeDest = {startX + 4, startY + 4, 90, 40};
     DrawPaladinPortrait(active, activeDest);
     DrawPortraitNumber(activeIdx, activeDest);
 
@@ -125,6 +125,10 @@ void UIManager::DrawTeamHUD(
         DrawPortraitNumber(offField2Idx, off2Dest);
     }
 
+    Texture2D checkTex = AssetManager::GetInstance().GetTexture("stats_checkpoint");
+    float frameW = checkTex.id != 0 ? checkTex.width / 2.0f : 0.0f;
+    float frameH = checkTex.id != 0 ? checkTex.height : 0.0f;
+
     // Helper lambda for HP
     auto DrawHP = [&](Paladin* p, float x, float y, float maxW, float h) {
         if (!p || p->GetHealth() <= 0) return; // Don't draw bars if downed
@@ -138,12 +142,14 @@ void UIManager::DrawTeamHUD(
         // Draw Ghost HP (Red Base)
         DrawRectangle(startX + x, startY + y, (int)(maxW * pctGhost), h, RED);
         
-        // Draw Real HP (Green Overlay)
-        DrawRectangle(startX + x, startY + y, (int)(maxW * pctReal), h, GREEN);
+        // Draw Real HP (Gradient Overlay)
+        Rectangle hpBounds = { startX + x, startY + y, maxW, h };
+        bool isLowHp = hp < (maxHp * 0.3f);
+        UIUtils::DrawGradientPulseBar(hpBounds, pctReal, UIUtils::HP_GRADIENT_LEFT, UIUtils::HP_GRADIENT_RIGHT, isLowHp, false);
     };
 
     // --- Layer 2: HP Bars (Doubled) ---
-    DrawHP(active, 98, 4, 124, 28);
+    DrawHP(active, 98, 4, 124, 26);
     DrawHP(offField1, 290, 4, 60, 12);
     DrawHP(offField2, 418, 4, 60, 12);
 
@@ -157,27 +163,64 @@ void UIManager::DrawTeamHUD(
         float ex = p->GetExEnergy();
         float maxEx = p->GetMaxExEnergy();
         float pct = maxEx > 0 ? (ex / maxEx) : 0;
-        DrawRectangle(startX + x, startY + y, (int)(maxW * pct), h, BLUE);
+        
+        Rectangle exBounds = { startX + x, startY + y, maxW, h };
+        bool isFull = ex >= maxEx;
+        UIUtils::DrawGradientPulseBar(exBounds, pct, UIUtils::EX_GRADIENT_LEFT, UIUtils::EX_GRADIENT_RIGHT, isFull, !isFull);
     };
 
     // --- Layer 4: EX Bars (BLUE) ---
-    DrawEX(active, 146, 20, 76, 12);
-    DrawEX(offField1, 290, 20, 60, 12);
-    DrawEX(offField2, 418, 20, 60, 12);
+    DrawEX(active, 146, 20, 76, 10);
+    DrawEX(offField1, 290, 20, 60, 10);
+    DrawEX(offField2, 418, 20, 60, 10);
 
     // --- Layer 4.5: Quintessence Bar (PURPLE — shared team ultimate fuel, 3 cells) ---
-    Rectangle qBar = { startX + 146, startY + 36, 332, 12 };
-    UIUtils::DrawSegmentedProgressBar(
-        qBar,
-        team->GetQuintessence(),
-        team->GetMaxQuintessence(),
-        3, DARKGRAY, PURPLE, RAYWHITE
-    );
+    Rectangle qBar = { startX + 146, startY + 34, 332, 12 };
+    float quint = team->GetQuintessence();
+    float maxQuint = team->GetMaxQuintessence();
+    float quintPct = maxQuint > 0 ? (quint / maxQuint) : 0.0f;
+    bool quintReady = quint >= TeamManager::ULTIMATE_COST;
+    UIUtils::DrawGradientPulseBar(qBar, quintPct, UIUtils::QUINT_GRADIENT_LEFT, UIUtils::QUINT_GRADIENT_RIGHT, quintReady, !quintReady);
 
     // --- Layer 5: Stats Shell Overlay ---
     if (statsShell.id != 0) {
-        Rectangle sourceRec = {0, 0, shellWidth, 50.0f};
+        Rectangle sourceRec = {0, 0, shellWidth, 48.0f};
         DrawTextureRec(statsShell, sourceRec, {startX, startY}, WHITE);
+    }
+
+    // --- Layer 6: Checkpoint Markers (Over Shell) ---
+    if (checkTex.id != 0) {
+        auto DrawExCheckpoint = [&](Paladin* p, Rectangle exBounds) {
+            if (!p) return;
+            float ex = p->GetExEnergy();
+            float maxEx = p->GetMaxExEnergy();
+            if (maxEx > 0) {
+                bool isFull = ex >= maxEx;
+                float markerX = exBounds.x + exBounds.width;
+                Rectangle srcRec = { isFull ? frameW : 0.0f, 0.0f, frameW, frameH };
+                Rectangle destRec = { markerX, exBounds.y + exBounds.height / 2.0f, frameW, frameH };
+                DrawTexturePro(checkTex, srcRec, destRec, { frameW / 2.0f, frameH / 2.0f }, 0.0f, WHITE);
+            }
+        };
+
+        // EX Checkpoints
+        DrawExCheckpoint(active, { startX + 146, startY + 20, 76, 10 });
+        DrawExCheckpoint(offField1, { startX + 290, startY + 20, 60, 10 });
+        DrawExCheckpoint(offField2, { startX + 418, startY + 20, 60, 10 });
+        
+        // Quintessence Checkpoints
+        if (maxQuint > 0) {
+            for (int i = 1; i <= 3; i++) {
+                float targetQuint = TeamManager::ULTIMATE_COST * i;
+                if (targetQuint > maxQuint) break;
+                
+                bool isReady = quint >= targetQuint;
+                float qMarkerX = qBar.x + (qBar.width * (targetQuint / maxQuint));
+                Rectangle qSrcRec = { isReady ? frameW : 0.0f, 0.0f, frameW, frameH };
+                Rectangle qDestRec = { qMarkerX, qBar.y + qBar.height / 2.0f, frameW, frameH };
+                DrawTexturePro(checkTex, qSrcRec, qDestRec, { frameW / 2.0f, frameH / 2.0f }, 0.0f, WHITE);
+            }
+        }
     }
 
     // --- Active HP Text ---

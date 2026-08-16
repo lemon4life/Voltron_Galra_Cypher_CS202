@@ -33,6 +33,7 @@ public:
     Font GetCustomFont(const std::string& key);
     
     void LoadGlobalFonts();
+    void LoadCommonAssets();
     
     void UnloadAll();
 

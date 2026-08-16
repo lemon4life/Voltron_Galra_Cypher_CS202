@@ -141,6 +141,7 @@ void GameApplication::Initialize() {
     ParticleManager::GetInstance().Initialize();
     DialogueManager::GetInstance().InitializeAssets();
     AssetManager::GetInstance().LoadGlobalFonts();
+    AssetManager::GetInstance().LoadCommonAssets();
 
     levelManager.InitializeAssets();  // Must be after InitWindow()
 

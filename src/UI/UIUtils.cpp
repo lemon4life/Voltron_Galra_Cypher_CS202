@@ -82,4 +82,21 @@ namespace UIUtils {
         return mousePosition;
     }
 
+    void DrawGradientPulseBar(Rectangle bounds, float fillPercentage, Color leftColor, Color rightColor, bool isPulsing, bool applyGrayFilter) {
+        Rectangle filledRec = { bounds.x, bounds.y, bounds.width * fillPercentage, bounds.height };
+        
+        float alphaMult = 1.0f;
+        if (isPulsing) {
+            alphaMult = 0.8f + (std::sin(GetTime() * 8.0f) * 0.2f);
+        }
+        Color colorL = ColorAlpha(leftColor, alphaMult);
+        Color colorR = ColorAlpha(rightColor, alphaMult);
+        
+        DrawRectangleGradientH((int)filledRec.x, (int)filledRec.y, (int)filledRec.width, (int)filledRec.height, colorL, colorR);
+        
+        if (applyGrayFilter) {
+            DrawRectangleRec(filledRec, ColorAlpha(GRAY, 0.6f));
+        }
+    }
+
 }

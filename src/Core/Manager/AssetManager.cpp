@@ -59,6 +59,10 @@ void AssetManager::LoadGlobalFonts() {
     LoadCustomFont("PixeloidSans", "assets/fonts/PixeloidSans.ttf", 64);
 }
 
+void AssetManager::LoadCommonAssets() {
+    LoadTexture2D("stats_checkpoint", "assets/UI/stats_checkpoint.png");
+}
+
 void AssetManager::UnloadAll() {
     for (auto& pair : textures) {
         UnloadTexture(pair.second);
