@@ -10,7 +10,7 @@
 #include <vector>
 
 namespace {
-constexpr Rectangle PAUSE_BUTTON_BOUNDS = {10.0f, 10.0f, 30.0f, 30.0f};
+constexpr Rectangle PAUSE_BUTTON_BOUNDS = {1.0f, 10.0f, 30.0f, 48.0f};
 }
 
 UIManager::UIManager() : teamManager(nullptr) {
@@ -63,12 +63,20 @@ void UIManager::DrawTeamHUD(
     // --- Pause Button (Top Left) ---
     const Rectangle pauseBtn = PAUSE_BUTTON_BOUNDS;
     bool isHovered = CheckCollisionPointRec(mousePosition, pauseBtn);
-    DrawRectangleRec(pauseBtn, isHovered ? Fade(GRAY, 0.8f) : Fade(BLACK, 0.5f));
-    DrawRectangleLinesEx(pauseBtn, 2.0f, WHITE);
-    DrawRectangle(pauseBtn.x + 8, pauseBtn.y + 6, 4, 18, WHITE);
-    DrawRectangle(pauseBtn.x + 18, pauseBtn.y + 6, 4, 18, WHITE);
+    Texture2D pauseTex = AssetManager::GetInstance().GetTexture("button_pause");
+    if (pauseTex.id != 0) {
+        float frameW = pauseTex.width / 2.0f;
+        float frameH = (float)pauseTex.height;
+        Rectangle source = { isHovered ? frameW : 0.0f, 0.0f, frameW, frameH };
+        DrawTexturePro(pauseTex, source, pauseBtn, {0.0f, 0.0f}, 0.0f, WHITE);
+    } else {
+        DrawRectangleRec(pauseBtn, isHovered ? Fade(GRAY, 0.8f) : Fade(BLACK, 0.5f));
+        DrawRectangleLinesEx(pauseBtn, 2.0f, WHITE);
+        DrawRectangle(pauseBtn.x + 8, pauseBtn.y + 6, 4, 18, WHITE);
+        DrawRectangle(pauseBtn.x + 18, pauseBtn.y + 6, 4, 18, WHITE);
+    }
     // Position of the Stats HUD container
-    float startX = 50.0f;
+    float startX = 31.0f;
     float startY = 10.0f;
 
     // Prepare off-field characters
@@ -110,18 +118,26 @@ void UIManager::DrawTeamHUD(
         UIUtils::DrawText("PixeloidMono", TextFormat("%d", num), { dest.x + dest.width - 8 - numSize.x/2, dest.y + dest.height - 8 - numSize.y/2 }, static_cast<UIUtils::FontSize>(10), WHITE);
     };
 
+    auto DrawCardPortrait = [&](Paladin* p, Rectangle dest) {
+        if (!p) return;
+        Texture2D cardTex = AssetManager::GetInstance().GetTexture(p->GetIntroData().portraitTextureID);
+        Rectangle sourceRec = p->GetHudPortraitSlice();
+        Color tint = p->GetHealth() <= 0 ? DARKGRAY : WHITE;
+        DrawTexturePro(cardTex, sourceRec, dest, {0.0f, 0.0f}, 0.0f, tint);
+    };
+
     Rectangle activeDest = {startX + 4, startY + 4, 90, 40};
-    DrawPaladinPortrait(active, activeDest);
+    DrawCardPortrait(active, activeDest);
     DrawPortraitNumber(activeIdx, activeDest);
 
     if (offField1) {
         Rectangle off1Dest = {startX + 226, startY + 4, 60, 28};
-        DrawPaladinPortrait(offField1, off1Dest);
+        DrawCardPortrait(offField1, off1Dest);
         DrawPortraitNumber(offField1Idx, off1Dest);
     }
     if (offField2) {
         Rectangle off2Dest = {startX + 354, startY + 4, 60, 28};
-        DrawPaladinPortrait(offField2, off2Dest);
+        DrawCardPortrait(offField2, off2Dest);
         DrawPortraitNumber(offField2Idx, off2Dest);
     }
 
@@ -155,9 +171,8 @@ void UIManager::DrawTeamHUD(
     DrawHP(offField2, 418, 4, 60, 12);
 
     // --- Layer 3: Mask Rectangle ---
-    Color maskColor = { 91, 91, 103, 255 }; // #5b5b67
+    Color maskColor = { 57, 57, 68, 255 }; // #5b5b67
     DrawRectangle(startX + 146, startY + 20, 76, 12, maskColor);
-
     // Helper lambda for EX Energy (BLUE — for Skills)
     auto DrawEX = [&](Paladin* p, float x, float y, float maxW, float h) {
         if (!p) return;
@@ -167,8 +182,9 @@ void UIManager::DrawTeamHUD(
         float pct = maxEx > 0 ? (displayedEx / maxEx) : 0;
         
         Rectangle exBounds = { startX + x, startY + y, maxW, h };
-        bool isFull = ex >= maxEx;
-        UIUtils::DrawGradientPulseBar(exBounds, pct, UIUtils::EX_GRADIENT_LEFT, UIUtils::EX_GRADIENT_RIGHT, isFull, !isFull);
+        float exThreshold = p->GetSkillCost();
+        bool isReady = ex >= exThreshold;
+        UIUtils::DrawGradientPulseBar(exBounds, pct, UIUtils::EX_GRADIENT_LEFT, UIUtils::EX_GRADIENT_RIGHT, isReady, !isReady);
     };
 
     // --- Layer 4: EX Bars (BLUE) ---
@@ -197,10 +213,11 @@ void UIManager::DrawTeamHUD(
             if (!p) return;
             float ex = p->GetExEnergy();
             float maxEx = p->GetMaxExEnergy();
+            float exThreshold = p->GetSkillCost();
             if (maxEx > 0) {
-                bool isFull = ex >= maxEx;
-                float markerX = exBounds.x + exBounds.width;
-                Rectangle srcRec = { isFull ? frameW : 0.0f, 0.0f, frameW, frameH };
+                bool isReady = ex >= exThreshold;
+                float markerX = exBounds.x + (exBounds.width * (exThreshold / maxEx));
+                Rectangle srcRec = { isReady ? frameW : 0.0f, 0.0f, frameW, frameH };
                 Rectangle destRec = { markerX, exBounds.y + exBounds.height / 2.0f, frameW, frameH };
                 DrawTexturePro(checkTex, srcRec, destRec, { frameW / 2.0f, frameH / 2.0f }, 0.0f, WHITE);
             }

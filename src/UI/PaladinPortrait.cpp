@@ -1,6 +1,7 @@
 #include "UI/PaladinPortrait.h"
 
 #include "Entities/Player/Paladin.h"
+#include "Core/Manager/AssetManager.h"
 
 #include <algorithm>
 
@@ -28,11 +29,25 @@ void DrawPaladinPortrait(const Paladin* paladin, Rectangle destination) {
     if (!paladin) {
         return;
     }
-    DrawPaladinPortrait(
-        paladin->GetIdleTexture(),
-        destination,
-        paladin->GetHealth() <= 0
-    );
+    
+    Texture2D cardTex = AssetManager::GetInstance().GetTexture(paladin->GetIntroData().portraitTextureID);
+    if (cardTex.id == 0) return;
+    
+    Rectangle source = paladin->GetHudPortraitSlice();
+    source = CropToAspect(source, destination);
+    
+    source.x = std::round(source.x);
+    source.y = std::round(source.y);
+    source.width = std::round(source.width);
+    source.height = std::round(source.height);
+
+    destination.x = std::round(destination.x);
+    destination.y = std::round(destination.y);
+    destination.width = std::round(destination.width);
+    destination.height = std::round(destination.height);
+    
+    Color tint = paladin->GetHealth() <= 0 ? DARKGRAY : WHITE;
+    DrawTexturePro(cardTex, source, destination, {0.0f, 0.0f}, 0.0f, tint);
 }
 
 void DrawPaladinPortrait(
@@ -54,6 +69,16 @@ void DrawPaladinPortrait(
         frameHeight * 0.5f + 2.0f
     };
     source = CropToAspect(source, destination);
+
+    source.x = std::round(source.x);
+    source.y = std::round(source.y);
+    source.width = std::round(source.width);
+    source.height = std::round(source.height);
+
+    destination.x = std::round(destination.x);
+    destination.y = std::round(destination.y);
+    destination.width = std::round(destination.width);
+    destination.height = std::round(destination.height);
 
     DrawTexturePro(
         idleTexture,
@@ -84,9 +109,20 @@ void DrawPaladinFullBody(Texture2D idleTexture, Rectangle destination) {
         frameHeight * scale
     };
 
+    fitted.x = std::round(fitted.x);
+    fitted.y = std::round(fitted.y);
+    fitted.width = std::round(fitted.width);
+    fitted.height = std::round(fitted.height);
+
+    Rectangle source = {0.0f, 0.0f, frameWidth, frameHeight};
+    source.x = std::round(source.x);
+    source.y = std::round(source.y);
+    source.width = std::round(source.width);
+    source.height = std::round(source.height);
+
     DrawTexturePro(
         idleTexture,
-        {0.0f, 0.0f, frameWidth, frameHeight},
+        source,
         fitted,
         {0.0f, 0.0f},
         0.0f,

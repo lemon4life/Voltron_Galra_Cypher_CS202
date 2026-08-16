@@ -24,12 +24,12 @@ Keith::Keith(Vector2 pos, CharacterSprites sprites)
     );
     if (currentWeapon) currentWeapon->SetOwner(this);
     texture = GetIdleTexture();
-    
-
+    skillCost = maxExEnergy * 0.7f;
+    hudPortraitSlice = { 228.0f, 59.0f, 194.0f, 84.0f };
 }
 
 void Keith::UseSkill() {
-    if (exEnergy < maxExEnergy) {
+    if (exEnergy < skillCost) {
         return; 
     }
     
@@ -37,8 +37,7 @@ void Keith::UseSkill() {
         teamManager->AddSharedBuff(std::make_unique<FireCircleBuff>(5.0f));
     }
     
-    
-    exEnergy = 0.0f;
+    exEnergy -= skillCost;
 }
 
 void Keith::UseUltimate() {

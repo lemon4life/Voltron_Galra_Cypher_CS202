@@ -20,7 +20,8 @@ Hunk::Hunk(Vector2 pos, CharacterSprites sprites)
     );
     if (currentWeapon) currentWeapon->SetOwner(this);
     texture = GetIdleTexture();
-    
+    skillCost = maxExEnergy * 0.3f;
+    hudPortraitSlice = { 117.0f, 35.0f, 194.0f, 84.0f };
 
     // Let's check if Paladin has a speed variable.
     // Actually, I'll just leave speed alone since the plan says "speed is determined by PaladinDefinition", I can just not change it here if it's not accessible.
@@ -60,8 +61,8 @@ void Hunk::Draw() {
 }
 
 void Hunk::UseSkill() {
-    if (exEnergy < maxExEnergy) return;
-    exEnergy = 0.0f;
+    if (exEnergy < skillCost) return;
+    exEnergy -= skillCost;
     
     isEarthshatterFlash = true;
     earthshatterFlashTimer = 0.2f;

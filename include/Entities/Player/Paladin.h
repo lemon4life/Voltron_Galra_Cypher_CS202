@@ -77,6 +77,9 @@ protected:
     
     float displayedHp;
     float displayedExEnergy;
+    
+    float skillCost = 0.0f;
+    Rectangle hudPortraitSlice = {0.0f, 0.0f, 0.0f, 0.0f};
 
     // Ultimate cooldown (separate from EX — gated by Quintessence)
     float ultimateCooldownTimer = 0.0f;
@@ -218,6 +221,8 @@ public:
     float GetDisplayedExEnergy() const { return displayedExEnergy; }
     float GetExEnergy() const { return exEnergy; }
     float GetMaxExEnergy() const { return maxExEnergy; }
+    float GetSkillCost() const { return skillCost; }
+    Rectangle GetHudPortraitSlice() const { return hudPortraitSlice; }
 
     // Ultimate cooldown
     static constexpr float ULTIMATE_COOLDOWN_MAX = 5.0f;

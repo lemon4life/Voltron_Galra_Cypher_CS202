@@ -61,6 +61,7 @@ void AssetManager::LoadGlobalFonts() {
 
 void AssetManager::LoadCommonAssets() {
     LoadTexture2D("stats_checkpoint", "assets/UI/stats_checkpoint.png");
+    LoadTexture2D("button_pause", "assets/UI/button_pause.png");
 }
 
 void AssetManager::UnloadAll() {
@@ -81,11 +82,18 @@ void AssetManager::QueueCharacterAssets() {
         loadTasks.push_back([this, k, p, f](){ LoadTexture2D(k, p, f); }); 
     };
 
+    auto addBilinear = [this](const std::string& k, const std::string& p) { 
+        loadTasks.push_back([this, k, p](){ 
+            Texture2D tex = LoadTexture2D(k, p, false); 
+            SetTextureFilter(tex, TEXTURE_FILTER_BILINEAR);
+        }); 
+    };
+
     // Character Cards
-    add("Card_Lance", "assets/img/CharacterCard/Lance.png", false);
-    add("Card_Keith", "assets/img/CharacterCard/Keith.png", false);
-    add("Card_Hunk", "assets/img/CharacterCard/Hunk.png", false);
-    add("Card_Pidge", "assets/img/CharacterCard/Pidge.png", false);
+    addBilinear("Card_Lance", "assets/img/CharacterCard/Lance.png");
+    addBilinear("Card_Keith", "assets/img/CharacterCard/Keith.png");
+    addBilinear("Card_Hunk", "assets/img/CharacterCard/Hunk.png");
+    addBilinear("Card_Pidge", "assets/img/CharacterCard/Pidge.png");
 
     // Lance
     add("Lance_Idle", "assets/sprites/Lance/Idle_Sheet.png", true);

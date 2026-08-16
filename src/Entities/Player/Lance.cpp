@@ -20,16 +20,17 @@ Lance::Lance(Vector2 pos, CharacterSprites sprites)
     );
     if (currentWeapon) currentWeapon->SetOwner(this);
     texture = GetIdleTexture();
-    
+    skillCost = maxExEnergy * 0.5f;
+    hudPortraitSlice = { 92.0f, 71.0f, 194.0f, 84.0f };
 }
 
 void Lance::Update(float deltaTime) {
     Paladin::Update(deltaTime);
     
     if (HasPersonalBuff<DualWieldBuff>()) {
-        attackCooldown = 0.2f; // Halved attack cooldown
+        attackCooldown = 0.1f; // Halved attack cooldown
     } else {
-        attackCooldown = 0.4f; // Normal attack cooldown
+        attackCooldown = 0.2f; // Normal attack cooldown
     }
     
     if (ultimateFlashTimer > 0.0f) {
@@ -89,9 +90,9 @@ void Lance::Draw() {
 }
 
 void Lance::UseSkill() {
-    if (exEnergy < maxExEnergy) return;
+    if (exEnergy < skillCost) return;
     
-    exEnergy = 0.0f;
+    exEnergy -= skillCost;
     AddPersonalBuff(std::make_unique<DualWieldBuff>(5.0f));
 }
 

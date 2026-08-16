@@ -27,6 +27,8 @@ Pidge::Pidge(Vector2 startPos, CharacterSprites sprites)
         weapon.recoil
     );
     if (currentWeapon) currentWeapon->SetOwner(this);
+    skillCost = maxExEnergy * 0.7f;
+    hudPortraitSlice = { 144.0f, 96.0f, 194.0f, 84.0f };
 }
 
 void Pidge::UpdateInactive(float deltaTime) {
@@ -103,9 +105,9 @@ void Pidge::CatchWeapon() {
 }
 
 void Pidge::UseSkill() {
-    if (exEnergy < maxExEnergy) return;
+    if (exEnergy < skillCost) return;
     
-    exEnergy = 0.0f;
+    exEnergy -= skillCost;
     
     isVenomZoneActive = true;
     venomZoneTimer = 7.0f;
