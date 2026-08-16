@@ -133,11 +133,12 @@ void UIManager::DrawTeamHUD(
     auto DrawHP = [&](Paladin* p, float x, float y, float maxW, float h) {
         if (!p || p->GetHealth() <= 0) return; // Don't draw bars if downed
         float hp = p->GetHealth();
+        float displayedHp = p->GetDisplayedHp();
         float ghost = p->GetGhostHp();
         float maxHp = p->GetMaxHealth();
         
         float pctGhost = maxHp > 0 ? (ghost / maxHp) : 0.0f;
-        float pctReal = maxHp > 0 ? (hp / maxHp) : 0.0f;
+        float pctReal = maxHp > 0 ? (displayedHp / maxHp) : 0.0f;
         
         // Draw Ghost HP (Red Base)
         DrawRectangle(startX + x, startY + y, (int)(maxW * pctGhost), h, RED);
@@ -161,8 +162,9 @@ void UIManager::DrawTeamHUD(
     auto DrawEX = [&](Paladin* p, float x, float y, float maxW, float h) {
         if (!p) return;
         float ex = p->GetExEnergy();
+        float displayedEx = p->GetDisplayedExEnergy();
         float maxEx = p->GetMaxExEnergy();
-        float pct = maxEx > 0 ? (ex / maxEx) : 0;
+        float pct = maxEx > 0 ? (displayedEx / maxEx) : 0;
         
         Rectangle exBounds = { startX + x, startY + y, maxW, h };
         bool isFull = ex >= maxEx;
@@ -177,8 +179,9 @@ void UIManager::DrawTeamHUD(
     // --- Layer 4.5: Quintessence Bar (PURPLE — shared team ultimate fuel, 3 cells) ---
     Rectangle qBar = { startX + 146, startY + 34, 332, 12 };
     float quint = team->GetQuintessence();
+    float displayedQuint = team->GetDisplayedQuintessence();
     float maxQuint = team->GetMaxQuintessence();
-    float quintPct = maxQuint > 0 ? (quint / maxQuint) : 0.0f;
+    float quintPct = maxQuint > 0 ? (displayedQuint / maxQuint) : 0.0f;
     bool quintReady = quint >= TeamManager::ULTIMATE_COST;
     UIUtils::DrawGradientPulseBar(qBar, quintPct, UIUtils::QUINT_GRADIENT_LEFT, UIUtils::QUINT_GRADIENT_RIGHT, quintReady, !quintReady);
 

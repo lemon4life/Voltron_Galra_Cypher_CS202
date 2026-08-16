@@ -74,6 +74,9 @@ protected:
     float ghostHp;
     float exEnergy;
     float maxExEnergy;
+    
+    float displayedHp;
+    float displayedExEnergy;
 
     // Ultimate cooldown (separate from EX — gated by Quintessence)
     float ultimateCooldownTimer = 0.0f;
@@ -211,6 +214,8 @@ public:
     int GetMaxHealth() const { return maxHealth; }
     PaladinId GetPaladinId() const { return paladinId; }
     float GetGhostHp() const { return ghostHp; }
+    float GetDisplayedHp() const { return displayedHp; }
+    float GetDisplayedExEnergy() const { return displayedExEnergy; }
     float GetExEnergy() const { return exEnergy; }
     float GetMaxExEnergy() const { return maxExEnergy; }
 

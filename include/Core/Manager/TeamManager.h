@@ -25,6 +25,7 @@ private:
 
     // Quintessence — shared team ultimate fuel (separate from per-character EX)
     float currentQuintessence = 0.0f;
+    float displayedQuintessence = 0.0f;
     float maxQuintessence = 300.0f;
     bool debugFastFuel = false;
 
@@ -75,6 +76,7 @@ public:
     void AddQuintessence(float amount);
     bool ConsumeQuintessence(float amount);
     float GetQuintessence() const { return currentQuintessence; }
+    float GetDisplayedQuintessence() const { return displayedQuintessence; }
     float GetMaxQuintessence() const { return maxQuintessence; }
     
     // Observers might need to know when team state changes

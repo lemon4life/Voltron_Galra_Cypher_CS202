@@ -61,6 +61,7 @@ void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
     sharedArmor = maxSharedArmor;
     sharedUltimateDecibels = 0.0f;
     currentQuintessence = 0.0f;
+    displayedQuintessence = 0.0f;
     timeSinceLastDamage = 0.0f;
     armorRegenTimer = 0.0f;
 
@@ -267,8 +268,11 @@ void TeamManager::SwapDueToDeath() {
     NotifyObservers();
 }
 
+#include "raymath.h"
 void TeamManager::Update(float deltaTime) {
     if (team.empty()) return;
+
+    displayedQuintessence = Lerp(displayedQuintessence, currentQuintessence, 10.0f * deltaTime);
 
     // Check if current active paladin is dead is now handled by PlayerDownState deferred logic.
     Paladin* active = GetActivePaladin();

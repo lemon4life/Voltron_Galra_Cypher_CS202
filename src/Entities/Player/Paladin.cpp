@@ -30,6 +30,8 @@ Paladin::Paladin(
       ghostHp(BaseStats::HP * definition.hpScalar),
       exEnergy(0.0f),
       maxExEnergy(definition.maxExEnergy),
+      displayedHp(static_cast<float>(BaseStats::HP * definition.hpScalar)),
+      displayedExEnergy(0.0f),
       dashCooldown(0.0f),
       attackCooldown(BaseStats::AttackCooldown * definition.attackCooldownScalar),
       dashTimer(0.0f),
@@ -158,9 +160,13 @@ Projectile* Paladin::SpawnLinearProjectile(Vector2 dir, float speed, int damage,
     return proj;
 }
 
+#include "raymath.h"
 void Paladin::Update(float deltaTime) {
     TickTimers(deltaTime);
-    
+
+    displayedHp = Lerp(displayedHp, static_cast<float>(health), 10.0f * deltaTime);
+    displayedExEnergy = Lerp(displayedExEnergy, exEnergy, 10.0f * deltaTime);
+
     if (autoParryDurationTimer > 0.0f) {
         autoParryDurationTimer -= deltaTime;
         if (autoParryDurationTimer <= 0.0f) {
@@ -279,7 +285,9 @@ void Paladin::DrawInactive() {
 void Paladin::ResetStats() {
     health = maxHealth;
     ghostHp = maxHealth;
+    displayedHp = static_cast<float>(maxHealth);
     exEnergy = 0.0f;
+    displayedExEnergy = 0.0f;
     dashCooldown = 0.0f;
     dashTimer = 0.0f;
     isInvincible = false;
