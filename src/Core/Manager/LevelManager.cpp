@@ -371,9 +371,9 @@ void LevelManager::ProcessPendingAdditions() {
     pendingAddition.clear();
 }
 
-bool LevelManager::IsSolidCollision(Rectangle box) const {
+bool LevelManager::IsSolidCollision(Rectangle box, bool ignoreProps) const {
     if (currentLevelProvider) {
-        return currentLevelProvider->IsSolidCollision(box);
+        return currentLevelProvider->IsSolidCollision(box, ignoreProps);
     }
     return false;
 }

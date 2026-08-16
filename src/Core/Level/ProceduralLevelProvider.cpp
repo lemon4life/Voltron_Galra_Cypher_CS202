@@ -55,7 +55,7 @@ void ProceduralLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& 
     }
 }
 
-bool ProceduralLevelProvider::IsSolidCollision(Rectangle box) const {
+bool ProceduralLevelProvider::IsSolidCollision(Rectangle box, bool ignoreProps) const {
     // First: do a fast O(1) tile-based lookup for wall and void tiles.
     if (activeRoom) {
         float ts = Constants::RENDER_TILE_SIZE;
@@ -70,6 +70,10 @@ bool ProceduralLevelProvider::IsSolidCollision(Rectangle box) const {
             int tile = activeRoom->layer0_tiles[ty][tx];
             if (tile == 1 || tile == 2) return true; // Wall or void
         }
+    }
+
+    if (ignoreProps) {
+        return false;
     }
 
     // Then: check entity colliders (boxes and closed door gates)

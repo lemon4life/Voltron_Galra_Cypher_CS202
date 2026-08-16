@@ -19,7 +19,7 @@ public:
 
     void DrawBase() override;
     void GetDepthRenderItems(std::vector<DepthRenderItem>& items) override;
-    bool IsSolidCollision(Rectangle box) const override;
+    bool IsSolidCollision(Rectangle box, bool ignoreProps = false) const override;
 
 private:
     const std::vector<std::vector<int>>& mapGridLayer1;

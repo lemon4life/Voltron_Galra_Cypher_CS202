@@ -58,6 +58,7 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
     // Raycast to find laserEndPoint (max 1000 pixels)
     float maxDistance = 1000.0f;
     float step = 8.0f;
+    Vector2 collisionStart = { barrelTip.x - aimDir.x * 15.0f, barrelTip.y - aimDir.y * 15.0f };
     laserEndPoint = { barrelTip.x + aimDir.x * maxDistance, barrelTip.y + aimDir.y * maxDistance };
     recoilOffset = { -aimDir.x * recoilStrength, -aimDir.y * recoilStrength };
     
@@ -66,7 +67,8 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
         for (float d = 0; d < maxDistance; d += step) {
             Vector2 checkPoint = { barrelTip.x + aimDir.x * d, barrelTip.y + aimDir.y * d };
             Rectangle pointRect = { checkPoint.x - 1.0f, checkPoint.y - 1.0f, 2.0f, 2.0f };
-            if (lm->IsSolidCollision(pointRect)) {
+            // Pass true to ignore props so the laser pierces through boxes
+            if (lm->IsSolidCollision(pointRect, true)) {
                 laserEndPoint = checkPoint;
                 break;
             }
@@ -79,7 +81,7 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
         if (entity->GetObjectType() == GameObjectType::Enemy) {
             Enemy* e = static_cast<Enemy*>(entity);
             if (!e->IsEnabled()) continue;
-            if (CheckCollisionSegmentRec(barrelTip, laserEndPoint, e->GetBoundingBox())) {
+            if (CheckCollisionSegmentRec(collisionStart, laserEndPoint, e->GetBoundingBox())) {
                 e->TakeDamage(damage); // Piercing laser damage
                 // Add Impact Effect visually
                 GameManager::GetInstance().AddImpactEffect({e->GetPosition().x, e->GetPosition().y});
@@ -89,7 +91,7 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
             }
         } else if (entity->GetObjectType() == GameObjectType::Box) {
             Prop* p = static_cast<Prop*>(entity);
-            if (CheckCollisionSegmentRec(barrelTip, laserEndPoint, p->GetBoundingBox())) {
+            if (CheckCollisionSegmentRec(collisionStart, laserEndPoint, p->GetBoundingBox())) {
                 p->TakeDamage(damage);
                 GameManager::GetInstance().AddImpactEffect({p->GetPosition().x, p->GetPosition().y});
             }

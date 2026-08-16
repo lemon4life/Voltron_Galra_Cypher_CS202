@@ -23,7 +23,7 @@ public:
 
     void DrawBase() override;
     void GetDepthRenderItems(std::vector<DepthRenderItem>& items) override;
-    bool IsSolidCollision(Rectangle box) const override;
+    bool IsSolidCollision(Rectangle box, bool ignoreProps = false) const override;
 
 private:
     std::shared_ptr<RoomTemplate>& activeRoom;

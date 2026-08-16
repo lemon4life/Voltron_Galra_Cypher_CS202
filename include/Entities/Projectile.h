@@ -1,5 +1,6 @@
 #pragma once
 #include "Entities/GameObject.h"
+#include <unordered_set>
 
 class Projectile : public GameObject {
 private:
@@ -19,6 +20,7 @@ private:
     GameObject* owner = nullptr;
     float maxFlyTime = 0.0f;
     float flightTimer = 0.0f;
+    std::unordered_set<GameObject*> hitTargets;
 
 public:
     Projectile(Vector2 pos, Vector2 vel, float life, int dmg, bool isEnemy = false);
@@ -47,4 +49,8 @@ public:
     bool HasFixedRotation() const { return fixedRotation; }
     float GetRotationAngle() const { return rotationAngle; }
     void SetTint(Color c) { tint = c; }
+    
+    // Hit tracking
+    bool HasHitTarget(GameObject* target) const;
+    void RecordHit(GameObject* target);
 };

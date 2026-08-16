@@ -44,12 +44,16 @@ void Projectile::Update(float deltaTime) {
     }
 
     // Move projectile
+    Vector2 oldPos = position;
     position.x += velocity.x * deltaTime;
     position.y += velocity.y * deltaTime;
 
-    // Update bounding box position
-    boundingBox.x = position.x;
-    boundingBox.y = position.y;
+    // Sweep Collision Bounding Box
+    float minX = std::min(oldPos.x, position.x);
+    float maxX = std::max(oldPos.x + 10.0f, position.x + 10.0f);
+    float minY = std::min(oldPos.y, position.y);
+    float maxY = std::max(oldPos.y + 10.0f, position.y + 10.0f);
+    boundingBox = { minX, minY, maxX - minX, maxY - minY };
 
     // Reduce lifetime
     lifetime -= deltaTime;
@@ -71,4 +75,12 @@ void Projectile::Draw() {
             DrawRectangleRec(boundingBox, tint.a == 0 && tint.r == 0 ? BLUE : tint); // fallback
         }
     }
+}
+
+bool Projectile::HasHitTarget(GameObject* target) const {
+    return hitTargets.find(target) != hitTargets.end();
+}
+
+void Projectile::RecordHit(GameObject* target) {
+    hitTargets.insert(target);
 }

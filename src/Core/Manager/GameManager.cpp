@@ -175,125 +175,101 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
 
     for (auto it = activeProjectiles.begin(); it != activeProjectiles.end();) {
         (*it)->Update(deltaTime);
-
-        if (!(*it)->IsActive()) {
-            delete *it;
-            it = activeProjectiles.erase(it);
-            continue;
-        }
         
-        bool hitSomething = false;
+        bool hitWall = false;
+        bool hitEntity = false;
         Rectangle pBox = (*it)->GetBoundingBox();
         bool ignoresWorldCollision = (*it)->IgnoresWorldCollision();
 
-        // Damage box entities before the solid object-grid cell consumes the projectile.
-        if (!ignoresWorldCollision) {
-            for (GameObject* entity : entities) {
-                if (entity->GetObjectType() != GameObjectType::Box) {
-                    continue;
-                }
-                if (!CheckCollisionRecs(pBox, entity->GetBoundingBox())) {
-                    continue;
-                }
-
-                Prop& box = static_cast<Prop&>(*entity);
-                box.TakeDamage((*it)->GetDamage());
-                AddImpactEffect({
-                    pBox.x + pBox.width / 2.0f,
-                    pBox.y + pBox.height / 2.0f
-                });
-                hitSomething = true;
-                break;
+        if (levelManager && !ignoresWorldCollision && !(*it)->IsReturning()) {
+            hitWall = levelManager->IsSolidCollision(pBox, true);
+            if (hitWall && !(*it)->IsEnemyProjectile()) {
+                AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});
+                ParticleManager::GetInstance().SpawnImpact(
+                    { pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f },
+                    (*it)->GetVelocity(), YELLOW, 8
+                );
             }
         }
 
-        // We no longer skip all collision checks here. Returning weapons must hit enemies and boxes.
-        // We will explicitly skip SOLID environment collisions further down.
-
-        // Check collision with Player (if it's an enemy projectile)
-        if (!hitSomething && (*it)->IsEnemyProjectile() && teamManager && teamManager->GetActivePaladin()) {
+        for (GameObject* entity : entities) {
+            if (!CheckCollisionRecs(pBox, entity->GetBoundingBox())) continue;
+            
+            // Box
+            if (!ignoresWorldCollision && entity->GetObjectType() == GameObjectType::Box) {
+                Prop& box = static_cast<Prop&>(*entity);
+                if (!(*it)->HasHitTarget(entity)) {
+                    box.TakeDamage((*it)->GetDamage());
+                    (*it)->RecordHit(entity);
+                    AddImpactEffect({ pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f });
+                    hitEntity = true;
+                    if (!(*it)->IsPiercing()) break;
+                }
+            }
+            
+            // Enemy
+            if (!(*it)->IsEnemyProjectile() && entity->GetObjectType() == GameObjectType::Enemy) {
+                Enemy* e = static_cast<Enemy*>(entity);
+                if (e->IsEnabled() && !(*it)->HasHitTarget(entity)) {
+                    e->TakeDamage((*it)->GetDamage());
+                    (*it)->RecordHit(entity);
+                    
+                    Vector2 kdir = Vector2Subtract(e->GetPosition(), (*it)->GetPosition());
+                    if (Vector2Length(kdir) > 0.0f) kdir = Vector2Normalize(kdir);
+                    else kdir = {1.0f, 0.0f};
+                    e->ApplyKnockback(kdir, 350.0f);
+                    
+                    Vector2 impactPos = { pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f };
+                    AddImpactEffect(pBox.x > e->GetBoundingBox().x ? (Vector2){pBox.x, pBox.y} : (Vector2){pBox.x + 10, pBox.y});
+                    ParticleManager::GetInstance().SpawnImpact(impactPos, (*it)->GetVelocity(), SKYBLUE, 6);
+                    
+                    if (teamManager && teamManager->GetActivePaladin()) {
+                        teamManager->GetActivePaladin()->OnHitEnemy((*it)->GetDamage());
+                    }
+                    hitEntity = true;
+                    if (!(*it)->IsPiercing()) break;
+                }
+            }
+        }
+        
+        // Player (if enemy projectile)
+        if ((*it)->IsEnemyProjectile() && teamManager && teamManager->GetActivePaladin()) {
             Paladin* activePaladin = teamManager->GetActivePaladin();
-            if (CheckCollisionRecs(pBox, activePaladin->GetBoundingBox())) {
+            if (CheckCollisionRecs(pBox, activePaladin->GetBoundingBox()) && !(*it)->HasHitTarget(activePaladin)) {
                 if (activePaladin->CanParryAttack((*it)->GetPosition())) {
                     activePaladin->TriggerParrySuccess(*it);
                     activePaladin->IncrementParryCount();
                     TriggerHitstop(0.1f);
                     AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});
-                    // Parry sparks — burst at the point of contact
-                    ParticleManager::GetInstance().SpawnParrySparks(
-                        { pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f }, 16
-                    );
+                    ParticleManager::GetInstance().SpawnParrySparks({ pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f }, 16);
                 } else {
                     activePaladin->TakeDamage((*it)->GetDamage());
                     if (activePaladin->IsParrying()) {
-                        activePaladin->ChangeState(activePaladin->GetIdleState()); // Break parry on failed block
+                        activePaladin->ChangeState(activePaladin->GetIdleState()); 
                     }
                 }
-                hitSomething = true;
+                (*it)->RecordHit(activePaladin);
+                hitEntity = true;
             }
         }
-        
-        // If it's an enemy projectile, check collision with Rovers
-        if (!hitSomething && (*it)->IsEnemyProjectile()) {
+
+        // Rovers (if enemy projectile)
+        if ((*it)->IsEnemyProjectile()) {
             for (auto& rover : activeRovers) {
-                if (!rover->IsDead() && CheckCollisionRecs(pBox, rover->GetBoundingBox())) {
+                if (!rover->IsDead() && CheckCollisionRecs(pBox, rover->GetBoundingBox()) && !(*it)->HasHitTarget(rover.get())) {
                     rover->TakeDamage((*it)->GetDamage());
+                    (*it)->RecordHit(rover.get());
                     AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});
-                    hitSomething = true;
-                    break;
+                    hitEntity = true;
+                    if (!(*it)->IsPiercing()) break;
                 }
             }
         }
 
-        // Check collision with environment and enemies (if it's a player projectile)
-        if (!hitSomething) {
-            // First check level manager for static walls, ONLY if it's not returning
-            if (levelManager &&
-                !ignoresWorldCollision &&
-                !(*it)->IsReturning() &&
-                levelManager->IsSolidCollision(pBox)) {
-                hitSomething = true;
-                if (!(*it)->IsEnemyProjectile()) {
-                    AddImpactEffect({pBox.x + pBox.width/2.0f, pBox.y + pBox.height/2.0f});
-                    // Wall impact debris — splatter in the direction the projectile came from
-                    ParticleManager::GetInstance().SpawnImpact(
-                        { pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f },
-                        (*it)->GetVelocity(), YELLOW, 8
-                    );
-                }
-            } else {
-                for (auto* entity : entities) {
-                    if (CheckCollisionRecs(pBox, entity->GetBoundingBox())) {
-                        if (entity->GetObjectType() == GameObjectType::Enemy) {
-                            Enemy* e = static_cast<Enemy*>(entity);
-                            if (!e->IsEnabled()) continue;
-                            if (!(*it)->IsEnemyProjectile()) {
-                                e->TakeDamage((*it)->GetDamage());
-                                Vector2 kdir = Vector2Subtract(e->GetPosition(), (*it)->GetPosition());
-                                if (Vector2Length(kdir) > 0.0f) kdir = Vector2Normalize(kdir);
-                                else kdir = {1.0f, 0.0f};
-                                e->ApplyKnockback(kdir, 350.0f);
-                                Vector2 impactPos = { pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f };
-                                AddImpactEffect(pBox.x > e->GetBoundingBox().x ? (Vector2){pBox.x, pBox.y} : (Vector2){pBox.x + 10, pBox.y});
-                                // Enemy hit debris — cyan tinted splatter
-                                ParticleManager::GetInstance().SpawnImpact(
-                                    impactPos, (*it)->GetVelocity(), SKYBLUE, 6
-                                );
-                                if (teamManager && teamManager->GetActivePaladin()) {
-                                    teamManager->GetActivePaladin()->OnHitEnemy((*it)->GetDamage());
-                                }
-                                hitSomething = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (hitSomething) {
+        if (hitWall || hitEntity) {
             if ((*it)->IsPiercing() && !(*it)->IsEnemyProjectile()) {
-                if (levelManager && levelManager->IsSolidCollision(pBox)) {
+                if (hitWall) { 
+                    // Only return on STATIC walls, allowing it to pass completely through boxes
                     (*it)->SetReturning(true);
                 }
             } else {
@@ -388,10 +364,7 @@ void GameManager::SpawnQuintessenceOrb(Vector2 pos) {
 }
 
 void GameManager::UpdateOrbs(float deltaTime, TeamManager* teamManager) {
-    Paladin* player = teamManager->GetActivePaladin();
-    if (!player) return;
-
-    Vector2 playerPos = player->GetPosition();
+    Paladin* player = teamManager ? teamManager->GetActivePaladin() : nullptr;
 
     for (auto it = activeOrbs.begin(); it != activeOrbs.end(); ) {
         // Friction / Deceleration of initial pop
@@ -402,39 +375,43 @@ void GameManager::UpdateOrbs(float deltaTime, TeamManager* teamManager) {
 
         it->position.x += it->velocity.x * deltaTime;
         it->position.y += it->velocity.y * deltaTime;
-
-        // Check distance to player
-        float dx = playerPos.x - it->position.x;
-        float dy = playerPos.y - it->position.y;
-        float distSq = dx * dx + dy * dy;
-
-        // Attract distance
-        if (distSq < 75.0f * 75.0f) {
-            it->isAttracted = true;
-        }
-
-        if (it->isAttracted) {
-            float speed = 400.0f;
-            float dist = std::sqrt(distSq);
-            if (dist > 0) {
-                it->velocity.x = (dx / dist) * speed;
-                it->velocity.y = (dy / dist) * speed;
-            }
-        }
         
         it->positionHistory.push_front(it->position);
         if (it->positionHistory.size() > 12) {
             it->positionHistory.pop_back();
         }
 
-        // Collect distance
-        if (distSq < 20.0f * 20.0f) {
-            teamManager->AddQuintessence(10.0f);
-            AudioManager::GetInstance().PlaySoundEffect("fx_energy");
-            it = activeOrbs.erase(it);
-        } else {
-            ++it;
+        if (player) {
+            Vector2 playerPos = player->GetPosition();
+            // Check distance to player
+            float dx = playerPos.x - it->position.x;
+            float dy = playerPos.y - it->position.y;
+            float distSq = dx * dx + dy * dy;
+
+            // Attract distance
+            if (distSq < 75.0f * 75.0f) {
+                it->isAttracted = true;
+            }
+
+            if (it->isAttracted) {
+                float speed = 400.0f;
+                float dist = std::sqrt(distSq);
+                if (dist > 0) {
+                    it->velocity.x = (dx / dist) * speed;
+                    it->velocity.y = (dy / dist) * speed;
+                }
+            }
+
+            // Collect distance
+            if (distSq < 20.0f * 20.0f) {
+                teamManager->AddQuintessence(10.0f);
+                AudioManager::GetInstance().PlaySoundEffect("fx_energy");
+                it = activeOrbs.erase(it);
+                continue;
+            }
         }
+        
+        ++it;
     }
 }
 

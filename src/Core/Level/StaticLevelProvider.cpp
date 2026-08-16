@@ -132,7 +132,7 @@ void StaticLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& item
     }
 }
 
-bool StaticLevelProvider::IsSolidCollision(Rectangle box) const {
+bool StaticLevelProvider::IsSolidCollision(Rectangle box, bool ignoreProps) const {
     int minCol = (int)std::floor((box.x + COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
     int maxCol = (int)std::floor((box.x + box.width - COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
     int minRow = (int)std::floor((box.y + COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);

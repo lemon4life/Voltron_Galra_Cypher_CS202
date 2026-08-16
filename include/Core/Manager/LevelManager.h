@@ -104,6 +104,7 @@ public:
     void DrawLevelBase();
     void GetDepthRenderItems(std::vector<DepthRenderItem>& items);
     void UpdateLevel(float deltaTime, Vector2 playerPos = {0,0});
+    bool IsSolidCollision(Rectangle box, bool ignoreProps = false) const;
     void ClearLevel();
     void AddEntity(GameObject* entity);
     bool QueueEnemySpawn(
@@ -112,7 +113,6 @@ public:
         TeamManager* teamManager
     );
     bool IsValidSpawnLocation(const GameObject* entity) const;
-    bool IsSolidCollision(Rectangle box) const;
 
     Vector2 WorldToTile(Vector2 worldPos) const;
     Vector2 TileToWorld(int tileX, int tileY) const;
