@@ -48,17 +48,7 @@ namespace {
     }
 
     Vector2 GetVirtualMousePosition(const Camera2D& camera) {
-        Vector2 mousePosition = GetScreenToWorld2D(
-            GetMousePosition(),
-            camera
-        );
-        if (mousePosition.x < 0.0f ||
-            mousePosition.x > Constants::GAME_WIDTH ||
-            mousePosition.y < 0.0f ||
-            mousePosition.y > Constants::GAME_HEIGHT) {
-            return {-1.0f, -1.0f};
-        }
-        return mousePosition;
+        return GetScreenToWorld2D(GetMousePosition(), camera);
     }
 
     GameObject* FindNearestHubInteractable(
@@ -229,11 +219,17 @@ void GameApplication::RunLoop() {
             MAX_MODAL_SCALE
         );
         const Camera2D uiCamera = CreateCenteredUICamera(viewportScale);
+        Vector2 uiMousePosition = GetVirtualMousePosition(uiCamera);
+        Rectangle windowBounds = {
+            -uiCamera.offset.x / uiCamera.zoom,
+            -uiCamera.offset.y / uiCamera.zoom,
+            GetScreenWidth() / uiCamera.zoom,
+            GetScreenHeight() / uiCamera.zoom
+        };
         const Camera2D modalCamera = CreateCenteredUICamera(modalScale);
 
         AudioManager::GetInstance().UpdateMusicStream();
 
-        Vector2 uiMousePosition = GetVirtualMousePosition(uiCamera);
         Vector2 modalMousePosition = GetVirtualMousePosition(modalCamera);
 
         GameState state = gameManager.GetState();
@@ -310,7 +306,7 @@ void GameApplication::RunLoop() {
                 !hubModalOpen &&
                 (state == GameState::HUB ||
                  state == GameState::GAMEPLAY) &&
-                uiManager.IsPauseButtonPressed(uiMousePosition);
+                uiManager.IsPauseButtonPressed(windowBounds, uiMousePosition);
 
             if (state == GameState::PAUSE && keyboardPauseRequested) {
                 gameManager.ResumeGame();
@@ -392,7 +388,7 @@ void GameApplication::RunLoop() {
         bool hubModalOpenLocal = state == GameState::HUB && paladinSelectionMenu.IsOpen();
         if (systemInitialized && (state == GameState::HUB || state == GameState::GAMEPLAY) && !hubModalOpenLocal) {
             BeginMode2D(uiCamera);
-            uiManager.DrawHUD(GetScreenWidth(), GetScreenHeight(), uiMousePosition);
+            uiManager.DrawHUD(windowBounds, uiMousePosition);
             EndMode2D();
         }
 

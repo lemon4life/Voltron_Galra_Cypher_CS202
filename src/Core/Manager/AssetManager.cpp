@@ -62,6 +62,8 @@ void AssetManager::LoadGlobalFonts() {
 void AssetManager::LoadCommonAssets() {
     LoadTexture2D("stats_checkpoint", "assets/UI/stats_checkpoint.png");
     LoadTexture2D("button_pause", "assets/UI/button_pause.png");
+    LoadTexture2D("dialogue_panel", "assets/UI/dialogue.png");
+    LoadTexture2D("select_arrow", "assets/UI/select_arrow.png");
 }
 
 void AssetManager::UnloadAll() {

@@ -4,6 +4,7 @@
 #include "Core/Manager/AudioManager.h"
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/TeamManager.h"
+#include "Core/Manager/AssetManager.h"
 #include <fstream>
 #include <iostream>
 
@@ -234,36 +235,46 @@ void DialogueManager::Draw(int screenWidth, int screenHeight) {
         DrawTexturePro(port, source, dest, {0,0}, 0.0f, WHITE);
     }
 
-    // Background box at the bottom
-    Rectangle box = {
-        MARGIN,
-        logicalHeight - BOX_HEIGHT - MARGIN,
-        logicalWidth - MARGIN * 2.0f,
-        BOX_HEIGHT
+    // Dialogue Background Panel
+    Texture2D panelTex = AssetManager::GetInstance().GetTexture("dialogue_panel");
+    Vector2 panelPos = {
+        (logicalWidth - panelTex.width) / 2.0f,
+        logicalHeight - panelTex.height - 20.0f // 20px from bottom
     };
-    UIUtils::DrawPanel(box, { 30, 30, 30, 240 });
+    if (panelTex.id != 0) {
+        DrawTextureV(panelTex, panelPos, WHITE);
+    }
 
     // Name Box
-    Rectangle nameBox = {
-        box.x + 10.0f,
-        box.y - 20.0f,
-        100.0f,
-        30.0f
-    };
-    UIUtils::DrawPanel(nameBox, { 50, 50, 50, 255 });
-    UIUtils::DrawCenteredText("PixeloidBold", node.speakerName, { nameBox.x + nameBox.width * 0.5f, nameBox.y + nameBox.height * 0.5f }, UIUtils::FontSize::SMALL, YELLOW);
+    UIUtils::DrawCenteredText("PixeloidBold", node.speakerName, 
+        { panelPos.x + 74.0f, panelPos.y + 14.0f }, // Centered in a typical tab (x=32..116, y=0..28)
+        UIUtils::FontSize::SMALL, WHITE);
 
-    // Text (Typewriter effect)
+    // Main Text
     std::string visibleText = node.text.substr(0, visibleCharCount);
-    UIUtils::DrawText("PixeloidSans", visibleText, { box.x + 20.0f, box.y + 30.0f }, UIUtils::FontSize::BODY, WHITE);
+    UIUtils::DrawText("PixeloidSans", visibleText, { panelPos.x + 40.0f, panelPos.y + 40.0f }, UIUtils::FontSize::SMALL, WHITE);
 
-    // Options (Only draw if typing is done)
+    // Options
     if (visibleCharCount >= (int)node.text.length()) {
-        float optionY = box.y + 70.0f;
+        Texture2D arrowTex = AssetManager::GetInstance().GetTexture("select_arrow");
+        Color selectedColor = {83, 136, 193, 255};
+        Color unselectedColor = {216, 225, 234, 255};
+        
+        float optionYStart = panelPos.y + 80.0f;
+        float optionHeight = 50.0f / 2.0f; // Divide the 50 height for two choices
+        
         for (int i = 0; i < (int)node.options.size(); ++i) {
-            Color color = (i == selectedOption) ? YELLOW : LIGHTGRAY;
-            std::string prefix = (i == selectedOption) ? "> " : "  ";
-            UIUtils::DrawText("PixeloidSans", prefix + node.options[i], { box.x + 30.0f, optionY + (float)i * 25.0f }, UIUtils::FontSize::SMALL, color);
+            float currentY = optionYStart + (float)i * optionHeight;
+            
+            if (i == selectedOption) {
+                if (arrowTex.id != 0) {
+                    DrawTextureV(arrowTex, { panelPos.x + 40.0f, currentY }, WHITE);
+                }
+                float textX = panelPos.x + 40.0f + (arrowTex.id != 0 ? arrowTex.width : 0) + 8.0f;
+                UIUtils::DrawText("PixeloidSans", node.options[i], { textX, currentY }, UIUtils::FontSize::SMALL, selectedColor);
+            } else {
+                UIUtils::DrawText("PixeloidSans", node.options[i], { panelPos.x + 40.0f, currentY }, UIUtils::FontSize::SMALL, unselectedColor);
+            }
         }
     }
 }

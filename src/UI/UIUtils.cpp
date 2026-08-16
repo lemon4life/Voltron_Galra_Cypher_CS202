@@ -74,12 +74,7 @@ namespace UIUtils {
     }
 
     Vector2 GetVirtualMousePosition(const Camera2D& camera) {
-        Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
-        if (mousePosition.x < 0.0f || mousePosition.x > Constants::GAME_WIDTH ||
-            mousePosition.y < 0.0f || mousePosition.y > Constants::GAME_HEIGHT) {
-            return {-1.0f, -1.0f};
-        }
-        return mousePosition;
+        return GetScreenToWorld2D(GetMousePosition(), camera);
     }
 
     void DrawGradientPulseBar(Rectangle bounds, float fillPercentage, Color leftColor, Color rightColor, bool isPulsing, bool applyGrayFilter) {

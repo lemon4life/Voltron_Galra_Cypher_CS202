@@ -32,24 +32,24 @@ void UIManager::Initialize() {
     statsShellBack = LoadTexture("assets/UI/Team_StatsShell_Back.png");
 }
 
-bool UIManager::IsPauseButtonPressed(Vector2 mousePosition) const {
-    return CheckCollisionPointRec(mousePosition, PAUSE_BUTTON_BOUNDS) &&
+bool UIManager::IsPauseButtonPressed(Rectangle windowBounds, Vector2 mousePosition) const {
+    float S = 1.5f;
+    float startX = windowBounds.x + 10.0f + (30.0f * S);
+    float startY = windowBounds.y + 10.0f;
+    Rectangle pauseBtn = { startX - (30.0f * S), startY, 30.0f * S, 48.0f * S };
+    
+    return CheckCollisionPointRec(mousePosition, pauseBtn) &&
            IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
-void UIManager::DrawHUD(
-    int screenWidth,
-    int screenHeight,
-    Vector2 mousePosition
-) {
+void UIManager::DrawHUD(Rectangle windowBounds, Vector2 mousePosition) {
     if (!teamManager) return;
-    DrawTeamHUD(teamManager, screenWidth, screenHeight, mousePosition);
+    DrawTeamHUD(teamManager, windowBounds, mousePosition);
 }
 
 void UIManager::DrawTeamHUD(
     TeamManager* team,
-    int screenWidth,
-    int screenHeight,
+    Rectangle windowBounds,
     Vector2 mousePosition
 ) {
     if (!team) return;
@@ -60,8 +60,22 @@ void UIManager::DrawTeamHUD(
     int numPaladins = roster.size();
     if (numPaladins == 0) return;
 
-    // --- Pause Button (Top Left) ---
-    const Rectangle pauseBtn = PAUSE_BUTTON_BOUNDS;
+    float S = 1.5f;
+
+    // Determine shell width based on number of paladins (doubled)
+    float baseShellWidth = 226.0f;
+    if (numPaladins == 2) baseShellWidth = 354.0f;
+    else if (numPaladins == 3) baseShellWidth = 482.0f;
+    
+    float shellWidth = baseShellWidth * S;
+
+    // Position of the Stats HUD container in Top-Left of the physical window
+    // Pause button is 30*S wide and we want it to start at x = windowBounds.x + 10.0f
+    float startX = windowBounds.x + 10.0f + (30.0f * S);
+    float startY = windowBounds.y + 10.0f;
+
+    // --- Pause Button (Top Left of HUD) ---
+    Rectangle pauseBtn = { startX - (30.0f * S), startY, 30.0f * S, 48.0f * S };
     bool isHovered = CheckCollisionPointRec(mousePosition, pauseBtn);
     Texture2D pauseTex = AssetManager::GetInstance().GetTexture("button_pause");
     if (pauseTex.id != 0) {
@@ -72,12 +86,9 @@ void UIManager::DrawTeamHUD(
     } else {
         DrawRectangleRec(pauseBtn, isHovered ? Fade(GRAY, 0.8f) : Fade(BLACK, 0.5f));
         DrawRectangleLinesEx(pauseBtn, 2.0f, WHITE);
-        DrawRectangle(pauseBtn.x + 8, pauseBtn.y + 6, 4, 18, WHITE);
-        DrawRectangle(pauseBtn.x + 18, pauseBtn.y + 6, 4, 18, WHITE);
+        DrawRectangle(pauseBtn.x + 8*S, pauseBtn.y + 6*S, 4*S, 18*S, WHITE);
+        DrawRectangle(pauseBtn.x + 18*S, pauseBtn.y + 6*S, 4*S, 18*S, WHITE);
     }
-    // Position of the Stats HUD container
-    float startX = 31.0f;
-    float startY = 10.0f;
 
     // Prepare off-field characters
     Paladin* offField1 = nullptr;
@@ -94,15 +105,10 @@ void UIManager::DrawTeamHUD(
         offIndex++;
     }
 
-    // Determine shell width based on number of paladins (doubled)
-    float shellWidth = 226.0f;
-    if (numPaladins == 2) shellWidth = 354.0f;
-    else if (numPaladins == 3) shellWidth = 482.0f;
-
     // --- Layer 0: Lowest Layer (Stats Shell Back) ---
     if (statsShellBack.id != 0) {
-        Rectangle sourceRec = {0, 0, shellWidth, 48.0f};
-        DrawTextureRec(statsShellBack, sourceRec, {startX, startY}, WHITE);
+        Rectangle sourceRec = {0, 0, baseShellWidth * S, 48.0f * S};
+        DrawTexturePro(statsShellBack, sourceRec, {startX, startY, shellWidth, 48.0f * S}, {0.0f, 0.0f}, 0.0f, WHITE);
     }
 
     // --- Layer 1: Portraits ---
@@ -113,9 +119,10 @@ void UIManager::DrawTeamHUD(
 
     auto DrawPortraitNumber = [&](int idx, Rectangle dest) {
         int num = idx + 1;
-        DrawCircle(dest.x + dest.width - 8, dest.y + dest.height - 8, 8, Fade(BLACK, 0.7f));
-        Vector2 numSize = MeasureTextEx(fontMono, TextFormat("%d", num), 10, 1.0f);
-        UIUtils::DrawText("PixeloidMono", TextFormat("%d", num), { dest.x + dest.width - 8 - numSize.x/2, dest.y + dest.height - 8 - numSize.y/2 }, static_cast<UIUtils::FontSize>(10), WHITE);
+        DrawCircle(dest.x + dest.width - 8*S, dest.y + dest.height - 8*S, 8*S, Fade(BLACK, 0.7f));
+        int fSize = 10 * S;
+        Vector2 numSize = MeasureTextEx(fontMono, TextFormat("%d", num), fSize, 1.0f);
+        UIUtils::DrawText("PixeloidMono", TextFormat("%d", num), { dest.x + dest.width - 8*S - numSize.x/2, dest.y + dest.height - 8*S - numSize.y/2 }, static_cast<UIUtils::FontSize>(fSize), WHITE);
     };
 
     auto DrawCardPortrait = [&](Paladin* p, Rectangle dest) {
@@ -126,17 +133,17 @@ void UIManager::DrawTeamHUD(
         DrawTexturePro(cardTex, sourceRec, dest, {0.0f, 0.0f}, 0.0f, tint);
     };
 
-    Rectangle activeDest = {startX + 4, startY + 4, 90, 40};
+    Rectangle activeDest = {startX + 4*S, startY + 4*S, 90*S, 40*S};
     DrawCardPortrait(active, activeDest);
     DrawPortraitNumber(activeIdx, activeDest);
 
     if (offField1) {
-        Rectangle off1Dest = {startX + 226, startY + 4, 60, 28};
+        Rectangle off1Dest = {startX + 226*S, startY + 4*S, 60*S, 28*S};
         DrawCardPortrait(offField1, off1Dest);
         DrawPortraitNumber(offField1Idx, off1Dest);
     }
     if (offField2) {
-        Rectangle off2Dest = {startX + 354, startY + 4, 60, 28};
+        Rectangle off2Dest = {startX + 354*S, startY + 4*S, 60*S, 28*S};
         DrawCardPortrait(offField2, off2Dest);
         DrawPortraitNumber(offField2Idx, off2Dest);
     }
@@ -166,13 +173,13 @@ void UIManager::DrawTeamHUD(
     };
 
     // --- Layer 2: HP Bars (Doubled) ---
-    DrawHP(active, 98, 4, 124, 26);
-    DrawHP(offField1, 290, 4, 60, 12);
-    DrawHP(offField2, 418, 4, 60, 12);
+    DrawHP(active, 98*S, 4*S, 124*S, 26*S);
+    DrawHP(offField1, 290*S, 4*S, 60*S, 12*S);
+    DrawHP(offField2, 418*S, 4*S, 60*S, 12*S);
 
     // --- Layer 3: Mask Rectangle ---
     Color maskColor = { 57, 57, 68, 255 }; // #5b5b67
-    DrawRectangle(startX + 146, startY + 20, 76, 12, maskColor);
+    DrawRectangle(startX + 146*S, startY + 20*S, 76*S, 12*S, maskColor);
     // Helper lambda for EX Energy (BLUE — for Skills)
     auto DrawEX = [&](Paladin* p, float x, float y, float maxW, float h) {
         if (!p) return;
@@ -188,12 +195,12 @@ void UIManager::DrawTeamHUD(
     };
 
     // --- Layer 4: EX Bars (BLUE) ---
-    DrawEX(active, 146, 20, 76, 10);
-    DrawEX(offField1, 290, 20, 60, 10);
-    DrawEX(offField2, 418, 20, 60, 10);
+    DrawEX(active, 146*S, 20*S, 76*S, 10*S);
+    DrawEX(offField1, 290*S, 20*S, 60*S, 10*S);
+    DrawEX(offField2, 418*S, 20*S, 60*S, 10*S);
 
     // --- Layer 4.5: Quintessence Bar (PURPLE — shared team ultimate fuel, 3 cells) ---
-    Rectangle qBar = { startX + 146, startY + 34, 332, 12 };
+    Rectangle qBar = { startX + 146*S, startY + 34*S, 332*S, 12*S };
     float quint = team->GetQuintessence();
     float displayedQuint = team->GetDisplayedQuintessence();
     float maxQuint = team->GetMaxQuintessence();
@@ -203,8 +210,8 @@ void UIManager::DrawTeamHUD(
 
     // --- Layer 5: Stats Shell Overlay ---
     if (statsShell.id != 0) {
-        Rectangle sourceRec = {0, 0, shellWidth, 48.0f};
-        DrawTextureRec(statsShell, sourceRec, {startX, startY}, WHITE);
+        Rectangle sourceRec = {0, 0, baseShellWidth * S, 48.0f * S};
+        DrawTexturePro(statsShell, sourceRec, {startX, startY, shellWidth, 48.0f * S}, {0.0f, 0.0f}, 0.0f, WHITE);
     }
 
     // --- Layer 6: Checkpoint Markers (Over Shell) ---
@@ -224,9 +231,9 @@ void UIManager::DrawTeamHUD(
         };
 
         // EX Checkpoints
-        DrawExCheckpoint(active, { startX + 146, startY + 20, 76, 10 });
-        DrawExCheckpoint(offField1, { startX + 290, startY + 20, 60, 10 });
-        DrawExCheckpoint(offField2, { startX + 418, startY + 20, 60, 10 });
+        DrawExCheckpoint(active, { startX + 146*S, startY + 20*S, 76*S, 10*S });
+        DrawExCheckpoint(offField1, { startX + 290*S, startY + 20*S, 60*S, 10*S });
+        DrawExCheckpoint(offField2, { startX + 418*S, startY + 20*S, 60*S, 10*S });
         
         // Quintessence Checkpoints
         if (maxQuint > 0) {
@@ -247,16 +254,16 @@ void UIManager::DrawTeamHUD(
     char hpText[32];
     snprintf(hpText, sizeof(hpText), "%d/%d", active->GetHealth(), active->GetMaxHealth());
     
-    int fontSize = 10;
+    int fontSize = 10 * S;
     Vector2 textSize = MeasureTextEx(fontMono, hpText, fontSize, 1.0f);
-    float textX = startX + 98 + (44 - textSize.x) / 2;
-    float textY = startY + 34 + (12 - textSize.y) / 2;
+    float textX = startX + 98*S + (44*S - textSize.x) / 2;
+    float textY = startY + 34*S + (12*S - textSize.y) / 2;
     UIUtils::DrawText("PixeloidMono", hpText, { textX, textY }, static_cast<UIUtils::FontSize>(fontSize), WHITE);
 
     if (InputManager::GetMode() == InputMode::KEYBOARD_ONLY && !Constants::isAutoAimEnabled) {
         const char* hint = "Auto-Aim ('T') Recommended for Keyboard Only";
         Vector2 hintSize = MeasureTextEx(fontSans, hint, 20, 1.0f);
-        UIUtils::DrawText("PixeloidSans", hint, { (GetScreenWidth() - hintSize.x) / 2, GetScreenHeight() - 100.0f }, static_cast<UIUtils::FontSize>(20), Fade(WHITE, 0.7f));
+        UIUtils::DrawText("PixeloidSans", hint, { windowBounds.x + (windowBounds.width - hintSize.x) / 2, windowBounds.y + windowBounds.height - 100.0f }, static_cast<UIUtils::FontSize>(20), Fade(WHITE, 0.7f));
     }
 
 
