@@ -67,6 +67,10 @@ void AudioManager::Initialize() {
     LoadSound("fx_energy", "assets/audio/SFX/fx_energy.wav");
     LoadMusic("bgm_boss_theme", "assets/audio/BGM/bgm_boss_theme.mp3");
 
+    // Load Voicelines
+    LoadSound("vl_lance_skill", "assets/audio/Voiceline/lance_skill.wav");
+    LoadSound("vl_lance_ult", "assets/audio/Voiceline/lance_ult.wav");
+
     currentFootstepIndex = 0;
     SetSoundEffectsVolume(soundEffectsVolume);
     SetMusicVolumeLevel(musicVolume);

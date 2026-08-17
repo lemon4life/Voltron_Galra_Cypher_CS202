@@ -13,6 +13,10 @@ MainMenuState::MainMenuState(MainMenu* menu, GameApplication* app) : menu(menu),
 void MainMenuState::Update(float deltaTime) {
     menu->Update(deltaTime);
     MainMenuAction menuAction = menu->ConsumeAction();
+    if (menu->ConsumeQuitRequest()) {
+        app->quitRequested = true;
+    }
+    
     if (menuAction == MainMenuAction::StartGame && app->systemInitialized) {
         app->paladinSelectionMenu.Close();
         app->hasContinuableSession = false;

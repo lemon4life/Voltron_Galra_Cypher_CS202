@@ -2,13 +2,14 @@
 #include "Combat/RangedAttackStrategy.h"
 #include "Entities/Player/PaladinDefinition.h"
 #include "Combat/Buffs.h"
+#include "Core/Manager/AudioManager.h"
 
 Lance::Lance(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Lance)),
       isUltimateFlash(false),
       ultimateFlashTimer(0.0f)
 {
-    introData = {"LANCE", "GLACIER PIERCE", BLUE, "Card_Lance", "lance_ult_voice"};
+    introData = {"LANCE", "GLACIER PIERCE", BLUE, "Card_Lance", "lance_ult"};
     const WeaponDefinition& weapon =
         PaladinCatalog::Get(PaladinId::Lance).weapon;
     currentWeapon = new RangedAttackStrategy(
@@ -93,6 +94,7 @@ void Lance::UseSkill() {
     if (exEnergy < skillCost) return;
     
     exEnergy -= skillCost;
+    AudioManager::GetInstance().PlaySoundEffect("vl_lance_skill");
     AddPersonalBuff(std::make_unique<DualWieldBuff>(5.0f));
 }
 
@@ -108,6 +110,7 @@ void Lance::UseUltimate() {
     if (!teamManager || !teamManager->ConsumeQuintessence(TeamManager::ULTIMATE_COST)) return;
     
     ultimateCooldownTimer = ULTIMATE_COOLDOWN_MAX;
+    AudioManager::GetInstance().PlaySoundEffect("vl_lance_ult");
     UltimateIntroManager::GetInstance().PlayIntro(this);
 }
 

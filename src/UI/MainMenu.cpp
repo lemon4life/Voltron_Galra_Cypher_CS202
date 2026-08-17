@@ -250,43 +250,6 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
         UIUtils::DrawCenteredText("PixeloidSans", text, { barX + barWidth / 2.0f, (float)barY - 30.0f + 10.0f }, UIUtils::FontSize::SMALL, Fade(RAYWHITE, loadingAlpha));
     }
 
-    // Draw UI Panel (only if uiAlpha > 0)
-    if (uiAlpha > 0.01f) {
-        DrawRectangleGradientH(panelX, 0, panelWidth, screenHeight, BLANK, Fade(BLACK, 0.9f * uiAlpha));
-
-        float startY = screenHeight * 0.5f;
-        float btnSpacing = 55.0f;
-        
-        float btnSlideY = (1.0f - uiAlpha) * 30.0f; // Buttons slide up as they fade in
-        
-        for (size_t i = 0; i < buttons.size(); i++) {
-            auto& btn = buttons[i];
-            
-            float textWidth = UIUtils::MeasureText("PixeloidSans", btn.text, UIUtils::FontSize::HEADER).x;
-            float drawTextWidth = textWidth * btn.currentScale;
-            float drawFontSize = static_cast<float>(UIUtils::FontSize::HEADER) * btn.currentScale;
-            
-            float btnWidth = textWidth + 80;
-            float btnHeight = static_cast<float>(UIUtils::FontSize::HEADER) + 20.0f;
-            float targetX = panelX + (panelWidth / 2.0f) - (btnWidth / 2.0f);
-            
-            btn.bounds = { targetX, startY + (i * btnSpacing), btnWidth, btnHeight };
-            
-            float drawX = targetX + btn.currentXOffset;
-            float drawY = btn.bounds.y + btnSlideY;
-            
-            float adjustedY = drawY - (drawFontSize - static_cast<float>(UIUtils::FontSize::HEADER)) / 2.0f;
-            float adjustedX = drawX - (drawTextWidth - textWidth) / 2.0f;
-
-            Color fadeColor = btn.currentColor;
-            fadeColor.a = (unsigned char)(fadeColor.a * uiAlpha);
-
-            // Shadow
-            UIUtils::DrawText("PixeloidSans", btn.text, { adjustedX + 2, adjustedY + 2 }, static_cast<UIUtils::FontSize>(drawFontSize), Fade(BLACK, fadeColor.a / 255.0f));
-            // Text
-            UIUtils::DrawText("PixeloidSans", btn.text, { adjustedX, adjustedY }, static_cast<UIUtils::FontSize>(drawFontSize), fadeColor);
-        }
-    }
     // Calculate Logo dynamic position (Lerp from top-center to panel layout)
     
     // Target Logo State
@@ -307,6 +270,49 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
     float currentLogoY = Lerp(logoInitY, logoTargetY, uiAlpha);
     float currentLogoWidth = Lerp(logoInitWidth, logoTargetWidth, uiAlpha);
     float currentLogoHeight = Lerp(logoInitHeight, logoTargetHeight, uiAlpha);
+
+    // Draw UI Panel (only if uiAlpha > 0)
+    if (uiAlpha > 0.01f) {
+        DrawRectangleGradientH(panelX, 0, panelWidth, screenHeight, BLANK, Fade(BLACK, 0.9f * uiAlpha));
+
+        float scaleFactor = (float)screenHeight / 720.0f;
+
+        // Start buttons perfectly spaced below the sliding logo
+        float startY = currentLogoY + currentLogoHeight + (40.0f * scaleFactor);
+        float btnSpacing = 55.0f * scaleFactor;
+        
+        float btnSlideY = (1.0f - uiAlpha) * (30.0f * scaleFactor); // Buttons slide up as they fade in
+        
+        for (size_t i = 0; i < buttons.size(); i++) {
+            auto& btn = buttons[i];
+            
+            float baseFontSize = static_cast<float>(UIUtils::FontSize::HEADER) * scaleFactor;
+            float textWidth = UIUtils::MeasureText("PixeloidSans", btn.text, static_cast<UIUtils::FontSize>(baseFontSize)).x;
+            
+            float drawTextWidth = textWidth * btn.currentScale;
+            float drawFontSize = baseFontSize * btn.currentScale;
+            
+            float btnWidth = textWidth + (80.0f * scaleFactor);
+            float btnHeight = baseFontSize + (20.0f * scaleFactor);
+            float targetX = panelX + (panelWidth / 2.0f) - (btnWidth / 2.0f);
+            
+            btn.bounds = { targetX, startY + (i * btnSpacing), btnWidth, btnHeight };
+            
+            float drawX = targetX + btn.currentXOffset;
+            float drawY = btn.bounds.y + btnSlideY;
+            
+            float adjustedY = drawY - (drawFontSize - baseFontSize) / 2.0f;
+            float adjustedX = drawX - (drawTextWidth - textWidth) / 2.0f;
+
+            Color fadeColor = btn.currentColor;
+            fadeColor.a = (unsigned char)(fadeColor.a * uiAlpha);
+
+            // Shadow
+            UIUtils::DrawText("PixeloidSans", btn.text, { adjustedX + 2, adjustedY + 2 }, static_cast<UIUtils::FontSize>(drawFontSize), Fade(BLACK, fadeColor.a / 255.0f));
+            // Text
+            UIUtils::DrawText("PixeloidSans", btn.text, { adjustedX, adjustedY }, static_cast<UIUtils::FontSize>(drawFontSize), fadeColor);
+        }
+    }
     
     // Draw Logo
     if (logoTex.id != 0) {

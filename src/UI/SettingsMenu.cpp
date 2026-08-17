@@ -37,13 +37,13 @@ SettingsMenu::SettingsMenu()
           AudioManager::GetInstance().GetMusicVolumeLevel()),
       autoAimToggleBounds{
           (Constants::GAME_WIDTH - SLIDER_WIDTH) * 0.5f,
-          150.0f,
+          310.0f,
           24.0f,
           24.0f},
       backButton(
           Rectangle{
               (Constants::GAME_WIDTH - BUTTON_WIDTH) * 0.5f,
-              335.0f,
+              355.0f,
               BUTTON_WIDTH,
               BUTTON_HEIGHT},
           "Back") {
