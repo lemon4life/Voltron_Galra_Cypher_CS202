@@ -24,9 +24,10 @@ RangedAttackStrategy::RangedAttackStrategy(
 
 void RangedAttackStrategy::Attack(Vector2 playerPos) {
     Vector2 projVelocity = { aimDir.x * 400.0f, aimDir.y * 400.0f };
-    // Create projectile originating at player center
+    // Create projectile originating at barrel tip to prevent wall collision
+    Vector2 spawnPos = { playerPos.x + aimDir.x * 15.0f, playerPos.y + aimDir.y * 15.0f };
     Projectile* p = new Projectile(
-        playerPos,
+        spawnPos,
         projVelocity,
         2.0f,
         damage,

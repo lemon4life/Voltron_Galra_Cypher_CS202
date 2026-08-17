@@ -198,7 +198,7 @@ void WaveManager::SpawnEnemy(
         return;
     }
 
-    MapObjectId spawnType = MapObjectId::Chaser;
+    MapObjectId spawnType = (GetRandomValue(0, 1) == 0) ? MapObjectId::Chaser : MapObjectId::Drone;
 
     if (isBossRoom ||
         (!levelManager->IsProceduralDungeon() && currentWave == 5)) {

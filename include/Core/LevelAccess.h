@@ -32,7 +32,8 @@ enum class MapObjectId : int {
     HubPidgeStand = 13,
     PotEX = 14,
     PotHP = 15,
-    PotQuint = 16
+    PotQuint = 16,
+    Drone = 17
 };
 
 struct GameObjectCell {

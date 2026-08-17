@@ -132,6 +132,7 @@ public:
     bool UpdateSpawnSequence(float deltaTime);
     bool IsEnabled() const { return !spawnSequenceActive; }
     bool IsFacingLeft() const { return facingLeft; }
+    void SetFacingLeft(bool b) { facingLeft = b; }
     bool ShouldDrawDuringSpawn() const;
     void DrawSpawnEffect() const;
     void ApplyKnockback(Vector2 dir, float force);
@@ -195,6 +196,7 @@ public:
 
     StatusComponent& GetStatusComponent() { return statusComponent; }
     void SetCurrentVelocity(Vector2 v) { currentVelocity = v; }
+    Vector2 GetCurrentVelocity() const { return currentVelocity; }
     bool IsMovingForAnimation() const { return movedThisFrame; }
     void UpdateMovementAnimationFlag(Vector2 updateStartPosition) {
         constexpr float MOVEMENT_EPSILON_SQUARED = 0.0001f;

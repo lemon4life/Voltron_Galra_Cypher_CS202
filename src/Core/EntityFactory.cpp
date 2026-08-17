@@ -8,6 +8,7 @@
 #include "Entities/EnemyEntities/Boss.h"
 #include "Entities/EnemyEntities/EnemyDiver.h"
 #include "Entities/EnemyEntities/EnemyRange.h"
+#include "Entities/EnemyEntities/Drone.h"
 #include "Core/Manager/AssetManager.h"
 
 namespace {
@@ -67,6 +68,14 @@ GameObject* EntityFactory::CreateEntity(
             ));
         case MapObjectId::Range:
             return PrepareEnemySpawn(new EnemyRange(
+                position,
+                teamManager,
+                levelAccess.removal,
+                levelAccess.pathFinding,
+                levelAccess.lineOfSight
+            ));
+        case MapObjectId::Drone:
+            return PrepareEnemySpawn(new Drone(
                 position,
                 teamManager,
                 levelAccess.removal,

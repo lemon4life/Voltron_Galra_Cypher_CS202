@@ -181,6 +181,11 @@ void AssetManager::QueueCharacterAssets() {
     add("Boss_Punch_Hand", "assets/sprites/Enemy/Boss/Hand.png", true);
     add("Boss_Fire_Punch", "assets/sprites/Enemy/Boss/Fire-Punch.png", true);
     add("Enemy_Spawn", "assets/sprites/Effects/Spawn.png", true);
+
+    // Drone
+    add("Drone", "assets/sprites/Enemy/Drone.png", true);
+    add("Drone_bullet", "assets/sprites/Enemy/Drone_bullet.png", true);
+    add("Drone_down", "assets/sprites/Enemy/Drone_down.png", true);
 }
 
 bool AssetManager::UpdateLoading(float& outProgress) {

@@ -7,6 +7,9 @@
 #include "Core/Manager/DecalManager.h"
 #include "Entities/Player/Paladin.h"
 #include "Core/EntityFactory.h"
+#include "Entities/EnemyEntities/EnemyDiver.h"
+#include "Entities/EnemyEntities/Drone.h"
+#include "Core/LevelAccess.h"
 #include "Entities/Enemy.h"
 #include "Entities/Props/Prop.h"
 #include "Entities/Props/DoorGate.h"
@@ -233,12 +236,16 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
         if ((*it)->GetObjectType() == GameObjectType::Enemy) {
             Enemy* e = static_cast<Enemy*>(*it);
             if (e->IsDead()) {
-                DecalManager::GetInstance().AddCorpse(e->GetPosition(), AssetManager::GetInstance().GetTexture("Enemy_Down"), e->IsFacingLeft(), e->GetKnockbackVelocity());
+                Texture2D downTex = AssetManager::GetInstance().GetTexture("Enemy_Down");
+                if (dynamic_cast<Drone*>(e)) {
+                    downTex = AssetManager::GetInstance().GetTexture("Drone_down");
+                }
+                DecalManager::GetInstance().AddCorpse(e->GetPosition(), downTex, e->IsFacingLeft(), e->GetKnockbackVelocity());
 
                 GameManager::GetInstance().SpawnQuintessenceOrb(e->GetPosition());
 
                 int randNum = GetRandomValue(0, 5);
-                AudioManager::GetInstance().PlaySoundEffectVolume("enemy_dead_" + std::to_string(randNum), 0.5f);
+                AudioManager::GetInstance().PlaySoundEffectVolume("enemy_dead_" + std::to_string(randNum), 0.25f);
 
                 QueueRemoval(e);
                 continue;

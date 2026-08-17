@@ -203,14 +203,10 @@ bool EnemyRangeShootingState::TryFireProjectile(
         }
     }
 
-    Vector2 projectilePosition = {
-        projectileOrigin.x - projectileRadius,
-        projectileOrigin.y - projectileRadius
-    };
     Vector2 velocity = Vector2Scale(direction, enemy->GetProjectileSpeed());
 
     Projectile* projectile = new Projectile(
-        projectilePosition,
+        projectileOrigin,
         velocity,
         enemy->GetProjectileLifetime(),
         enemy->GetDamage(),
