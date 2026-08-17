@@ -16,9 +16,6 @@ Pidge::Pidge(Vector2 startPos, CharacterSprites sprites)
     isWeaponThrown = false;
     thrownWeapon = nullptr;
     
-
-    // Setup Boomerang as RangedAttackStrategy for now, or just leave it empty and override Attack
-    // Wait, the plan was to use RangedAttackStrategy with isReturning inside Projectile.
     const WeaponDefinition& weapon = PaladinCatalog::Get(PaladinId::Pidge).weapon;
     currentWeapon = new RangedAttackStrategy(
         sprites.weapon,
@@ -97,7 +94,7 @@ void Pidge::Attack() {
     float speed = 800.0f; // Fast Boomerang speed
     int baseDamage = BaseStats::Damage * PaladinCatalog::Get(PaladinId::Pidge).weapon.minDamageScalar;
     
-    thrownWeapon = SpawnLinearProjectile(dir, speed, baseDamage, 0.35f, true, sprites.weapon, true);
+    thrownWeapon = SpawnLinearProjectile(dir, speed, baseDamage, 0.5f, true, sprites.weapon, true);
 }
 
 void Pidge::CatchWeapon() {

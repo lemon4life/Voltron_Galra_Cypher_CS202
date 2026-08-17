@@ -17,8 +17,8 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
             "Blue Bayard",
             "A fast energy rifle built for accurate ranged pressure.",
             "Lance_Weapon",
-            1.7f,
-            1.7f,
+            1.8f,
+            1.8f,
             15.0f,
             true
         }
@@ -66,7 +66,7 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
         "Pidge",
         "Tech Specialist. Boomerang attack, Poison Zone skill, Rover ultimate.",
         "Paladin_Pidge_Idle",
-        0.9f,    // hpScalar
+        1.5f,    // hpScalar
         1.15f,   // speedScalar
         100.f,   // maxExEnergy
         0.8f,    // attackCooldownScalar
@@ -74,8 +74,8 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
             "Green Bayard",
             "Returning boomerang",
             "Paladin_Pidge_Weapon",
-            0.4f,    // minDamageScalar
-            0.6f,    // maxDamageScalar
+            1.6f,    // minDamageScalar
+            1.8f,    // maxDamageScalar
             0.0f,    // recoil
             false    // recoilApplicable
         }

@@ -143,6 +143,9 @@ void AssetManager::QueueCharacterAssets() {
     add("Paladin_Pidge_DashBack", "assets/sprites/Pidge/Dash_back.png", true);
     add("Paladin_Pidge_Parry", "assets/sprites/Pidge/Parry.png", true);
     add("Paladin_Pidge_Down", "assets/sprites/Pidge/Down.png", true);
+    add("Rover", "assets/sprites/Pidge/Rover.png", true);
+    add("Rover_bullet", "assets/sprites/Pidge/Rover_bullet.png", true);
+    add("HP_effect", "assets/sprites/Effects/HP_effect.png", true);
 
     // Objects
     add("Quint_Orb", "assets/Objects/quint.png", true);
