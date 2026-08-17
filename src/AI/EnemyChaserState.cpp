@@ -4,6 +4,7 @@
 #include "Core/LevelAccess.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/TeamManager.h"
+#include "Core/Manager/AudioManager.h"
 #include "Entities/EnemyEntities/EnemyChaser.h"
 #include "Entities/Player/Paladin.h"
 
@@ -102,6 +103,7 @@ void EnemyChaserDamageState::Enter(EnemyChaser* enemy) {
     );
     dTimer = std::max(0.0f, enemy->GetDamageChargeDuration());
     attackResolved = false;
+    AudioManager::GetInstance().PlayRandomSwordSlash();
 }
 
 void EnemyChaserDamageState::Update(

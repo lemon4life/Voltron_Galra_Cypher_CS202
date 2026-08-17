@@ -4,6 +4,7 @@
 #include "Core/LevelAccess.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/TeamManager.h"
+#include "Core/Manager/AudioManager.h"
 #include "Entities/EnemyEntities/EnemyRange.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Projectile.h"
@@ -215,6 +216,7 @@ bool EnemyRangeShootingState::TryFireProjectile(
     );
     GameManager::GetInstance().AddProjectile(projectile);
     enemy->GetKinematics().ApplyRecoil(direction, 15.0f);
+    AudioManager::GetInstance().PlayRandomLaser();
     enemy->ResetAttackCooldown();
     return true;
 }

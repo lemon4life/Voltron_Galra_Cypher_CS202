@@ -47,7 +47,7 @@ void MeleeAttackStrategy::Attack(Vector2 playerPos) {
         frameTimer = 0.0f;
         inputBuffered = false;
         objectsHit.clear();
-        AudioManager::GetInstance().PlaySoundEffect("swing");
+        AudioManager::GetInstance().PlayRandomSwordSlash();
         kinematics.ApplySwing(0.2f, 120.0f, (comboStep == 2));
     } else if (comboStep == 1 || comboStep == 2) {
         // Buffer the next hit if clicked during the active swing
@@ -125,7 +125,7 @@ void MeleeAttackStrategy::Update(float deltaTime) {
                 currentFrame = 0;
                 inputBuffered = false;
                 objectsHit.clear();
-                AudioManager::GetInstance().PlaySoundEffect("swing");
+                AudioManager::GetInstance().PlayRandomSwordSlash();
                 kinematics.ApplySwing(0.2f, 120.0f, (comboStep == 2));
             } else {
                 // End combo

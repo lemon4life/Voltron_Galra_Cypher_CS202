@@ -179,6 +179,9 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
             for (auto* door : currentlyLockedRoom->doors) {
                 door->SetState(DoorGate::State::OPENING);
             }
+            if (!currentlyLockedRoom->doors.empty()) {
+                AudioManager::GetInstance().PlaySoundEffect("fx_doorgate");
+            }
             currentlyLockedRoom = nullptr;
         }
 
@@ -200,6 +203,9 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
 
                         for (auto* door : node->doors) {
                             door->SetState(DoorGate::State::CLOSING);
+                        }
+                        if (!node->doors.empty()) {
+                            AudioManager::GetInstance().PlaySoundEffect("fx_doorgate");
                         }
                         MarkNavigationChanged();
 
@@ -244,8 +250,12 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
 
                 GameManager::GetInstance().SpawnQuintessenceOrb(e->GetPosition());
 
-                int randNum = GetRandomValue(0, 5);
-                AudioManager::GetInstance().PlaySoundEffectVolume("enemy_dead_" + std::to_string(randNum), 0.25f);
+                int randNum = GetRandomValue(0, 1);
+                if (dynamic_cast<Drone*>(e)) {
+                    AudioManager::GetInstance().PlaySoundEffectVolume("drone_dead_" + std::to_string(randNum), 0.25f);
+                } else {
+                    AudioManager::GetInstance().PlaySoundEffectVolume("knight_dead_" + std::to_string(randNum), 0.25f);
+                }
 
                 QueueRemoval(e);
                 continue;

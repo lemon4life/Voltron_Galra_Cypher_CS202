@@ -2,6 +2,8 @@
 #include "Entities/Player/Paladin.h"
 #include "raylib.h"
 #include "Core/Manager/GameManager.h"
+#include "Core/Manager/AssetManager.h"
+#include "Core/Manager/AudioManager.h"
 #include "Core/Manager/InputManager.h"
 #include "Core/Constants.h"
 #include <algorithm>
@@ -168,6 +170,8 @@ void TeamManager::SwapCharacter() {
     activeIndex = nextIndex;
     Paladin* newActive = GetActivePaladin();
     
+    AudioManager::GetInstance().PlaySoundEffect("fx_switch_character");
+    
     // Transfer position and aim target
     newActive->SetPosition(oldActive->GetPosition());
     newActive->SetAimTarget(oldActive->GetAimTarget());
@@ -206,6 +210,8 @@ void TeamManager::SwapCharacterToIndex(int targetIndex) {
     
     activeIndex = targetIndex;
     Paladin* newActive = GetActivePaladin();
+    
+    AudioManager::GetInstance().PlaySoundEffect("fx_switch_character");
     
     newActive->SetPosition(oldActive->GetPosition());
     newActive->SetAimTarget(oldActive->GetAimTarget());

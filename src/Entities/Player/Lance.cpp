@@ -94,6 +94,7 @@ void Lance::UseSkill() {
     if (exEnergy < skillCost) return;
     
     exEnergy -= skillCost;
+    AudioManager::GetInstance().PlaySoundEffect("fx_lance_skill");
     AudioManager::GetInstance().PlaySoundEffect("vl_lance_skill");
     AddPersonalBuff(std::make_unique<DualWieldBuff>(5.0f));
 }
@@ -117,6 +118,8 @@ void Lance::UseUltimate() {
 void Lance::ExecuteUltimateAction() {
     isUltimateFlash = true;
     ultimateFlashTimer = 0.2f; // Short flash
+    AudioManager::GetInstance().PlaySoundEffect("fx_lance_ult");
+    AudioManager::GetInstance().PlaySoundEffect("fx_ice_explode");
     
     const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
     for (GameObject* obj : entities) {

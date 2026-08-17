@@ -2,6 +2,7 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/UltimateIntroManager.h"
 #include "Core/Manager/TeamManager.h"
+#include "Core/Manager/AudioManager.h"
 #include "Combat/RangedAttackStrategy.h"
 #include "Entities/Rover.h"
 #include "Entities/Projectile.h"
@@ -106,8 +107,9 @@ void Pidge::CatchWeapon() {
 
 void Pidge::UseSkill() {
     if (exEnergy < skillCost) return;
-    
     exEnergy -= skillCost;
+    
+    AudioManager::GetInstance().PlaySoundEffect("fx_flash_lighting");
     
     isVenomZoneActive = true;
     venomZoneTimer = 7.0f;
@@ -118,8 +120,9 @@ void Pidge::UseUltimate() {
     // Gate on Quintessence (shared team fuel) + individual cooldown
     if (ultimateCooldownTimer > 0.0f) return;
     if (!teamManager || !teamManager->ConsumeQuintessence(TeamManager::ULTIMATE_COST)) return;
-    
     ultimateCooldownTimer = ULTIMATE_COOLDOWN_MAX;
+    AudioManager::GetInstance().PlaySoundEffect("fx_pidge_ult");
+    AudioManager::GetInstance().PlaySoundEffect("vl_pidge_ult");
     UltimateIntroManager::GetInstance().PlayIntro(this);
 }
 

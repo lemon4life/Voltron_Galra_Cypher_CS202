@@ -1,5 +1,6 @@
 #include "Entities/Props/Prop.h"
 #include "Core/Manager/AssetManager.h"
+#include "Core/Manager/AudioManager.h"
 #include "Core/Constants.h"
 #include "raylib.h"
 #include <algorithm>
@@ -197,6 +198,7 @@ void Prop::TakeDamage(int amount) {
     health = std::max(0, health - amount);
     if (health == 0) {
         destructionQueued = true;
+        AudioManager::GetInstance().PlaySoundEffect("fx_box_destroy");
         destroyAccess.QueueMapObjectDestruction(*this, objectCell);
     }
 }

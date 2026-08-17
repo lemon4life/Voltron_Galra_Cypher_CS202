@@ -48,7 +48,7 @@ bool CheckCollisionSegmentRec(Vector2 start, Vector2 end, Rectangle rec) {
 }
 
 void LaserAttackStrategy::Attack(Vector2 playerPos) {
-    AudioManager::GetInstance().PlayRandomLaser();
+    AudioManager::GetInstance().PlayRandomLaserGun();
     
     laserTimer = maxLaserTime;
     float barrelLength = weaponTex.width; 

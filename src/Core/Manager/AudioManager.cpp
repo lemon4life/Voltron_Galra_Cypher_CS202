@@ -38,19 +38,36 @@ AudioManager& AudioManager::GetInstance() {
 
 void AudioManager::Initialize() {
     laserSounds.clear();
+    laserGunSounds.clear();
     footstepSounds.clear();
     clickSounds.clear();
+    swordSlashSounds.clear();
 
     for (int i = 0; i < 5; ++i) {
-        std::string num = "00" + std::to_string(i);
-        laserSounds.push_back(::LoadSound(
-            ("assets/audio/Weapon/Firearm/laserSmall_" + num + ".ogg").c_str()
+        std::string num_str = std::to_string(i);
+        laserGunSounds.push_back(::LoadSound(
+            ("assets/audio/SFX/Combat/fx_laser_gun_" + num_str + ".ogg").c_str()
         ));
+        std::string num = "00" + std::to_string(i);
         footstepSounds.push_back(::LoadSound(
-            ("assets/audio/Impact/Footstep/footstep_concrete_" + num + ".ogg").c_str()
+            ("assets/audio/SFX/Environment/footstep_concrete_" + num + ".ogg").c_str()
         ));
         clickSounds.push_back(::LoadSound(
-            ("assets/audio/UI/Button/click_" + num + ".ogg").c_str()
+            ("assets/audio/SFX/UI/click_" + num + ".ogg").c_str()
+        ));
+    }
+    
+    for (int i = 0; i < 2; ++i) {
+        std::string num = std::to_string(i);
+        swordSlashSounds.push_back(::LoadSound(
+            ("assets/audio/SFX/Combat/fx_sword_slash_" + num + ".wav").c_str()
+        ));
+    }
+
+    for (int i = 0; i < 6; ++i) {
+        std::string num = std::to_string(i);
+        laserSounds.push_back(::LoadSound(
+            ("assets/audio/SFX/Combat/fx_laser_small_" + num + ".wav").c_str()
         ));
     }
 
@@ -59,30 +76,53 @@ void AudioManager::Initialize() {
     LoadMusic("bgm_story_mode", "assets/audio/BGM/bgm_story_mode.mp3");
     LoadMusic("bgm_battle", "assets/audio/BGM/bgm_battle.mp3");
 
-    // Load Enemy SFX
-    for (int i = 0; i <= 5; ++i) {
-        LoadSound("enemy_dead_" + std::to_string(i), "assets/audio/SFX/fx_dead_" + std::to_string(i) + ".wav");
-    }
+    // Load Enemy SFX correctly
+    LoadSound("knight_dead_0", "assets/audio/SFX/Enemy/knight_dead_0.wav");
+    LoadSound("knight_dead_1", "assets/audio/SFX/Enemy/knight_dead_1.wav");
+    LoadSound("drone_dead_0", "assets/audio/SFX/Enemy/drone_dead_0.wav");
+    LoadSound("drone_dead_1", "assets/audio/SFX/Enemy/drone_dead_1.wav");
+
+    // SFX - Combat
+    LoadSound("fx_laser_bullet", "assets/audio/SFX/Combat/fx_laser_bullet.wav");
+    LoadSound("fx_explode_big", "assets/audio/SFX/Combat/fx_explode_big.wav");
+    LoadSound("fx_explode_small", "assets/audio/SFX/Combat/fx_explode_small.wav");
+    LoadSound("fx_shield_hit", "assets/audio/SFX/Combat/fx_shield_hit.wav");
+    // SFX - Environment & Items
+    LoadSound("fx_energy", "assets/audio/SFX/Item/fx_energy.wav");
+    LoadSound("fx_coin", "assets/audio/SFX/Item/fx_coin.wav");
+    LoadSound("fx_pickup", "assets/audio/SFX/Item/fx_pickup.wav");
+    LoadSound("fx_box_destroy", "assets/audio/SFX/Environment/fx_box_destroy.wav");
+    LoadSound("fx_chest_open", "assets/audio/SFX/Environment/fx_chest_open.wav");
+    LoadSound("fx_cage_open", "assets/audio/SFX/Environment/fx_cage_open.wav");
+    LoadSound("fx_doorgate", "assets/audio/SFX/Environment/fx_doorgate.wav");
     
-    LoadSound("fx_energy", "assets/audio/SFX/fx_energy.wav");
+    // SFX - Character Skills & Ults
+    LoadSound("fx_lance_skill", "assets/audio/SFX/Character/fx_lance_skill.wav");
+    LoadSound("fx_lance_ult", "assets/audio/SFX/Character/fx_lance_ult.wav");
+    LoadSound("fx_pidge_ult", "assets/audio/SFX/Character/fx_pidge_ult.wav");
+    LoadSound("fx_hunk_skill", "assets/audio/SFX/Character/fx_hunk_skill.wav");
+    LoadSound("fx_keith_ult", "assets/audio/SFX/Character/fx_keith_ult.wav");
+    LoadSound("fx_switch_character", "assets/audio/SFX/UI/fx_switch_character.wav");
+    LoadSound("fx_get_buff", "assets/audio/SFX/Character/fx_get_buff.wav");
+    LoadSound("fx_ice_explode", "assets/audio/SFX/Character/fx_ice_explode.wav");
+    LoadSound("fx_ice_hit", "assets/audio/SFX/Character/fx_ice_hit.wav");
+    LoadSound("fx_fire", "assets/audio/SFX/Character/fx_fire.wav");
+    LoadSound("fx_flash_lighting", "assets/audio/SFX/Character/fx_flash_lighting.wav");
+
     LoadMusic("bgm_boss_theme", "assets/audio/BGM/bgm_boss_theme.mp3");
 
     // Load Voicelines
-    LoadSound("vl_lance_skill", "assets/audio/Voiceline/lance_skill.wav");
-    LoadSound("vl_lance_ult", "assets/audio/Voiceline/lance_ult.wav");
+    LoadSound("vl_lance_skill", "assets/audio/Voice/lance_skill.wav");
+    LoadSound("vl_lance_ult", "assets/audio/Voice/lance_ult.wav");
+    LoadSound("vl_pidge_ult", "assets/audio/Voice/pidge_ult.wav");
+    LoadSound("vl_keith_ult", "assets/audio/Voice/keith_ult.wav");
+    LoadSound("vl_hunk_ult", "assets/audio/Voice/hunk_ult.wav");
 
     currentFootstepIndex = 0;
     SetSoundEffectsVolume(soundEffectsVolume);
     SetMusicVolumeLevel(musicVolume);
 }
 
-void AudioManager::PlayRandomLaser() {
-    if (laserSounds.empty()) return;
-    int idx = GetRandomValue(0, laserSounds.size() - 1);
-    float pitch = GetRandomValue(90, 110) / 100.0f;
-    SetSoundPitch(laserSounds[idx], pitch);
-    ::PlaySound(laserSounds[idx]);
-}
 
 void AudioManager::PlaySequentialFootstep() {
     if (footstepSounds.empty()) return;
@@ -98,8 +138,37 @@ void AudioManager::PlayRandomClick() {
     int idx = GetRandomValue(0, clickSounds.size() - 1);
     float pitch = GetRandomValue(90, 110) / 100.0f;
     SetSoundPitch(clickSounds[idx], pitch);
+    SetSoundVolume(clickSounds[idx], soundEffectsVolume);
     ::PlaySound(clickSounds[idx]);
 }
+
+void AudioManager::PlayRandomSwordSlash() {
+    if (swordSlashSounds.empty()) return;
+    int index = GetRandomValue(0, swordSlashSounds.size() - 1);
+    float pitch = GetRandomValue(90, 110) / 100.0f;
+    SetSoundPitch(swordSlashSounds[index], pitch);
+    SetSoundVolume(swordSlashSounds[index], soundEffectsVolume);
+    ::PlaySound(swordSlashSounds[index]);
+}
+
+void AudioManager::PlayRandomLaser() {
+    if (laserSounds.empty()) return;
+    int index = GetRandomValue(0, laserSounds.size() - 1);
+    float pitch = GetRandomValue(90, 110) / 100.0f;
+    SetSoundPitch(laserSounds[index], pitch);
+    SetSoundVolume(laserSounds[index], soundEffectsVolume);
+    ::PlaySound(laserSounds[index]);
+}
+
+void AudioManager::PlayRandomLaserGun() {
+    if (laserGunSounds.empty()) return;
+    int index = GetRandomValue(0, laserGunSounds.size() - 1);
+    float pitch = GetRandomValue(90, 110) / 100.0f;
+    SetSoundPitch(laserGunSounds[index], pitch);
+    SetSoundVolume(laserGunSounds[index], soundEffectsVolume);
+    ::PlaySound(laserGunSounds[index]);
+}
+
 
 void AudioManager::LoadSound(const std::string& name, const std::string& filepath) {
     if (sounds.find(name) == sounds.end()) {

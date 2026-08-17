@@ -1,4 +1,5 @@
 #include "Entities/Player/Keith.h"
+#include "Core/Manager/AudioManager.h"
 #include "Combat/MeleeAttackStrategy.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/TeamManager.h"
@@ -36,8 +37,8 @@ void Keith::UseSkill() {
     if (teamManager) {
         teamManager->AddSharedBuff(std::make_unique<FireCircleBuff>(5.0f));
     }
-    
     exEnergy -= skillCost;
+    AudioManager::GetInstance().PlaySoundEffect("fx_fire");
 }
 
 void Keith::UseUltimate() {
@@ -52,10 +53,12 @@ void Keith::UseUltimate() {
 #include "Core/Manager/UltimateIntroManager.h"
 
 void Keith::ExecuteUltimateAction() {
+    AudioManager::GetInstance().PlaySoundEffect("fx_keith_ult");
+    AudioManager::GetInstance().PlaySoundEffect("vl_keith_ult");
+    const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
     float length = 300.0f;
     float width = 100.0f;
     
-    const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
     for (GameObject* obj : entities) {
         Enemy* enemy = dynamic_cast<Enemy*>(obj);
         if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {

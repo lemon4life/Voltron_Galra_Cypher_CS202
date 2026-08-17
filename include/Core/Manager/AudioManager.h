@@ -10,11 +10,13 @@ private:
     std::map<std::string, Music> music;
 
     std::vector<Sound> laserSounds;
+    std::vector<Sound> laserGunSounds;
     std::vector<Sound> footstepSounds;
     std::vector<Sound> clickSounds;
+    std::vector<Sound> swordSlashSounds;
 
     int currentFootstepIndex = 0;
-    float soundEffectsVolume = 1.0f;
+    float soundEffectsVolume = 0.4f;
     float musicVolume = 0.05f;
 
     AudioManager(); // Private constructor (Initializes Raylib Audio)
@@ -34,6 +36,10 @@ public:
     void PlaySequentialFootstep();
     void PlayRandomClick();
 
+    void PlayRandomSwordSlash();
+    void PlayRandomLaserGun();
+
+    // Volume Control
     void LoadSound(const std::string& name, const std::string& filepath);
     void PlaySoundEffect(const std::string& name);
     void PlaySoundEffectVolume(const std::string& name, float volumeScale);

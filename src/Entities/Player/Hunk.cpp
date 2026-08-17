@@ -1,4 +1,5 @@
 #include "Entities/Player/Hunk.h"
+#include "Core/Manager/AudioManager.h"
 #include "Combat/LaserAttackStrategy.h"
 #include "Entities/Player/PaladinDefinition.h"
 #include "Core/Manager/TeamManager.h"
@@ -64,6 +65,8 @@ void Hunk::UseSkill() {
     if (exEnergy < skillCost) return;
     exEnergy -= skillCost;
     
+    AudioManager::GetInstance().PlaySoundEffect("fx_hunk_skill");
+    
     isEarthshatterFlash = true;
     earthshatterFlashTimer = 0.2f;
     
@@ -99,6 +102,8 @@ void Hunk::UseUltimate() {
 }
 
 void Hunk::ExecuteUltimateAction() {
+    AudioManager::GetInstance().PlaySoundEffect("vl_hunk_ult");
+    AudioManager::GetInstance().PlaySoundEffect("fx_get_buff");
     if (teamManager) {
         teamManager->AddSharedBuff(std::make_unique<AegisShieldBuff>(5.0f));
     }

@@ -38,7 +38,7 @@ void RangedAttackStrategy::Attack(Vector2 playerPos) {
     muzzleFlashTimer = 0.05f;
     GameManager::GetInstance().AddProjectile(p);
     
-    AudioManager::GetInstance().PlayRandomLaser();
+    AudioManager::GetInstance().PlayRandomLaserGun();
 }
 
 void RangedAttackStrategy::Update(float deltaTime) {
