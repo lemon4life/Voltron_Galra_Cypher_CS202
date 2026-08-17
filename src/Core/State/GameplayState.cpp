@@ -9,6 +9,8 @@
 #include "Entities/Enemy.h"
 #include "UI/MinimapRenderer.h"
 #include "UI/UIUtils.h"
+#include "Entities/Props/Pot.h"
+#include "raymath.h"
 
 GameplayState::GameplayState(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager)
     : teamManager(teamManager), levelManager(levelManager), waveManager(waveManager) {
@@ -44,6 +46,26 @@ void GameplayState::Update(float deltaTime) {
                     waveManager->Reset(0, 0, 0);
                 }
             }
+        }
+        
+        Paladin* active = teamManager->GetActivePaladin();
+        Pot* nearestPot = nullptr;
+        float closestDistSq = 50.0f * 50.0f;
+        for (GameObject* obj : levelManager->GetEntities()) {
+            if (obj->GetObjectType() == GameObjectType::Prop) {
+                Pot* pot = dynamic_cast<Pot*>(obj);
+                if (pot && !pot->IsConsumed()) {
+                    float distSq = Vector2DistanceSqr(active->GetPosition(), pot->GetPosition());
+                    if (distSq < closestDistSq) {
+                        closestDistSq = distSq;
+                        nearestPot = pot;
+                    }
+                }
+            }
+        }
+        
+        if (nearestPot && InputManager::IsInteractPressed()) {
+            nearestPot->OnConsume(teamManager);
         }
         
         GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
@@ -157,6 +179,35 @@ void GameplayState::Draw() {
         };
         UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
         UIUtils::DrawCenteredText("PixeloidSans", "Press F to go to the next floor", { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
+    }
+    else {
+        Paladin* active = teamManager->GetActivePaladin();
+        Pot* nearestPot = nullptr;
+        float closestDistSq = 50.0f * 50.0f;
+        for (GameObject* obj : levelManager->GetEntities()) {
+            if (obj->GetObjectType() == GameObjectType::Prop) {
+                Pot* pot = dynamic_cast<Pot*>(obj);
+                if (pot && !pot->IsConsumed()) {
+                    float distSq = Vector2DistanceSqr(active->GetPosition(), pot->GetPosition());
+                    if (distSq < closestDistSq) {
+                        closestDistSq = distSq;
+                        nearestPot = pot;
+                    }
+                }
+            }
+        }
+        
+        if (nearestPot) {
+            float textWidth = UIUtils::MeasureText("PixeloidSans", "Press F to consume", UIUtils::FontSize::SMALL).x;
+            Rectangle background = {
+                (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
+                Constants::GAME_HEIGHT - 44.0f,
+                textWidth + 20.0f,
+                28.0f
+            };
+            UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
+            UIUtils::DrawCenteredText("PixeloidSans", "Press F to consume", { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
+        }
     }
 
     UltimateIntroManager::GetInstance().Draw();

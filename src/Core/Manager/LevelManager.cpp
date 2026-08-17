@@ -14,6 +14,9 @@
 #include "Entities/Props/Prop.h"
 #include "Entities/Props/DoorGate.h"
 
+#include "Core/Level/ILevelProvider.h"
+#include "Entities/Props/Pot.h"
+#include "Core/Level/StaticLevelProvider.h"
 #include "Core/Utils/MapLoader.h"
 #include "Core/Level/ProceduralLevelProvider.h"
 #include "Core/Level/StaticLevelProvider.h"
@@ -239,6 +242,14 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
     enemyPathManager.Update(*this, deltaTime);
 
     for (auto it = levelEntities.begin(); it != levelEntities.end(); it++) {
+        if ((*it)->GetObjectType() == GameObjectType::Prop) {
+            class Pot* pot = dynamic_cast<class Pot*>(*it);
+            if (pot && pot->IsConsumed()) {
+                QueueRemoval(pot);
+                continue;
+            }
+        }
+
         if ((*it)->GetObjectType() == GameObjectType::Enemy) {
             Enemy* e = static_cast<Enemy*>(*it);
             if (e->IsDead()) {
@@ -758,6 +769,11 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
         float spawnWorldX = bounds.x + bounds.width / 2.0f;
         float spawnWorldY = bounds.y + bounds.height / 2.0f;
         teamManager->GetActivePaladin()->SetPosition({spawnWorldX, spawnWorldY});
+
+        // Add 3 testing pots
+        AddEntity(new HpPot({spawnWorldX - 40.0f, spawnWorldY - 50.0f}));
+        AddEntity(new ExPot({spawnWorldX, spawnWorldY - 50.0f}));
+        AddEntity(new QuintPot({spawnWorldX + 40.0f, spawnWorldY - 50.0f}));
 
         // Auto-discover spawn room and mark it cleared (no combat in spawn)
         levelMap.spawnRoom->isDiscovered = true;

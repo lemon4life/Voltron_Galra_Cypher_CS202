@@ -10,7 +10,7 @@ void HpPot::OnConsume(TeamManager* team) {
         if (p->GetHealth() > 0) {
             int healAmount = p->GetMaxHealth() * 0.2f;
             p->Heal(healAmount);
-            p->AddAttachedEffect(AssetManager::GetInstance().GetTexture("HP_effect"), 8, 1.0f);
+            p->AddAttachedEffect(AssetManager::GetInstance().GetTexture("HP_effect"), 8, 0.5f);
         }
     }
 }
@@ -24,7 +24,7 @@ void ExPot::OnConsume(TeamManager* team) {
         if (p->GetHealth() > 0) {
             float exAmount = p->GetMaxExEnergy() * 0.3f;
             p->AddExEnergy(exAmount);
-            p->AddAttachedEffect(AssetManager::GetInstance().GetTexture("Ex_effect"), 8, 1.0f);
+            p->AddAttachedEffect(AssetManager::GetInstance().GetTexture("Ex_effect"), 8, 0.5f);
         }
     }
 }
@@ -39,6 +39,6 @@ void QuintPot::OnConsume(TeamManager* team) {
     // Apply effect to active paladin
     Paladin* active = team->GetActivePaladin();
     if (active && active->GetHealth() > 0) {
-        active->AddAttachedEffect(AssetManager::GetInstance().GetTexture("Quint_effect"), 8, 1.0f);
+        active->AddAttachedEffect(AssetManager::GetInstance().GetTexture("Quint_effect"), 8, 0.5f);
     }
 }
