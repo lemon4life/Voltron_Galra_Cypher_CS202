@@ -80,7 +80,14 @@ void Rover::Update(float deltaTime) {
             Vector2 toTarget = { targetPos.x - position.x, targetPos.y - position.y };
             float dist = std::sqrt(toTarget.x * toTarget.x + toTarget.y * toTarget.y);
             
-            float teleportRadius = 400.0f;
+            LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
+            
+            bool hasLOS = true;
+            if (levelManager) {
+                hasLOS = levelManager->HasClearLineOfSight(position, targetPos, 5.0f);
+            }
+            
+            float teleportRadius = hasLOS ? 400.0f : 150.0f;
             if (dist > teleportRadius) {
                 position.x = owner->GetPosition().x;
                 position.y = owner->GetPosition().y - 600.0f;
@@ -102,8 +109,6 @@ void Rover::Update(float deltaTime) {
             float smoothingFactor = 8.0f; 
             currentVelocity.x += (desiredVelocity.x - currentVelocity.x) * smoothingFactor * deltaTime;
             currentVelocity.y += (desiredVelocity.y - currentVelocity.y) * smoothingFactor * deltaTime;
-            
-            LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
             
             position.x += currentVelocity.x * deltaTime;
             boundingBox.x = position.x - 8.0f;
