@@ -147,6 +147,29 @@ void Paladin::TickTimers(float deltaTime) {
             ++it;
         }
     }
+
+    // Update attached effects
+    for (auto it = attachedEffects.begin(); it != attachedEffects.end();) {
+        it->lifetime -= deltaTime;
+        if (it->lifetime <= 0.0f) {
+            it = attachedEffects.erase(it);
+        } else {
+            float progress = 1.0f - (it->lifetime / it->maxLifetime);
+            it->currentFrame = (int)(progress * it->numFrames);
+            if (it->currentFrame >= it->numFrames) it->currentFrame = it->numFrames - 1;
+            ++it;
+        }
+    }
+}
+
+void Paladin::AddAttachedEffect(Texture2D tex, int frames, float lifetime) {
+    AttachedEffect effect;
+    effect.texture = tex;
+    effect.numFrames = frames;
+    effect.currentFrame = 0;
+    effect.lifetime = lifetime;
+    effect.maxLifetime = lifetime;
+    attachedEffects.push_back(effect);
 }
 
 Projectile* Paladin::SpawnLinearProjectile(Vector2 dir, float speed, int damage, float maxFlyTime, bool piercing, Texture2D tex, bool fixedRotation) {
@@ -404,6 +427,16 @@ void Paladin::Draw() {
         currentWeapon->Draw(pivot, facingLeft);
     }
 
+    for (const auto& effect : attachedEffects) {
+        if (effect.texture.id != 0) {
+            float eFrameWidth = (float)effect.texture.width / effect.numFrames;
+            float eFrameHeight = (float)effect.texture.height;
+            Rectangle eSource = { effect.currentFrame * eFrameWidth, 0.0f, eFrameWidth, eFrameHeight };
+            Rectangle eDest = { position.x, position.y + renderOffsetY, eFrameWidth, eFrameHeight };
+            Vector2 eOrigin = { eFrameWidth / 2.0f, eFrameHeight / 2.0f };
+            DrawTexturePro(effect.texture, eSource, eDest, eOrigin, 0.0f, WHITE);
+        }
+    }
 }
 
 Texture2D Paladin::GetIdleTexture() const {

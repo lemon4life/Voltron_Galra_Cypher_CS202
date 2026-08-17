@@ -41,6 +41,14 @@ struct CharacterSprites {
     Texture2D down;
 };
 
+struct AttachedEffect {
+    Texture2D texture;
+    int numFrames;
+    int currentFrame;
+    float lifetime;
+    float maxLifetime;
+};
+
 class TeamManager;
 
 class Paladin : public Character {
@@ -114,6 +122,7 @@ protected:
     IAimStrategy* currentAimStrategy;
 
     std::vector<std::unique_ptr<IBuff>> personalBuffs;
+    std::vector<AttachedEffect> attachedEffects;
 
     void TickTimers(float deltaTime);
     class Projectile* SpawnLinearProjectile(Vector2 dir, float speed, int damage, float maxFlyTime, bool piercing, Texture2D tex, bool fixedRotation);
@@ -131,6 +140,8 @@ public:
     virtual void UpdateInactive(float deltaTime);
     virtual void DrawInactive();
     virtual bool IsDoingUltimate() const { return false; }
+    
+    void AddAttachedEffect(Texture2D tex, int frames, float lifetime);
     
     void SetParrying(bool parry);
     int GetConsecutiveParries() const { return consecutiveParries; }
