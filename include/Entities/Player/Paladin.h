@@ -226,12 +226,20 @@ public:
     // Getters
     int GetHealth() const { return health; }
     int GetMaxHealth() const { return maxHealth; }
+    void Heal(int amount) {
+        health += amount;
+        if (health > maxHealth) health = maxHealth;
+    }
     PaladinId GetPaladinId() const { return paladinId; }
     float GetGhostHp() const { return ghostHp; }
     float GetDisplayedHp() const { return displayedHp; }
     float GetDisplayedExEnergy() const { return displayedExEnergy; }
     float GetExEnergy() const { return exEnergy; }
     float GetMaxExEnergy() const { return maxExEnergy; }
+    void AddExEnergy(float amount) {
+        exEnergy += amount;
+        if (exEnergy > maxExEnergy) exEnergy = maxExEnergy;
+    }
     float GetSkillCost() const { return skillCost; }
     Rectangle GetHudPortraitSlice() const { return hudPortraitSlice; }
 

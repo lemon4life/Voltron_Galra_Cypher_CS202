@@ -9,7 +9,8 @@ enum class GameObjectType {
     HubPaladinStand,
     Wall,
     Projectile,
-    DoorGate
+    DoorGate,
+    Prop
 };
 
 class GameObject {

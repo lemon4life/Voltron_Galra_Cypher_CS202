@@ -146,6 +146,8 @@ void AssetManager::QueueCharacterAssets() {
     add("Rover", "assets/sprites/Pidge/Rover.png", true);
     add("Rover_bullet", "assets/sprites/Pidge/Rover_bullet.png", true);
     add("HP_effect", "assets/sprites/Effects/HP_effect.png", true);
+    add("Ex_effect", "assets/sprites/Effects/Ex_effect.png", true);
+    add("Quint_effect", "assets/sprites/Effects/Quint_effect.png", true);
 
     // Objects
     add("Quint_Orb", "assets/Objects/quint.png", true);
