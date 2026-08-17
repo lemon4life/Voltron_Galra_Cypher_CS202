@@ -7,6 +7,7 @@
 #include "raymath.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/LevelManager.h"
+#include "Core/Manager/ParticleManager.h"
 #include <cmath>
 #include <iostream>
 
@@ -136,6 +137,13 @@ void Rover::Draw() {
 }
 
 void Rover::TakeDamage(int damage) {
+    if (IsDead()) return;
+    
+    int actualDamage = std::min(health, damage);
     health -= damage;
     if (health < 0) health = 0;
+    
+    if (actualDamage > 0) {
+        ParticleManager::GetInstance().SpawnDamageNumber(position, actualDamage);
+    }
 }

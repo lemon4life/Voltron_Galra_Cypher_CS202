@@ -4,6 +4,8 @@
 #include "Entities/Enemy.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Props/Prop.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/ParticleManager.h"
 #include <algorithm>
 #include <cstdlib>
 #include "Core/Constants.h"
@@ -93,7 +95,9 @@ void MeleeAttackStrategy::Update(float deltaTime) {
                 if (entity->GetObjectType() == GameObjectType::Enemy) {
                     Enemy& enemy = static_cast<Enemy&>(*entity);
                     if (!enemy.IsEnabled()) continue;
+                    
                     enemy.TakeDamage(damage);
+                    
                     enemy.ApplyKnockback(aimDir, MELEE_KNOCKBACK_FORCE);
                     damagedObject = true;
                     if (owner) owner->OnHitEnemy(damage);

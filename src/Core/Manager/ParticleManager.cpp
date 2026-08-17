@@ -4,13 +4,7 @@
 
 // ─── Constructor ────────────────────────────────────────────────────────────
 
-ParticleManager::ParticleManager() : nextSearchIndex(0), silhouetteShader({ 0 }) {
-    pool.resize(POOL_SIZE);
-    for (auto& p : pool) {
-        p.active     = false;
-        p.texture    = { 0 };
-        p.silhouette = false;
-    }
+ParticleManager::ParticleManager() : silhouetteShader({ 0 }) {
 }
 
 ParticleManager::~ParticleManager() {
@@ -43,128 +37,102 @@ ParticleManager& ParticleManager::GetInstance() {
     return instance;
 }
 
-// ─── Object Pool Helper ──────────────────────────────────────────────────────
+// ─── SpriteParticle Implementation ──────────────────────────────────────────
 
-int ParticleManager::GetNextAvailableIndex() {
-    // Round-robin scan starting from our hint index for O(n) worst case
-    // but typically O(1) amortized when particles expire naturally.
-    for (int i = 0; i < POOL_SIZE; ++i) {
-        int idx = (nextSearchIndex + i) % POOL_SIZE;
-        if (!pool[idx].active) {
-            nextSearchIndex = (idx + 1) % POOL_SIZE;
-            return idx;
+SpriteParticle::SpriteParticle(Vector2 pos, Vector2 vel, Color col, float sz, float life, 
+                               Texture2D tex, Rectangle srcRect, float rot, bool sil)
+    : position(pos), velocity(vel), color(col), size(sz), lifeSpan(life), lifeRemaining(life),
+      texture(tex), sourceRect(srcRect), rotation(rot), silhouette(sil) {}
+
+void SpriteParticle::Update(float deltaTime) {
+    lifeRemaining -= deltaTime;
+    
+    // Move based on velocity
+    position.x += velocity.x * deltaTime;
+    position.y += velocity.y * deltaTime;
+
+    // Fade alpha linearly as the particle dies
+    float lifeRatio = lifeRemaining / lifeSpan; // 1.0 = fresh, 0.0 = dead
+    color.a = (unsigned char)(lifeRatio * 255.0f);
+}
+
+void SpriteParticle::Draw() const {
+    if (texture.id != 0) {
+        // Sprite particle — optionally use silhouette shader
+        float halfSize = size * 0.5f;
+        Rectangle dest   = { position.x, position.y, size, size };
+        Vector2   origin = { halfSize, halfSize };
+
+        if (silhouette) {
+            Shader silhouetteShader = ParticleManager::GetInstance().GetSilhouetteShader();
+            if (silhouetteShader.id != 0) {
+                BeginShaderMode(silhouetteShader);
+                DrawTexturePro(texture, sourceRect, dest, origin, rotation, color);
+                EndShaderMode();
+            } else {
+                DrawTexturePro(texture, sourceRect, dest, origin, rotation, color);
+            }
+        } else {
+            DrawTexturePro(texture, sourceRect, dest, origin, rotation, color);
+        }
+    } else {
+        // Basic shape particle
+        if (size <= 4.0f) {
+            DrawCircleV(position, size, color);
+        } else {
+            int half = (int)(size * 0.5f);
+            DrawRectangle(
+                (int)position.x - half,
+                (int)position.y - half,
+                (int)size,
+                (int)size,
+                color
+            );
         }
     }
+}
 
-    // Pool is full — overwrite the oldest particle starting at the hint index.
-    // This is the "graceful degradation" path: we never allocate, we just recycle.
-    int idx = nextSearchIndex;
-    nextSearchIndex = (nextSearchIndex + 1) % POOL_SIZE;
-    return idx;
+bool SpriteParticle::IsDead() const {
+    return lifeRemaining <= 0.0f;
 }
 
 // ─── Emission ────────────────────────────────────────────────────────────────
 
 void ParticleManager::Emit(Vector2 position, Vector2 velocity, Color color, float size, float lifeSpan) {
-    int idx = GetNextAvailableIndex();
-    Particle& p = pool[idx];
-
-    p.position      = position;
-    p.velocity      = velocity;
-    p.color         = color;
-    p.size          = size;
-    p.lifeSpan      = lifeSpan;
-    p.lifeRemaining = lifeSpan;
-    p.active        = true;
-    p.texture       = { 0 }; // No texture → draw as shape
-    p.sourceRect    = { 0 };
-    p.rotation      = 0.0f;
+    activeParticles.push_back(std::make_unique<SpriteParticle>(position, velocity, color, size, lifeSpan));
 }
 
 void ParticleManager::EmitSprite(Vector2 position, Vector2 velocity, Texture2D texture,
                                   Rectangle sourceRect, float rotation, float size,
                                   float lifeSpan, Color tint, bool silhouette) {
-    int idx = GetNextAvailableIndex();
-    Particle& p = pool[idx];
-
-    p.position      = position;
-    p.velocity      = velocity;
-    p.color         = tint;
-    p.size          = size;
-    p.lifeSpan      = lifeSpan;
-    p.lifeRemaining = lifeSpan;
-    p.active        = true;
-    p.texture       = texture;
-    p.sourceRect    = sourceRect;
-    p.rotation      = rotation;
-    p.silhouette    = silhouette;
+    activeParticles.push_back(std::make_unique<SpriteParticle>(position, velocity, tint, size, lifeSpan, texture, sourceRect, rotation, silhouette));
 }
 
 // ─── Update ──────────────────────────────────────────────────────────────────
 
 void ParticleManager::Update(float deltaTime) {
-    for (auto& p : pool) {
-        if (!p.active) continue;
-
-        p.lifeRemaining -= deltaTime;
-        if (p.lifeRemaining <= 0.0f) {
-            p.active = false;
-            continue;
+    for (auto it = activeParticles.begin(); it != activeParticles.end(); ) {
+        (*it)->Update(deltaTime);
+        if ((*it)->IsDead()) {
+            it = activeParticles.erase(it);
+        } else {
+            ++it;
         }
-
-        // Move based on velocity
-        p.position.x += p.velocity.x * deltaTime;
-        p.position.y += p.velocity.y * deltaTime;
-
-        // Fade alpha linearly as the particle dies
-        float lifeRatio = p.lifeRemaining / p.lifeSpan; // 1.0 = fresh, 0.0 = dead
-        p.color.a = (unsigned char)(lifeRatio * 255.0f);
     }
 }
 
 // ─── Draw ────────────────────────────────────────────────────────────────────
 
 void ParticleManager::Draw() {
-    for (const auto& p : pool) {
-        if (!p.active) continue;
-
-        if (p.texture.id != 0) {
-            // Sprite particle — optionally use silhouette shader
-            float halfSize = p.size * 0.5f;
-            Rectangle dest   = { p.position.x, p.position.y, p.size, p.size };
-            Vector2   origin = { halfSize, halfSize };
-
-            if (p.silhouette && silhouetteShader.id != 0) {
-                BeginShaderMode(silhouetteShader);
-                DrawTexturePro(p.texture, p.sourceRect, dest, origin, p.rotation, p.color);
-                EndShaderMode();
-            } else {
-                DrawTexturePro(p.texture, p.sourceRect, dest, origin, p.rotation, p.color);
-            }
-        } else {
-            // Basic shape particle
-            if (p.size <= 4.0f) {
-                DrawCircleV(p.position, p.size, p.color);
-            } else {
-                int half = (int)(p.size * 0.5f);
-                DrawRectangle(
-                    (int)p.position.x - half,
-                    (int)p.position.y - half,
-                    (int)p.size,
-                    (int)p.size,
-                    p.color
-                );
-            }
-        }
+    for (const auto& p : activeParticles) {
+        p->Draw();
     }
 }
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 
 void ParticleManager::Clear() {
-    for (auto& p : pool) {
-        p.active = false;
-    }
+    activeParticles.clear();
 }
 
 // ─── Combat Emitters ─────────────────────────────────────────────────────────
@@ -237,5 +205,17 @@ void ParticleManager::SpawnImpact(Vector2 pos, Vector2 projectileVelocity, Color
 
         Emit(pos, vel, c, size, LIFE);
     }
+}
+
+#include "Core/Visuals/DamageTextParticle.h"
+
+void ParticleManager::SpawnDamageNumber(Vector2 pos, int damage) {
+    // Generate a random slight upward/outward velocity (less extreme)
+    float angle = (float)GetRandomValue(-120, -60) * DEG2RAD;
+    float speed = (float)GetRandomValue(50, 100);
+    Vector2 vel = { cosf(angle) * speed, sinf(angle) * speed };
+    
+    // Create new DamageTextParticle and add it with a shorter lifetime
+    activeParticles.push_back(std::make_unique<DamageTextParticle>(pos, vel, damage, 0.5f));
 }
 

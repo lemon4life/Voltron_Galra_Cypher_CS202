@@ -6,6 +6,8 @@
 #include "Entities/Enemy.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Props/Prop.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/ParticleManager.h"
 #include <cmath>
 #include <iostream>
 
@@ -83,6 +85,7 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
             if (!e->IsEnabled()) continue;
             if (CheckCollisionSegmentRec(collisionStart, laserEndPoint, e->GetBoundingBox())) {
                 e->TakeDamage(damage); // Piercing laser damage
+                
                 // Add Impact Effect visually
                 GameManager::GetInstance().AddImpactEffect({e->GetPosition().x, e->GetPosition().y});
                 if (owner) {

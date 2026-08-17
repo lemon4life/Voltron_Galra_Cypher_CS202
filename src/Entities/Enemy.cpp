@@ -5,6 +5,8 @@
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "raymath.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/ParticleManager.h"
 
 #include <algorithm>
 
@@ -99,8 +101,15 @@ void Enemy::SetMaxHealth(int value) {
 void Enemy::TakeDamage(int amount) {
     if (!IsEnabled() || health <= 0) return;
 
+    int actualDamage = std::min(health, amount);
     health -= amount;
     if (health < 0) health = 0;
+    
+    if (actualDamage > 0) {
+        GameManager::GetInstance().GetComboMeter().AddDamage(actualDamage);
+        ParticleManager::GetInstance().SpawnDamageNumber(position, actualDamage);
+    }
+    
     AudioManager::GetInstance().PlaySoundEffect("hit");
 
     if (health <= 0 && !deathNotified) {

@@ -49,6 +49,8 @@ void GameplayState::Update(float deltaTime) {
         GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
         GameManager::GetInstance().UpdateAssists(deltaTime, teamManager);
         waveManager->Update(deltaTime, teamManager, levelManager);
+        
+        GameManager::GetInstance().GetComboMeter().Update(deltaTime);
     }
     GameManager::GetInstance().UpdateOrbs(deltaTime, teamManager);
     DecalManager::GetInstance().Update(deltaTime);
@@ -117,6 +119,10 @@ void GameplayState::Draw() {
     BeginMode2D(uiCamera);
     
     waveManager->DrawHUD();
+    
+    float leftEdge = -uiCamera.offset.x / viewportScale;
+    float topEdge = -uiCamera.offset.y / viewportScale;
+    GameManager::GetInstance().GetComboMeter().Draw({ leftEdge + 20.0f, topEdge + 150.0f });
 
     if (levelManager->IsProceduralDungeon()) {
         int currentGridX = 3;

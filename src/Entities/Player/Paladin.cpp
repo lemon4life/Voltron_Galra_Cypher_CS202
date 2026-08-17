@@ -7,6 +7,7 @@
 #include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
 #include "Entities/Projectile.h"
+#include "Core/Manager/ParticleManager.h"
 
 #include <cmath>
 #include <iostream>
@@ -105,7 +106,12 @@ void Paladin::ChangeState(IPlayerState* newState) {
 void Paladin::TakeDamage(int amount) {
     if (isInvincible || isInvulnerable || Constants::DEBUG_PLAYER_IMMUNITY) return;
     
+    int actualDamage = std::min(health, amount);
     health -= amount;
+    
+    if (actualDamage > 0) {
+        ParticleManager::GetInstance().SpawnDamageNumber(position, actualDamage);
+    }
     
     if (health <= 0) {
         health = 0;

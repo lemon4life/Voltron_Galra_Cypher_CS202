@@ -2,7 +2,11 @@
 #include "raylib.h"
 #include <vector>
 
-struct Particle {
+#include "Core/Visuals/IParticle.h"
+#include <memory>
+
+class SpriteParticle : public IParticle {
+public:
     // Transform
     Vector2 position;
     Vector2 velocity;
@@ -14,7 +18,6 @@ struct Particle {
     // Lifecycle
     float lifeSpan;
     float lifeRemaining;
-    bool active;
 
     // Sprite ghosting (optional — if texture.id == 0, draw as primitive shape)
     Texture2D texture;
@@ -24,21 +27,26 @@ struct Particle {
     // If true, the silhouette shader is used: sprite alpha determines shape,
     // but all colored pixels are replaced by `color` (e.g. solid blue ghost).
     bool silhouette;
+    
+    // We need a reference to the shader for drawing, or we can fetch it globally.
+    // For simplicity, we'll pass it if needed, or use the global shader from ParticleManager.
+
+    SpriteParticle(Vector2 pos, Vector2 vel, Color col, float sz, float life, 
+                   Texture2D tex = {0}, Rectangle srcRect = {0}, float rot = 0.0f, bool sil = false);
+
+    void Update(float deltaTime) override;
+    void Draw() const override;
+    bool IsDead() const override;
 };
 
 class ParticleManager {
 private:
-    static constexpr int POOL_SIZE = 1000;
-
-    std::vector<Particle> pool;
-    int nextSearchIndex;
+    std::vector<std::unique_ptr<IParticle>> activeParticles;
 
     Shader silhouetteShader; // Replaces sprite RGB with a solid fill color
 
     ParticleManager();
     ~ParticleManager();
-
-    int GetNextAvailableIndex();
 
 public:
     static ParticleManager& GetInstance();
@@ -65,9 +73,12 @@ public:
     void Draw();
 
     void Clear();
+    
+    Shader GetSilhouetteShader() const { return silhouetteShader; }
 
     // --- Combat Emitters ---
     void SpawnDashTrail(Vector2 pos, Rectangle sourceRect, Texture2D texture, float rotation, bool flipX);
     void SpawnParrySparks(Vector2 pos, int count);
     void SpawnImpact(Vector2 pos, Vector2 projectileVelocity, Color color, int count);
+    void SpawnDamageNumber(Vector2 pos, int damage);
 };

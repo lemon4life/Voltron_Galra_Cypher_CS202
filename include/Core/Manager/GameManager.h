@@ -4,6 +4,7 @@
 #include <deque>
 #include <memory>
 #include "Core/DepthRenderItem.h"
+#include "UI/ComboMeter.h"
 
 #include<memory>
 
@@ -58,6 +59,10 @@ private:
     float hitstopTimer;
     
     int currentFloor;
+    int currentRoom;
+    bool isBossDefeated;
+    
+    ComboMeter comboMeter;
     
     float levelWidth = 0.0f;
     float levelHeight = 0.0f;
@@ -114,6 +119,9 @@ public:
     void ClearOrbs() { activeOrbs.clear(); }
     void SetLevelEntities(const std::vector<GameObject*>& entities) { levelEntities = entities; }
 
+    void TransitionToNextRoom(LevelManager* levelManager);
+    
+    ComboMeter& GetComboMeter() { return comboMeter; }
     void SetLevelManager(LevelManager* lm) { levelManager = lm; }
     LevelManager* GetLevelManager() const { return levelManager; }
     

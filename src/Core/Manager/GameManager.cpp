@@ -195,11 +195,11 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
         for (GameObject* entity : entities) {
             if (!CheckCollisionRecs(pBox, entity->GetBoundingBox())) continue;
             
-            // Box
             if (!ignoresWorldCollision && entity->GetObjectType() == GameObjectType::Box) {
                 Prop& box = static_cast<Prop&>(*entity);
                 if (!(*it)->HasHitTarget(entity)) {
-                    box.TakeDamage((*it)->GetDamage());
+                    int dmg = (*it)->GetDamage();
+                    box.TakeDamage(dmg);
                     (*it)->RecordHit(entity);
                     AddImpactEffect({ pBox.x + pBox.width / 2.0f, pBox.y + pBox.height / 2.0f });
                     hitEntity = true;
@@ -211,7 +211,8 @@ void GameManager::UpdateProjectiles(float deltaTime, TeamManager* teamManager) {
             if (!(*it)->IsEnemyProjectile() && entity->GetObjectType() == GameObjectType::Enemy) {
                 Enemy* e = static_cast<Enemy*>(entity);
                 if (e->IsEnabled() && !(*it)->HasHitTarget(entity)) {
-                    e->TakeDamage((*it)->GetDamage());
+                    int dmg = (*it)->GetDamage();
+                    e->TakeDamage(dmg);
                     (*it)->RecordHit(entity);
                     
                     Vector2 kdir = Vector2Subtract(e->GetPosition(), (*it)->GetPosition());
