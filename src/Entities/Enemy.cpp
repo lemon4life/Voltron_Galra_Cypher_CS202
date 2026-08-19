@@ -311,6 +311,16 @@ void Enemy::StartPathFinding() {
     pathAccess.BeginPathFinding(*this);
 }
 
+void Enemy::StartPathFindingTo(Vector2 worldGoal) {
+    if (usePathFinding) {
+        EndPathFinding();
+    }
+
+    usePathFinding = true;
+    pathStatus = EnemyPathStatus::Pending;
+    pathAccess.BeginPathFindingTo(*this, worldGoal);
+}
+
 void Enemy::EndPathFinding() {
     if (!usePathFinding) return;
 

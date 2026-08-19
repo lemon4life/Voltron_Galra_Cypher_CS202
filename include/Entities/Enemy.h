@@ -84,6 +84,7 @@ protected:
     std::unique_ptr<EnemyDazeState> dazeState;
 
     bool deathNotified = false;
+    bool enemyCollisionEnabled = true;
     IEntityRemovalAccess& removalAccess;
     IEnemyPathAccess& pathAccess;
 
@@ -131,6 +132,7 @@ public:
     void BeginSpawnSequence();
     bool UpdateSpawnSequence(float deltaTime);
     bool IsEnabled() const { return !spawnSequenceActive; }
+    bool IsSpawnSequenceActive() const { return spawnSequenceActive; }
     bool IsFacingLeft() const { return facingLeft; }
     void SetFacingLeft(bool b) { facingLeft = b; }
     bool ShouldDrawDuringSpawn() const;
@@ -215,8 +217,13 @@ public:
 
     IEnemyPathAccess& GetPathAccess() const { return pathAccess; }
     void StartPathFinding();
+    void StartPathFindingTo(Vector2 worldGoal);
     void EndPathFinding();
     bool IsPathFinding() const { return usePathFinding; }
+    bool IsEnemyCollisionEnabled() const { return enemyCollisionEnabled; }
+    void SetEnemyCollisionEnabled(bool enabled) {
+        enemyCollisionEnabled = enabled;
+    }
 
     void ClearTargetPosition() { targetPositions.clear(); }
     void PopTarget() {

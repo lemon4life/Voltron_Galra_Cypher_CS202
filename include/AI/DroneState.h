@@ -3,18 +3,33 @@
 #include "AI/EnemyState.h"
 #include "raymath.h"
 
+#include <cstddef>
+#include <vector>
+
 class Drone;
 
-class DroneState : public IEnemyState {
+class DroneMovingState : public ITypedEnemyState<Drone> {
 private:
-    float hoverTimer;
-    Vector2 hoverTarget;
-    bool FindNewHoverTarget(Drone* drone);
+    std::vector<Vector2> patrolCandidates;
+    std::size_t nextCandidateIndex = 0;
+    bool trackingPlayerForFollowUp = false;
+    float followUpTrackingTime = 0.0f;
+
+    void BuildPatrolCandidates(Drone* drone);
+    bool RequestNextPath(Drone* drone);
 
 public:
-    DroneState();
-    
-    void Enter(Enemy* enemy) override;
-    void Update(Enemy* enemy, float deltaTime) override;
-    void Exit(Enemy* enemy) override;
+    void Enter(Drone* drone) override;
+    void Update(Drone* drone, float deltaTime) override;
+    void Exit(Drone* drone) override;
+};
+
+class DroneIdleState : public ITypedEnemyState<Drone> {
+private:
+    float idleTimeRemaining = 0.0f;
+
+public:
+    void Enter(Drone* drone) override;
+    void Update(Drone* drone, float deltaTime) override;
+    void Exit(Drone* drone) override;
 };

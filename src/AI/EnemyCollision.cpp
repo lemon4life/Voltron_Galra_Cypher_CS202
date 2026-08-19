@@ -39,7 +39,9 @@ bool EnemyCollision::CheckEnemyCollision(
     const Enemy& enemy,
     const Enemy& other
 ) {
-    if (&enemy == &other || other.IsDead() || !other.IsEnabled()) {
+    if (!enemy.IsEnemyCollisionEnabled() ||
+        !other.IsEnemyCollisionEnabled() ||
+        &enemy == &other || other.IsDead() || !other.IsEnabled()) {
         return false;
     }
 

@@ -33,6 +33,8 @@ private:
         float pathAge = 0.0f;
         bool forceRepath = true;
         bool lastSearchFailed = false;
+        bool hasExplicitGoal = false;
+        Vector2 explicitGoal = { 0.0f, 0.0f };
     };
 
     std::vector<Enemy*> enemies;
@@ -58,6 +60,7 @@ public:
     EnemyPathManager& operator=(const EnemyPathManager&) = delete;
 
     void AddEnemy(Enemy& enemy);
+    void AddEnemyTo(Enemy& enemy, Vector2 worldGoal);
 
     void RemoveEnemy(Enemy& enemy);
     void Clear();

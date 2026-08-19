@@ -1,9 +1,27 @@
 #include "Entities/Projectiles/DroneBullet.h"
 #include <algorithm>
 
-DroneBullet::DroneBullet(Vector2 startPos, Vector2 targetDir, float initialSpeed, float targetMinSpeed, float dragCoefficient, 
-                         float radius, int damage, Texture2D tex, bool isEnemyProjectile)
-    : Projectile(startPos, {0.0f, 0.0f}, radius, damage, tex, isEnemyProjectile),
+DroneBullet::DroneBullet(
+    Vector2 startPos,
+    Vector2 targetDir,
+    float initialSpeed,
+    float targetMinSpeed,
+    float dragCoefficient,
+    float lifetime,
+    float collisionRadius,
+    int damage,
+    Texture2D tex,
+    bool isEnemyProjectile
+)
+    : Projectile(
+          startPos,
+          { 0.0f, 0.0f },
+          lifetime,
+          damage,
+          tex,
+          isEnemyProjectile,
+          collisionRadius
+      ),
       currentSpeed(initialSpeed),
       minSpeed(targetMinSpeed),
       drag(dragCoefficient) {

@@ -134,12 +134,21 @@ public:
         GameObjectCell cell
     ) override;
     void BeginPathFinding(Enemy& enemy) override;
+    void BeginPathFindingTo(
+        Enemy& enemy,
+        Vector2 worldGoal
+    ) override;
     void EndPathFinding(Enemy& enemy) override;
     bool IsBlocked(Rectangle bounds) const override;
     Rectangle GetLevelBounds() const override;
     std::optional<Vector2> GetNextMoveTarget(
         Enemy& enemy
     ) override;
+    std::vector<Vector2> GetNavigableTileCentersWithin(
+        const Enemy& enemy,
+        Vector2 origin,
+        float radius
+    ) const override;
     Rectangle GetCurrentRoomBounds() const;
     std::uint64_t GetNavigationRevision() const {
         return navigationRevision;

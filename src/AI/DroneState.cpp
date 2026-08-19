@@ -1,84 +1,198 @@
 #include "AI/DroneState.h"
-#include "Entities/EnemyEntities/Drone.h"
+
+#include "Core/LevelAccess.h"
 #include "Core/Manager/TeamManager.h"
+#include "Entities/EnemyEntities/Drone.h"
 #include "Entities/Player/Paladin.h"
+
+#include "raylib.h"
 #include "raymath.h"
-#include <cstdlib>
 
-DroneState::DroneState() : hoverTimer(0.0f) {}
+#include <algorithm>
+#include <cmath>
 
-void DroneState::Enter(Enemy* enemy) {
-    Drone* drone = static_cast<Drone*>(enemy);
-    hoverTimer = 0.0f;
-    FindNewHoverTarget(drone);
+namespace {
+    constexpr float PATROL_RADIUS = 150.0f;
+    constexpr float NEAR_PLAYER_DISTANCE = 200.0f;
+    constexpr float MOVING_FOLLOW_UP_DELAY = 1.0f;
+    constexpr float IDLE_COOLDOWN_RATE = 2.0f;
+    constexpr float MINIMUM_POST_ATTACK_IDLE_TIME = 0.5f;
+
+    void ShuffleCandidates(std::vector<Vector2>& candidates) {
+        for (std::size_t index = candidates.size(); index > 1; --index) {
+            int swapIndex = GetRandomValue(0, (int)index - 1);
+            std::swap(candidates[index - 1], candidates[swapIndex]);
+        }
+    }
+
+    Paladin* GetActiveTarget(Drone* drone) {
+        TeamManager* targetTeam = drone->GetTargetTeam();
+        return targetTeam ? targetTeam->GetActivePaladin() : nullptr;
+    }
+
+    bool HasPlayerLineOfSight(Drone* drone, const Paladin* player) {
+        return player && drone->GetLineOfSightQuery().HasClearLineOfSight(
+            drone->GetPosition(),
+            player->GetPosition(),
+            5.0f
+        );
+    }
 }
 
-void DroneState::Exit(Enemy* enemy) {
-    enemy->SetCurrentVelocity({0.0f, 0.0f});
+void DroneMovingState::BuildPatrolCandidates(Drone* drone) {
+    patrolCandidates = drone->GetPathAccess().GetNavigableTileCentersWithin(
+        *drone,
+        drone->GetPosition(),
+        PATROL_RADIUS
+    );
+    ShuffleCandidates(patrolCandidates);
+    nextCandidateIndex = 0;
 }
 
-bool DroneState::FindNewHoverTarget(Drone* drone) {
-    TeamManager* targetTeam = drone->GetTargetTeam();
-    if (!targetTeam) return false;
-    
-    Paladin* target = targetTeam->GetActivePaladin();
-    if (!target) return false;
-    
-    Vector2 playerPos = target->GetPosition();
-    
-    // Pick a random spot around the player, roughly 200 units away
-    float angle = (rand() % 360) * DEG2RAD;
-    float dist = 150.0f + (rand() % 100);
-    
-    hoverTarget = { playerPos.x + cosf(angle) * dist, playerPos.y + sinf(angle) * dist };
-    
+bool DroneMovingState::RequestNextPath(Drone* drone) {
+    drone->EndPathFinding();
+    if (nextCandidateIndex >= patrolCandidates.size()) {
+        return false;
+    }
+
+    Vector2 target = patrolCandidates[nextCandidateIndex++];
+    drone->StartPathFindingTo(target);
     return true;
 }
 
-void DroneState::Update(Enemy* enemy, float deltaTime) {
-    Drone* drone = static_cast<Drone*>(enemy);
-    drone->DecreaseCooldown(deltaTime);
-    
-    TeamManager* targetTeam = drone->GetTargetTeam();
-    if (!targetTeam) return;
-    
-    Paladin* target = targetTeam->GetActivePaladin();
-    if (!target) return;
-    
-    Vector2 playerPos = target->GetPosition();
-    
-    // Face player
-    drone->SetFacingLeft(playerPos.x < drone->GetPosition().x);
-    
-    // Move towards hover target
-    Vector2 toTarget = Vector2Subtract(hoverTarget, drone->GetPosition());
-    float dist = Vector2Length(toTarget);
-    
-    if (dist > 10.0f) {
-        Vector2 dir = Vector2Normalize(toTarget);
-        drone->SetCurrentVelocity(Vector2Scale(dir, drone->GetSpeed()));
-    } else {
-        drone->SetCurrentVelocity({0.0f, 0.0f});
-        hoverTimer -= deltaTime;
-        if (hoverTimer <= 0.0f) {
-            FindNewHoverTarget(drone);
-            hoverTimer = 1.0f + (rand() % 200) / 100.0f; // 1 to 3 seconds
-        }
+void DroneMovingState::Enter(Drone* drone) {
+    drone->SetCurrentVelocity({ 0.0f, 0.0f });
+    trackingPlayerForFollowUp = false;
+    followUpTrackingTime = 0.0f;
+    BuildPatrolCandidates(drone);
+    if (!RequestNextPath(drone)) {
+        drone->ChangeState(drone->GetDroneIdleState());
     }
-    
-    // Move the drone with collision
-    Vector2 vel = drone->GetCurrentVelocity();
-    drone->UpdateMovement(vel, deltaTime, EnemyWallResponse::Slide);
-    
-    // Attack
-    if (drone->GetAttackCooldown() <= 0.0f) {
-        // Must have line of sight to attack
-        if (drone->GetLineOfSightQuery().HasClearLineOfSight(drone->GetPosition(), playerPos, 5.0f)) {
-            drone->Attack();
+}
+
+void DroneMovingState::Update(Drone* drone, float deltaTime) {
+    drone->TickAttackCooldown(deltaTime);
+
+    Paladin* player = GetActiveTarget(drone);
+    if (trackingPlayerForFollowUp) {
+        drone->SetCurrentVelocity({ 0.0f, 0.0f });
+        if (!HasPlayerLineOfSight(drone, player)) {
+            trackingPlayerForFollowUp = false;
+            followUpTrackingTime = 0.0f;
         } else {
-            // Can't see player, find new spot immediately
-            FindNewHoverTarget(drone);
-            drone->ResetAttackCooldown(); // maybe reduce cooldown a bit instead of full reset
+            drone->SetFacingLeft(
+                player->GetPosition().x < drone->GetPosition().x
+            );
+            followUpTrackingTime -= std::max(0.0f, deltaTime);
+            if (followUpTrackingTime <= 0.0f) {
+                trackingPlayerForFollowUp = false;
+                followUpTrackingTime = 0.0f;
+                if (drone->Attack() &&
+                    Vector2Distance(
+                        drone->GetPosition(),
+                        player->GetPosition()
+                    ) <= NEAR_PLAYER_DISTANCE) {
+                    drone->ChangeState(drone->GetDroneIdleState());
+                }
+            }
+            return;
         }
     }
+
+    if (player && drone->GetAttackCooldown() <= 0.0f &&
+        HasPlayerLineOfSight(drone, player)) {
+        drone->SetCurrentVelocity({ 0.0f, 0.0f });
+        drone->SetFacingLeft(
+            player->GetPosition().x < drone->GetPosition().x
+        );
+        if (drone->Attack()) {
+            trackingPlayerForFollowUp = true;
+            followUpTrackingTime = MOVING_FOLLOW_UP_DELAY;
+        }
+        return;
+    }
+
+    EnemyPathStatus pathStatus = drone->GetPathStatus();
+    if (pathStatus == EnemyPathStatus::Unreachable ||
+        pathStatus == EnemyPathStatus::SearchLimitReached) {
+        if (!RequestNextPath(drone)) {
+            drone->ChangeState(drone->GetDroneIdleState());
+        }
+        return;
+    }
+    if (pathStatus == EnemyPathStatus::AtGoal) {
+        drone->ChangeState(drone->GetDroneIdleState());
+        return;
+    }
+
+    std::optional<Vector2> moveTarget =
+        drone->GetPathAccess().GetNextMoveTarget(*drone);
+    if (!moveTarget) {
+        drone->SetCurrentVelocity({ 0.0f, 0.0f });
+        if (drone->GetPathStatus() == EnemyPathStatus::AtGoal) {
+            drone->ChangeState(drone->GetDroneIdleState());
+        }
+        return;
+    }
+
+    Vector2 direction = Vector2Subtract(
+        *moveTarget,
+        drone->GetPosition()
+    );
+    if (Vector2Length(direction) <= 0.001f) {
+        drone->SetCurrentVelocity({ 0.0f, 0.0f });
+        return;
+    }
+
+    direction = Vector2Normalize(direction);
+    drone->SetFacingLeft(direction.x < 0.0f);
+    drone->UpdateMovement(
+        Vector2Scale(direction, drone->GetSpeed()),
+        deltaTime,
+        EnemyWallResponse::Slide
+    );
+}
+
+void DroneMovingState::Exit(Drone* drone) {
+    drone->SetCurrentVelocity({ 0.0f, 0.0f });
+    drone->EndPathFinding();
+    patrolCandidates.clear();
+    nextCandidateIndex = 0;
+    trackingPlayerForFollowUp = false;
+    followUpTrackingTime = 0.0f;
+}
+
+void DroneIdleState::Enter(Drone* drone) {
+    drone->EndPathFinding();
+    drone->SetCurrentVelocity({ 0.0f, 0.0f });
+    idleTimeRemaining = (float)GetRandomValue(300, 500) / 100.0f;
+}
+
+void DroneIdleState::Update(Drone* drone, float deltaTime) {
+    drone->SetCurrentVelocity({ 0.0f, 0.0f });
+    idleTimeRemaining -= std::max(0.0f, deltaTime);
+    drone->TickAttackCooldown(deltaTime, IDLE_COOLDOWN_RATE);
+
+    Paladin* player = GetActiveTarget(drone);
+    if (HasPlayerLineOfSight(drone, player)) {
+        drone->SetFacingLeft(
+            player->GetPosition().x < drone->GetPosition().x
+        );
+        if (drone->GetAttackCooldown() <= 0.0f &&
+            drone->Attack()) {
+            idleTimeRemaining = std::max(
+                idleTimeRemaining,
+                MINIMUM_POST_ATTACK_IDLE_TIME
+            );
+        }
+    }
+
+    if (idleTimeRemaining <= 0.0f) {
+        drone->ChangeState(drone->GetMovingState());
+    }
+}
+
+void DroneIdleState::Exit(Drone* drone) {
+    drone->SetCurrentVelocity({ 0.0f, 0.0f });
+    idleTimeRemaining = 0.0f;
 }

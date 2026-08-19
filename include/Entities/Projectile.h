@@ -6,6 +6,7 @@ class Projectile : public GameObject {
 private:
     Vector2 velocity;
     float lifetime;
+    float collisionRadius;
     bool active;
     int damage;
     bool isEnemyProj;
@@ -23,8 +24,23 @@ private:
     std::unordered_set<GameObject*> hitTargets;
 
 public:
-    Projectile(Vector2 pos, Vector2 vel, float life, int dmg, bool isEnemy = false);
-    Projectile(Vector2 pos, Vector2 vel, float life, int dmg, Texture2D tex, bool isEnemy = false);
+    Projectile(
+        Vector2 pos,
+        Vector2 vel,
+        float life,
+        int dmg,
+        bool isEnemy = false,
+        float radius = 5.0f
+    );
+    Projectile(
+        Vector2 pos,
+        Vector2 vel,
+        float life,
+        int dmg,
+        Texture2D tex,
+        bool isEnemy = false,
+        float radius = 5.0f
+    );
     
     void Update(float deltaTime) override;
     void Draw() override;

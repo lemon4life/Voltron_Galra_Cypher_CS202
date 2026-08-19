@@ -3,13 +3,14 @@
 #include "Entities/Enemy.h"
 #include <memory>
 
-class DroneState;
+class DroneMovingState;
+class DroneIdleState;
 
 class Drone : public Enemy {
 private:
-    std::unique_ptr<DroneState> activeState;
+    std::unique_ptr<DroneMovingState> movingState;
+    std::unique_ptr<DroneIdleState> droneIdleState;
     ILevelLineOfSightQuery& lineOfSightQuery;
-    float attackCooldown;
     
 public:
     Drone(
@@ -23,14 +24,16 @@ public:
     
     void Update(float deltaTime) override;
     void Draw() override;
-    
-    void Attack();
-    
-    float GetAttackCooldown() const { return attackCooldown; }
-    void ResetAttackCooldown() { attackCooldown = 4.0f; }
-    void DecreaseCooldown(float deltaTime) { 
-        if (attackCooldown > 0.0f) attackCooldown -= deltaTime; 
+    Rectangle GetBoundingBox() const override;
+
+    bool Attack();
+    void TickAttackCooldown(float deltaTime, float rate = 1.0f);
+
+    DroneMovingState* GetMovingState() const {
+        return movingState.get();
     }
-    
+    DroneIdleState* GetDroneIdleState() const {
+        return droneIdleState.get();
+    }
     const ILevelLineOfSightQuery& GetLineOfSightQuery() const { return lineOfSightQuery; }
 };

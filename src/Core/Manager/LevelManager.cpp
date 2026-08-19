@@ -598,6 +598,13 @@ void LevelManager::BeginPathFinding(Enemy& enemy) {
     enemyPathManager.AddEnemy(enemy);
 }
 
+void LevelManager::BeginPathFindingTo(
+    Enemy& enemy,
+    Vector2 worldGoal
+) {
+    enemyPathManager.AddEnemyTo(enemy, worldGoal);
+}
+
 void LevelManager::EndPathFinding(Enemy& enemy) {
     enemyPathManager.RemoveEnemy(enemy);
 }
@@ -643,6 +650,73 @@ std::optional<Vector2> LevelManager::GetNextMoveTarget(
         *this,
         enemy
     );
+}
+
+std::vector<Vector2> LevelManager::GetNavigableTileCentersWithin(
+    const Enemy& enemy,
+    Vector2 origin,
+    float radius
+) const {
+    std::vector<Vector2> candidates;
+    if (radius <= 0.0f) return candidates;
+
+    Rectangle searchBounds = GetCurrentRoomBounds();
+    float tileSize = Constants::RENDER_TILE_SIZE;
+    int minimumTileX = (int)std::floor(
+        std::max(searchBounds.x, origin.x - radius) / tileSize
+    );
+    int maximumTileX = (int)std::floor(
+        std::min(
+            searchBounds.x + searchBounds.width,
+            origin.x + radius
+        ) / tileSize
+    );
+    int minimumTileY = (int)std::floor(
+        std::max(searchBounds.y, origin.y - radius) / tileSize
+    );
+    int maximumTileY = (int)std::floor(
+        std::min(
+            searchBounds.y + searchBounds.height,
+            origin.y + radius
+        ) / tileSize
+    );
+    Vector2 originTile = WorldToTile(origin);
+    float radiusSquared = radius * radius;
+
+    auto isInsideSearchBounds = [searchBounds](Rectangle bounds) {
+        constexpr float BOUNDS_EPSILON = 0.001f;
+        return bounds.x >= searchBounds.x - BOUNDS_EPSILON &&
+            bounds.y >= searchBounds.y - BOUNDS_EPSILON &&
+            bounds.x + bounds.width <=
+                searchBounds.x + searchBounds.width + BOUNDS_EPSILON &&
+            bounds.y + bounds.height <=
+                searchBounds.y + searchBounds.height + BOUNDS_EPSILON;
+    };
+
+    for (int tileY = minimumTileY; tileY <= maximumTileY; ++tileY) {
+        for (int tileX = minimumTileX; tileX <= maximumTileX; ++tileX) {
+            if (tileX == (int)originTile.x &&
+                tileY == (int)originTile.y) {
+                continue;
+            }
+
+            Vector2 center = TileToWorld(tileX, tileY);
+            float deltaX = center.x - origin.x;
+            float deltaY = center.y - origin.y;
+            if (deltaX * deltaX + deltaY * deltaY > radiusSquared) {
+                continue;
+            }
+
+            Rectangle footprint = enemy.GetNavigationFootprintAt(center);
+            if (!isInsideSearchBounds(footprint) ||
+                IsSolidCollision(footprint)) {
+                continue;
+            }
+            candidates.push_back(center);
+        }
+    }
+
+    return candidates;
 }
 
 Vector2 LevelManager::GetLocalDirection(

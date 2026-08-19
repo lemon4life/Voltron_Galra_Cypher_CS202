@@ -2,20 +2,47 @@
 #include "Core/Manager/ParticleManager.h"
 #include "Entities/Player/Paladin.h"
 #include "raymath.h"
+#include <algorithm>
 #include <cmath>
 
-Projectile::Projectile(Vector2 pos, Vector2 vel, float life, int dmg, bool isEnemy)
+Projectile::Projectile(
+    Vector2 pos,
+    Vector2 vel,
+    float life,
+    int dmg,
+    bool isEnemy,
+    float radius
+)
     : GameObject(pos, GameObjectType::Projectile),
-      velocity(vel), lifetime(life), active(true), damage(dmg), isEnemyProj(isEnemy) {
+      velocity(vel), lifetime(life), collisionRadius(std::max(0.0f, radius)),
+      active(true), damage(dmg), isEnemyProj(isEnemy) {
     texture.id = 0;
-    boundingBox = { pos.x, pos.y, 10.0f, 10.0f };
+    boundingBox = {
+        pos.x - collisionRadius,
+        pos.y - collisionRadius,
+        collisionRadius * 2.0f,
+        collisionRadius * 2.0f
+    };
 }
 
-Projectile::Projectile(Vector2 pos, Vector2 vel, float life, int dmg, Texture2D tex, bool isEnemy)
+Projectile::Projectile(
+    Vector2 pos,
+    Vector2 vel,
+    float life,
+    int dmg,
+    Texture2D tex,
+    bool isEnemy,
+    float radius
+)
     : GameObject(pos, GameObjectType::Projectile),
-      velocity(vel), lifetime(life), active(true), damage(dmg), isEnemyProj(isEnemy), texture(tex) {
-    // Small bounding box for the projectile
-    boundingBox = { pos.x, pos.y, 10.0f, 10.0f };
+      velocity(vel), lifetime(life), collisionRadius(std::max(0.0f, radius)),
+      active(true), damage(dmg), isEnemyProj(isEnemy), texture(tex) {
+    boundingBox = {
+        pos.x - collisionRadius,
+        pos.y - collisionRadius,
+        collisionRadius * 2.0f,
+        collisionRadius * 2.0f
+    };
 }
 
 void Projectile::Update(float deltaTime) {
@@ -49,10 +76,10 @@ void Projectile::Update(float deltaTime) {
     position.y += velocity.y * deltaTime;
 
     // Sweep Collision Bounding Box
-    float minX = std::min(oldPos.x, position.x);
-    float maxX = std::max(oldPos.x + 10.0f, position.x + 10.0f);
-    float minY = std::min(oldPos.y, position.y);
-    float maxY = std::max(oldPos.y + 10.0f, position.y + 10.0f);
+    float minX = std::min(oldPos.x, position.x) - collisionRadius;
+    float maxX = std::max(oldPos.x, position.x) + collisionRadius;
+    float minY = std::min(oldPos.y, position.y) - collisionRadius;
+    float maxY = std::max(oldPos.y, position.y) + collisionRadius;
     boundingBox = { minX, minY, maxX - minX, maxY - minY };
 
     // Reduce lifetime

@@ -783,10 +783,10 @@ namespace {
         return condensed;
     }
 
-    PathSearchResult FindPath(
+    PathSearchResult FindPathToCandidates(
         LevelManager& levelManager,
         Enemy& enemy,
-        Paladin& target,
+        const std::vector<EnemyPathDebugPoint>& candidates,
         EnemyNavigationCacheStore& store,
         Rectangle searchBounds,
         std::uint64_t navigationRevision
@@ -814,13 +814,6 @@ namespace {
             cache,
             searchBounds
         );
-        const std::vector<EnemyPathDebugPoint>& candidates =
-            GetSharedGoalCandidates(
-                levelManager,
-                target,
-                store,
-                searchBounds
-            );
         std::vector<GoalAnchor> goals = BuildGoalAnchors(
             levelManager,
             enemy,
@@ -972,6 +965,52 @@ namespace {
         return result;
     }
 
+    PathSearchResult FindPathToPlayer(
+        LevelManager& levelManager,
+        Enemy& enemy,
+        Paladin& target,
+        EnemyNavigationCacheStore& store,
+        Rectangle searchBounds,
+        std::uint64_t navigationRevision
+    ) {
+        const std::vector<EnemyPathDebugPoint>& candidates =
+            GetSharedGoalCandidates(
+                levelManager,
+                target,
+                store,
+                searchBounds
+            );
+        return FindPathToCandidates(
+            levelManager,
+            enemy,
+            candidates,
+            store,
+            searchBounds,
+            navigationRevision
+        );
+    }
+
+    PathSearchResult FindPathToExplicitGoal(
+        LevelManager& levelManager,
+        Enemy& enemy,
+        Vector2 worldGoal,
+        EnemyNavigationCacheStore& store,
+        Rectangle searchBounds,
+        std::uint64_t navigationRevision
+    ) {
+        const std::vector<EnemyPathDebugPoint> candidates = {
+            { worldGoal, true }
+        };
+        return FindPathToCandidates(
+            levelManager,
+            enemy,
+            candidates,
+            store,
+            searchBounds,
+            navigationRevision
+        );
+    }
+
     bool HasReachedWaypoint(const Enemy& enemy, Vector2 waypoint) {
         Rectangle body = enemy.GetCollisionBox();
         float reachDistance = std::max(
@@ -1032,6 +1071,18 @@ void EnemyPathManager::Clear() {
     navigationCacheStore->sharedGoals.clear();
 }
 
+void EnemyPathManager::AddEnemyTo(Enemy& enemy, Vector2 worldGoal) {
+    AddEnemy(enemy);
+    PathRecord& record = pathRecords[&enemy];
+    record.hasExplicitGoal = true;
+    record.explicitGoal = worldGoal;
+    record.hasTargetTile = false;
+    record.forceRepath = true;
+    record.lastSearchFailed = false;
+    record.pathAge = 0.0f;
+    enemy.SetPathStatus(EnemyPathStatus::Pending);
+}
+
 std::optional<Vector2> EnemyPathManager::GetNextMoveTarget(
     LevelManager& levelManager,
     Enemy& enemy
@@ -1077,6 +1128,9 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
     if (Vector2Length(desiredDirection) <= 0.001f) {
         return { 0.0f, 0.0f };
     }
+    if (!enemy.IsEnemyCollisionEnabled()) {
+        return Vector2Normalize(desiredDirection);
+    }
 
     Vector2 finalDirection = desiredDirection;
     Vector2 enemyPosition = enemy.GetPosition();
@@ -1088,7 +1142,9 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
 
     for (Enemy* otherEnemy : enemies) {
         if (!otherEnemy) continue;
-        if (otherEnemy == &enemy || otherEnemy->IsDead() ||
+        if (otherEnemy == &enemy ||
+            !otherEnemy->IsEnemyCollisionEnabled() ||
+            otherEnemy->IsDead() ||
             !otherEnemy->IsEnabled()) continue;
         if (!ContainsRectangle(
                 searchBounds,
@@ -1227,14 +1283,19 @@ void EnemyPathManager::Update(LevelManager& levelManager, float deltaTime) {
         if (nextEnemyIndex >= (int)enemies.size()) nextEnemyIndex = 0;
         Enemy* enemy = enemies[nextEnemyIndex++];
         ++enemiesInspected;
-        if (!enemy || enemy->IsDead() || !enemy->IsEnabled() ||
-            !enemy->GetTargetTeam()) continue;
-
-        Paladin* target = enemy->GetTargetTeam()->GetActivePaladin();
-        if (!target) continue;
+        if (!enemy || enemy->IsDead() || !enemy->IsEnabled()) continue;
 
         PathRecord& record = pathRecords[enemy];
-        Tile targetTile = WorldTile(levelManager, target->GetPosition());
+        Paladin* target = nullptr;
+        Vector2 targetPosition = record.explicitGoal;
+        if (!record.hasExplicitGoal) {
+            TeamManager* targetTeam = enemy->GetTargetTeam();
+            target = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
+            if (!target) continue;
+            targetPosition = target->GetPosition();
+        }
+
+        Tile targetTile = WorldTile(levelManager, targetPosition);
         bool targetChanged = !record.hasTargetTile ||
             record.targetTileX != targetTile.x ||
             record.targetTileY != targetTile.y;
@@ -1251,14 +1312,23 @@ void EnemyPathManager::Update(LevelManager& levelManager, float deltaTime) {
         if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
             searchStarted = std::chrono::steady_clock::now();
         }
-        PathSearchResult result = FindPath(
-            levelManager,
-            *enemy,
-            *target,
-            *navigationCacheStore,
-            searchBounds,
-            navigationRevision
-        );
+        PathSearchResult result = record.hasExplicitGoal
+            ? FindPathToExplicitGoal(
+                levelManager,
+                *enemy,
+                record.explicitGoal,
+                *navigationCacheStore,
+                searchBounds,
+                navigationRevision
+            )
+            : FindPathToPlayer(
+                levelManager,
+                *enemy,
+                *target,
+                *navigationCacheStore,
+                searchBounds,
+                navigationRevision
+            );
         float elapsedMilliseconds = 0.0f;
         if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
             elapsedMilliseconds = std::chrono::duration<float, std::milli>(

@@ -3,6 +3,7 @@
 #include "raylib.h"
 
 #include <optional>
+#include <vector>
 
 class GameObject;
 class Enemy;
@@ -74,12 +75,22 @@ public:
     virtual ~IEnemyPathAccess() = default;
 
     virtual void BeginPathFinding(Enemy& enemy) = 0;
+    virtual void BeginPathFindingTo(
+        Enemy& enemy,
+        Vector2 worldGoal
+    ) = 0;
     virtual void EndPathFinding(Enemy& enemy) = 0;
 
     virtual bool IsBlocked(Rectangle bounds) const = 0;
     virtual Rectangle GetLevelBounds() const = 0;
 
     virtual std::optional<Vector2> GetNextMoveTarget(Enemy& enemy) = 0;
+
+    virtual std::vector<Vector2> GetNavigableTileCentersWithin(
+        const Enemy& enemy,
+        Vector2 origin,
+        float radius
+    ) const = 0;
 
     virtual Vector2 GetLocalDirection(
         Enemy& enemy,

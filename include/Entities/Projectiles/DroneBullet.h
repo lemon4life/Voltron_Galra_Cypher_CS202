@@ -11,8 +11,18 @@ private:
     Vector2 direction;
 
 public:
-    DroneBullet(Vector2 startPos, Vector2 targetDir, float initialSpeed, float targetMinSpeed, float dragCoefficient, 
-                float radius, int damage, Texture2D tex, bool isEnemyProjectile = true);
+    DroneBullet(
+        Vector2 startPos,
+        Vector2 targetDir,
+        float initialSpeed,
+        float targetMinSpeed,
+        float dragCoefficient,
+        float lifetime,
+        float collisionRadius,
+        int damage,
+        Texture2D tex,
+        bool isEnemyProjectile = true
+    );
     
     void Update(float deltaTime) override;
 };
