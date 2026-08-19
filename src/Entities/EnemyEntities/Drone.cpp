@@ -26,6 +26,7 @@ Drone::Drone(
     
     // Set bounding box/size to 26x20
     boundingBox = { position.x - 13.0f, position.y - 10.0f, 26.0f, 20.0f };
+    renderFootOffset = { 0.0f, 25.0f }; // Lower the shadow/circle for the drone
     
     maxHealth = 200; // default health
     health = maxHealth;

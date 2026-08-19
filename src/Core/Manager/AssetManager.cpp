@@ -151,12 +151,15 @@ void AssetManager::QueueCharacterAssets() {
     add("Freeze", "assets/sprites/Effects/freeze.png", true);
     add("Freeze_Base", "assets/sprites/Effects/freeze_base.png", true);
     add("Freeze_Big", "assets/sprites/Effects/freeze_big.png", true);
+    add("AppearLight", "assets/sprites/Effects/AppearLight.png", true);
+    add("AppearSmoke", "assets/sprites/Effects/AppearSmoke.png", true);
 
     // Objects
     add("Quint_Orb", "assets/Objects/quint.png", true);
 
     // UI, Objects and Effects
     add("Player_Circle", "assets/UI/Player_Circle.png");
+    add("Enemy_Circle", "assets/UI/Enemy_Circle.png");
     add("box", "assets/Objects/box.png", true);
     add("object_2", "assets/Objects/object_2.png", true);
     add("pot_ex", "assets/Objects/pot_ex.png", true);

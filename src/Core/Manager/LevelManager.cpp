@@ -769,6 +769,7 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
         float spawnWorldX = bounds.x + bounds.width / 2.0f;
         float spawnWorldY = bounds.y + bounds.height / 2.0f;
         teamManager->GetActivePaladin()->SetPosition({spawnWorldX, spawnWorldY});
+        teamManager->StartSpawnAnimation();
 
         // Add 3 testing pots
         AddEntity(new HpPot({spawnWorldX - 40.0f, spawnWorldY - 50.0f}));

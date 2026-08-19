@@ -86,6 +86,24 @@ void GameplayState::Draw() {
     levelManager->DrawLevelBase();
     DecalManager::GetInstance().Draw();
 
+    if (Constants::isAutoAimEnabled && teamManager && teamManager->GetActivePaladin()) {
+        Paladin* activePaladin = teamManager->GetActivePaladin();
+        if (activePaladin->GetLockedEnemy()) {
+            Enemy* targetEnemy = activePaladin->GetLockedEnemy();
+            Vector2 footPos = targetEnemy->GetRenderFootPosition();
+
+            Texture2D enemyCircle = AssetManager::GetInstance().GetTexture("Enemy_Circle");
+            if (enemyCircle.id != 0) {
+                float scale = (targetEnemy->GetEnemyType() == EnemyType::BOSS) ? 2.0f : 1.0f;
+                float w = enemyCircle.width * scale;
+                float h = enemyCircle.height * scale;
+                Rectangle dest = { footPos.x, footPos.y, w, h };
+                Vector2 circleOrigin = { w / 2.0f, h / 2.0f };
+                DrawTexturePro(enemyCircle, {0, 0, (float)enemyCircle.width, (float)enemyCircle.height}, dest, circleOrigin, 0.0f, WHITE);
+            }
+        }
+    }
+
     GameManager::GetInstance().DrawEffects(true);
 
     std::vector<DepthRenderItem> renderItems;
@@ -134,10 +152,21 @@ void GameplayState::Draw() {
     if (Constants::isAutoAimEnabled) {
         Paladin* activePaladin = teamManager->GetActivePaladin();
         if (activePaladin && activePaladin->GetLockedEnemy()) {
-            Vector2 targetPos = activePaladin->GetLockedEnemy()->GetPosition();
-            DrawCircleLines(static_cast<int>(targetPos.x), static_cast<int>(targetPos.y), 20.0f, RED);
-            DrawLine(targetPos.x - 25, targetPos.y, targetPos.x + 25, targetPos.y, RED);
-            DrawLine(targetPos.x, targetPos.y - 25, targetPos.x, targetPos.y + 25, RED);
+            Enemy* targetEnemy = activePaladin->GetLockedEnemy();
+            Vector2 targetPos = targetEnemy->GetPosition();
+            
+            Vector2 weaponPos = activePaladin->GetWeaponPivot();
+            Vector2 dir = Vector2Subtract(targetPos, weaponPos);
+            float dist = Vector2Length(dir);
+            if (dist > 10.0f) {
+                dir = Vector2Normalize(dir);
+                float dotSpacing = 15.0f;
+                Color dotColor = { 255, 255, 255, (unsigned char)(255 * 0.15f) };
+                for (float d = dotSpacing; d < dist; d += dotSpacing) {
+                    Vector2 dotPos = Vector2Add(weaponPos, Vector2Scale(dir, d));
+                    DrawCircleV(dotPos, 1.0f, dotColor);
+                }
+            }
         }
     } else if (InputManager::GetMode() != InputMode::KEYBOARD_ONLY) {
         Paladin* activePaladin = teamManager->GetActivePaladin();
