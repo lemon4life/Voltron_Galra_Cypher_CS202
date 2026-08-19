@@ -59,9 +59,10 @@ void SpriteParticle::Update(float deltaTime) {
 void SpriteParticle::Draw() const {
     if (texture.id != 0) {
         // Sprite particle — optionally use silhouette shader
-        float halfSize = size * 0.5f;
-        Rectangle dest   = { position.x, position.y, size, size };
-        Vector2   origin = { halfSize, halfSize };
+        float aspect = (float)texture.height / texture.width;
+        float hSize = size * aspect;
+        Rectangle dest   = { position.x, position.y, size, hSize };
+        Vector2   origin = { size * 0.5f, hSize * 0.5f };
 
         if (silhouette) {
             Shader silhouetteShader = ParticleManager::GetInstance().GetSilhouetteShader();

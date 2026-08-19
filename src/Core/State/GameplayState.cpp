@@ -115,6 +115,22 @@ void GameplayState::Draw() {
     GameManager::GetInstance().DrawOrbs();
     ParticleManager::GetInstance().Draw();
 
+    for (GameObject* obj : GameManager::GetInstance().GetLevelEntities()) {
+        if (obj->GetObjectType() == GameObjectType::Enemy) {
+            Enemy* enemy = static_cast<Enemy*>(obj);
+            if (enemy->GetStatusComponent().HasEffect(EffectType::FREEZE)) {
+                Texture2D tex = enemy->GetEnemyType() == EnemyType::BOSS ? AssetManager::GetInstance().GetTexture("Freeze_Big") : AssetManager::GetInstance().GetTexture("Freeze");
+                if (tex.id != 0) {
+                    Vector2 footPos = enemy->GetRenderFootPosition();
+                    Rectangle dest = { footPos.x, footPos.y, (float)tex.width, (float)tex.height };
+                    // Anchor to the bottom-center of the freeze texture
+                    Vector2 origin = { tex.width / 2.0f, (float)tex.height - 5.0f };
+                    DrawTexturePro(tex, { 0, 0, (float)tex.width, (float)tex.height }, dest, origin, 0.0f, WHITE);
+                }
+            }
+        }
+    }
+
     if (Constants::isAutoAimEnabled) {
         Paladin* activePaladin = teamManager->GetActivePaladin();
         if (activePaladin && activePaladin->GetLockedEnemy()) {

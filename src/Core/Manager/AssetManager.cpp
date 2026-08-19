@@ -148,6 +148,9 @@ void AssetManager::QueueCharacterAssets() {
     add("HP_effect", "assets/sprites/Effects/HP_effect.png", true);
     add("Ex_effect", "assets/sprites/Effects/Ex_effect.png", true);
     add("Quint_effect", "assets/sprites/Effects/Quint_effect.png", true);
+    add("Freeze", "assets/sprites/Effects/freeze.png", true);
+    add("Freeze_Base", "assets/sprites/Effects/freeze_base.png", true);
+    add("Freeze_Big", "assets/sprites/Effects/freeze_big.png", true);
 
     // Objects
     add("Quint_Orb", "assets/Objects/quint.png", true);

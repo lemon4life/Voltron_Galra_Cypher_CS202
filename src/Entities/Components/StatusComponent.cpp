@@ -1,5 +1,8 @@
 #include "Entities/Components/StatusComponent.h"
 #include "Entities/Enemy.h"
+#include "Core/Manager/AudioManager.h"
+#include "Core/Manager/AssetManager.h"
+#include "Core/Manager/ParticleManager.h"
 
 void StatusComponent::AddEffect(EffectType type, float duration, float magnitude) {
     // Check if effect already exists to refresh it
@@ -31,6 +34,26 @@ bool StatusComponent::Update(float deltaTime, Enemy* owner) {
         it->duration -= deltaTime;
         
         if (it->duration <= 0.0f) {
+            if (it->type == EffectType::FREEZE) {
+                AudioManager::GetInstance().PlaySoundEffect("fx_ice_explode");
+                Texture2D baseTex = AssetManager::GetInstance().GetTexture("Freeze_Base");
+                if (baseTex.id != 0) {
+                    Rectangle src = { 0, 0, (float)baseTex.width, (float)baseTex.height };
+                    float size = (owner->GetEnemyType() == EnemyType::BOSS) ? baseTex.width * 2.0f : baseTex.width;
+                    Vector2 spawnPos = owner->GetRenderFootPosition();
+                    ParticleManager::GetInstance().EmitSprite(
+                        spawnPos,
+                        {0, 0},
+                        baseTex,
+                        src,
+                        0.0f,
+                        size,
+                        1.5f,
+                        WHITE,
+                        false
+                    );
+                }
+            }
             it = activeModifiers.erase(it);
             continue;
         }

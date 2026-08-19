@@ -97,6 +97,8 @@ void AudioManager::Initialize() {
     LoadSound("fx_doorgate", "assets/audio/SFX/Environment/fx_doorgate.wav");
     
     // SFX - Character Skills & Ults
+    LoadSound("fx_ice_explode", "assets/audio/SFX/Character/fx_ice_explode.wav");
+    LoadSound("fx_get_buff", "assets/audio/SFX/Character/fx_get_buff.wav");
     LoadSound("fx_lance_skill", "assets/audio/SFX/Character/fx_lance_skill.wav");
     LoadSound("fx_lance_ult", "assets/audio/SFX/Character/fx_lance_ult.wav");
     LoadSound("fx_pidge_ult", "assets/audio/SFX/Character/fx_pidge_ult.wav");

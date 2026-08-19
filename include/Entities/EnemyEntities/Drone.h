@@ -10,6 +10,7 @@ private:
     std::unique_ptr<DroneState> activeState;
     ILevelLineOfSightQuery& lineOfSightQuery;
     float attackCooldown;
+    float hoverTime = 0.0f;
     
 public:
     Drone(

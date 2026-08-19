@@ -47,6 +47,11 @@ void Drone::Update(float deltaTime) {
         UpdateMovementAnimationFlag(updateStartPosition);
         return;
     }
+    
+    if (!statusComponent.HasEffect(EffectType::FREEZE)) {
+        hoverTime += deltaTime;
+    }
+    
     UpdateKnockback(deltaTime);
     
     if (statusComponent.Update(deltaTime, this)) {
@@ -73,7 +78,7 @@ void Drone::Draw() {
         return;
     }
     
-    float hoverOffsetY = std::sin(GetTime() * 5.0f) * 4.0f;
+    float hoverOffsetY = std::sin(hoverTime * 5.0f) * 4.0f;
     
     Rectangle source = { 0.0f, 0.0f, (float)sprites.idle.width, (float)sprites.idle.height };
     if (facingLeft) {
