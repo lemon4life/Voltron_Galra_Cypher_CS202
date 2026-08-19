@@ -165,6 +165,7 @@ void AssetManager::QueueCharacterAssets() {
     add("Galra_Walls", "assets/tileset/Galra_Walls.png", true);
     
     add("Run_Dust", "assets/UI/Run_Dust.png");
+    add("Aim", "assets/UI/aim.png");
 
     add("Knight_Idle", "assets/sprites/Enemy/Knight.png", true);
     add("Knight_Run", "assets/sprites/Enemy/Knight_run-Sheet.png", true);

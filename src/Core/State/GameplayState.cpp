@@ -11,6 +11,7 @@
 #include "UI/UIUtils.h"
 #include "Entities/Props/Pot.h"
 #include "raymath.h"
+#include "Core/Manager/AssetManager.h"
 
 GameplayState::GameplayState(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager)
     : teamManager(teamManager), levelManager(levelManager), waveManager(waveManager) {
@@ -123,11 +124,23 @@ void GameplayState::Draw() {
             DrawLine(targetPos.x, targetPos.y - 25, targetPos.x, targetPos.y + 25, RED);
         }
     } else if (InputManager::GetMode() != InputMode::KEYBOARD_ONLY) {
-        Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), CameraManager::GetInstance().GetCamera());
-        DrawCircleLines(static_cast<int>(mouseWorld.x), static_cast<int>(mouseWorld.y), 10.0f, GREEN);
-        DrawLine(mouseWorld.x - 15, mouseWorld.y, mouseWorld.x + 15, mouseWorld.y, GREEN);
-        DrawLine(mouseWorld.x, mouseWorld.y - 15, mouseWorld.x, mouseWorld.y + 15, GREEN);
-        DrawCircle(static_cast<int>(mouseWorld.x), static_cast<int>(mouseWorld.y), 2.0f, GREEN);
+        Paladin* activePaladin = teamManager->GetActivePaladin();
+        if (activePaladin) {
+            Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), CameraManager::GetInstance().GetCamera());
+            Vector2 weaponPos = activePaladin->GetWeaponPivot();
+            
+            Vector2 dir = Vector2Subtract(mouseWorld, weaponPos);
+            float dist = Vector2Length(dir);
+            if (dist > 10.0f) {
+                dir = Vector2Normalize(dir);
+                float dotSpacing = 15.0f;
+                Color dotColor = { 255, 255, 255, (unsigned char)(255 * 0.15f) };
+                for (float d = dotSpacing; d < dist; d += dotSpacing) {
+                    Vector2 dotPos = Vector2Add(weaponPos, Vector2Scale(dir, d));
+                    DrawCircleV(dotPos, 1.0f, dotColor);
+                }
+            }
+        }
     }
 
     GameManager::GetInstance().DrawDebugOverlays(teamManager);
@@ -211,6 +224,17 @@ void GameplayState::Draw() {
     }
 
     UltimateIntroManager::GetInstance().Draw();
+
+    if (!Constants::isAutoAimEnabled && InputManager::GetMode() != InputMode::KEYBOARD_ONLY) {
+        Vector2 mouseUI = GetScreenToWorld2D(GetMousePosition(), uiCamera);
+        Texture2D aimTex = AssetManager::GetInstance().GetTexture("Aim");
+        if (aimTex.id != 0) {
+            Vector2 origin = { (float)aimTex.width / 2.0f, (float)aimTex.height / 2.0f };
+            Rectangle source = { 0.0f, 0.0f, (float)aimTex.width, (float)aimTex.height };
+            Rectangle dest = { mouseUI.x, mouseUI.y, (float)aimTex.width, (float)aimTex.height };
+            DrawTexturePro(aimTex, source, dest, origin, 0.0f, WHITE);
+        }
+    }
 
     EndMode2D();
 }

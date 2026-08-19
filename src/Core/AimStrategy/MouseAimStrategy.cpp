@@ -3,7 +3,7 @@
 #include "raymath.h"
 
 Vector2 MouseAimStrategy::CalculateAimVector(Paladin* paladin) {
-    Vector2 aimDir = Vector2Subtract(paladin->GetAimTarget(), paladin->GetPosition());
+    Vector2 aimDir = Vector2Subtract(paladin->GetAimTarget(), paladin->GetWeaponPivot());
     if (Vector2Length(aimDir) > 0.1f) {
         return Vector2Normalize(aimDir);
     }

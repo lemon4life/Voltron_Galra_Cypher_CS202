@@ -28,7 +28,7 @@ Vector2 AutoAimStrategy::CalculateAimVector(Paladin* paladin) {
     paladin->SetLockedEnemy(bestTarget);
     
     if (bestTarget && !paladin->IsDoingUltimate()) {
-        Vector2 aimDir = Vector2Subtract(bestTarget->GetPosition(), paladin->GetPosition());
+        Vector2 aimDir = Vector2Subtract(bestTarget->GetPosition(), paladin->GetWeaponPivot());
         if (Vector2Length(aimDir) > 0.1f) {
             return Vector2Normalize(aimDir);
         }
