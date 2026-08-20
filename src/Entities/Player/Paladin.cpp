@@ -347,7 +347,13 @@ Rectangle Paladin::GetBoundingBox() const {
 }
 
 Rectangle Paladin::GetCollisionBox() const {
-    return { position.x - 8.0f, position.y + 4.0f, 16.0f, 8.0f };
+    constexpr float HORIZONTAL_INSET = 1.0f;
+    return {
+        position.x - Constants::RENDER_TILE_SIZE * 0.5f + HORIZONTAL_INSET,
+        position.y + 6.0f,
+        Constants::RENDER_TILE_SIZE - HORIZONTAL_INSET * 2.0f,
+        8.0f
+    };
 }
 
 bool Paladin::CheckCollision(const std::vector<GameObject*>& entities) const {

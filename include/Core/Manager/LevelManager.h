@@ -125,7 +125,16 @@ public:
 
     void DrawLevelBase();
     void GetDepthRenderItems(std::vector<DepthRenderItem>& items);
-    void UpdateLevel(float deltaTime, Vector2 playerPos = {0,0});
+    void UpdateLevel(
+        float deltaTime,
+        Vector2 playerPos = { 0.0f, 0.0f },
+        Rectangle playerCollisionBox = {}
+    );
+    bool FindGateEscapePosition(
+        Rectangle playerCollisionBox,
+        Vector2 playerPosition,
+        Vector2& escapePosition
+    ) const;
     bool IsSolidCollision(Rectangle box) const;
     MapObject* FindSolidMapObjectCollision(Rectangle box) const;
     void ClearLevel();

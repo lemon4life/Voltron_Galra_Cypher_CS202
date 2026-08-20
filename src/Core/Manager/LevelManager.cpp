@@ -22,6 +22,8 @@
 
 namespace {
     constexpr float COLLISION_EDGE_PADDING = 0.001f;
+    constexpr float GATE_ESCAPE_STEP = 1.0f;
+    constexpr float GATE_ESCAPE_PADDING = 1.0f;
 }
 
 LevelManager::LevelManager()
@@ -173,7 +175,11 @@ DynamicSpawnList LevelManager::LoadLevel(const std::string& filepath) {
     return dynamicSpawns;
 }
 
-void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
+void LevelManager::UpdateLevel(
+    float deltaTime,
+    Vector2 playerPos,
+    Rectangle playerCollisionBox
+) {
     lineOfSightDebugTraces.clear();
 
     if (IsProceduralDungeon()) {
@@ -211,22 +217,12 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
                         }
                         MarkNavigationChanged();
 
-                        // Nudge player to room center so they don't get stuck inside a door collider
-                        Rectangle bounds = node->GetWorldBounds();
-                        float roomCenterX = bounds.x + bounds.width / 2.0f;
-                        float roomCenterY = bounds.y + bounds.height / 2.0f;
-                        
-                        // Move toward center, but only if currently overlapping a door
-                        bool overlappingDoor = false;
-                        for (auto* door : node->doors) {
-                            if (CheckCollisionRecs(playerBox, door->GetBoundingBox())) {
-                                overlappingDoor = true;
-                                break;
-                            }
-                        }
-                        if (overlappingDoor) {
-                            // Store the nudge position for the caller to apply
-                            nudgePosition = { roomCenterX, roomCenterY };
+                        Vector2 escapePosition;
+                        if (FindGateEscapePosition(
+                                playerCollisionBox,
+                                playerPos,
+                                escapePosition)) {
+                            nudgePosition = escapePosition;
                             needsNudge = true;
                         }
 
@@ -246,6 +242,96 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
         }
     }
     ProcessDestroyedMapObjects();
+}
+
+bool LevelManager::FindGateEscapePosition(
+    Rectangle playerCollisionBox,
+    Vector2 playerPosition,
+    Vector2& escapePosition
+) const {
+    if (!currentlyLockedRoom ||
+        playerCollisionBox.width <= 0.0f ||
+        playerCollisionBox.height <= 0.0f) {
+        return false;
+    }
+
+    auto overlapsLockedGate = [&](Rectangle bounds) {
+        for (DoorGate* door : currentlyLockedRoom->doors) {
+            if (door && door->IsSolid() &&
+                CheckCollisionRecs(bounds, door->GetCollisionBox())) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    if (!overlapsLockedGate(playerCollisionBox)) {
+        return false;
+    }
+
+    Rectangle roomBounds = currentlyLockedRoom->GetWorldBounds();
+    Vector2 roomCenter = {
+        roomBounds.x + roomBounds.width * 0.5f,
+        roomBounds.y + roomBounds.height * 0.5f
+    };
+    Vector2 towardCenter = {
+        roomCenter.x - playerPosition.x,
+        roomCenter.y - playerPosition.y
+    };
+    float distanceToCenter = std::sqrt(
+        towardCenter.x * towardCenter.x + towardCenter.y * towardCenter.y
+    );
+    if (distanceToCenter <= COLLISION_EDGE_PADDING) {
+        return false;
+    }
+    towardCenter.x /= distanceToCenter;
+    towardCenter.y /= distanceToCenter;
+
+    Vector2 collisionOffset = {
+        playerCollisionBox.x - playerPosition.x,
+        playerCollisionBox.y - playerPosition.y
+    };
+    auto collisionBoxAt = [&](Vector2 position) {
+        return Rectangle{
+            position.x + collisionOffset.x,
+            position.y + collisionOffset.y,
+            playerCollisionBox.width,
+            playerCollisionBox.height
+        };
+    };
+
+    float maximumPushDistance = distanceToCenter;
+    for (float pushDistance = GATE_ESCAPE_STEP;
+         pushDistance <= maximumPushDistance;
+         pushDistance += GATE_ESCAPE_STEP) {
+        Vector2 candidate = {
+            playerPosition.x + towardCenter.x * pushDistance,
+            playerPosition.y + towardCenter.y * pushDistance
+        };
+        Rectangle candidateBox = collisionBoxAt(candidate);
+        if (overlapsLockedGate(candidateBox) ||
+            IsSolidCollision(candidateBox)) {
+            continue;
+        }
+
+        Vector2 paddedCandidate = {
+            candidate.x + towardCenter.x * GATE_ESCAPE_PADDING,
+            candidate.y + towardCenter.y * GATE_ESCAPE_PADDING
+        };
+        Rectangle paddedBox = collisionBoxAt(paddedCandidate);
+        escapePosition = !overlapsLockedGate(paddedBox) &&
+                !IsSolidCollision(paddedBox)
+            ? paddedCandidate
+            : candidate;
+        return true;
+    }
+
+    Rectangle centerBox = collisionBoxAt(roomCenter);
+    if (!overlapsLockedGate(centerBox) && !IsSolidCollision(centerBox)) {
+        escapePosition = roomCenter;
+        return true;
+    }
+    return false;
 }
 
 void LevelManager::DrawLevelBase() {

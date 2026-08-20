@@ -12,6 +12,25 @@
 #include <algorithm>
 #include <cstdlib>
 
+namespace {
+    void PushPlayerClearOfRoomGate(
+        TeamManager* teamManager,
+        LevelManager* levelManager
+    ) {
+        if (!teamManager || !levelManager) return;
+        Paladin* player = teamManager->GetActivePaladin();
+        if (!player) return;
+
+        Vector2 escapePosition;
+        if (levelManager->FindGateEscapePosition(
+                player->GetCollisionBox(),
+                player->GetPosition(),
+                escapePosition)) {
+            player->SetPosition(escapePosition);
+        }
+    }
+}
+
 WaveManager::WaveManager() {
     Reset();
 }
@@ -133,6 +152,10 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
 
     if (timeBetweenWaves > 0.0f) {
         timeBetweenWaves -= deltaTime;
+        if (timeBetweenWaves <= 0.0f) {
+            timeBetweenWaves = 0.0f;
+            PushPlayerClearOfRoomGate(teamManager, levelManager);
+        }
     } else {
         if (enemiesToSpawn > 0) {
             SpawnEnemy(deltaTime, teamManager, levelManager);

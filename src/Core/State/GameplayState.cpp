@@ -31,7 +31,12 @@ void GameplayState::Update(float deltaTime) {
     if (GameManager::GetInstance().GetHitstopTimer() > 0.0f) {
         GameManager::GetInstance().UpdateHitstop(deltaTime);
     } else {
-        levelManager->UpdateLevel(deltaTime, teamManager->GetActivePaladin()->GetPosition());
+        Paladin* activePaladin = teamManager->GetActivePaladin();
+        levelManager->UpdateLevel(
+            deltaTime,
+            activePaladin->GetPosition(),
+            activePaladin->GetCollisionBox()
+        );
         if (levelManager->NeedsPlayerNudge()) {
             teamManager->GetActivePaladin()->SetPosition(levelManager->ConsumeNudge());
         }

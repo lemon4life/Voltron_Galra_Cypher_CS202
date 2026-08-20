@@ -23,8 +23,13 @@ namespace {
     constexpr float CHASER_KNOCKBACK_RESISTANCE = 0.25f;
     constexpr Vector2 CHASER_SIZE = { 20.0f, 20.0f };
     constexpr Vector2 CHASER_RENDER_FOOT_OFFSET = { 0.0f, 16.0f };
+    constexpr float CHASER_COLLISION_HORIZONTAL_INSET = 1.0f;
     constexpr EnemyCollisionProfile CHASER_COLLISION_PROFILE = {
-        { 16.0f, 8.0f },
+        {
+            Constants::RENDER_TILE_SIZE -
+                CHASER_COLLISION_HORIZONTAL_INSET * 2.0f,
+            8.0f
+        },
         { 0.0f, 8.0f }
     };
 

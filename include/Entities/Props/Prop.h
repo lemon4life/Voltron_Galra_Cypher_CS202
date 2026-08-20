@@ -18,6 +18,7 @@ public:
 
     void Update(float deltaTime) override;
     Rectangle GetBoundingBox() const override;
+    Rectangle GetCollisionBox() const override;
     
     // Support for unified depth rendering
     void AddDepthRenderItems(std::vector<DepthRenderItem>& items) override;
