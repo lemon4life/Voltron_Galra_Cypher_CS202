@@ -51,6 +51,9 @@ private:
     > spawnValues;
     float propertyScroll;
     std::string statusMessage;
+    int pathFlowBuildsPerSecond;
+    int pathFlowProfiles;
+    float pathFlowAverageMilliseconds;
     int pathSearchesPerSecond;
     float pathAverageMilliseconds;
     float pathMaximumMilliseconds;

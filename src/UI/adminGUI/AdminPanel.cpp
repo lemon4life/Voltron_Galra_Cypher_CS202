@@ -186,6 +186,9 @@ AdminPanel::AdminPanel()
       spawnValues(DEFAULT_SPAWN_VALUES),
       propertyScroll(0.0f),
       statusMessage("Select a type, tune values, then click the world"),
+      pathFlowBuildsPerSecond(0),
+      pathFlowProfiles(0),
+      pathFlowAverageMilliseconds(0.0f),
       pathSearchesPerSecond(0),
       pathAverageMilliseconds(0.0f),
       pathMaximumMilliseconds(0.0f) {
@@ -361,6 +364,10 @@ void AdminPanel::Update(
         GameManager::GetInstance()
             .GetPathFindingManager()
             .GetProfilingStats();
+    pathFlowBuildsPerSecond = pathStats.flowFieldBuildsLastSecond;
+    pathFlowProfiles = pathStats.activeFlowFieldProfiles;
+    pathFlowAverageMilliseconds =
+        pathStats.averageFlowFieldMilliseconds;
     pathSearchesPerSecond = pathStats.searchesLastSecond;
     pathAverageMilliseconds = pathStats.averageSearchMilliseconds;
     pathMaximumMilliseconds = pathStats.maximumSearchMilliseconds;
@@ -583,10 +590,12 @@ void AdminPanel::Draw() const {
     if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
         DrawTextAdmin(
             TextFormat(
-                "Path: %i/s  avg %.2f ms  max %.2f ms",
+                "Flow: %i/s (%i) %.2fms | A*: %i/s %.2fms",
+                pathFlowBuildsPerSecond,
+                pathFlowProfiles,
+                pathFlowAverageMilliseconds,
                 pathSearchesPerSecond,
-                pathAverageMilliseconds,
-                pathMaximumMilliseconds
+                pathAverageMilliseconds
             ),
             (int)contentX,
             (int)panel.y + 36,

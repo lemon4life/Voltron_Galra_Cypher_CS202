@@ -16,6 +16,14 @@ class ObjectManager;
 struct EnemyNavigationCacheStore;
 
 struct EnemyPathProfilingStats {
+    int flowFieldBuildsThisFrame = 0;
+    int flowFieldBuildsLastSecond = 0;
+    int flowFieldCacheHitsLastSecond = 0;
+    int activeFlowFieldProfiles = 0;
+    float averageFlowFieldExpandedCells = 0.0f;
+    int maximumFlowFieldExpandedCells = 0;
+    float averageFlowFieldMilliseconds = 0.0f;
+    float maximumFlowFieldMilliseconds = 0.0f;
     int searchesThisFrame = 0;
     int searchesLastSecond = 0;
     int readyLastSecond = 0;
@@ -29,6 +37,11 @@ struct EnemyPathProfilingStats {
 
 class PathFindingManager : public IEnemyPathAccess {
 private:
+    enum class NavigationMode {
+        PlayerFlowField,
+        ExplicitGoalAStar
+    };
+
     struct PathRecord {
         bool hasTargetTile = false;
         int targetTileX = 0;
@@ -37,7 +50,7 @@ private:
         float pathAge = 0.0f;
         bool forceRepath = true;
         bool lastSearchFailed = false;
-        bool hasExplicitGoal = false;
+        NavigationMode mode = NavigationMode::PlayerFlowField;
         Vector2 explicitGoal = { 0.0f, 0.0f };
     };
 
@@ -49,6 +62,12 @@ private:
     int nextEnemyIndex = 0;
     float searchCredits = 0.0f;
     float profilingTimer = 0.0f;
+    int profilingFlowFieldBuilds = 0;
+    int profilingFlowFieldCacheHits = 0;
+    int profilingFlowExpandedTotal = 0;
+    int profilingFlowExpandedMaximum = 0;
+    float profilingFlowMillisecondsTotal = 0.0f;
+    float profilingFlowMillisecondsMaximum = 0.0f;
     int profilingSearches = 0;
     int profilingReady = 0;
     int profilingUnreachable = 0;

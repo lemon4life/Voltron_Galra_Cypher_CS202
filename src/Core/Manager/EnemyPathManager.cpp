@@ -18,6 +18,7 @@
 #include <optional>
 #include <queue>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 struct NavigationCacheKey {
@@ -68,6 +69,31 @@ struct NavigationGridCache {
     std::vector<std::array<std::int8_t, 8>> clearEdges;
 };
 
+struct FlowFieldCell {
+    float integrationCost = std::numeric_limits<float>::max();
+    int nextCellIndex = -1;
+    int terminalGoalIndex = -1;
+    bool reachable = false;
+};
+
+struct FlowFieldTerminal {
+    int tileX = 0;
+    int tileY = 0;
+    Vector2 goalPosition = { 0.0f, 0.0f };
+    std::vector<Vector2> suffix;
+    float connectionDistance = 0.0f;
+};
+
+struct FlowFieldData {
+    NavigationCacheKey key = {};
+    Rectangle searchBounds = {};
+    std::vector<FlowFieldCell> cells;
+    std::vector<FlowFieldTerminal> terminals;
+    int expandedCells = 0;
+    bool available = false;
+    bool oversized = false;
+};
+
 struct EnemyNavigationCacheStore {
     std::uint64_t navigationRevision =
         std::numeric_limits<std::uint64_t>::max();
@@ -80,14 +106,22 @@ struct EnemyNavigationCacheStore {
     int goalTargetTileX = 0;
     int goalTargetTileY = 0;
     Rectangle goalSearchBounds = {};
+    const Paladin* goalTarget = nullptr;
     std::vector<EnemyPathDebugPoint> sharedGoals;
+    std::unordered_map<
+        NavigationCacheKey,
+        FlowFieldData,
+        NavigationCacheKeyHash
+    > flowFields;
 
     void EnsureRevision(std::uint64_t revision) {
         if (navigationRevision == revision) return;
         navigationRevision = revision;
         grids.clear();
         goalsValid = false;
+        goalTarget = nullptr;
         sharedGoals.clear();
+        flowFields.clear();
     }
 };
 
@@ -96,9 +130,9 @@ namespace {
     constexpr float TARGET_LOOP_ALL_INTERVAL = 0.6f;
     constexpr float BODY_PATH_SAMPLE_SPACING = 4.0f;
     constexpr float POSITION_EPSILON_SQUARED = 4.0f;
-    constexpr float PLAYER_GOAL_RADIUS = 30.0f;
     constexpr float QUARTER_TILE_OFFSET = 8.0f;
     constexpr int MAX_SEARCH_STEPS = 70;
+    constexpr int MAX_FLOW_FIELD_CELLS = 4096;
     constexpr int MAX_TARGET_POSITIONS = 7;
     constexpr int MAX_SEARCHES_PER_FRAME = 1;
     constexpr int MAX_START_CONNECTION_ATTEMPTS = 32;
@@ -344,7 +378,7 @@ namespace {
                     Constants::RENDER_TILE_SIZE
             ) - 1;
 
-            NavigationCacheKey key = {
+            key = {
                 Quantize(profile.navigationSize.x),
                 Quantize(profile.navigationSize.y),
                 Quantize(profile.navigationCenterOffset.x),
@@ -419,6 +453,32 @@ namespace {
             return clear;
         }
 
+        const NavigationCacheKey& GetKey() const {
+            return key;
+        }
+
+        int GetIndex(Tile tile) const {
+            int localX = tile.x - grid->minimumTileX;
+            int localY = tile.y - grid->minimumTileY;
+            if (localX < 0 || localY < 0 ||
+                localX >= grid->tileWidth || localY >= grid->tileHeight) {
+                return -1;
+            }
+            return localY * grid->tileWidth + localX;
+        }
+
+        Tile GetTile(int index) const {
+            if (index < 0 || index >= GetCellCount()) return { 0, 0 };
+            return {
+                grid->minimumTileX + index % grid->tileWidth,
+                grid->minimumTileY + index / grid->tileWidth
+            };
+        }
+
+        int GetCellCount() const {
+            return grid->tileWidth * grid->tileHeight;
+        }
+
     private:
         static int Quantize(float value) {
             return (int)std::lround(value * 1000.0f);
@@ -435,16 +495,6 @@ namespace {
                 }
             }
             return -1;
-        }
-
-        int GetIndex(Tile tile) const {
-            int localX = tile.x - grid->minimumTileX;
-            int localY = tile.y - grid->minimumTileY;
-            if (localX < 0 || localY < 0 ||
-                localX >= grid->tileWidth || localY >= grid->tileHeight) {
-                return -1;
-            }
-            return localY * grid->tileWidth + localX;
         }
 
         bool CalculateEdgeClear(Tile current, Tile neighbor) {
@@ -471,6 +521,7 @@ namespace {
         LevelManager& levelManager;
         Enemy& enemy;
         Rectangle searchBounds;
+        NavigationCacheKey key = {};
         NavigationGridCache* grid = nullptr;
     };
 
@@ -601,28 +652,24 @@ namespace {
         return best;
     }
 
-    std::vector<Vector2> GenerateGoalCandidates(const Paladin& target) {
-        constexpr std::array<Vector2, 8> DIRECTIONS = {
-            Vector2{ -1.0f, 0.0f },
-            Vector2{ 1.0f, 0.0f },
-            Vector2{ 0.0f, -1.0f },
-            Vector2{ 0.0f, 1.0f },
-            Vector2{ -1.0f, -1.0f },
-            Vector2{ 1.0f, -1.0f },
-            Vector2{ -1.0f, 1.0f },
-            Vector2{ 1.0f, 1.0f }
+    std::vector<Vector2> GenerateGoalCandidates(
+        const LevelManager& levelManager,
+        const Paladin& target
+    ) {
+        constexpr std::array<Tile, 8> NEIGHBOR_OFFSETS = {
+            Tile{ -1, -1 }, Tile{ 0, -1 }, Tile{ 1, -1 },
+            Tile{ -1, 0 },                   Tile{ 1, 0 },
+            Tile{ -1, 1 },  Tile{ 0, 1 },   Tile{ 1, 1 }
         };
 
         std::vector<Vector2> candidates;
-        candidates.reserve(DIRECTIONS.size());
+        candidates.reserve(NEIGHBOR_OFFSETS.size());
+        Tile playerTile = WorldTile(levelManager, target.GetPosition());
 
-        for (Vector2 direction : DIRECTIONS) {
-            candidates.push_back(Vector2Add(
-                target.GetPosition(),
-                Vector2Scale(
-                    Vector2Normalize(direction),
-                    PLAYER_GOAL_RADIUS
-                )
+        for (Tile offset : NEIGHBOR_OFFSETS) {
+            candidates.push_back(levelManager.TileToWorld(
+                playerTile.x + offset.x,
+                playerTile.y + offset.y
             ));
         }
 
@@ -644,6 +691,7 @@ namespace {
     ) {
         Tile targetTile = WorldTile(levelManager, target.GetPosition());
         if (store.goalsValid &&
+            store.goalTarget == &target &&
             store.goalTargetTileX == targetTile.x &&
             store.goalTargetTileY == targetTile.y &&
             SameRectangle(store.goalSearchBounds, searchBounds)) {
@@ -651,12 +699,17 @@ namespace {
         }
 
         store.goalsValid = true;
+        store.goalTarget = &target;
         store.goalTargetTileX = targetTile.x;
         store.goalTargetTileY = targetTile.y;
         store.goalSearchBounds = searchBounds;
         store.sharedGoals.clear();
+        store.flowFields.clear();
 
-        std::vector<Vector2> candidates = GenerateGoalCandidates(target);
+        std::vector<Vector2> candidates = GenerateGoalCandidates(
+            levelManager,
+            target
+        );
         store.sharedGoals.reserve(candidates.size());
         for (Vector2 candidate : candidates) {
             Vector2 closestHitboxPoint = ClosestPointOnRectangle(
@@ -736,6 +789,238 @@ namespace {
         return best;
     }
 
+    struct FlowQueueNode {
+        int cellIndex;
+        float cost;
+    };
+
+    struct CompareFlowQueueNode {
+        bool operator()(
+            const FlowQueueNode& first,
+            const FlowQueueNode& second
+        ) const {
+            return first.cost > second.cost;
+        }
+    };
+
+    FlowFieldData BuildFlowField(
+        LevelManager& levelManager,
+        Enemy& representative,
+        const std::vector<EnemyPathDebugPoint>& candidates,
+        EnemyNavigationCacheStore& store,
+        Rectangle searchBounds,
+        std::uint64_t navigationRevision
+    ) {
+        SearchCollisionCache cache(
+            levelManager,
+            representative,
+            store,
+            searchBounds,
+            navigationRevision
+        );
+
+        FlowFieldData field;
+        field.key = cache.GetKey();
+        field.searchBounds = searchBounds;
+        int cellCount = cache.GetCellCount();
+        if (cellCount <= 0 || cellCount > MAX_FLOW_FIELD_CELLS) {
+            field.oversized = cellCount > MAX_FLOW_FIELD_CELLS;
+            return field;
+        }
+
+        std::vector<EnemyPathDebugPoint> ignoredDebugGoals;
+        std::vector<GoalAnchor> anchors = BuildGoalAnchors(
+            levelManager,
+            representative,
+            candidates,
+            cache,
+            ignoredDebugGoals,
+            searchBounds
+        );
+        if (anchors.empty()) return field;
+
+        field.cells.resize(cellCount);
+        field.terminals.reserve(anchors.size());
+        std::priority_queue<
+            FlowQueueNode,
+            std::vector<FlowQueueNode>,
+            CompareFlowQueueNode
+        > openSet;
+
+        float tileSize = Constants::RENDER_TILE_SIZE;
+        for (const GoalAnchor& anchor : anchors) {
+            int cellIndex = cache.GetIndex(anchor.graphTile);
+            if (cellIndex < 0) continue;
+
+            int terminalIndex = (int)field.terminals.size();
+            field.terminals.push_back({
+                anchor.graphTile.x,
+                anchor.graphTile.y,
+                anchor.goalPosition,
+                anchor.suffix,
+                anchor.connectionDistance
+            });
+
+            float initialCost = anchor.connectionDistance / tileSize;
+            FlowFieldCell& cell = field.cells[cellIndex];
+            if (cell.reachable && initialCost >= cell.integrationCost) {
+                continue;
+            }
+            cell.integrationCost = initialCost;
+            cell.nextCellIndex = -1;
+            cell.terminalGoalIndex = terminalIndex;
+            cell.reachable = true;
+            openSet.push({ cellIndex, initialCost });
+        }
+
+        constexpr std::array<Tile, 8> DIRECTIONS = {
+            Tile{ 1, 0 }, Tile{ -1, 0 }, Tile{ 0, 1 }, Tile{ 0, -1 },
+            Tile{ 1, 1 }, Tile{ 1, -1 }, Tile{ -1, 1 }, Tile{ -1, -1 }
+        };
+
+        while (!openSet.empty()) {
+            FlowQueueNode current = openSet.top();
+            openSet.pop();
+            const FlowFieldCell& currentCell = field.cells[current.cellIndex];
+            if (!currentCell.reachable ||
+                current.cost > currentCell.integrationCost) {
+                continue;
+            }
+
+            ++field.expandedCells;
+            Tile currentTile = cache.GetTile(current.cellIndex);
+            for (Tile direction : DIRECTIONS) {
+                Tile neighbor = {
+                    currentTile.x + direction.x,
+                    currentTile.y + direction.y
+                };
+                int neighborIndex = cache.GetIndex(neighbor);
+                if (neighborIndex < 0 ||
+                    !cache.IsEdgeClear(neighbor, currentTile)) {
+                    continue;
+                }
+
+                bool diagonal = direction.x != 0 && direction.y != 0;
+                float nextCost = current.cost +
+                    (diagonal ? DIAGONAL_COST : 1.0f);
+                FlowFieldCell& neighborCell = field.cells[neighborIndex];
+                if (neighborCell.reachable &&
+                    nextCost >= neighborCell.integrationCost) {
+                    continue;
+                }
+
+                neighborCell.integrationCost = nextCost;
+                neighborCell.nextCellIndex = current.cellIndex;
+                neighborCell.terminalGoalIndex =
+                    currentCell.terminalGoalIndex;
+                neighborCell.reachable = true;
+                openSet.push({ neighborIndex, nextCost });
+            }
+        }
+
+        field.available = !field.terminals.empty();
+        return field;
+    }
+
+    std::optional<PositionConnection> FindBestFlowStartConnection(
+        LevelManager& levelManager,
+        Enemy& enemy,
+        SearchCollisionCache& cache,
+        const FlowFieldData& field,
+        Rectangle searchBounds
+    ) {
+        Vector2 start = enemy.GetPosition();
+        Tile startTile = WorldTile(levelManager, start);
+        std::optional<PositionConnection> best;
+        float bestTotalCost = std::numeric_limits<float>::max();
+
+        auto consider = [&](Tile graphTile, std::vector<Vector2> points) {
+            int cellIndex = cache.GetIndex(graphTile);
+            if (cellIndex < 0 ||
+                cellIndex >= (int)field.cells.size() ||
+                !field.cells[cellIndex].reachable) {
+                return;
+            }
+            float distance = ConnectionLength(start, points);
+            float totalCost = distance / Constants::RENDER_TILE_SIZE +
+                field.cells[cellIndex].integrationCost;
+            if (totalCost < bestTotalCost) {
+                bestTotalCost = totalCost;
+                best = PositionConnection{
+                    graphTile,
+                    std::move(points),
+                    distance
+                };
+            }
+        };
+
+        std::vector<Tile> graphTiles = NearbyTiles(startTile);
+        for (Tile graphTile : graphTiles) {
+            if (!cache.IsTileClear(graphTile)) continue;
+            Vector2 center = levelManager.TileToWorld(graphTile.x, graphTile.y);
+            auto connection = ConnectPositions(
+                levelManager,
+                enemy,
+                start,
+                center,
+                searchBounds
+            );
+            if (connection) consider(graphTile, std::move(*connection));
+        }
+        if (best) return best;
+
+        constexpr std::array<Vector2, 8> ANCHOR_OFFSETS = {
+            Vector2{ QUARTER_TILE_OFFSET, 0.0f },
+            Vector2{ -QUARTER_TILE_OFFSET, 0.0f },
+            Vector2{ 0.0f, QUARTER_TILE_OFFSET },
+            Vector2{ 0.0f, -QUARTER_TILE_OFFSET },
+            Vector2{ QUARTER_TILE_OFFSET, QUARTER_TILE_OFFSET },
+            Vector2{ QUARTER_TILE_OFFSET, -QUARTER_TILE_OFFSET },
+            Vector2{ -QUARTER_TILE_OFFSET, QUARTER_TILE_OFFSET },
+            Vector2{ -QUARTER_TILE_OFFSET, -QUARTER_TILE_OFFSET }
+        };
+
+        int attempts = 0;
+        for (Tile graphTile : graphTiles) {
+            if (!cache.IsTileClear(graphTile)) continue;
+            Vector2 graphCenter = levelManager.TileToWorld(
+                graphTile.x,
+                graphTile.y
+            );
+            for (Vector2 offset : ANCHOR_OFFSETS) {
+                if (attempts++ >= MAX_START_CONNECTION_ATTEMPTS) return best;
+                Vector2 anchor = Vector2Add(graphCenter, offset);
+                if (!IsBodyClearAtWorldPosition(
+                        levelManager,
+                        enemy,
+                        anchor,
+                        searchBounds)) {
+                    continue;
+                }
+                auto toAnchor = ConnectPositions(
+                    levelManager,
+                    enemy,
+                    start,
+                    anchor,
+                    searchBounds
+                );
+                auto toGraph = ConnectPositions(
+                    levelManager,
+                    enemy,
+                    anchor,
+                    graphCenter,
+                    searchBounds
+                );
+                if (!toAnchor || !toGraph) continue;
+
+                std::vector<Vector2> points = *toAnchor;
+                points.insert(points.end(), toGraph->begin(), toGraph->end());
+                consider(graphTile, std::move(points));
+            }
+        }
+        return best;
+    }
+
     std::vector<Vector2> CondenseWaypoints(
         const LevelManager& levelManager,
         const Enemy& enemy,
@@ -782,6 +1067,120 @@ namespace {
         }
 
         return condensed;
+    }
+
+    PathSearchResult FindPathFromFlowField(
+        LevelManager& levelManager,
+        Enemy& enemy,
+        const std::vector<EnemyPathDebugPoint>& candidates,
+        const FlowFieldData& field,
+        EnemyNavigationCacheStore& store,
+        Rectangle searchBounds,
+        std::uint64_t navigationRevision
+    ) {
+        PathSearchResult result;
+        result.debugGoals = candidates;
+        result.expandedCells = field.expandedCells;
+        if (!field.available ||
+            !IsBodyClearAtWorldPosition(
+                levelManager,
+                enemy,
+                enemy.GetPosition(),
+                searchBounds)) {
+            return result;
+        }
+
+        for (const EnemyPathDebugPoint& candidate : candidates) {
+            if (candidate.hasLineOfSight &&
+                DistanceSquared(enemy.GetPosition(), candidate.position) <=
+                    POSITION_EPSILON_SQUARED) {
+                result.status = EnemyPathStatus::AtGoal;
+                result.selectedGoal = candidate.position;
+                return result;
+            }
+        }
+
+        SearchCollisionCache cache(
+            levelManager,
+            enemy,
+            store,
+            searchBounds,
+            navigationRevision
+        );
+        if (!(cache.GetKey() == field.key)) return result;
+
+        std::optional<PositionConnection> start =
+            FindBestFlowStartConnection(
+                levelManager,
+                enemy,
+                cache,
+                field,
+                searchBounds
+            );
+        if (!start) return result;
+
+        int currentIndex = cache.GetIndex(start->graphTile);
+        if (currentIndex < 0 ||
+            currentIndex >= (int)field.cells.size() ||
+            !field.cells[currentIndex].reachable) {
+            return result;
+        }
+
+        int terminalIndex = field.cells[currentIndex].terminalGoalIndex;
+        if (terminalIndex < 0 ||
+            terminalIndex >= (int)field.terminals.size()) {
+            return result;
+        }
+        const FlowFieldTerminal& terminal = field.terminals[terminalIndex];
+        result.selectedGoal = terminal.goalPosition;
+
+        if (IsBodyPathClear(
+                levelManager,
+                enemy,
+                enemy.GetPosition(),
+                terminal.goalPosition,
+                searchBounds)) {
+            result.waypoints = { terminal.goalPosition };
+            result.status = EnemyPathStatus::Ready;
+            return result;
+        }
+
+        std::vector<Vector2> rawWaypoints = start->waypoints;
+        std::vector<std::uint8_t> visited(field.cells.size(), 0);
+        for (int guard = 0;
+             guard < (int)field.cells.size() && currentIndex >= 0;
+             ++guard) {
+            if (visited[currentIndex] != 0) return PathSearchResult{};
+            visited[currentIndex] = 1;
+
+            const FlowFieldCell& cell = field.cells[currentIndex];
+            if (cell.terminalGoalIndex != terminalIndex) {
+                return PathSearchResult{};
+            }
+            if (cell.nextCellIndex < 0) break;
+            currentIndex = cell.nextCellIndex;
+            Tile nextTile = cache.GetTile(currentIndex);
+            rawWaypoints.push_back(levelManager.TileToWorld(
+                nextTile.x,
+                nextTile.y
+            ));
+        }
+
+        rawWaypoints.insert(
+            rawWaypoints.end(),
+            terminal.suffix.begin(),
+            terminal.suffix.end()
+        );
+        result.waypoints = CondenseWaypoints(
+            levelManager,
+            enemy,
+            rawWaypoints,
+            searchBounds
+        );
+        result.status = result.waypoints.empty()
+            ? EnemyPathStatus::AtGoal
+            : EnemyPathStatus::Ready;
+        return result;
     }
 
     PathSearchResult FindPathToCandidates(
@@ -1143,10 +1542,6 @@ void PathFindingManager::AddEnemy(Enemy& enemy) {
     if (std::find(enemies.begin(), enemies.end(), enemyId) == enemies.end()) {
         enemies.push_back(enemyId);
         pathRecords[enemyId] = PathRecord{};
-        searchCredits = std::min(
-            (float)enemies.size(),
-            searchCredits + 1.0f
-        );
         enemy.SetPathStatus(EnemyPathStatus::Pending);
     }
 }
@@ -1158,18 +1553,24 @@ void PathFindingManager::Clear() {
     searchCredits = 0.0f;
     navigationCacheStore->grids.clear();
     navigationCacheStore->goalsValid = false;
+    navigationCacheStore->goalTarget = nullptr;
     navigationCacheStore->sharedGoals.clear();
+    navigationCacheStore->flowFields.clear();
 }
 
 void PathFindingManager::AddEnemyTo(Enemy& enemy, Vector2 worldGoal) {
     AddEnemy(enemy);
     PathRecord& record = pathRecords[enemy.GetObjectId()];
-    record.hasExplicitGoal = true;
+    record.mode = NavigationMode::ExplicitGoalAStar;
     record.explicitGoal = worldGoal;
     record.hasTargetTile = false;
     record.forceRepath = true;
     record.lastSearchFailed = false;
     record.pathAge = 0.0f;
+    searchCredits = std::min(
+        (float)enemies.size(),
+        searchCredits + 1.0f
+    );
     enemy.SetPathStatus(EnemyPathStatus::Pending);
 }
 
@@ -1309,9 +1710,28 @@ Vector2 PathFindingManager::GetLocalDirection(
 }
 
 void PathFindingManager::Update(float deltaTime) {
+    profilingStats.flowFieldBuildsThisFrame = 0;
     profilingStats.searchesThisFrame = 0;
     profilingTimer += std::max(0.0f, deltaTime);
     if (profilingTimer >= 1.0f) {
+        profilingStats.flowFieldBuildsLastSecond =
+            profilingFlowFieldBuilds;
+        profilingStats.flowFieldCacheHitsLastSecond =
+            profilingFlowFieldCacheHits;
+        profilingStats.averageFlowFieldExpandedCells =
+            profilingFlowFieldBuilds > 0
+                ? (float)profilingFlowExpandedTotal /
+                    (float)profilingFlowFieldBuilds
+                : 0.0f;
+        profilingStats.maximumFlowFieldExpandedCells =
+            profilingFlowExpandedMaximum;
+        profilingStats.averageFlowFieldMilliseconds =
+            profilingFlowFieldBuilds > 0
+                ? profilingFlowMillisecondsTotal /
+                    (float)profilingFlowFieldBuilds
+                : 0.0f;
+        profilingStats.maximumFlowFieldMilliseconds =
+            profilingFlowMillisecondsMaximum;
         profilingStats.searchesLastSecond = profilingSearches;
         profilingStats.readyLastSecond = profilingReady;
         profilingStats.unreachableLastSecond = profilingUnreachable;
@@ -1327,6 +1747,12 @@ void PathFindingManager::Update(float deltaTime) {
             profilingMillisecondsMaximum;
 
         profilingTimer = std::fmod(profilingTimer, 1.0f);
+        profilingFlowFieldBuilds = 0;
+        profilingFlowFieldCacheHits = 0;
+        profilingFlowExpandedTotal = 0;
+        profilingFlowExpandedMaximum = 0;
+        profilingFlowMillisecondsTotal = 0.0f;
+        profilingFlowMillisecondsMaximum = 0.0f;
         profilingSearches = 0;
         profilingReady = 0;
         profilingUnreachable = 0;
@@ -1339,6 +1765,7 @@ void PathFindingManager::Update(float deltaTime) {
 
     if (enemies.empty() || TARGET_LOOP_ALL_INTERVAL <= 0.0f) {
         searchCredits = 0.0f;
+        profilingStats.activeFlowFieldProfiles = 0;
         return;
     }
 
@@ -1346,14 +1773,264 @@ void PathFindingManager::Update(float deltaTime) {
         entry.second.pathAge += std::max(0.0f, deltaTime);
     }
 
+    std::uint64_t navigationRevision =
+        levelManager.GetNavigationRevision();
+    Rectangle searchBounds = levelManager.GetCurrentRoomBounds();
+    navigationCacheStore->EnsureRevision(navigationRevision);
+
+    auto getPlayerTarget = [](Enemy& enemy) -> Paladin* {
+        TeamManager* targetTeam = enemy.GetTargetTeam();
+        return targetTeam ? targetTeam->GetActivePaladin() : nullptr;
+    };
+
+    auto applyResult = [&](Enemy& enemy,
+                           PathRecord& record,
+                           PathSearchResult result,
+                           Tile targetTile,
+                           bool navigationChanged) {
+        record.hasTargetTile = true;
+        record.targetTileX = targetTile.x;
+        record.targetTileY = targetTile.y;
+        record.navigationRevision = navigationRevision;
+        record.pathAge = 0.0f;
+        record.forceRepath = false;
+        record.lastSearchFailed =
+            result.status == EnemyPathStatus::Unreachable ||
+            result.status == EnemyPathStatus::SearchLimitReached;
+
+        enemy.SetPathDebugPoints(std::move(result.debugGoals));
+        if (result.status == EnemyPathStatus::Ready) {
+            enemy.ClearTargetPosition();
+            for (Vector2 waypoint : result.waypoints) {
+                enemy.AddTargetPosition(waypoint);
+            }
+            enemy.SetPathStatus(EnemyPathStatus::Ready);
+            enemy.ClearSelectedPathGoal();
+            if (result.selectedGoal) {
+                enemy.SetSelectedPathGoal(*result.selectedGoal);
+            }
+            return;
+        }
+
+        if (result.status == EnemyPathStatus::AtGoal) {
+            enemy.ClearTargetPosition();
+            enemy.SetPathStatus(EnemyPathStatus::AtGoal);
+            enemy.ClearSelectedPathGoal();
+            if (result.selectedGoal) {
+                enemy.SetSelectedPathGoal(*result.selectedGoal);
+            }
+            return;
+        }
+
+        bool existingPathValid = !navigationChanged &&
+            enemy.HasTargetPosition() &&
+            IsBodyPathClear(
+                levelManager,
+                enemy,
+                enemy.GetPosition(),
+                enemy.FirstTargetPosition(),
+                searchBounds
+            );
+        if (existingPathValid) {
+            enemy.SetPathStatus(EnemyPathStatus::Ready);
+            return;
+        }
+
+        enemy.ClearTargetPosition();
+        enemy.ClearSelectedPathGoal();
+        enemy.SetPathStatus(result.status);
+    };
+
+    bool builtFlowField = false;
+    std::unordered_set<
+        NavigationCacheKey,
+        NavigationCacheKeyHash
+    > activeFlowProfiles;
+    std::unordered_set<
+        NavigationCacheKey,
+        NavigationCacheKeyHash
+    > observedCachedProfiles;
+
+    for (ObjectId enemyId : enemies) {
+        auto recordIt = pathRecords.find(enemyId);
+        Enemy* enemy = objectManager.FindEnemy(enemyId);
+        if (recordIt == pathRecords.end() || !enemy || enemy->IsDead() ||
+            !enemy->IsEnabled() ||
+            recordIt->second.mode != NavigationMode::PlayerFlowField) {
+            continue;
+        }
+
+        Paladin* target = getPlayerTarget(*enemy);
+        if (!target) continue;
+        const std::vector<EnemyPathDebugPoint>& candidates =
+            GetSharedGoalCandidates(
+                levelManager,
+                *target,
+                *navigationCacheStore,
+                searchBounds
+            );
+        SearchCollisionCache cache(
+            levelManager,
+            *enemy,
+            *navigationCacheStore,
+            searchBounds,
+            navigationRevision
+        );
+        NavigationCacheKey key = cache.GetKey();
+        activeFlowProfiles.insert(key);
+
+        auto fieldIt = navigationCacheStore->flowFields.find(key);
+        if (fieldIt != navigationCacheStore->flowFields.end()) {
+            if (observedCachedProfiles.insert(key).second) {
+                ++profilingFlowFieldCacheHits;
+            }
+            continue;
+        }
+        if (builtFlowField) continue;
+
+        std::chrono::steady_clock::time_point buildStarted;
+        if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
+            buildStarted = std::chrono::steady_clock::now();
+        }
+        FlowFieldData field = BuildFlowField(
+            levelManager,
+            *enemy,
+            candidates,
+            *navigationCacheStore,
+            searchBounds,
+            navigationRevision
+        );
+        float elapsedMilliseconds = 0.0f;
+        if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
+            elapsedMilliseconds = std::chrono::duration<float, std::milli>(
+                std::chrono::steady_clock::now() - buildStarted
+            ).count();
+        }
+
+        int expandedCells = field.expandedCells;
+        navigationCacheStore->flowFields.emplace(key, std::move(field));
+        builtFlowField = true;
+        ++profilingStats.flowFieldBuildsThisFrame;
+        ++profilingFlowFieldBuilds;
+        profilingFlowExpandedTotal += expandedCells;
+        profilingFlowExpandedMaximum = std::max(
+            profilingFlowExpandedMaximum,
+            expandedCells
+        );
+        profilingFlowMillisecondsTotal += elapsedMilliseconds;
+        profilingFlowMillisecondsMaximum = std::max(
+            profilingFlowMillisecondsMaximum,
+            elapsedMilliseconds
+        );
+    }
+    profilingStats.activeFlowFieldProfiles =
+        (int)activeFlowProfiles.size();
+
+    for (ObjectId enemyId : enemies) {
+        auto recordIt = pathRecords.find(enemyId);
+        Enemy* enemy = objectManager.FindEnemy(enemyId);
+        if (recordIt == pathRecords.end() || !enemy || enemy->IsDead() ||
+            !enemy->IsEnabled()) {
+            continue;
+        }
+        PathRecord& record = recordIt->second;
+        if (record.mode != NavigationMode::PlayerFlowField) continue;
+
+        Paladin* target = getPlayerTarget(*enemy);
+        if (!target) continue;
+        Tile targetTile = WorldTile(levelManager, target->GetPosition());
+        bool targetChanged = !record.hasTargetTile ||
+            record.targetTileX != targetTile.x ||
+            record.targetTileY != targetTile.y;
+        bool navigationChanged =
+            record.navigationRevision != navigationRevision;
+        bool failedPathRetry = record.lastSearchFailed &&
+            record.pathAge >= FAILED_PATH_RETRY_INTERVAL;
+        bool needsRoute = record.forceRepath || targetChanged ||
+            navigationChanged || failedPathRetry;
+        if (!needsRoute) continue;
+
+        const std::vector<EnemyPathDebugPoint>& candidates =
+            GetSharedGoalCandidates(
+                levelManager,
+                *target,
+                *navigationCacheStore,
+                searchBounds
+            );
+        SearchCollisionCache cache(
+            levelManager,
+            *enemy,
+            *navigationCacheStore,
+            searchBounds,
+            navigationRevision
+        );
+        auto fieldIt = navigationCacheStore->flowFields.find(cache.GetKey());
+        if (fieldIt == navigationCacheStore->flowFields.end()) {
+            if (navigationChanged) {
+                enemy->ClearTargetPosition();
+                enemy->ClearSelectedPathGoal();
+            }
+            enemy->SetPathStatus(EnemyPathStatus::Pending);
+            continue;
+        }
+        if (fieldIt->second.oversized) continue;
+
+        PopReachedTargets(*enemy);
+        PathSearchResult result = FindPathFromFlowField(
+            levelManager,
+            *enemy,
+            candidates,
+            fieldIt->second,
+            *navigationCacheStore,
+            searchBounds,
+            navigationRevision
+        );
+        applyResult(
+            *enemy,
+            record,
+            std::move(result),
+            targetTile,
+            navigationChanged
+        );
+    }
+
+    auto usesAStar = [&](Enemy& enemy, PathRecord& record) {
+        if (record.mode == NavigationMode::ExplicitGoalAStar) return true;
+        Paladin* target = getPlayerTarget(enemy);
+        if (!target) return false;
+        SearchCollisionCache cache(
+            levelManager,
+            enemy,
+            *navigationCacheStore,
+            searchBounds,
+            navigationRevision
+        );
+        auto fieldIt = navigationCacheStore->flowFields.find(cache.GetKey());
+        return fieldIt != navigationCacheStore->flowFields.end() &&
+            fieldIt->second.oversized;
+    };
+
+    int aStarRequestCount = 0;
+    for (ObjectId enemyId : enemies) {
+        auto recordIt = pathRecords.find(enemyId);
+        Enemy* enemy = objectManager.FindEnemy(enemyId);
+        if (recordIt != pathRecords.end() && enemy && !enemy->IsDead() &&
+            enemy->IsEnabled() && usesAStar(*enemy, recordIt->second)) {
+            ++aStarRequestCount;
+        }
+    }
+
+    if (aStarRequestCount <= 0) {
+        searchCredits = 0.0f;
+        return;
+    }
     searchCredits += std::max(0.0f, deltaTime) *
-        (float)enemies.size() / TARGET_LOOP_ALL_INTERVAL;
+        (float)aStarRequestCount / TARGET_LOOP_ALL_INTERVAL;
     searchCredits = std::clamp(
         searchCredits,
         0.0f,
-        (float)enemies.size()
+        (float)aStarRequestCount
     );
-
     int availableSearches = std::min(
         (int)std::floor(searchCredits),
         MAX_SEARCHES_PER_FRAME
@@ -1362,9 +2039,6 @@ void PathFindingManager::Update(float deltaTime) {
 
     int searchesPerformed = 0;
     int enemiesInspected = 0;
-    std::uint64_t navigationRevision =
-        levelManager.GetNavigationRevision();
-    Rectangle searchBounds = levelManager.GetCurrentRoomBounds();
 
     while (searchesPerformed < availableSearches &&
            enemiesInspected < (int)enemies.size()) {
@@ -1374,12 +2048,15 @@ void PathFindingManager::Update(float deltaTime) {
         ++enemiesInspected;
         if (!enemy || enemy->IsDead() || !enemy->IsEnabled()) continue;
 
-        PathRecord& record = pathRecords[enemyId];
+        auto recordIt = pathRecords.find(enemyId);
+        if (recordIt == pathRecords.end()) continue;
+        PathRecord& record = recordIt->second;
+        if (!usesAStar(*enemy, record)) continue;
+
         Paladin* target = nullptr;
         Vector2 targetPosition = record.explicitGoal;
-        if (!record.hasExplicitGoal) {
-            TeamManager* targetTeam = enemy->GetTargetTeam();
-            target = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
+        if (record.mode == NavigationMode::PlayerFlowField) {
+            target = getPlayerTarget(*enemy);
             if (!target) continue;
             targetPosition = target->GetPosition();
         }
@@ -1401,7 +2078,8 @@ void PathFindingManager::Update(float deltaTime) {
         if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
             searchStarted = std::chrono::steady_clock::now();
         }
-        PathSearchResult result = record.hasExplicitGoal
+        PathSearchResult result =
+            record.mode == NavigationMode::ExplicitGoalAStar
             ? FindPathToExplicitGoal(
                 levelManager,
                 *enemy,
@@ -1448,55 +2126,12 @@ void PathFindingManager::Update(float deltaTime) {
             ++profilingUnreachable;
         }
 
-        record.hasTargetTile = true;
-        record.targetTileX = targetTile.x;
-        record.targetTileY = targetTile.y;
-        record.navigationRevision = navigationRevision;
-        record.pathAge = 0.0f;
-        record.forceRepath = false;
-        record.lastSearchFailed =
-            result.status == EnemyPathStatus::Unreachable ||
-            result.status == EnemyPathStatus::SearchLimitReached;
-
-        enemy->SetPathDebugPoints(std::move(result.debugGoals));
-        if (result.status == EnemyPathStatus::Ready) {
-            enemy->ClearTargetPosition();
-            for (Vector2 waypoint : result.waypoints) {
-                enemy->AddTargetPosition(waypoint);
-            }
-            enemy->SetPathStatus(EnemyPathStatus::Ready);
-            enemy->ClearSelectedPathGoal();
-            if (result.selectedGoal) {
-                enemy->SetSelectedPathGoal(*result.selectedGoal);
-            }
-            continue;
-        }
-
-        if (result.status == EnemyPathStatus::AtGoal) {
-            enemy->ClearTargetPosition();
-            enemy->SetPathStatus(EnemyPathStatus::AtGoal);
-            enemy->ClearSelectedPathGoal();
-            if (result.selectedGoal) {
-                enemy->SetSelectedPathGoal(*result.selectedGoal);
-            }
-            continue;
-        }
-
-        bool existingPathValid = enemy->HasTargetPosition() &&
-            IsBodyPathClear(
-                levelManager,
-                *enemy,
-                enemy->GetPosition(),
-                enemy->FirstTargetPosition(),
-                searchBounds
-            );
-        if (existingPathValid) {
-            enemy->SetPathStatus(EnemyPathStatus::Ready);
-            continue;
-        }
-
-        enemy->ClearTargetPosition();
-        enemy->ClearSelectedPathGoal();
-        enemy->SetPathStatus(result.status);
+        applyResult(
+            *enemy,
+            record,
+            std::move(result),
+            targetTile,
+            navigationChanged
+        );
     }
 }
