@@ -64,7 +64,7 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
     {
         PaladinId::Pidge,
         "Pidge",
-        "Tech Specialist. Boomerang attack, Poison Zone skill, Rover ultimate.",
+        "An agile tech specialist with versatile tethered grappling attacks.",
         "Paladin_Pidge_Idle",
         1.5f,    // hpScalar
         1.15f,   // speedScalar
@@ -72,7 +72,7 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
         0.8f,    // attackCooldownScalar
         {
             "Green Bayard",
-            "Returning boomerang",
+            "A grappling katar whose tethered blade pierces targets before returning with zero recoil.",
             "Paladin_Pidge_Weapon",
             1.6f,    // minDamageScalar
             1.8f,    // maxDamageScalar

@@ -24,6 +24,11 @@ namespace {
                 entity->GetObjectType() != GameObjectType::NPC) {
                 continue;
             }
+            if (entity->GetObjectType() == GameObjectType::NPC) {
+                NPC* npc = static_cast<NPC*>(entity);
+                if (npc->GetNpcId() == NpcId::Shiro && GameManager::GetInstance().HasTalkedToShiro()) continue;
+                if (npc->GetNpcId() == NpcId::Allura && !GameManager::GetInstance().HasTalkedToShiro()) continue;
+            }
 
             float distance = Vector2Distance(playerPosition, entity->GetPosition());
             if (distance < nearestDistance) {
@@ -97,12 +102,16 @@ void HubState::Update(float deltaTime) {
     } else if (DialogueManager::GetInstance().IsActive()) {
         DialogueManager::GetInstance().Update(deltaTime);
     } else if (DialogueManager::GetInstance().IsMissionRequested()) {
+        int missionId = DialogueManager::GetInstance().GetRequestedMissionId();
         DialogueManager::GetInstance().ClearMissionRequest();
-        GameManager::GetInstance().ClearProjectiles();
-        GameManager::GetInstance().ResetFloorCount();
-        levelManager->GenerateDungeon(teamManager);
-        waveManager->Reset(1, 0, 0);
-        GameManager::GetInstance().SetState(GameState::GAMEPLAY);
+        
+        if (missionId == -2) {
+            GameManager::GetInstance().ClearProjectiles();
+            GameManager::GetInstance().ResetFloorCount();
+            levelManager->GenerateDungeon(teamManager);
+            waveManager->Reset(1, 0, 0);
+            GameManager::GetInstance().SetState(GameState::GAMEPLAY);
+        }
     } else {
         levelManager->UpdateLevel(deltaTime, teamManager->GetActivePaladin()->GetPosition());
         teamManager->Update(deltaTime);
@@ -118,7 +127,13 @@ void HubState::Update(float deltaTime) {
                     HubPaladinStand* stand = static_cast<HubPaladinStand*>(interactable);
                     paladinSelectionMenu->Open(stand->GetPaladinId());
                 } else if (interactable->GetObjectType() == GameObjectType::NPC) {
-                    // NPC* npc = static_cast<NPC*>(interactable);
+                    NPC* npc = static_cast<NPC*>(interactable);
+                    if (npc->GetNpcId() == NpcId::Shiro) {
+                        DialogueManager::GetInstance().LoadDialogueTree("assets/story/Shiro.txt");
+                        GameManager::GetInstance().SetTalkedToShiro(true);
+                    } else {
+                        DialogueManager::GetInstance().LoadDialogueTree("assets/story/Allura.txt");
+                    }
                     DialogueManager::GetInstance().StartDialogue();
                 }
             } else if (levelManager->IsPlayerInExitRoom(teamManager->GetActivePaladin()->GetPosition())) {
@@ -189,6 +204,11 @@ void HubState::Draw() {
         // Draw interact.png above all NPCs
         for (GameObject* entity : GameManager::GetInstance().GetLevelEntities()) {
             if (entity->GetObjectType() == GameObjectType::NPC) {
+                NPC* npc = static_cast<NPC*>(entity);
+                bool isActive = (npc->GetNpcId() == NpcId::Shiro && !GameManager::GetInstance().HasTalkedToShiro()) ||
+                                (npc->GetNpcId() == NpcId::Allura && GameManager::GetInstance().HasTalkedToShiro());
+                if (!isActive) continue;
+
                 Vector2 screenPos = GetWorldToScreen2D(entity->GetPosition(), CameraManager::GetInstance().GetRenderCamera());
                 Vector2 uiPos = GetScreenToWorld2D(screenPos, uiCamera);
                 float yOffset = std::sin(GetTime() * 5.0f) * 3.0f;

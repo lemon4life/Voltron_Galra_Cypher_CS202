@@ -1,0 +1,20 @@
+NODE: 0
+SPEAKER: Shiro
+TEXT: We found a Galra command ship holding a cipher vault. We need to break it.
+OPTION: Are you leading the charge? | 1
+OPTION: Just point us at the target. | 2
+
+NODE: 1
+SPEAKER: Shiro
+TEXT: I can't. The Blade of Marmora needs me for a solo extraction. You're doing this without the Black Lion.
+OPTION: Don't worry, we've got this. | 3
+
+NODE: 2
+SPEAKER: Shiro
+TEXT: Stay sharp. I won't be there to watch your backs this time. I have a solo mission with the Blade of Marmora.
+OPTION: What's the plan, then? | 3
+
+NODE: 3
+SPEAKER: Shiro
+TEXT: Form a strike team of three Paladins. Breach that ship and secure the cipher. Crush this mission.
+OPTION: Understood. Let's gear up. | -1

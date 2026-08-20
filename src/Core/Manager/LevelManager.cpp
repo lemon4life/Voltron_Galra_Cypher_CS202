@@ -88,13 +88,27 @@ void LevelManager::SpawnGameObjects(TeamManager* teamManager) {
                 continue;
             }
 
+            Vector2 spawnPos = TileToWorld(column, row);
+            
             AddEntity(EntityFactory::CreateEntity(
                 objectId,
-                TileToWorld(column, row),
+                spawnPos,
                 { row, column },
                 teamManager,
                 GetLevelAccessBundle()
             ));
+
+            if (objectId == MapObjectId::NPC) {
+                Vector2 shiroPos = spawnPos;
+                shiroPos.x -= Constants::RENDER_TILE_SIZE * 2; // Spawn 2 tiles to the left
+                AddEntity(EntityFactory::CreateEntity(
+                    MapObjectId::ShiroNPC,
+                    shiroPos,
+                    { row, column - 2 },
+                    teamManager,
+                    GetLevelAccessBundle()
+                ));
+            }
         }
     }
 }

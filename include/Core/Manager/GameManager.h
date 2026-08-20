@@ -61,6 +61,7 @@ private:
     int currentFloor;
     int currentRoom;
     bool isBossDefeated;
+    bool hasTalkedToShiro = false;
     
     ComboMeter comboMeter;
     
@@ -119,8 +120,11 @@ public:
     void ClearOrbs() { activeOrbs.clear(); }
     void SetLevelEntities(const std::vector<GameObject*>& entities) { levelEntities = entities; }
 
-    void TransitionToNextRoom(LevelManager* levelManager);
-    
+    bool IsBossDefeated() const { return isBossDefeated; }
+
+    bool HasTalkedToShiro() const { return hasTalkedToShiro; }
+    void SetTalkedToShiro(bool talked) { hasTalkedToShiro = talked; }
+
     ComboMeter& GetComboMeter() { return comboMeter; }
     void SetLevelManager(LevelManager* lm) { levelManager = lm; }
     LevelManager* GetLevelManager() const { return levelManager; }

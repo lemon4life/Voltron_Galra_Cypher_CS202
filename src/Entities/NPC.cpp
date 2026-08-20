@@ -3,9 +3,11 @@
 #include <cmath>
 
 static Texture2D alluraSprite = { 0 };
+static Texture2D shiroSprite = { 0 };
 
-NPC::NPC(Vector2 pos)
+NPC::NPC(Vector2 pos, NpcId id)
     : GameObject(pos, GameObjectType::NPC),
+      npcId(id),
       currentFrame(0),
       frameTimer(0.0f),
       frameDuration(0.1f),
@@ -13,6 +15,10 @@ NPC::NPC(Vector2 pos)
     if (alluraSprite.id == 0) {
         alluraSprite = LoadTexture("assets/sprites/Allura/Idle_Sheet.png");
         SetTextureFilter(alluraSprite, TEXTURE_FILTER_POINT);
+    }
+    if (shiroSprite.id == 0) {
+        shiroSprite = LoadTexture("assets/sprites/Shiro/Idle_Sheet.png");
+        SetTextureFilter(shiroSprite, TEXTURE_FILTER_POINT);
     }
 }
 
@@ -25,15 +31,17 @@ void NPC::Update(float deltaTime) {
 }
 
 void NPC::Draw() {
-    if (alluraSprite.id != 0) {
-        int frameWidthI  = alluraSprite.width / numFrames;   // integer — no fractional source rect
+    Texture2D tex = (npcId == NpcId::Shiro) ? shiroSprite : alluraSprite;
+    
+    if (tex.id != 0) {
+        int frameWidthI  = tex.width / numFrames;
         float frameWidth  = (float)frameWidthI;
-        float frameHeight = (float)alluraSprite.height;
+        float frameHeight = (float)tex.height;
 
         Rectangle source = { (float)(currentFrame * frameWidthI), 0.0f, frameWidth, frameHeight };
         Rectangle dest   = { std::round(position.x), std::round(position.y), frameWidth, frameHeight };
         Vector2 origin   = { frameWidth / 2.0f, frameHeight / 2.0f };
-        DrawTexturePro(alluraSprite, source, dest, origin, 0.0f, WHITE);
+        DrawTexturePro(tex, source, dest, origin, 0.0f, WHITE);
     } else {
         DrawRectangleRec(GetBoundingBox(), BLUE);
         UIUtils::DrawText("PixeloidBold", "N", { position.x - 4, position.y - 10 }, UIUtils::FontSize::BODY, WHITE);

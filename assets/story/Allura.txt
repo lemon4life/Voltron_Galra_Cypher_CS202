@@ -1,0 +1,15 @@
+NODE: 0
+SPEAKER: Allura
+TEXT: The coordinates for the Galra ship are locked. Is your strike team ready?
+OPTION: We are fully prepped. | 1
+OPTION: Let's take them down. | 1
+
+NODE: 1
+SPEAKER: Allura
+TEXT: Excellent. Keep in contact with the Castle once you breach their hull. We will be monitoring.
+OPTION: Opening the wormhole now. | 2
+
+NODE: 2
+SPEAKER: Allura
+TEXT: Good luck, Paladins. 
+OPTION: (Start Mission) | -2

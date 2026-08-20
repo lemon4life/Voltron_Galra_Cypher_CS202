@@ -51,7 +51,9 @@ GameObject* EntityFactory::CreateEntity(
                 type
             );
         case MapObjectId::NPC:
-            return new NPC(position);
+            return new NPC(position, NpcId::Allura);
+        case MapObjectId::ShiroNPC:
+            return new NPC(position, NpcId::Shiro);
         case MapObjectId::Chaser:
             return PrepareEnemySpawn(new EnemyChaser(
                 position,
