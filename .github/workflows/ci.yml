@@ -13,17 +13,14 @@ jobs:
         include:
           - name: Windows MinGW
             os: windows-latest
-            shell: msys2 {0}
             c_compiler: gcc
             cxx_compiler: g++
           - name: Linux GCC
             os: ubuntu-latest
-            shell: bash
             c_compiler: gcc
             cxx_compiler: g++
           - name: macOS Clang
             os: macos-latest
-            shell: bash
             c_compiler: clang
             cxx_compiler: clang++
 
@@ -66,8 +63,9 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install ninja
 
-      - name: Configure
-        shell: ${{ matrix.shell }}
+      - name: Configure Windows
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
         run: >-
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Release
@@ -75,6 +73,22 @@ jobs:
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }}
 
-      - name: Build
-        shell: ${{ matrix.shell }}
+      - name: Configure Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_SHARED_LIBS=OFF
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+          -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }}
+
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: cmake --build build --parallel
+
+      - name: Build Unix
+        if: runner.os != 'Windows'
+        shell: bash
         run: cmake --build build --parallel
