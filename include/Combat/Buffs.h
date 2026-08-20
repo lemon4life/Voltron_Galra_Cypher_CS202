@@ -47,9 +47,9 @@ public:
 
         // Apply damage over time and status effect
         float skillRadius = 100.0f;
-        const auto& entities = GameManager::GetInstance().GetLevelEntities();
-        for (GameObject* obj : entities) {
-            Enemy* enemy = dynamic_cast<Enemy*>(obj);
+        const auto& enemies = GameManager::GetInstance()
+            .GetObjectManager().GetEnemies();
+        for (Enemy* enemy : enemies) {
             if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {
                 if (CheckCollisionCircles(activePaladin->GetPosition(), skillRadius, enemy->GetPosition(), 15.0f)) {
                     enemy->GetStatusComponent().AddEffect(EffectType::BURN, 5.0f, 5.0f);

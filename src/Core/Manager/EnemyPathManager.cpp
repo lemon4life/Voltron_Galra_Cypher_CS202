@@ -1,4 +1,5 @@
-#include "Core/Manager/EnemyPathManager.h"
+#include "Core/Manager/PathFindingManager.h"
+#include "Core/Manager/ObjectManager.h"
 
 #include "Core/Constants.h"
 #include "Core/Manager/LevelManager.h"
@@ -1029,19 +1030,107 @@ namespace {
     }
 }
 
-EnemyPathManager::EnemyPathManager()
-    : navigationCacheStore(
+PathFindingManager::PathFindingManager(
+    LevelManager& levelManager,
+    ObjectManager& objectManager
+)
+    : levelManager(levelManager),
+      objectManager(objectManager),
+      navigationCacheStore(
           std::make_unique<EnemyNavigationCacheStore>()) {
 }
 
-EnemyPathManager::~EnemyPathManager() = default;
+PathFindingManager::~PathFindingManager() = default;
 
-void EnemyPathManager::RemoveEnemy(Enemy& enemy) {
+void PathFindingManager::BeginPathFinding(Enemy& enemy) {
+    AddEnemy(enemy);
+}
+
+void PathFindingManager::BeginPathFindingTo(
+    Enemy& enemy,
+    Vector2 worldGoal
+) {
+    AddEnemyTo(enemy, worldGoal);
+}
+
+void PathFindingManager::EndPathFinding(Enemy& enemy) {
+    RemoveEnemy(enemy);
+}
+
+bool PathFindingManager::IsBlocked(Rectangle bounds) const {
+    return levelManager.IsSolidCollision(bounds);
+}
+
+Rectangle PathFindingManager::GetLevelBounds() const {
+    return levelManager.GetLevelBounds();
+}
+
+std::vector<Vector2> PathFindingManager::GetNavigableTileCentersWithin(
+    const Enemy& enemy,
+    Vector2 origin,
+    float radius
+) const {
+    std::vector<Vector2> candidates;
+    if (radius <= 0.0f) return candidates;
+
+    Rectangle searchBounds = levelManager.GetCurrentRoomBounds();
+    float tileSize = Constants::RENDER_TILE_SIZE;
+    int minimumTileX = (int)std::floor(
+        std::max(searchBounds.x, origin.x - radius) / tileSize
+    );
+    int maximumTileX = (int)std::floor(
+        std::min(searchBounds.x + searchBounds.width,
+                 origin.x + radius) / tileSize
+    );
+    int minimumTileY = (int)std::floor(
+        std::max(searchBounds.y, origin.y - radius) / tileSize
+    );
+    int maximumTileY = (int)std::floor(
+        std::min(searchBounds.y + searchBounds.height,
+                 origin.y + radius) / tileSize
+    );
+    Vector2 originTile = levelManager.WorldToTile(origin);
+    float radiusSquared = radius * radius;
+
+    auto isInsideSearchBounds = [searchBounds](Rectangle bounds) {
+        constexpr float BOUNDS_TOLERANCE = 0.001f;
+        return bounds.x >= searchBounds.x - BOUNDS_TOLERANCE &&
+            bounds.y >= searchBounds.y - BOUNDS_TOLERANCE &&
+            bounds.x + bounds.width <=
+                searchBounds.x + searchBounds.width + BOUNDS_TOLERANCE &&
+            bounds.y + bounds.height <=
+                searchBounds.y + searchBounds.height + BOUNDS_TOLERANCE;
+    };
+
+    for (int tileY = minimumTileY; tileY <= maximumTileY; ++tileY) {
+        for (int tileX = minimumTileX; tileX <= maximumTileX; ++tileX) {
+            if (tileX == (int)originTile.x &&
+                tileY == (int)originTile.y) {
+                continue;
+            }
+
+            Vector2 center = levelManager.TileToWorld(tileX, tileY);
+            Vector2 delta = Vector2Subtract(center, origin);
+            if (Vector2LengthSqr(delta) > radiusSquared) continue;
+
+            Rectangle footprint = enemy.GetNavigationFootprintAt(center);
+            if (!isInsideSearchBounds(footprint) ||
+                levelManager.IsSolidCollision(footprint)) {
+                continue;
+            }
+            candidates.push_back(center);
+        }
+    }
+    return candidates;
+}
+
+void PathFindingManager::RemoveEnemy(Enemy& enemy) {
+    ObjectId enemyId = enemy.GetObjectId();
     enemies.erase(
-        std::remove(enemies.begin(), enemies.end(), &enemy),
+        std::remove(enemies.begin(), enemies.end(), enemyId),
         enemies.end()
     );
-    pathRecords.erase(&enemy);
+    pathRecords.erase(enemyId);
 
     if (nextEnemyIndex >= (int)enemies.size()) {
         nextEnemyIndex = 0;
@@ -1049,10 +1138,11 @@ void EnemyPathManager::RemoveEnemy(Enemy& enemy) {
     searchCredits = std::min(searchCredits, (float)enemies.size());
 }
 
-void EnemyPathManager::AddEnemy(Enemy& enemy) {
-    if (std::find(enemies.begin(), enemies.end(), &enemy) == enemies.end()) {
-        enemies.push_back(&enemy);
-        pathRecords[&enemy] = PathRecord{};
+void PathFindingManager::AddEnemy(Enemy& enemy) {
+    ObjectId enemyId = enemy.GetObjectId();
+    if (std::find(enemies.begin(), enemies.end(), enemyId) == enemies.end()) {
+        enemies.push_back(enemyId);
+        pathRecords[enemyId] = PathRecord{};
         searchCredits = std::min(
             (float)enemies.size(),
             searchCredits + 1.0f
@@ -1061,7 +1151,7 @@ void EnemyPathManager::AddEnemy(Enemy& enemy) {
     }
 }
 
-void EnemyPathManager::Clear() {
+void PathFindingManager::Clear() {
     enemies.clear();
     pathRecords.clear();
     nextEnemyIndex = 0;
@@ -1071,9 +1161,9 @@ void EnemyPathManager::Clear() {
     navigationCacheStore->sharedGoals.clear();
 }
 
-void EnemyPathManager::AddEnemyTo(Enemy& enemy, Vector2 worldGoal) {
+void PathFindingManager::AddEnemyTo(Enemy& enemy, Vector2 worldGoal) {
     AddEnemy(enemy);
-    PathRecord& record = pathRecords[&enemy];
+    PathRecord& record = pathRecords[enemy.GetObjectId()];
     record.hasExplicitGoal = true;
     record.explicitGoal = worldGoal;
     record.hasTargetTile = false;
@@ -1083,8 +1173,7 @@ void EnemyPathManager::AddEnemyTo(Enemy& enemy, Vector2 worldGoal) {
     enemy.SetPathStatus(EnemyPathStatus::Pending);
 }
 
-std::optional<Vector2> EnemyPathManager::GetNextMoveTarget(
-    LevelManager& levelManager,
+std::optional<Vector2> PathFindingManager::GetNextMoveTarget(
     Enemy& enemy
 ) {
     PopReachedTargets(enemy);
@@ -1106,7 +1195,7 @@ std::optional<Vector2> EnemyPathManager::GetNextMoveTarget(
         enemy.ClearTargetPosition();
         enemy.ClearSelectedPathGoal();
         enemy.SetPathStatus(EnemyPathStatus::Pending);
-        auto record = pathRecords.find(&enemy);
+        auto record = pathRecords.find(enemy.GetObjectId());
         if (record != pathRecords.end()) {
             record->second.forceRepath = true;
         }
@@ -1120,8 +1209,7 @@ std::optional<Vector2> EnemyPathManager::GetNextMoveTarget(
     return targetPosition;
 }
 
-Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
-    LevelManager& levelManager,
+Vector2 PathFindingManager::GetLocalDirection(
     Enemy& enemy,
     Vector2 desiredDirection
 ) {
@@ -1140,7 +1228,7 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
         SEPARATION_RADIUS * SEPARATION_RADIUS;
     constexpr float SEPARATION_WEIGHT = 0.85f;
 
-    for (Enemy* otherEnemy : enemies) {
+    for (Enemy* otherEnemy : objectManager.GetEnemies()) {
         if (!otherEnemy) continue;
         if (otherEnemy == &enemy ||
             !otherEnemy->IsEnemyCollisionEnabled() ||
@@ -1220,7 +1308,7 @@ Vector2 EnemyPathManager::GetLocalAvoidanceDirection(
         : desiredDirection;
 }
 
-void EnemyPathManager::Update(LevelManager& levelManager, float deltaTime) {
+void PathFindingManager::Update(float deltaTime) {
     profilingStats.searchesThisFrame = 0;
     profilingTimer += std::max(0.0f, deltaTime);
     if (profilingTimer >= 1.0f) {
@@ -1281,11 +1369,12 @@ void EnemyPathManager::Update(LevelManager& levelManager, float deltaTime) {
     while (searchesPerformed < availableSearches &&
            enemiesInspected < (int)enemies.size()) {
         if (nextEnemyIndex >= (int)enemies.size()) nextEnemyIndex = 0;
-        Enemy* enemy = enemies[nextEnemyIndex++];
+        ObjectId enemyId = enemies[nextEnemyIndex++];
+        Enemy* enemy = objectManager.FindEnemy(enemyId);
         ++enemiesInspected;
         if (!enemy || enemy->IsDead() || !enemy->IsEnabled()) continue;
 
-        PathRecord& record = pathRecords[enemy];
+        PathRecord& record = pathRecords[enemyId];
         Paladin* target = nullptr;
         Vector2 targetPosition = record.explicitGoal;
         if (!record.hasExplicitGoal) {

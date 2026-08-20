@@ -5,7 +5,6 @@
 #include "Core/Manager/AudioManager.h"
 #include "Entities/Enemy.h"
 #include "Entities/Player/Paladin.h"
-#include "Entities/Props/Prop.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/ParticleManager.h"
 #include <cmath>
@@ -69,19 +68,18 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
         for (float d = 0; d < maxDistance; d += step) {
             Vector2 checkPoint = { barrelTip.x + aimDir.x * d, barrelTip.y + aimDir.y * d };
             Rectangle pointRect = { checkPoint.x - 1.0f, checkPoint.y - 1.0f, 2.0f, 2.0f };
-            // Pass true to ignore props so the laser pierces through boxes
-            if (lm->IsSolidCollision(pointRect, true)) {
+            // Map props use the same solid query as movement and LOS.
+            if (lm->IsSolidCollision(pointRect)) {
                 laserEndPoint = checkPoint;
                 break;
             }
         }
     }
 
-    // Check intersection with all enemies and boxes
-    const auto& entities = GameManager::GetInstance().GetLevelEntities();
-    for (auto* entity : entities) {
-        if (entity->GetObjectType() == GameObjectType::Enemy) {
-            Enemy* e = static_cast<Enemy*>(entity);
+    // Check intersection with all dynamic enemies.
+    const auto& enemies = GameManager::GetInstance()
+        .GetObjectManager().GetEnemies();
+    for (Enemy* e : enemies) {
             if (!e->IsEnabled()) continue;
             if (CheckCollisionSegmentRec(collisionStart, laserEndPoint, e->GetBoundingBox())) {
                 e->TakeDamage(damage); // Piercing laser damage
@@ -92,12 +90,22 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
                     owner->OnHitEnemy(damage);
                 }
             }
-        } else if (entity->GetObjectType() == GameObjectType::Box) {
-            Prop* p = static_cast<Prop*>(entity);
-            if (CheckCollisionSegmentRec(collisionStart, laserEndPoint, p->GetBoundingBox())) {
-                p->TakeDamage(damage);
-                GameManager::GetInstance().AddImpactEffect({p->GetPosition().x, p->GetPosition().y});
-            }
+    }
+
+    if (lm) {
+        Rectangle impactBounds = {
+            laserEndPoint.x - 1.0f,
+            laserEndPoint.y - 1.0f,
+            2.0f,
+            2.0f
+        };
+        MapObject* mapObject =
+            lm->FindSolidMapObjectCollision(impactBounds);
+        if (mapObject) {
+            mapObject->TakeDamage(damage);
+            GameManager::GetInstance().AddImpactEffect(
+                mapObject->GetPosition()
+            );
         }
     }
 }

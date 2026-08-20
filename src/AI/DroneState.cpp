@@ -74,9 +74,10 @@ void DroneMovingState::Update(Drone* drone, float deltaTime) {
     drone->TickAttackCooldown(deltaTime);
 
     Paladin* player = GetActiveTarget(drone);
+    bool hasPlayerLineOfSight = HasPlayerLineOfSight(drone, player);
     if (trackingPlayerForFollowUp) {
         drone->SetCurrentVelocity({ 0.0f, 0.0f });
-        if (!HasPlayerLineOfSight(drone, player)) {
+        if (!hasPlayerLineOfSight) {
             trackingPlayerForFollowUp = false;
             followUpTrackingTime = 0.0f;
         } else {
@@ -100,7 +101,7 @@ void DroneMovingState::Update(Drone* drone, float deltaTime) {
     }
 
     if (player && drone->GetAttackCooldown() <= 0.0f &&
-        HasPlayerLineOfSight(drone, player)) {
+        hasPlayerLineOfSight) {
         drone->SetCurrentVelocity({ 0.0f, 0.0f });
         drone->SetFacingLeft(
             player->GetPosition().x < drone->GetPosition().x

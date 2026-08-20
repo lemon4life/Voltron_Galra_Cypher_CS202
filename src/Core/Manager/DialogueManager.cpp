@@ -168,14 +168,10 @@ void DialogueManager::Update(float deltaTime) {
 
                 // Determine player name dynamically
                 std::string playerName = "Lance";
-                for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
-                    if (entity->GetObjectType() == GameObjectType::Player) {
-                        Paladin* p = static_cast<Paladin*>(entity);
-                        if (p->GetTeamManager()->GetActiveIndex() != 0) {
-                            playerName = "Keith";
-                        }
-                        break;
-                    }
+                TeamManager* teamManager =
+                    GameManager::GetInstance().GetTeamManager();
+                if (teamManager && teamManager->GetActiveIndex() != 0) {
+                    playerName = "Keith";
                 }
 
                 // Inject the player's response as a new temporary node

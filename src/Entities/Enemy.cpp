@@ -6,7 +6,6 @@
 #include "Core/Manager/AudioManager.h"
 #include "raymath.h"
 #include "Core/Manager/GameManager.h"
-#include "Core/Manager/ParticleManager.h"
 
 #include <algorithm>
 
@@ -107,7 +106,8 @@ void Enemy::TakeDamage(int amount) {
     
     if (actualDamage > 0) {
         GameManager::GetInstance().GetComboMeter().AddDamage(actualDamage);
-        ParticleManager::GetInstance().SpawnDamageNumber(position, actualDamage);
+        GameManager::GetInstance().GetEffectManager()
+            .SpawnDamageNumber(position, actualDamage);
     }
     
     AudioManager::GetInstance().PlaySoundEffect("hit");

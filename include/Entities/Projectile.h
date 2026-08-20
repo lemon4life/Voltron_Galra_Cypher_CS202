@@ -1,5 +1,6 @@
 #pragma once
 #include "Entities/GameObject.h"
+#include "Core/World/ObjectId.h"
 #include <unordered_set>
 
 class Projectile : public GameObject {
@@ -22,6 +23,7 @@ private:
     float maxFlyTime = 0.0f;
     float flightTimer = 0.0f;
     std::unordered_set<GameObject*> hitTargets;
+    std::unordered_set<MapObjectHandle> hitMapObjects;
 
 public:
     Projectile(
@@ -69,4 +71,12 @@ public:
     // Hit tracking
     bool HasHitTarget(GameObject* target) const;
     void RecordHit(GameObject* target);
+    bool HasHitMapObject(MapObjectHandle handle) const {
+        return hitMapObjects.count(handle) > 0;
+    }
+    void RecordHitMapObject(MapObjectHandle handle) {
+        if (handle != INVALID_MAP_OBJECT_HANDLE) {
+            hitMapObjects.insert(handle);
+        }
+    }
 };

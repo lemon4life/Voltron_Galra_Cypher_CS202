@@ -35,6 +35,7 @@ Drone::Drone(
     
     maxHealth = 200; // default health
     health = maxHealth;
+    enemyType = EnemyType::DRONE;
     damage = 15;
     baseAttackCooldown = DRONE_ATTACK_COOLDOWN;
     attackCooldown = 0.0f;

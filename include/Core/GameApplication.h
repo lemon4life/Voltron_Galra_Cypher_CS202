@@ -46,9 +46,9 @@ private:
     RoomEditorState roomEditor;
     
     UIManager uiManager;
-    LevelManager levelManager;
-    WaveManager waveManager;
-    std::unique_ptr<TeamManager> teamManager;
+    LevelManager& levelManager;
+    WaveManager& waveManager;
+    TeamManager* teamManager;
 
     bool quitRequested;
     bool systemInitialized;

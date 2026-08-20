@@ -15,7 +15,6 @@ enum class EnemyPathStatus {
     Unreachable,
     SearchLimitReached
 };
-
 enum class MapObjectId : int {
     Empty = -1,
     DestructibleBox = 1,
@@ -60,16 +59,6 @@ public:
     virtual void QueueRemoval(GameObject* entity) = 0;
 };
 
-class IMapObjectDestroyAccess {
-public:
-    virtual ~IMapObjectDestroyAccess() = default;
-
-    virtual void QueueMapObjectDestruction(
-        GameObject& object,
-        GameObjectCell cell
-    ) = 0;
-};
-
 class IEnemyPathAccess {
 public:
     virtual ~IEnemyPathAccess() = default;
@@ -96,11 +85,4 @@ public:
         Enemy& enemy,
         Vector2 desiredDirection
     ) = 0;
-};
-
-struct LevelAccessBundle {
-    IEntityRemovalAccess& removal;
-    IEnemyPathAccess& pathFinding;
-    ILevelLineOfSightQuery& lineOfSight;
-    IMapObjectDestroyAccess& mapObjectDestruction;
 };

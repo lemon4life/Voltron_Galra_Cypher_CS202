@@ -30,7 +30,8 @@ enum class EnemyType {
     BOSS,
     Chaser,
     RANGE,
-    DIVER
+    DIVER,
+    DRONE
 };
 
 struct EnemyCollisionProfile {

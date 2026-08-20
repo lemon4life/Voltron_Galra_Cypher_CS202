@@ -59,6 +59,7 @@ public:
 
     // Must be called once after InitWindow() to load the silhouette shader.
     void Initialize();
+    void Shutdown();
 
     // --- Emission API ---
     void Emit(Vector2 position, Vector2 velocity, Color color, float size, float lifeSpan);

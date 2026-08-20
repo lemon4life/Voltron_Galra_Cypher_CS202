@@ -7,7 +7,6 @@
 #include "raymath.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/LevelManager.h"
-#include "Core/Manager/ParticleManager.h"
 #include <cmath>
 #include <iostream>
 
@@ -112,7 +111,7 @@ void Rover::Update(float deltaTime) {
             
             position.x += currentVelocity.x * deltaTime;
             boundingBox.x = position.x - 8.0f;
-            if (levelManager && levelManager->IsBlocked(boundingBox)) {
+            if (levelManager && levelManager->IsSolidCollision(boundingBox)) {
                 position.x -= currentVelocity.x * deltaTime;
                 boundingBox.x = position.x - 8.0f;
                 currentVelocity.x = 0.0f;
@@ -120,7 +119,7 @@ void Rover::Update(float deltaTime) {
             
             position.y += currentVelocity.y * deltaTime;
             boundingBox.y = position.y - 8.0f;
-            if (levelManager && levelManager->IsBlocked(boundingBox)) {
+            if (levelManager && levelManager->IsSolidCollision(boundingBox)) {
                 position.y -= currentVelocity.y * deltaTime;
                 boundingBox.y = position.y - 8.0f;
                 currentVelocity.y = 0.0f;
@@ -139,12 +138,11 @@ void Rover::Update(float deltaTime) {
         Enemy* closest = nullptr;
         float minDist = aggroRange;
         
-        const auto& entities = GameManager::GetInstance().GetLevelEntities();
+        const auto& enemies = GameManager::GetInstance()
+            .GetObjectManager().GetEnemies();
         LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
         
-        for (const auto& e : entities) {
-            if (e->GetObjectType() != GameObjectType::Enemy) continue;
-            Enemy* enemyPtr = static_cast<Enemy*>(e);
+        for (Enemy* enemyPtr : enemies) {
             if (!enemyPtr || enemyPtr->IsDead() || !enemyPtr->IsEnabled()) continue;
             
             Vector2 ePos = enemyPtr->GetPosition();
@@ -239,6 +237,7 @@ void Rover::TakeDamage(int damage) {
     if (health < 0) health = 0;
     
     if (actualDamage > 0) {
-        ParticleManager::GetInstance().SpawnDamageNumber(position, actualDamage);
+        GameManager::GetInstance().GetEffectManager()
+            .SpawnDamageNumber(position, actualDamage);
     }
 }

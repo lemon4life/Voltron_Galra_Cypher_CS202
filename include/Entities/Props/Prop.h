@@ -1,14 +1,9 @@
 #pragma once
 
-#include "Core/LevelAccess.h"
-#include "Entities/GameObject.h"
-#include "Core/DepthRenderItem.h"
+#include "Core/World/MapObject.h"
 
-class Prop : public GameObject {
+class Prop : public MapObject {
 private:
-    IMapObjectDestroyAccess& destroyAccess;
-    const GameObjectCell objectCell;
-    MapObjectId propType;
     int health;
     bool destructionQueued;
     float animationTimer;
@@ -18,20 +13,18 @@ public:
     Prop(
         Vector2 tileCenter,
         GameObjectCell objectCell,
-        IMapObjectDestroyAccess& destroyAccess,
         MapObjectId type
     );
 
     void Update(float deltaTime) override;
-    void Draw() override; // May do nothing if rendering is handled externally
     Rectangle GetBoundingBox() const override;
     
     // Support for unified depth rendering
-    void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
+    void AddDepthRenderItems(std::vector<DepthRenderItem>& items) override;
     
-    bool IsSolidNavigationObstacle() const override { return propType == MapObjectId::DestructibleBox; }
-    void DrawBaseLayer(); // Draws the bottom 16x16
+    bool IsSolid() const override;
+    void DrawBaseLayer() override; // Draws the bottom 16x16
 
-    void TakeDamage(int amount);
-    bool IsDestructionQueued() const { return destructionQueued; }
+    void TakeDamage(int amount) override;
+    bool IsDestroyed() const override { return destructionQueued; }
 };

@@ -10,9 +10,8 @@ Vector2 AutoAimStrategy::CalculateAimVector(Paladin* paladin) {
     Enemy* bestTarget = nullptr;
     Vector2 playerPos = paladin->GetPosition();
     
-    for (auto* entity : GameManager::GetInstance().GetLevelEntities()) {
-        if (entity->GetObjectType() == GameObjectType::Enemy) {
-            Enemy* enemy = static_cast<Enemy*>(entity);
+    for (Enemy* enemy : GameManager::GetInstance()
+             .GetObjectManager().GetEnemies()) {
             if (enemy->IsDead() || !enemy->IsEnabled()) continue;
             
             Vector2 toEnemy = {enemy->GetPosition().x - playerPos.x, enemy->GetPosition().y - playerPos.y};
@@ -22,7 +21,6 @@ Vector2 AutoAimStrategy::CalculateAimVector(Paladin* paladin) {
                 bestDist = dist;
                 bestTarget = enemy;
             }
-        }
     }
     
     paladin->SetLockedEnemy(bestTarget);

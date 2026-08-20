@@ -55,12 +55,12 @@ void Keith::UseUltimate() {
 void Keith::ExecuteUltimateAction() {
     AudioManager::GetInstance().PlaySoundEffect("fx_keith_ult");
     AudioManager::GetInstance().PlaySoundEffect("vl_keith_ult");
-    const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
+    const std::vector<Enemy*>& enemies = GameManager::GetInstance()
+        .GetObjectManager().GetEnemies();
     float length = 300.0f;
     float width = 100.0f;
     
-    for (GameObject* obj : entities) {
-        Enemy* enemy = dynamic_cast<Enemy*>(obj);
+    for (Enemy* enemy : enemies) {
         if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {
             Vector2 pivot = { position.x, position.y + 17.0f };
             Vector2 offset = Vector2Subtract(enemy->GetPosition(), pivot);

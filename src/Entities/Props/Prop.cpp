@@ -7,20 +7,20 @@
 
 namespace {
     constexpr int BOX_MAX_HEALTH = 1;
-    constexpr float HEALTH_BAR_HEIGHT = 3.0f;
     constexpr float ANIM_FPS = 8.0f;
 }
 
 Prop::Prop(
     Vector2 tileCenter,
     GameObjectCell objectCell,
-    IMapObjectDestroyAccess& destroyAccess,
     MapObjectId type
 )
-    : GameObject(tileCenter, GameObjectType::Box),
-      destroyAccess(destroyAccess),
-      objectCell(objectCell),
-      propType(type),
+    : MapObject(
+          tileCenter,
+          { tileCenter.x, tileCenter.y, 0.0f, 0.0f },
+          objectCell,
+          type
+      ),
       health(BOX_MAX_HEALTH),
       destructionQueued(false),
       animationTimer(0.0f),
@@ -29,7 +29,7 @@ Prop::Prop(
 }
 
 void Prop::Update(float deltaTime) {
-    if (propType == MapObjectId::Prop1) {
+    if (mapObjectType == MapObjectId::Prop1) {
         animationTimer += deltaTime;
         if (animationTimer >= 1.0f / ANIM_FPS) {
             animationTimer = 0.0f;
@@ -38,43 +38,24 @@ void Prop::Update(float deltaTime) {
     }
 }
 
-void Prop::Draw() {
-    // Left intentionally blank, rendering is handled by DrawBaseLayer and AddDepthRenderItems.
-    // However, we can draw the health bar here since it should overlay everything.
-    if (propType == MapObjectId::DestructibleBox && health < BOX_MAX_HEALTH) {
-        Rectangle bounds = GetBoundingBox();
-        float healthRatio = (float)health / (float)BOX_MAX_HEALTH;
-        Rectangle barBackground = {
-            bounds.x,
-            bounds.y - bounds.height - HEALTH_BAR_HEIGHT - 2.0f,
-            bounds.width,
-            HEALTH_BAR_HEIGHT
-        };
-        Rectangle healthBar = barBackground;
-        healthBar.width *= healthRatio;
-        DrawRectangleRec(barBackground, DARKGRAY);
-        DrawRectangleRec(healthBar, GREEN);
-    }
-}
-
 void Prop::DrawBaseLayer() {
     Texture2D tex;
     int frames = 1;
     
-    if (propType == MapObjectId::DestructibleBox) {
+    if (mapObjectType == MapObjectId::DestructibleBox) {
         tex = AssetManager::GetInstance().GetTexture("box");
-    } else if (propType == MapObjectId::Prop1) {
+    } else if (mapObjectType == MapObjectId::Prop1) {
         tex = AssetManager::GetInstance().GetTexture("prop1");
         if (tex.id == 0) {
             tex = AssetManager::GetInstance().LoadTexture2D("prop1", "assets/Objects/tall_object_1_8.png", true);
         }
         frames = 8;
-    } else if (propType == MapObjectId::Prop2) {
+    } else if (mapObjectType == MapObjectId::Prop2) {
         tex = AssetManager::GetInstance().GetTexture("prop2");
         if (tex.id == 0) {
             tex = AssetManager::GetInstance().LoadTexture2D("prop2", "assets/Objects/object_2.png", true);
         }
-    } else if (propType == MapObjectId::MockWall) {
+    } else if (mapObjectType == MapObjectId::MockWall) {
         tex = AssetManager::GetInstance().GetTexture("wallTileset");
         if (tex.id == 0) { // Fallback loading if not in AssetManager
             tex = AssetManager::GetInstance().LoadTexture2D("wallTileset", "assets/tileset/Galra_Walls.png", true);
@@ -85,24 +66,13 @@ void Prop::DrawBaseLayer() {
         float frameWidth = (float)tex.width / frames;
         float frameHeight = (float)tex.height;
         
-        bool isPot = (propType == MapObjectId::PotEX || propType == MapObjectId::PotHP || propType == MapObjectId::PotQuint);
-        
-        if (isPot) {
-            Rectangle src = {currentFrame * frameWidth, 0.0f, frameWidth, frameHeight};
-            Rectangle bounds = GetBoundingBox();
-            Rectangle dest = {bounds.x + bounds.width/2.0f - frameWidth/2.0f, bounds.y + bounds.height/2.0f - frameHeight/2.0f, frameWidth, frameHeight};
-            DrawTexturePro(tex, src, dest, {0,0}, 0.0f, WHITE);
-        } else {
-            float splitY = frameHeight * 0.5f;
-            Rectangle src = {currentFrame * frameWidth, splitY, frameWidth, frameHeight - splitY};
-            
-            Rectangle bounds = GetBoundingBox();
-            float visualHeight = bounds.height / 0.75f;
-            float destHeight = visualHeight * 0.5f;
-            Rectangle dest = {bounds.x, bounds.y + bounds.height - destHeight, bounds.width, destHeight};
-
-            DrawTexturePro(tex, src, dest, {0,0}, 0.0f, WHITE);
-        }
+        float splitY = frameHeight * 0.5f;
+        Rectangle src = {currentFrame * frameWidth, splitY, frameWidth, frameHeight - splitY};
+        Rectangle bounds = GetBoundingBox();
+        float visualHeight = bounds.height / 0.75f;
+        float destHeight = visualHeight * 0.5f;
+        Rectangle dest = {bounds.x, bounds.y + bounds.height - destHeight, bounds.width, destHeight};
+        DrawTexturePro(tex, src, dest, {0,0}, 0.0f, WHITE);
     }
 }
 
@@ -113,20 +83,20 @@ void Prop::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
             Texture2D tex;
             int frames = 1;
             
-            if (propType == MapObjectId::DestructibleBox) {
+            if (mapObjectType == MapObjectId::DestructibleBox) {
                 tex = AssetManager::GetInstance().GetTexture("box");
-            } else if (propType == MapObjectId::Prop1) {
+            } else if (mapObjectType == MapObjectId::Prop1) {
                 tex = AssetManager::GetInstance().GetTexture("prop1");
                 if (tex.id == 0) {
                     tex = AssetManager::GetInstance().LoadTexture2D("prop1", "assets/Objects/tall_object_1_8.png", true);
                 }
                 frames = 8;
-            } else if (propType == MapObjectId::Prop2) {
+            } else if (mapObjectType == MapObjectId::Prop2) {
                 tex = AssetManager::GetInstance().GetTexture("prop2");
                 if (tex.id == 0) {
                     tex = AssetManager::GetInstance().LoadTexture2D("prop2", "assets/Objects/object_2.png", true);
                 }
-            } else if (propType == MapObjectId::MockWall) {
+            } else if (mapObjectType == MapObjectId::MockWall) {
                 tex = AssetManager::GetInstance().GetTexture("wallTileset");
             }
 
@@ -153,20 +123,20 @@ Rectangle Prop::GetBoundingBox() const {
     // Dynamically calculate bounding box from texture width (since base is width x width)
     Texture2D tex;
     int frames = 1;
-    if (propType == MapObjectId::DestructibleBox) {
+    if (mapObjectType == MapObjectId::DestructibleBox) {
         tex = AssetManager::GetInstance().GetTexture("box");
-    } else if (propType == MapObjectId::Prop1) {
+    } else if (mapObjectType == MapObjectId::Prop1) {
         tex = AssetManager::GetInstance().GetTexture("prop1");
         if (tex.id == 0) {
             tex = AssetManager::GetInstance().LoadTexture2D("prop1", "assets/Objects/tall_object_1_8.png", true);
         }
         frames = 8;
-    } else if (propType == MapObjectId::Prop2) {
+    } else if (mapObjectType == MapObjectId::Prop2) {
         tex = AssetManager::GetInstance().GetTexture("prop2");
         if (tex.id == 0) {
             tex = AssetManager::GetInstance().LoadTexture2D("prop2", "assets/Objects/object_2.png", true);
         }
-    } else if (propType == MapObjectId::MockWall) {
+    } else if (mapObjectType == MapObjectId::MockWall) {
         tex = AssetManager::GetInstance().GetTexture("wallTileset");
     }
 
@@ -189,7 +159,7 @@ Rectangle Prop::GetBoundingBox() const {
 }
 
 void Prop::TakeDamage(int amount) {
-    if (propType != MapObjectId::DestructibleBox) return; // Only destructible box takes damage
+    if (mapObjectType != MapObjectId::DestructibleBox) return;
 
     if (amount <= 0 || destructionQueued) {
         return;
@@ -199,6 +169,12 @@ void Prop::TakeDamage(int amount) {
     if (health == 0) {
         destructionQueued = true;
         AudioManager::GetInstance().PlaySoundEffect("fx_box_destroy");
-        destroyAccess.QueueMapObjectDestruction(*this, objectCell);
     }
+}
+
+bool Prop::IsSolid() const {
+    return mapObjectType == MapObjectId::DestructibleBox ||
+        mapObjectType == MapObjectId::Prop1 ||
+        mapObjectType == MapObjectId::Prop2 ||
+        mapObjectType == MapObjectId::MockWall;
 }

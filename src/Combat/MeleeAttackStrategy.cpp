@@ -3,7 +3,6 @@
 #include "Core/Manager/AudioManager.h"
 #include "Entities/Enemy.h"
 #include "Entities/Player/Paladin.h"
-#include "Entities/Props/Prop.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/ParticleManager.h"
 #include <algorithm>
@@ -78,42 +77,41 @@ void MeleeAttackStrategy::Update(float deltaTime) {
             Vector2 hitCenter = { playerPos.x + aimDir.x * distanceOut, playerPos.y + aimDir.y * distanceOut };
             Rectangle hitbox = { hitCenter.x - hitboxWidth/2.0f, hitCenter.y - hitboxHeight/2.0f, hitboxWidth, hitboxHeight };
             
-            const auto& entities = GameManager::GetInstance().GetLevelEntities();
-            for (auto* entity : entities) {
-                if (std::find(objectsHit.begin(), objectsHit.end(), entity)
+            const auto& enemies = GameManager::GetInstance()
+                .GetObjectManager().GetEnemies();
+            for (Enemy* enemy : enemies) {
+                if (std::find(objectsHit.begin(), objectsHit.end(), enemy)
                     != objectsHit.end()) {
                     continue;
                 }
-                if (!CheckCollisionRecs(hitbox, entity->GetBoundingBox())) {
+                if (!CheckCollisionRecs(hitbox, enemy->GetBoundingBox())) {
                     continue;
                 }
 
                 int damage =
                     (comboStep == 1) ? lightDamage : heavyDamage;
-                bool damagedObject = false;
-
-                if (entity->GetObjectType() == GameObjectType::Enemy) {
-                    Enemy& enemy = static_cast<Enemy&>(*entity);
-                    if (!enemy.IsEnabled()) continue;
+                if (!enemy->IsEnabled()) continue;
                     
-                    enemy.TakeDamage(damage);
+                enemy->TakeDamage(damage);
                     
-                    enemy.ApplyKnockback(aimDir, MELEE_KNOCKBACK_FORCE);
-                    damagedObject = true;
-                    if (owner) owner->OnHitEnemy(damage);
-                } else if (entity->GetObjectType() == GameObjectType::Box) {
-                    Prop& box =
-                        static_cast<Prop&>(*entity);
-                    box.TakeDamage(damage);
-                    damagedObject = true;
-                }
+                enemy->ApplyKnockback(aimDir, MELEE_KNOCKBACK_FORCE);
+                if (owner) owner->OnHitEnemy(damage);
+                objectsHit.push_back(enemy);
+                GameManager::GetInstance().AddImpactEffect(
+                    enemy->GetPosition()
+                );
+            }
 
-                if (damagedObject) {
-                    objectsHit.push_back(entity);
-                    GameManager::GetInstance().AddImpactEffect(
-                        entity->GetPosition()
-                    );
-                }
+            MapObject* mapObject = GameManager::GetInstance()
+                .GetLevelManager()
+                ->FindSolidMapObjectCollision(hitbox);
+            if (mapObject) {
+                int damage =
+                    (comboStep == 1) ? lightDamage : heavyDamage;
+                mapObject->TakeDamage(damage);
+                GameManager::GetInstance().AddImpactEffect(
+                    mapObject->GetPosition()
+                );
             }
         }
 

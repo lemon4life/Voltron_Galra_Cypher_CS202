@@ -404,10 +404,9 @@ bool Boss::TrySummonRandomEnemy() {
             position.x + std::cos(angle) * radius,
             position.y + std::sin(angle) * radius
         };
-        if (levelManager->QueueEnemySpawn(
-                summonType,
-                summonPosition,
-                targetTeam)) {
+        if (GameManager::GetInstance()
+                .GetObjectManager()
+                .QueueSpawn(summonType, summonPosition)) {
             return true;
         }
     }

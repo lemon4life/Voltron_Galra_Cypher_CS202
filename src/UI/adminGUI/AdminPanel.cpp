@@ -2,7 +2,6 @@
 
 #include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
-#include "Core/EntityFactory.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
@@ -25,7 +24,7 @@ constexpr float PANEL_PADDING = 14.0f;
 constexpr float TOGGLE_HEIGHT = 32.0f;
 constexpr float BUTTON_HEIGHT = 38.0f;
 constexpr float PROPERTY_ROW_HEIGHT = 58.0f;
-constexpr float PROPERTY_START_Y = 374.0f;
+constexpr float PROPERTY_START_Y = 410.0f;
 constexpr int TEXT_SIZE = 18;
 constexpr int SMALL_TEXT_SIZE = 16;
 constexpr int TITLE_TEXT_SIZE = 26;
@@ -236,12 +235,11 @@ void AdminPanel::SpawnSelectedType(
         return;
     }
 
-    GameObject* object = EntityFactory::CreateEntity(
+    ObjectManager& objectManager =
+        GameManager::GetInstance().GetObjectManager();
+    GameObject* object = objectManager.Spawn(
         spawnType,
-        worldMousePosition,
-        { -1, -1 },
-        teamManager,
-        levelManager.GetLevelAccessBundle()
+        worldMousePosition
     );
     if (!object) {
         statusMessage = "Selected enemy type could not be created";
@@ -266,25 +264,23 @@ void AdminPanel::SpawnSelectedType(
         { values[12], values[13] }
     });
 
-    if (!levelManager.IsValidSpawnLocation(object)) {
-        delete object;
+    if (levelManager.IsSolidCollision(enemy->GetCollisionBox())) {
+        objectManager.QueueRemoval(object);
+        objectManager.CommitPendingChanges();
         statusMessage = "Spawn blocked by level collision";
         return;
     }
 
-    levelManager.AddEntity(object);
     statusMessage = std::string("Spawned configured ") +
         EnemyTypeName(spawnType);
 }
 
 void AdminPanel::DeleteAllEnemies(LevelManager& levelManager) {
-    int enemyCount = 0;
-    for (GameObject* entity : levelManager.GetEntities()) {
-        if (entity && entity->GetObjectType() == GameObjectType::Enemy) {
-            levelManager.QueueRemoval(entity);
-            ++enemyCount;
-        }
-    }
+    (void)levelManager;
+    ObjectManager& objectManager =
+        GameManager::GetInstance().GetObjectManager();
+    int enemyCount = static_cast<int>(objectManager.GetEnemyCount());
+    objectManager.DeleteAllEnemies();
 
     statusMessage = enemyCount > 0
         ? std::string("Removing ") + std::to_string(enemyCount) +
@@ -362,7 +358,9 @@ void AdminPanel::Update(
     if (!open) return;
 
     const EnemyPathProfilingStats& pathStats =
-        levelManager.GetEnemyPathProfilingStats();
+        GameManager::GetInstance()
+            .GetPathFindingManager()
+            .GetProfilingStats();
     pathSearchesPerSecond = pathStats.searchesLastSecond;
     pathAverageMilliseconds = pathStats.averageSearchMilliseconds;
     pathMaximumMilliseconds = pathStats.maximumSearchMilliseconds;
@@ -378,8 +376,11 @@ void AdminPanel::Update(
     Rectangle pathToggle = {
         contentX, panel.y + 88.0f, contentWidth, TOGGLE_HEIGHT
     };
-    Rectangle immunityToggle = {
+    Rectangle lineOfSightToggle = {
         contentX, panel.y + 124.0f, contentWidth, TOGGLE_HEIGHT
+    };
+    Rectangle immunityToggle = {
+        contentX, panel.y + 160.0f, contentWidth, TOGGLE_HEIGHT
     };
     if (WasButtonPressed(collisionToggle, mousePosition)) {
         Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES =
@@ -388,6 +389,10 @@ void AdminPanel::Update(
     if (WasButtonPressed(pathToggle, mousePosition)) {
         Constants::DEBUG_DRAW_ENEMY_PATHS =
             !Constants::DEBUG_DRAW_ENEMY_PATHS;
+    }
+    if (WasButtonPressed(lineOfSightToggle, mousePosition)) {
+        Constants::DEBUG_DRAW_LINE_OF_SIGHT =
+            !Constants::DEBUG_DRAW_LINE_OF_SIGHT;
     }
     if (WasButtonPressed(immunityToggle, mousePosition)) {
         Constants::DEBUG_PLAYER_IMMUNITY =
@@ -404,7 +409,7 @@ void AdminPanel::Update(
     for (std::size_t index = 0; index < TYPES.size(); ++index) {
         Rectangle button = {
             contentX + (index % 2) * (buttonWidth + 8.0f),
-            panel.y + 195.0f + (index / 2) * (BUTTON_HEIGHT + 6.0f),
+            panel.y + 231.0f + (index / 2) * (BUTTON_HEIGHT + 6.0f),
             buttonWidth,
             BUTTON_HEIGHT
         };
@@ -420,13 +425,13 @@ void AdminPanel::Update(
     float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
     Rectangle cancelButton = {
         contentX,
-        panel.y + 285.0f,
+        panel.y + 321.0f,
         actionButtonWidth,
         BUTTON_HEIGHT
     };
     Rectangle deleteAllButton = {
         contentX + actionButtonWidth + 8.0f,
-        panel.y + 285.0f,
+        panel.y + 321.0f,
         actionButtonWidth,
         BUTTON_HEIGHT
     };
@@ -604,6 +609,12 @@ void AdminPanel::Draw() const {
     );
     DrawToggleRow(
         { contentX, panel.y + 124.0f, contentWidth, TOGGLE_HEIGHT },
+        "All line-of-sight queries",
+        Constants::DEBUG_DRAW_LINE_OF_SIGHT,
+        mousePosition
+    );
+    DrawToggleRow(
+        { contentX, panel.y + 160.0f, contentWidth, TOGGLE_HEIGHT },
         "Player immunity",
         Constants::DEBUG_PLAYER_IMMUNITY,
         mousePosition
@@ -612,7 +623,7 @@ void AdminPanel::Draw() const {
     DrawTextAdmin(
         "SPAWN ENEMY",
         (int)contentX,
-        (int)panel.y + 168,
+        (int)panel.y + 204,
         TEXT_SIZE,
         GOLD
     );
@@ -626,7 +637,7 @@ void AdminPanel::Draw() const {
     for (std::size_t index = 0; index < TYPES.size(); ++index) {
         Rectangle button = {
             contentX + (index % 2) * (buttonWidth + 8.0f),
-            panel.y + 195.0f + (index / 2) * (BUTTON_HEIGHT + 6.0f),
+            panel.y + 231.0f + (index / 2) * (BUTTON_HEIGHT + 6.0f),
             buttonWidth,
             BUTTON_HEIGHT
         };
@@ -641,13 +652,13 @@ void AdminPanel::Draw() const {
     float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
     Rectangle cancelButton = {
         contentX,
-        panel.y + 285.0f,
+        panel.y + 321.0f,
         actionButtonWidth,
         BUTTON_HEIGHT
     };
     Rectangle deleteAllButton = {
         contentX + actionButtonWidth + 8.0f,
-        panel.y + 285.0f,
+        panel.y + 321.0f,
         actionButtonWidth,
         BUTTON_HEIGHT
     };
@@ -657,7 +668,7 @@ void AdminPanel::Draw() const {
     DrawTextAdmin(
         statusMessage.c_str(),
         (int)contentX,
-        (int)panel.y + 331,
+        (int)panel.y + 367,
         SMALL_TEXT_SIZE,
         placementArmed ? YELLOW : LIGHTGRAY
     );
@@ -667,7 +678,7 @@ void AdminPanel::Draw() const {
     DrawTextAdmin(
         heading.c_str(),
         (int)contentX,
-        (int)panel.y + 353,
+        (int)panel.y + 389,
         TEXT_SIZE,
         GOLD
     );

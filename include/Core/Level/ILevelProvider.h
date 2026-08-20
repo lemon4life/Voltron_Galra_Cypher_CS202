@@ -10,5 +10,10 @@ public:
 
     virtual void DrawBase() = 0;
     virtual void GetDepthRenderItems(std::vector<DepthRenderItem>& items) = 0;
-    virtual bool IsSolidCollision(Rectangle box, bool ignoreProps = false) const = 0;
+    virtual bool IsSolidCollision(Rectangle box) const = 0;
+    virtual void AppendStaticBlockingCollidersForTile(
+        int tileX,
+        int tileY,
+        std::vector<Rectangle>& output
+    ) const = 0;
 };

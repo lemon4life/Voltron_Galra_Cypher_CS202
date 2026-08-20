@@ -1,7 +1,6 @@
 #include "Core/State/HubState.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/DialogueManager.h"
-#include "Core/Manager/ParticleManager.h"
 #include "Core/Manager/CameraManager.h"
 #include "Core/Manager/InputManager.h"
 #include "Core/Constants.h"
@@ -83,16 +82,19 @@ void HubState::Update(float deltaTime) {
         DialogueManager::GetInstance().ClearMissionRequest();
         GameManager::GetInstance().ClearProjectiles();
         GameManager::GetInstance().ResetFloorCount();
-        levelManager->GenerateDungeon(teamManager);
+        GameManager::GetInstance().GenerateDungeon();
         waveManager->Reset(1, 0, 0);
         GameManager::GetInstance().SetState(GameState::GAMEPLAY);
     } else {
         levelManager->UpdateLevel(deltaTime, teamManager->GetActivePaladin()->GetPosition());
         teamManager->Update(deltaTime);
+        GameManager::GetInstance().UpdateDynamicEntities(deltaTime);
+        GameManager::GetInstance().GetObjectManager().CommitPendingChanges();
 
         if (InputManager::IsInteractPressed()) {
             GameObject* interactable = FindNearestHubInteractable(
-                GameManager::GetInstance().GetLevelEntities(),
+                GameManager::GetInstance()
+                    .GetObjectManager().GetInteractables(),
                 teamManager->GetActivePaladin()->GetPosition()
             );
 
@@ -111,7 +113,7 @@ void HubState::Update(float deltaTime) {
                     GameManager::GetInstance().SetState(GameState::HUB);
                 } else {
                     GameManager::GetInstance().ClearProjectiles();
-                    levelManager->GenerateDungeon(teamManager);
+                    GameManager::GetInstance().GenerateDungeon();
                     waveManager->Reset(0, 0, 0);
                 }
             }
@@ -119,13 +121,13 @@ void HubState::Update(float deltaTime) {
     }
     
     GameManager::GetInstance().UpdateEffects(deltaTime);
-    ParticleManager::GetInstance().Update(deltaTime);
 }
 
 void HubState::Draw() {
     BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
 
     levelManager->DrawLevelBase();
+    GameManager::GetInstance().DrawEffects(true);
 
     std::vector<DepthRenderItem> renderItems;
     
@@ -150,7 +152,8 @@ void HubState::Draw() {
         }
     }
 
-    ParticleManager::GetInstance().Draw();
+    GameManager::GetInstance().DrawEffects(false);
+    GameManager::GetInstance().DrawParticles();
     GameManager::GetInstance().DrawDebugOverlays(teamManager);
     
     EndMode2D();
@@ -170,7 +173,8 @@ void HubState::Draw() {
         paladinSelectionMenu->Draw(uiMousePosition, *teamManager);
     } else {
         GameObject* interactable = FindNearestHubInteractable(
-            GameManager::GetInstance().GetLevelEntities(),
+            GameManager::GetInstance()
+                .GetObjectManager().GetInteractables(),
             teamManager->GetActivePaladin()->GetPosition()
         );
         if (interactable) {

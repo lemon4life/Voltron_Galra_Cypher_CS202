@@ -37,17 +37,15 @@ void Pidge::UpdateInactive(float deltaTime) {
             isVenomZoneActive = false;
         } else {
             float zoneRadius = 120.0f;
-            const auto& entities = GameManager::GetInstance().GetLevelEntities();
-            for (const auto& e : entities) {
-                if (e->GetObjectType() == GameObjectType::Enemy) {
-                    Enemy* enemy = static_cast<Enemy*>(e);
+            const auto& enemies = GameManager::GetInstance()
+                .GetObjectManager().GetEnemies();
+            for (Enemy* enemy : enemies) {
                     if (!enemy || enemy->IsDead() || !enemy->IsEnabled()) continue;
                     
                     if (CheckCollisionCircles(venomZonePos, zoneRadius, enemy->GetPosition(), 16.0f)) {
                         enemy->GetStatusComponent().AddEffect(EffectType::POISON, 1.1f, 5.0f);
                         enemy->GetStatusComponent().AddEffect(EffectType::SLOW, 1.1f);
                     }
-                }
             }
         }
     }
@@ -68,17 +66,15 @@ void Pidge::Update(float deltaTime) {
             isVenomZoneActive = false;
         } else {
             float zoneRadius = 120.0f;
-            const auto& entities = GameManager::GetInstance().GetLevelEntities();
-            for (const auto& e : entities) {
-                if (e->GetObjectType() == GameObjectType::Enemy) {
-                    Enemy* enemy = static_cast<Enemy*>(e);
+            const auto& enemies = GameManager::GetInstance()
+                .GetObjectManager().GetEnemies();
+            for (Enemy* enemy : enemies) {
                     if (!enemy || enemy->IsDead() || !enemy->IsEnabled()) continue;
                     
                     if (CheckCollisionCircles(venomZonePos, zoneRadius, enemy->GetPosition(), 16.0f)) {
                         enemy->GetStatusComponent().AddEffect(EffectType::POISON, 1.1f, 5.0f);
                         enemy->GetStatusComponent().AddEffect(EffectType::SLOW, 1.1f);
                     }
-                }
             }
         }
     }

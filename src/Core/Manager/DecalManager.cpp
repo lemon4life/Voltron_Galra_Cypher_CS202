@@ -1,5 +1,4 @@
 #include "Core/Manager/DecalManager.h"
-#include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
 #include <cmath>
 
@@ -19,9 +18,10 @@ void DecalManager::Clear() {
     corpses.clear();
 }
 
-void DecalManager::Update(float deltaTime) {
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-    
+void DecalManager::Update(
+    float deltaTime,
+    const LevelManager* levelManager
+) {
     for (auto& corpse : corpses) {
         if (!corpse.settled) {
             // 1. Horizontal Sliding, Collision & Friction

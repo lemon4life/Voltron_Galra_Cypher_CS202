@@ -7,7 +7,6 @@
 #include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
 #include "Entities/Projectile.h"
-#include "Core/Manager/ParticleManager.h"
 
 #include <cmath>
 #include <iostream>
@@ -110,7 +109,8 @@ void Paladin::TakeDamage(int amount) {
     health -= amount;
     
     if (actualDamage > 0) {
-        ParticleManager::GetInstance().SpawnDamageNumber(position, actualDamage);
+        GameManager::GetInstance().GetEffectManager()
+            .SpawnDamageNumber(position, actualDamage);
     }
     
     if (health <= 0) {

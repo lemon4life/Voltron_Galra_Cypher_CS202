@@ -12,24 +12,16 @@ namespace {
 StaticLevelProvider::StaticLevelProvider(
     const std::vector<std::vector<int>>& mapGridLayer1,
     const std::vector<std::vector<int>>& mapGridLayer2,
-    const std::vector<std::vector<MapObjectId>>& mapObjectGrid,
     Texture2D floorTileset,
     Texture2D wallTileset,
     int& gridRows,
     int& gridCols
 ) : mapGridLayer1(mapGridLayer1), mapGridLayer2(mapGridLayer2),
-    mapObjectGrid(mapObjectGrid), floorTileset(floorTileset),
+    floorTileset(floorTileset),
     wallTileset(wallTileset), gridRows(gridRows), gridCols(gridCols) {}
 
 int StaticLevelProvider::pos_hash(int x, int y) const {
     return x * 73856093 ^ y * 19349663;
-}
-
-bool StaticLevelProvider::IsSolidMapObject(MapObjectId objectId) const {
-    if (objectId == MapObjectId::DestructibleBox || objectId == MapObjectId::Prop1 || objectId == MapObjectId::Prop2 || objectId == MapObjectId::MockWall) {
-        return true; 
-    }
-    return false;
 }
 
 void StaticLevelProvider::DrawBase() {
@@ -132,7 +124,7 @@ void StaticLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& item
     }
 }
 
-bool StaticLevelProvider::IsSolidCollision(Rectangle box, bool ignoreProps) const {
+bool StaticLevelProvider::IsSolidCollision(Rectangle box) const {
     int minCol = (int)std::floor((box.x + COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
     int maxCol = (int)std::floor((box.x + box.width - COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
     int minRow = (int)std::floor((box.y + COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
@@ -142,13 +134,9 @@ bool StaticLevelProvider::IsSolidCollision(Rectangle box, bool ignoreProps) cons
         for (int c = minCol; c <= maxCol; ++c) {
             int tileID1 = -1;
             int tileID2 = -1;
-            MapObjectId mapObjectId = MapObjectId::Empty;
             if (r >= 0 && c >= 0 && r < gridRows && c < gridCols) {
                 if (r < (int)mapGridLayer1.size() && c < (int)mapGridLayer1[r].size()) tileID1 = mapGridLayer1[r][c];
                 if (r < (int)mapGridLayer2.size() && c < (int)mapGridLayer2[r].size()) tileID2 = mapGridLayer2[r][c];
-                if (r < (int)mapObjectGrid.size() && c < (int)mapObjectGrid[r].size()) {
-                    mapObjectId = mapObjectGrid[r][c];
-                }
             } else {
                 return true; 
             }
@@ -181,13 +169,74 @@ bool StaticLevelProvider::IsSolidCollision(Rectangle box, bool ignoreProps) cons
                     }
                 }
             }
-
-            if (mapObjectId == MapObjectId::DestructibleBox || mapObjectId == MapObjectId::Prop1 || mapObjectId == MapObjectId::Prop2) {
-                
-            } else if (IsSolidMapObject(mapObjectId)) {
-                return true;
-            }
         }
     }
     return false;
+}
+
+void StaticLevelProvider::AppendStaticBlockingCollidersForTile(
+    int tileX,
+    int tileY,
+    std::vector<Rectangle>& output
+) const {
+    Rectangle fullTile = {
+        tileX * Constants::RENDER_TILE_SIZE,
+        tileY * Constants::RENDER_TILE_SIZE,
+        Constants::RENDER_TILE_SIZE,
+        Constants::RENDER_TILE_SIZE
+    };
+    if (tileX < 0 || tileY < 0 ||
+        tileX >= gridCols || tileY >= gridRows) {
+        output.push_back(fullTile);
+        return;
+    }
+
+    int tileId1 = -1;
+    int tileId2 = -1;
+    if (tileY < (int)mapGridLayer1.size() &&
+        tileX < (int)mapGridLayer1[tileY].size()) {
+        tileId1 = mapGridLayer1[tileY][tileX];
+    }
+    if (tileY < (int)mapGridLayer2.size() &&
+        tileX < (int)mapGridLayer2[tileY].size()) {
+        tileId2 = mapGridLayer2[tileY][tileX];
+    }
+
+    int tileIds[2] = { tileId1, tileId2 };
+    for (int tileId : tileIds) {
+        if (tileId == 0 || (tileId >= 4 && tileId <= 11)) {
+            output.push_back(fullTile);
+            return;
+        }
+    }
+
+    auto appendUnique = [&output](Rectangle collider) {
+        for (Rectangle existing : output) {
+            if (existing.x == collider.x && existing.y == collider.y &&
+                existing.width == collider.width &&
+                existing.height == collider.height) {
+                return;
+            }
+        }
+        output.push_back(collider);
+    };
+
+    for (int tileId : tileIds) {
+        if (tileId >= 1 && tileId <= 3) {
+            appendUnique({
+                fullTile.x + RIGHT_PARTIAL_WALL_OFFSET,
+                fullTile.y,
+                PARTIAL_WALL_WIDTH,
+                fullTile.height
+            });
+        } else if (tileId >= 12 && tileId <= 14) {
+            appendUnique({
+                fullTile.x,
+                fullTile.y,
+                PARTIAL_WALL_WIDTH,
+                fullTile.height
+            });
+        }
+    }
+
 }

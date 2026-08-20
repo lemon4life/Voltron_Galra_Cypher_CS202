@@ -2,7 +2,6 @@
 
 #include "Core/Level/ILevelProvider.h"
 #include "Core/Level/Tilemap.h"
-#include "Entities/GameObject.h"
 #include "Core/Constants.h"
 #include <memory>
 
@@ -11,7 +10,6 @@ public:
     ProceduralLevelProvider(
         std::shared_ptr<RoomTemplate>& activeRoom,
         Vector2& roomOffset,
-        const std::vector<GameObject*>& levelEntities,
         Texture2D floorTileset,
         Texture2D wallTileset,
         Texture2D prop1Texture,
@@ -23,12 +21,16 @@ public:
 
     void DrawBase() override;
     void GetDepthRenderItems(std::vector<DepthRenderItem>& items) override;
-    bool IsSolidCollision(Rectangle box, bool ignoreProps = false) const override;
+    bool IsSolidCollision(Rectangle box) const override;
+    void AppendStaticBlockingCollidersForTile(
+        int tileX,
+        int tileY,
+        std::vector<Rectangle>& output
+    ) const override;
 
 private:
     std::shared_ptr<RoomTemplate>& activeRoom;
     Vector2& roomOffset;
-    const std::vector<GameObject*>& levelEntities;
     Texture2D floorTileset;
     Texture2D wallTileset;
     Texture2D prop1Texture;

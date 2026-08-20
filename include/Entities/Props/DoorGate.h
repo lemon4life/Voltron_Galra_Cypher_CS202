@@ -1,10 +1,9 @@
 #pragma once
 
-#include "Entities/GameObject.h"
-#include "Core/DepthRenderItem.h"
+#include "Core/World/MapObject.h"
 #include <vector>
 
-class DoorGate : public GameObject {
+class DoorGate : public MapObject {
 public:
     enum class State {
         OPEN,
@@ -16,18 +15,16 @@ public:
     DoorGate(Vector2 position);
 
     void Update(float deltaTime) override;
-    void Draw() override;
     Rectangle GetBoundingBox() const override;
 
     void SetState(State newState);
     State GetState() const { return state; }
     
     // Support for two-pass rendering
-    void DrawBaseLayer();
-    void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
+    void DrawBaseLayer() override;
+    void AddDepthRenderItems(std::vector<DepthRenderItem>& items) override;
 
-    bool IsSolid() const { return state != State::OPEN; }
-    bool IsSolidNavigationObstacle() const override { return IsSolid(); }
+    bool IsSolid() const override { return state != State::OPEN; }
 
 private:
     State state;

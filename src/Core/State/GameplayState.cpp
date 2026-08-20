@@ -1,9 +1,7 @@
 #include "Core/State/GameplayState.h"
 #include "Core/Manager/UltimateIntroManager.h"
-#include "Core/Manager/ParticleManager.h"
 #include "Core/Manager/CameraManager.h"
 #include "Core/Manager/InputManager.h"
-#include "Core/Manager/DecalManager.h"
 #include "Core/Constants.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Enemy.h"
@@ -42,49 +40,39 @@ void GameplayState::Update(float deltaTime) {
                     GameManager::GetInstance().SetState(GameState::VICTORY);
                 } else {
                     GameManager::GetInstance().ClearProjectiles();
-                    levelManager->GenerateDungeon(teamManager);
+                    GameManager::GetInstance().GenerateDungeon();
                     waveManager->Reset(0, 0, 0);
                 }
             }
         }
         
         Paladin* active = teamManager->GetActivePaladin();
-        Pot* nearestPot = nullptr;
-        float closestDistSq = 50.0f * 50.0f;
-        for (GameObject* obj : levelManager->GetEntities()) {
-            if (obj->GetObjectType() == GameObjectType::Prop) {
-                Pot* pot = dynamic_cast<Pot*>(obj);
-                if (pot && !pot->IsConsumed()) {
-                    float distSq = Vector2DistanceSqr(active->GetPosition(), pot->GetPosition());
-                    if (distSq < closestDistSq) {
-                        closestDistSq = distSq;
-                        nearestPot = pot;
-                    }
-                }
-            }
-        }
+        ObjectManager& objects =
+            GameManager::GetInstance().GetObjectManager();
+        Pot* nearestPot = objects.FindNearestPickup(
+            active->GetPosition(),
+            50.0f
+        );
         
         if (nearestPot && InputManager::IsInteractPressed()) {
             nearestPot->OnConsume(teamManager);
         }
         
+        waveManager->Update(deltaTime, teamManager, levelManager);
+        GameManager::GetInstance().UpdateDynamicEntities(deltaTime);
         GameManager::GetInstance().UpdateProjectiles(deltaTime, teamManager);
         GameManager::GetInstance().UpdateAssists(deltaTime, teamManager);
-        waveManager->Update(deltaTime, teamManager, levelManager);
+        objects.CommitPendingChanges();
         
         GameManager::GetInstance().GetComboMeter().Update(deltaTime);
     }
     GameManager::GetInstance().UpdateOrbs(deltaTime, teamManager);
-    DecalManager::GetInstance().Update(deltaTime);
     GameManager::GetInstance().UpdateEffects(deltaTime);
-    ParticleManager::GetInstance().Update(deltaTime);
 }
 
 void GameplayState::Draw() {
     BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
     levelManager->DrawLevelBase();
-    DecalManager::GetInstance().Draw();
-
     GameManager::GetInstance().DrawEffects(true);
 
     std::vector<DepthRenderItem> renderItems;
@@ -112,7 +100,7 @@ void GameplayState::Draw() {
 
     GameManager::GetInstance().DrawEffects(false);
     GameManager::GetInstance().DrawOrbs();
-    ParticleManager::GetInstance().Draw();
+    GameManager::GetInstance().DrawParticles();
 
     if (Constants::isAutoAimEnabled) {
         Paladin* activePaladin = teamManager->GetActivePaladin();
@@ -182,20 +170,9 @@ void GameplayState::Draw() {
     }
     else {
         Paladin* active = teamManager->GetActivePaladin();
-        Pot* nearestPot = nullptr;
-        float closestDistSq = 50.0f * 50.0f;
-        for (GameObject* obj : levelManager->GetEntities()) {
-            if (obj->GetObjectType() == GameObjectType::Prop) {
-                Pot* pot = dynamic_cast<Pot*>(obj);
-                if (pot && !pot->IsConsumed()) {
-                    float distSq = Vector2DistanceSqr(active->GetPosition(), pot->GetPosition());
-                    if (distSq < closestDistSq) {
-                        closestDistSq = distSq;
-                        nearestPot = pot;
-                    }
-                }
-            }
-        }
+        Pot* nearestPot = GameManager::GetInstance()
+            .GetObjectManager()
+            .FindNearestPickup(active->GetPosition(), 50.0f);
         
         if (nearestPot) {
             float textWidth = UIUtils::MeasureText("PixeloidSans", "Press F to consume", UIUtils::FontSize::SMALL).x;

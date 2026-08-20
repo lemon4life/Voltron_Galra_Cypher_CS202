@@ -70,9 +70,9 @@ void Hunk::UseSkill() {
     isEarthshatterFlash = true;
     earthshatterFlashTimer = 0.2f;
     
-    const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
-    for (GameObject* obj : entities) {
-        Enemy* enemy = dynamic_cast<Enemy*>(obj);
+    const std::vector<Enemy*>& enemies = GameManager::GetInstance()
+        .GetObjectManager().GetEnemies();
+    for (Enemy* enemy : enemies) {
         if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {
             Vector2 ePos = enemy->GetPosition();
             Vector2 hPos = this->GetPosition();

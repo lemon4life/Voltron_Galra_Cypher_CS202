@@ -2,7 +2,6 @@
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
-#include "Core/Manager/ParticleManager.h"
 #include "raymath.h"
 
 void PlayerDashState::Enter(Paladin* player) {
@@ -99,7 +98,7 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
     trailTimer -= deltaTime;
     if (trailTimer <= 0.0f) {
         trailTimer = 0.05f;
-        ParticleManager::GetInstance().SpawnDashTrail(
+        GameManager::GetInstance().GetEffectManager().SpawnDashTrail(
             player->GetPosition(),
             player->GetCurrentSourceRect(),
             player->GetTexture(),

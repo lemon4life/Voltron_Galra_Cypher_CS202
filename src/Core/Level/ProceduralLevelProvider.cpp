@@ -1,14 +1,11 @@
 #include "Core/Level/ProceduralLevelProvider.h"
 #include "Core/Level/Tilemap.h"
-#include "Entities/Props/Prop.h"
-#include "Entities/Props/DoorGate.h"
 #include "Core/Level/RoomNode.h"
 #include <cmath>
 
 ProceduralLevelProvider::ProceduralLevelProvider(
     std::shared_ptr<RoomTemplate>& activeRoom,
     Vector2& roomOffset,
-    const std::vector<GameObject*>& levelEntities,
     Texture2D floorTileset,
     Texture2D wallTileset,
     Texture2D prop1Texture,
@@ -16,7 +13,7 @@ ProceduralLevelProvider::ProceduralLevelProvider(
     Texture2D boxTexture,
     Texture2D gateTexture,
     const LevelMap& levelMap
-) : activeRoom(activeRoom), roomOffset(roomOffset), levelEntities(levelEntities),
+) : activeRoom(activeRoom), roomOffset(roomOffset),
     floorTileset(floorTileset), wallTileset(wallTileset),
     prop1Texture(prop1Texture), prop2Texture(prop2Texture),
     boxTexture(boxTexture), gateTexture(gateTexture), levelMap(levelMap) {}
@@ -55,7 +52,7 @@ void ProceduralLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& 
     }
 }
 
-bool ProceduralLevelProvider::IsSolidCollision(Rectangle box, bool ignoreProps) const {
+bool ProceduralLevelProvider::IsSolidCollision(Rectangle box) const {
     // First: do a fast O(1) tile-based lookup for wall and void tiles.
     if (activeRoom) {
         float ts = Constants::RENDER_TILE_SIZE;
@@ -72,23 +69,29 @@ bool ProceduralLevelProvider::IsSolidCollision(Rectangle box, bool ignoreProps) 
         }
     }
 
-    if (ignoreProps) {
-        return false;
+    return false;
+}
+
+void ProceduralLevelProvider::AppendStaticBlockingCollidersForTile(
+    int tileX,
+    int tileY,
+    std::vector<Rectangle>& output
+) const {
+    float tileSize = Constants::RENDER_TILE_SIZE;
+    Rectangle fullTile = {
+        roomOffset.x + tileX * tileSize,
+        roomOffset.y + tileY * tileSize,
+        tileSize,
+        tileSize
+    };
+    if (!activeRoom || tileX < 0 || tileY < 0 ||
+        tileX >= activeRoom->width || tileY >= activeRoom->height) {
+        output.push_back(fullTile);
+        return;
     }
 
-    // Then: check entity colliders (boxes and closed door gates)
-    for (const auto* entity : levelEntities) {
-        if (entity->GetObjectType() == GameObjectType::Box) {
-            if (CheckCollisionRecs(box, entity->GetBoundingBox())) {
-                return true;
-            }
-        } else if (entity->GetObjectType() == GameObjectType::DoorGate) {
-            if (static_cast<const DoorGate*>(entity)->IsSolid()) {
-                if (CheckCollisionRecs(box, entity->GetBoundingBox())) {
-                    return true;
-                }
-            }
-        }
+    int tile = activeRoom->layer0_tiles[tileY][tileX];
+    if (tile == 1 || tile == 2) {
+        output.push_back(fullTile);
     }
-    return false;
 }

@@ -3,7 +3,13 @@
 #include "Core/Constants.h"
 
 DoorGate::DoorGate(Vector2 pos) 
-    : GameObject(pos, GameObjectType::DoorGate),
+    : MapObject(
+          pos,
+          { pos.x, pos.y, Constants::RENDER_TILE_SIZE,
+            Constants::RENDER_TILE_SIZE },
+          { -1, -1 },
+          MapObjectId::Empty
+      ),
       state(State::OPEN),
       currentFrame(0),
       animationTimer(0.0f),
@@ -57,10 +63,6 @@ void DoorGate::Update(float deltaTime) {
             }
         }
     }
-}
-
-void DoorGate::Draw() {
-    // Unused directly, handled by two-pass rendering
 }
 
 Rectangle DoorGate::GetBoundingBox() const {

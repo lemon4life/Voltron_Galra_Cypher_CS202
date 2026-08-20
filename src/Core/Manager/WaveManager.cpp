@@ -1,7 +1,6 @@
 #include "Core/Manager/WaveManager.h"
 #include "UI/UIUtils.h"
 #include "Core/Manager/LevelManager.h"
-#include "Core/EntityFactory.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Enemy.h"
@@ -49,11 +48,9 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
 
     // --- Layered static-map combat ---
     int activeEnemies = 0;
-    for (auto* entity : levelManager->GetEntities()) {
-        if (entity->GetObjectType() == GameObjectType::Enemy) {
-            activeEnemies++;
-        }
-    }
+    activeEnemies = static_cast<int>(
+        GameManager::GetInstance().GetObjectManager().GetEnemyCount()
+    );
 
     if (showWaveTextTimer > 0.0f) {
         showWaveTextTimer -= deltaTime;
@@ -126,11 +123,9 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
 
     // Count active enemies
     int activeEnemies = 0;
-    for (auto* entity : levelManager->GetEntities()) {
-        if (entity->GetObjectType() == GameObjectType::Enemy) {
-            activeEnemies++;
-        }
-    }
+    activeEnemies = static_cast<int>(
+        GameManager::GetInstance().GetObjectManager().GetEnemyCount()
+    );
 
     if (showWaveTextTimer > 0.0f) {
         showWaveTextTimer -= deltaTime;
@@ -217,22 +212,15 @@ void WaveManager::SpawnEnemy(
         spawnType = MapObjectId::Diver;
     }
 
-    GameObject* newEnemy = EntityFactory::CreateEntity(
-        spawnType,
-        spawnPos,
-        {-1, -1},
-        teamManager,
-        levelManager->GetLevelAccessBundle()
-    );
+    GameObject* newEnemy = GameManager::GetInstance()
+        .GetObjectManager()
+        .Spawn(spawnType, spawnPos);
     if (newEnemy) {
         // Apply Roguelike scaling buff
         int currentFloor = GameManager::GetInstance().GetCurrentFloor();
         float floorMultiplier = 1.0f + ((currentFloor - 1) * 0.3f);
         static_cast<Enemy*>(newEnemy)->ApplyStatMultiplier(floorMultiplier);
 
-        // Unconditionally add to the level
-        levelManager->AddEntity(newEnemy);
-        
         if (spawnType == MapObjectId::Range &&
             rangeEnemiesToSpawn > 0) {
             rangeEnemiesToSpawn--;

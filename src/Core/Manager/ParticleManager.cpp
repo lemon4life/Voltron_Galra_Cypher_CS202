@@ -30,6 +30,14 @@ void ParticleManager::Initialize() {
     silhouetteShader = LoadShaderFromMemory(NULL, fragSrc);
 }
 
+void ParticleManager::Shutdown() {
+    Clear();
+    if (silhouetteShader.id != 0) {
+        UnloadShader(silhouetteShader);
+        silhouetteShader = {};
+    }
+}
+
 // ─── Singleton ───────────────────────────────────────────────────────────────
 
 ParticleManager& ParticleManager::GetInstance() {

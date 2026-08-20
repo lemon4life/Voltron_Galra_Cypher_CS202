@@ -1,12 +1,17 @@
 #pragma once
-#include "raylib.h"
-#include <vector>
-#include <deque>
-#include <memory>
-#include "Core/DepthRenderItem.h"
-#include "UI/ComboMeter.h"
 
-#include<memory>
+#include "Core/DepthRenderItem.h"
+#include "Core/Manager/EffectManager.h"
+#include "Core/Manager/EncounterManager.h"
+#include "Core/Manager/LevelManager.h"
+#include "Core/Manager/ObjectManager.h"
+#include "Core/Manager/PathFindingManager.h"
+#include "UI/ComboMeter.h"
+#include "raylib.h"
+
+#include <memory>
+#include <string>
+#include <vector>
 
 enum class GameState {
     MAIN_MENU,
@@ -19,84 +24,44 @@ enum class GameState {
     VICTORY
 };
 
-struct ImpactEffect {
-    Vector2 position;
-    float lifetime;
-    float maxLifetime;
-    int currentFrame;
-    int numFrames;
-    Texture2D texture;
-    bool drawBehind;
-    Color tint = WHITE;
-};
-
-struct QuintessenceOrb {
-    Vector2 position;
-    Vector2 velocity;
-    bool isAttracted;
-    std::deque<Vector2> positionHistory;
-};
-
-class Projectile; // Forward declaration
-class LevelManager; // Forward declaration
-class GameObject; // Forward declaration
-class Rover; // Forward declaration
-class IGameState; // Forward declaration
+class GameObject;
+class IGameState;
+class Projectile;
+class Rover;
+class TeamManager;
 
 class GameManager {
 private:
-    GameState currentState;
-    GameState previousGameState;
-    std::vector<GameObject*> levelEntities;
-    std::vector<Projectile*> activeProjectiles;
-    std::vector<ImpactEffect> activeEffects;
-    std::vector<QuintessenceOrb> activeOrbs;
-    std::vector<std::unique_ptr<Rover>> activeRovers;
-    Texture2D bulletImpactTex;
+    GameState currentState = GameState::MAIN_MENU;
+    GameState previousGameState = GameState::MAIN_MENU;
     std::unique_ptr<IGameState> currentStateObj;
 
-    int targetFPS;
-    float hitstopTimer;
-    
-    int currentFloor;
-    int currentRoom;
-    bool isBossDefeated;
-    
+    int targetFPS = 0;
+    float hitstopTimer = 0.0f;
+    int currentFloor = 1;
     ComboMeter comboMeter;
-    
-    float levelWidth = 0.0f;
-    float levelHeight = 0.0f;
 
-    LevelManager* levelManager;
+    LevelManager levelManager;
+    ObjectManager objectManager;
+    PathFindingManager pathFindingManager;
+    EffectManager effectManager;
+    EncounterManager encounterManager;
+    std::unique_ptr<TeamManager> teamManager;
 
-    GameManager(); // Private constructor
+    GameManager();
     ~GameManager();
 
 public:
-    static GameManager& GetInstance();
-
-    // Delete copy and assignment operators to enforce singleton behavior
     static constexpr int MAX_FLOORS = 3;
+    static GameManager& GetInstance();
 
     GameManager(const GameManager&) = delete;
     GameManager& operator=(const GameManager&) = delete;
     GameManager(GameManager&&) = delete;
     GameManager& operator=(GameManager&&) = delete;
 
-    // --- Accessors ---
-    void TriggerHitstop(float duration) { hitstopTimer = duration; }
-    float GetHitstopTimer() const { return hitstopTimer; }
-    void ClearHitstop() { hitstopTimer = 0.0f; }
-
-    int GetCurrentFloor() const { return currentFloor; }
-    void AdvanceFloorCount() { currentFloor++; }
-    void ResetFloorCount() { currentFloor = 1; }
-
-    void UpdateHitstop(float dt) { if (hitstopTimer > 0.0f) hitstopTimer -= dt; }
-
     void SetState(GameState newState);
     GameState GetState() const;
-    
     void SetCurrentStateObj(std::unique_ptr<IGameState> state);
     IGameState* GetCurrentStateObj() const;
     std::unique_ptr<IGameState> TakeCurrentStateObj();
@@ -106,41 +71,69 @@ public:
     GameState GetPreviousGameState() const;
     GameState GetRenderState() const;
 
-    void SetLevelBounds(float w, float h) { levelWidth = w; levelHeight = h; }
-    float GetLevelWidth() const { return levelWidth; }
-    float GetLevelHeight() const { return levelHeight; }
+    void TriggerHitstop(float duration) { hitstopTimer = duration; }
+    float GetHitstopTimer() const { return hitstopTimer; }
+    void ClearHitstop() { hitstopTimer = 0.0f; }
+    void UpdateHitstop(float deltaTime) {
+        if (hitstopTimer > 0.0f) hitstopTimer -= deltaTime;
+    }
 
-    const std::vector<GameObject*>& GetLevelEntities() const;
-    void ResetTransientState();
-
-    void SpawnQuintessenceOrb(Vector2 pos);
-    void UpdateOrbs(float deltaTime, class TeamManager* teamManager);
-    void DrawOrbs();
-    void ClearOrbs() { activeOrbs.clear(); }
-    void SetLevelEntities(const std::vector<GameObject*>& entities) { levelEntities = entities; }
-
-    void TransitionToNextRoom(LevelManager* levelManager);
-    
+    int GetCurrentFloor() const { return currentFloor; }
+    void AdvanceFloorCount() { ++currentFloor; }
+    void ResetFloorCount() { currentFloor = 1; }
     ComboMeter& GetComboMeter() { return comboMeter; }
-    void SetLevelManager(LevelManager* lm) { levelManager = lm; }
-    LevelManager* GetLevelManager() const { return levelManager; }
-    
+
     void UpdateTargetFPS(int fps) { targetFPS = fps; SetTargetFPS(fps); }
     int GetTargetFPS() const { return targetFPS; }
 
-    void AddProjectile(Projectile* p);
-    void UpdateProjectiles(float deltaTime, class TeamManager* teamManager = nullptr);
+    LevelManager* GetLevelManager() { return &levelManager; }
+    const LevelManager* GetLevelManager() const { return &levelManager; }
+    ObjectManager& GetObjectManager() { return objectManager; }
+    const ObjectManager& GetObjectManager() const { return objectManager; }
+    PathFindingManager& GetPathFindingManager() {
+        return pathFindingManager;
+    }
+    const PathFindingManager& GetPathFindingManager() const {
+        return pathFindingManager;
+    }
+    EffectManager& GetEffectManager() { return effectManager; }
+    EncounterManager& GetEncounterManager() { return encounterManager; }
+    TeamManager* GetTeamManager() const { return teamManager.get(); }
+    void SetTeamManager(std::unique_ptr<TeamManager> team);
+
+    float GetLevelWidth() const { return levelManager.GetLevelWidth(); }
+    float GetLevelHeight() const { return levelManager.GetLevelHeight(); }
+
+    void LoadLevel(const std::string& path);
+    void GenerateDungeon();
+    void ResetWorld();
+    void ResetTransientState();
+
+    void UpdateDynamicEntities(float deltaTime);
+    void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
+    void DrawDebugOverlays(TeamManager* team = nullptr) const;
+
+    // Transitional creation adapters used by existing entity code.
+    void AddProjectile(Projectile* projectile);
+    void ClearProjectiles();
+    void UpdateProjectiles(float deltaTime, TeamManager* team = nullptr);
+    void AddRover(std::unique_ptr<Rover> rover);
+    void UpdateAssists(float deltaTime, TeamManager* team = nullptr);
+    void SpawnQuintessenceOrb(Vector2 position);
+    void UpdateOrbs(float deltaTime, TeamManager* team = nullptr);
+    void DrawOrbs();
+    void ClearOrbs();
+    void SetBulletImpactTexture(Texture2D texture);
+    void AddEffect(
+        Vector2 position,
+        Texture2D texture,
+        int frames,
+        float lifetime,
+        bool drawBehind = false,
+        Color tint = WHITE
+    );
+    void AddImpactEffect(Vector2 position);
     void UpdateEffects(float deltaTime);
     void DrawEffects(bool background);
-    void SetBulletImpactTexture(Texture2D tex) { bulletImpactTex = tex; }
-    void AddEffect(Vector2 pos, Texture2D tex, int frames, float lifetime, bool drawBehind = false, Color tint = WHITE);
-    void AddImpactEffect(Vector2 pos);
-    void DrawProjectiles();
-    void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
-    void DrawDebugOverlays(class TeamManager* teamManager) const;
-    void ClearProjectiles();
-    
-    // Pidge skills
-    void AddRover(std::unique_ptr<Rover> rover);
-    void UpdateAssists(float deltaTime, class TeamManager* teamManager = nullptr);
+    void DrawParticles();
 };

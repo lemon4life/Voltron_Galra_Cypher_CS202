@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Level/ILevelProvider.h"
-#include "Core/LevelAccess.h"
 #include "Core/Constants.h"
 #include <vector>
 
@@ -10,7 +9,6 @@ public:
     StaticLevelProvider(
         const std::vector<std::vector<int>>& mapGridLayer1,
         const std::vector<std::vector<int>>& mapGridLayer2,
-        const std::vector<std::vector<MapObjectId>>& mapObjectGrid,
         Texture2D floorTileset,
         Texture2D wallTileset,
         int& gridRows,
@@ -19,17 +17,20 @@ public:
 
     void DrawBase() override;
     void GetDepthRenderItems(std::vector<DepthRenderItem>& items) override;
-    bool IsSolidCollision(Rectangle box, bool ignoreProps = false) const override;
+    bool IsSolidCollision(Rectangle box) const override;
+    void AppendStaticBlockingCollidersForTile(
+        int tileX,
+        int tileY,
+        std::vector<Rectangle>& output
+    ) const override;
 
 private:
     const std::vector<std::vector<int>>& mapGridLayer1;
     const std::vector<std::vector<int>>& mapGridLayer2;
-    const std::vector<std::vector<MapObjectId>>& mapObjectGrid;
     Texture2D floorTileset;
     Texture2D wallTileset;
     int& gridRows;
     int& gridCols;
 
-    bool IsSolidMapObject(MapObjectId objectId) const;
     int pos_hash(int x, int y) const;
 };

@@ -1,25 +1,16 @@
 #include "Core/Manager/LevelManager.h"
 #include "Core/Constants.h"
-#include "Core/Manager/GameManager.h"
+#include "Core/MapObjectFactory.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/AudioManager.h"
-#include "Core/Manager/TeamManager.h"
-#include "Core/Manager/DecalManager.h"
-#include "Entities/Player/Paladin.h"
-#include "Core/EntityFactory.h"
-#include "Entities/EnemyEntities/EnemyDiver.h"
-#include "Entities/EnemyEntities/Drone.h"
 #include "Core/LevelAccess.h"
-#include "Entities/Enemy.h"
-#include "Entities/Props/Prop.h"
 #include "Entities/Props/DoorGate.h"
 
 #include "Core/Level/ILevelProvider.h"
-#include "Entities/Props/Pot.h"
 #include "Core/Level/StaticLevelProvider.h"
 #include "Core/Utils/MapLoader.h"
+#include "Core/Utils/LineOfSightGeometry.h"
 #include "Core/Level/ProceduralLevelProvider.h"
-#include "Core/Level/StaticLevelProvider.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -27,19 +18,11 @@
 #include <algorithm>
 #include <utility>
 #include <unordered_set>
+#include <limits>
 
 namespace {
-    auto pos_hash = [](int x, int y) -> int {
-        unsigned int h = (unsigned int)(x * 374761393 ^ y * 668265263);
-        h = (h ^ (h >> 13)) * 1274126177;
-        return h ^ (h >> 16);
-    };
-}
-
     constexpr float COLLISION_EDGE_PADDING = 0.001f;
-    constexpr float PARTIAL_WALL_WIDTH = 9.0f;
-    constexpr float RIGHT_PARTIAL_WALL_OFFSET = Constants::RENDER_TILE_SIZE - PARTIAL_WALL_WIDTH;
-    constexpr int DRAW_PADDING_TILES = 20;
+}
 
 LevelManager::LevelManager()
     : levelWidth(0.0f), levelHeight(0.0f), gridRows(0), gridCols(0) {
@@ -54,7 +37,6 @@ void LevelManager::InitializeAssets() {
     boxTexture = LoadTexture("assets/Objects/box.png");
     gateTexture = LoadTexture("assets/Objects/Transfer_gate.png");
 
-    SetTextureFilter(tileset, TEXTURE_FILTER_POINT);
     SetTextureFilter(floorTileset, TEXTURE_FILTER_POINT);
     SetTextureFilter(wallTileset, TEXTURE_FILTER_POINT);
     SetTextureFilter(prop1Texture, TEXTURE_FILTER_POINT);
@@ -65,20 +47,30 @@ void LevelManager::InitializeAssets() {
 
 LevelManager::~LevelManager() {
     ClearLevel();
-    UnloadTexture(tileset);
-    UnloadTexture(floorTileset);
-    UnloadTexture(wallTileset);
-    UnloadTexture(prop1Texture);
-    UnloadTexture(prop2Texture);
-    UnloadTexture(boxTexture);
-    UnloadTexture(gateTexture);
+    ShutdownAssets();
+}
+
+void LevelManager::ShutdownAssets() {
+    if (floorTileset.id != 0) UnloadTexture(floorTileset);
+    if (wallTileset.id != 0) UnloadTexture(wallTileset);
+    if (prop1Texture.id != 0) UnloadTexture(prop1Texture);
+    if (prop2Texture.id != 0) UnloadTexture(prop2Texture);
+    if (boxTexture.id != 0) UnloadTexture(boxTexture);
+    if (gateTexture.id != 0) UnloadTexture(gateTexture);
+    floorTileset = {};
+    wallTileset = {};
+    prop1Texture = {};
+    prop2Texture = {};
+    boxTexture = {};
+    gateTexture = {};
 }
 
 bool LevelManager::LoadObjectGrid(const std::string& filepath) {
     return MapLoader::ParseObjectGrid(filepath, mapObjectGrid, mapGridLayer1);
 }
 
-void LevelManager::SpawnGameObjects(TeamManager* teamManager) {
+DynamicSpawnList LevelManager::SpawnMapContent() {
+    DynamicSpawnList dynamicSpawns;
     for (int row = 0; row < (int)mapObjectGrid.size(); ++row) {
         for (int column = 0;
              column < (int)mapObjectGrid[row].size();
@@ -88,18 +80,27 @@ void LevelManager::SpawnGameObjects(TeamManager* teamManager) {
                 continue;
             }
 
-            AddEntity(EntityFactory::CreateEntity(
-                objectId,
-                TileToWorld(column, row),
-                { row, column },
-                teamManager,
-                GetLevelAccessBundle()
-            ));
+            Vector2 position = TileToWorld(column, row);
+            if (MapObjectFactory::IsMapObjectType(objectId)) {
+                AddMapObject(MapObjectFactory::Create(
+                    objectId,
+                    position,
+                    { row, column }
+                ));
+            } else {
+                dynamicSpawns.push_back({
+                    objectId,
+                    position,
+                    { row, column }
+                });
+            }
         }
     }
+    return dynamicSpawns;
 }
 
-void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManager) {
+DynamicSpawnList LevelManager::LoadLevel(const std::string& filepath) {
+    DynamicSpawnList dynamicSpawns;
     ClearLevel();
     levelMode = LevelMode::Layered;
 
@@ -107,30 +108,30 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
         filepath.size() < 4 ||
         filepath.substr(filepath.size() - 4) != ".csv") {
         std::cerr << "Level path must reference a Layer 1 CSV: " << filepath << std::endl;
-        return;
+        return dynamicSpawns;
     }
 
     if (!MapLoader::ParseCSV(filepath, mapGridLayer1)) {
-        return;
+        return dynamicSpawns;
     }
 
     std::string layer2Path = filepath;
     layer2Path.replace(layer2Path.find("Layer 1"), 7, "Layer 2");
     if (!MapLoader::ParseCSV(layer2Path, mapGridLayer2)) {
         ClearLevel();
-        return;
+        return dynamicSpawns;
     }
 
     if (mapGridLayer2.size() != mapGridLayer1.size() ||
         mapGridLayer2.front().size() != mapGridLayer1.front().size()) {
         std::cerr << "Layer 2 dimensions do not match Layer 1: " << layer2Path << std::endl;
         ClearLevel();
-        return;
+        return dynamicSpawns;
     }
 
     if (!LoadObjectGrid(filepath)) {
         ClearLevel();
-        return;
+        return dynamicSpawns;
     }
 
     gridRows = static_cast<int>(mapGridLayer1.size());
@@ -143,25 +144,18 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
         10 * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f,
         10 * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f
     };
-    GameObject* npc = EntityFactory::CreateEntity(
-        MapObjectId::NPC,
-        npcPos,
-        {0, 0},
-        teamManager,
-        GetLevelAccessBundle()
-    );
-    if (npc) {
-        AddEntity(npc);
-    }
+    dynamicSpawns.push_back({ MapObjectId::NPC, npcPos, { 0, 0 } });
     
     // Spawn objects
-    SpawnGameObjects(teamManager);
-
-    // Store in GameManager for global access
-    GameManager::GetInstance().SetLevelBounds(levelWidth, levelHeight);
+    DynamicSpawnList gridSpawns = SpawnMapContent();
+    dynamicSpawns.insert(
+        dynamicSpawns.end(),
+        gridSpawns.begin(),
+        gridSpawns.end()
+    );
 
     currentLevelProvider = std::make_unique<StaticLevelProvider>(
-        mapGridLayer1, mapGridLayer2, mapObjectGrid,
+        mapGridLayer1, mapGridLayer2,
         floorTileset, wallTileset, gridRows, gridCols
     );
 
@@ -174,9 +168,12 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
             }
         }
     }
+    return dynamicSpawns;
 }
 
 void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
+    lineOfSightDebugTraces.clear();
+
     if (IsProceduralDungeon()) {
         if (currentlyLockedRoom && currentlyLockedRoom->state == RoomState::CLEARED) {
             for (auto* door : currentlyLockedRoom->doors) {
@@ -238,57 +235,15 @@ void LevelManager::UpdateLevel(float deltaTime, Vector2 playerPos) {
         }
     }
 
-    // Always update entities!
-    enemyPathManager.Update(*this, deltaTime);
-
-    for (auto it = levelEntities.begin(); it != levelEntities.end(); it++) {
-        if ((*it)->GetObjectType() == GameObjectType::Prop) {
-            class Pot* pot = dynamic_cast<class Pot*>(*it);
-            if (pot && pot->IsConsumed()) {
-                QueueRemoval(pot);
-                continue;
-            }
-        }
-
-        if ((*it)->GetObjectType() == GameObjectType::Enemy) {
-            Enemy* e = static_cast<Enemy*>(*it);
-            if (e->IsDead()) {
-                Texture2D downTex = AssetManager::GetInstance().GetTexture("Enemy_Down");
-                if (dynamic_cast<Drone*>(e)) {
-                    downTex = AssetManager::GetInstance().GetTexture("Drone_down");
-                }
-                DecalManager::GetInstance().AddCorpse(e->GetPosition(), downTex, e->IsFacingLeft(), e->GetKnockbackVelocity());
-
-                GameManager::GetInstance().SpawnQuintessenceOrb(e->GetPosition());
-
-                int randNum = GetRandomValue(0, 1);
-                if (dynamic_cast<Drone*>(e)) {
-                    AudioManager::GetInstance().PlaySoundEffectVolume("drone_dead_" + std::to_string(randNum), 0.25f);
-                } else {
-                    AudioManager::GetInstance().PlaySoundEffectVolume("knight_dead_" + std::to_string(randNum), 0.25f);
-                }
-
-                QueueRemoval(e);
-                continue;
-            }
-        }
-
-        DoorGate* updatingDoor =
-            (*it)->GetObjectType() == GameObjectType::DoorGate
-                ? static_cast<DoorGate*>(*it)
-                : nullptr;
-        bool doorWasSolid = updatingDoor && updatingDoor->IsSolid();
-        (*it)->Update(deltaTime);
-        if (updatingDoor && doorWasSolid != updatingDoor->IsSolid()) {
+    for (const std::unique_ptr<MapObject>& object : mapObjects) {
+        if (!object) continue;
+        bool wasSolid = object->IsSolid();
+        object->Update(deltaTime);
+        if (wasSolid != object->IsSolid()) {
             MarkNavigationChanged();
         }
     }
-
-    // DecalManager now handles corpse physics
-
-    ProcessPendingAdditions();
-    ProcessPendingMapObjectDestructions();
-    ProcessPendingRemovals();
+    ProcessDestroyedMapObjects();
 }
 
 void LevelManager::DrawLevelBase() {
@@ -297,16 +252,9 @@ void LevelManager::DrawLevelBase() {
     }
 
     
-    // Draw base layer for dynamic props
-    for (auto* entity : levelEntities) {
-        if (entity->GetObjectType() == GameObjectType::Box) {
-            static_cast<Prop*>(entity)->DrawBaseLayer();
-        } else if (entity->GetObjectType() == GameObjectType::DoorGate) {
-            static_cast<DoorGate*>(entity)->DrawBaseLayer();
-        }
+    for (const std::unique_ptr<MapObject>& object : mapObjects) {
+        if (object) object->DrawBaseLayer();
     }
-
-    // DecalManager now handles corpse rendering
 }
 
 void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
@@ -314,104 +262,167 @@ void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
         currentLevelProvider->GetDepthRenderItems(items);
     }
 
-    for (auto* entity : levelEntities) {
-        if (entity->GetObjectType() == GameObjectType::Box) {
-            static_cast<Prop*>(entity)->AddDepthRenderItems(items);
-        } else if (entity->GetObjectType() == GameObjectType::DoorGate) {
-            static_cast<DoorGate*>(entity)->AddDepthRenderItems(items);
-        } else {
-            items.push_back({
-                entity->GetBoundingBox().y + entity->GetBoundingBox().height,
-                [entity]() { entity->Draw(); }
-            });
-        }
+    for (const std::unique_ptr<MapObject>& object : mapObjects) {
+        if (object) object->AddDepthRenderItems(items);
     }
 }
 
 void LevelManager::ClearLevel() {
-    pendingMapObjectDestructions.clear();
-    pendingRemoval.clear();
-    enemyPathManager.Clear();
-
-    for (GameObject* entity : pendingAddition) {
-        delete entity;
+    for (const std::shared_ptr<RoomNode>& node : levelMap.generatedNodes) {
+        if (node) node->doors.clear();
     }
-    pendingAddition.clear();
-
-    for (auto* entity : levelEntities) {
-        delete entity;
-    }
-    levelEntities.clear();
-    DecalManager::GetInstance().Clear();
+    mapObjects.clear();
+    levelMap = LevelMap{};
     mapGridLayer1.clear();
     mapGridLayer2.clear();
     mapObjectGrid.clear();
     activeRoom = nullptr;
-    currentRoomWalls.clear();
-    doorColliders.clear();
     currentlyLockedRoom = nullptr;
     roomOffset = {0.0f, 0.0f};
     nudgePosition = {0.0f, 0.0f};
     needsNudge = false;
     levelMode = LevelMode::Layered;
+    currentLevelProvider.reset();
     MarkNavigationChanged();
 }
 
-void LevelManager::AddEntity(GameObject* entity) {
-    if (entity) {
-        levelEntities.push_back(entity);
-        if (entity && entity->IsSolidNavigationObstacle()) {
-            MarkNavigationChanged();
+MapObject* LevelManager::AddMapObject(
+    std::unique_ptr<MapObject> object
+) {
+    if (!object) return nullptr;
+    MapObject* pointer = object.get();
+    bool isSolid = object->IsSolid();
+    mapObjects.push_back(std::move(object));
+    if (isSolid) MarkNavigationChanged();
+    return pointer;
+}
+
+bool LevelManager::IsSolidCollision(Rectangle box) const {
+    if (currentLevelProvider &&
+        currentLevelProvider->IsSolidCollision(box)) {
+        return true;
+    }
+    return FindSolidMapObjectCollision(box) != nullptr;
+}
+
+MapObject* LevelManager::FindSolidMapObjectCollision(
+    Rectangle box
+) const {
+    EnsureLineOfSightBlockerIndex();
+    Vector2 origin = GetLineOfSightGridOrigin();
+    float tileSize = Constants::RENDER_TILE_SIZE;
+    int minimumTileX = (int)std::floor(
+        (box.x - origin.x) / tileSize
+    );
+    int maximumTileX = (int)std::floor(
+        (box.x + box.width - COLLISION_EDGE_PADDING - origin.x) /
+            tileSize
+    );
+    int minimumTileY = (int)std::floor(
+        (box.y - origin.y) / tileSize
+    );
+    int maximumTileY = (int)std::floor(
+        (box.y + box.height - COLLISION_EDGE_PADDING - origin.y) /
+            tileSize
+    );
+    std::unordered_set<MapObject*> tested;
+    for (int tileY = minimumTileY; tileY <= maximumTileY; ++tileY) {
+        for (int tileX = minimumTileX; tileX <= maximumTileX; ++tileX) {
+            auto entry = lineOfSightDynamicBlockers.find({ tileX, tileY });
+            if (entry == lineOfSightDynamicBlockers.end()) continue;
+            for (MapObject* object : entry->second) {
+                if (!object || !tested.insert(object).second ||
+                    !object->IsSolid()) {
+                    continue;
+                }
+                if (CheckCollisionRecs(box, object->GetCollisionBox())) {
+                    return object;
+                }
+            }
         }
     }
+    return nullptr;
 }
 
-bool LevelManager::QueueEnemySpawn(
-    MapObjectId enemyType,
-    Vector2 position,
-    TeamManager* teamManager
-) {
-    if (enemyType != MapObjectId::Chaser &&
-        enemyType != MapObjectId::Range &&
-        enemyType != MapObjectId::Diver) {
-        return false;
-    }
-
-    GameObject* entity = EntityFactory::CreateEntity(
-        enemyType,
-        position,
-        { -1, -1 },
-        teamManager,
-        GetLevelAccessBundle()
-    );
-    if (!entity) {
-        return false;
-    }
-
-    pendingAddition.push_back(entity);
-    return true;
+Vector2 LevelManager::GetLineOfSightGridOrigin() const {
+    return IsProceduralDungeon() && activeRoom
+        ? roomOffset
+        : Vector2{ 0.0f, 0.0f };
 }
 
-void LevelManager::ProcessPendingAdditions() {
-    for (GameObject* entity : pendingAddition) {
-        AddEntity(entity);
-    }
-    pendingAddition.clear();
+LevelManager::LineOfSightTile LevelManager::WorldToLineOfSightTile(
+    Vector2 position
+) const {
+    Vector2 origin = GetLineOfSightGridOrigin();
+    float tileSize = Constants::RENDER_TILE_SIZE;
+    return {
+        (int)std::floor((position.x - origin.x) / tileSize),
+        (int)std::floor((position.y - origin.y) / tileSize)
+    };
 }
 
-bool LevelManager::IsSolidCollision(Rectangle box, bool ignoreProps) const {
-    if (currentLevelProvider) {
-        return currentLevelProvider->IsSolidCollision(box, ignoreProps);
-    }
-    return false;
+Rectangle LevelManager::GetLineOfSightTileBounds(
+    LineOfSightTile tile
+) const {
+    Vector2 origin = GetLineOfSightGridOrigin();
+    float tileSize = Constants::RENDER_TILE_SIZE;
+    return {
+        origin.x + tile.x * tileSize,
+        origin.y + tile.y * tileSize,
+        tileSize,
+        tileSize
+    };
 }
 
-bool LevelManager::IsSolidMapObject(MapObjectId objectId) const {
-    if (objectId == MapObjectId::DestructibleBox || objectId == MapObjectId::Prop1 || objectId == MapObjectId::Prop2 || objectId == MapObjectId::MockWall) {
-        return true; // DestructibleBox occupies one solid cell.
+void LevelManager::EnsureLineOfSightBlockerIndex() const {
+    Vector2 origin = GetLineOfSightGridOrigin();
+    const RoomTemplate* room = IsProceduralDungeon()
+        ? activeRoom.get()
+        : nullptr;
+    if (lineOfSightBlockerIndexValid &&
+        lineOfSightBlockerIndexRevision == navigationRevision &&
+        lineOfSightBlockerIndexOrigin.x == origin.x &&
+        lineOfSightBlockerIndexOrigin.y == origin.y &&
+        lineOfSightBlockerIndexRoom == room) {
+        return;
     }
 
-    return false;
+    lineOfSightDynamicBlockers.clear();
+    float tileSize = Constants::RENDER_TILE_SIZE;
+    for (const std::unique_ptr<MapObject>& object : mapObjects) {
+        if (!object || !object->IsSolid()) continue;
+
+        Rectangle bounds = object->GetCollisionBox();
+        int minimumTileX = (int)std::floor(
+            (bounds.x - origin.x) / tileSize
+        );
+        int maximumTileX = (int)std::floor(
+            (bounds.x + bounds.width - COLLISION_EDGE_PADDING - origin.x) /
+                tileSize
+        );
+        int minimumTileY = (int)std::floor(
+            (bounds.y - origin.y) / tileSize
+        );
+        int maximumTileY = (int)std::floor(
+            (bounds.y + bounds.height - COLLISION_EDGE_PADDING - origin.y) /
+                tileSize
+        );
+
+        for (int tileY = minimumTileY; tileY <= maximumTileY; ++tileY) {
+            for (int tileX = minimumTileX;
+                 tileX <= maximumTileX;
+                 ++tileX) {
+                lineOfSightDynamicBlockers[{ tileX, tileY }].push_back(
+                    object.get()
+                );
+            }
+        }
+    }
+
+    lineOfSightBlockerIndexValid = true;
+    lineOfSightBlockerIndexRevision = navigationRevision;
+    lineOfSightBlockerIndexOrigin = origin;
+    lineOfSightBlockerIndexRoom = room;
 }
 
 bool LevelManager::HasClearLineOfSight(
@@ -419,93 +430,255 @@ bool LevelManager::HasClearLineOfSight(
     Vector2 end,
     float projectileRadius
 ) const {
-    float tileW = Constants::RENDER_TILE_SIZE;
-    float radius = std::max(projectileRadius, COLLISION_EDGE_PADDING);
+    bool recordDebug = Constants::DEBUG_DRAW_LINE_OF_SIGHT;
+    LineOfSightDebugTrace debugTrace;
+    debugTrace.start = start;
+    debugTrace.end = end;
+    debugTrace.radius = std::max(0.0f, projectileRadius);
 
-    if (IsProceduralDungeon() && activeRoom) {
-        int x0 = (int)std::floor((start.x - roomOffset.x) / tileW);
-        int y0 = (int)std::floor((start.y - roomOffset.y) / tileW);
-        int x1 = (int)std::floor((end.x - roomOffset.x) / tileW);
-        int y1 = (int)std::floor((end.y - roomOffset.y) / tileW);
-
-        int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-        int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-        int err = dx + dy, e2;
-
-        while (true) {
-            if (y0 >= 0 && y0 < activeRoom->height && x0 >= 0 && x0 < activeRoom->width) {
-                int tile = activeRoom->layer0_tiles[y0][x0];
-                if (tile == 1 || tile == 2) return false;
-            } else {
-                return false;
-            }
-            if (x0 == x1 && y0 == y1) break;
-            e2 = 2 * err;
-            if (e2 >= dy) { err += dy; x0 += sx; }
-            if (e2 <= dx) { err += dx; y0 += sy; }
+    auto finishQuery = [&](bool clear) {
+        if (recordDebug) {
+            debugTrace.clear = clear;
+            lineOfSightDebugTraces.push_back(std::move(debugTrace));
         }
-    } else {
-        int x0 = (int)std::floor(start.x / tileW);
-        int y0 = (int)std::floor(start.y / tileW);
-        int x1 = (int)std::floor(end.x / tileW);
-        int y1 = (int)std::floor(end.y / tileW);
+        return clear;
+    };
 
-        int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-        int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-        int err = dx + dy, e2;
-
-        while (true) {
-            if (y0 >= 0 && y0 < gridRows && x0 >= 0 && x0 < gridCols) {
-                int t1 = 0, t2 = 0;
-                if (y0 < (int)mapGridLayer1.size() && x0 < (int)mapGridLayer1[y0].size()) t1 = mapGridLayer1[y0][x0];
-                if (y0 < (int)mapGridLayer2.size() && x0 < (int)mapGridLayer2[y0].size()) t2 = mapGridLayer2[y0][x0];
-                if (t1 == 0 || t2 == 0) return false;
-                if (t1 >= 4 && t1 <= 11) return false;
-                if (t2 >= 4 && t2 <= 11) return false;
-                if ((t1 >= 1 && t1 <= 3) || (t2 >= 1 && t2 <= 3) || (t1 >= 12 && t1 <= 14) || (t2 >= 12 && t2 <= 14)) return false;
-            } else {
-                return false;
-            }
-            if (x0 == x1 && y0 == y1) break;
-            e2 = 2 * err;
-            if (e2 >= dy) { err += dy; x0 += sx; }
-            if (e2 <= dx) { err += dx; y0 += sy; }
-        }
+    if (!currentLevelProvider ||
+        !std::isfinite(start.x) || !std::isfinite(start.y) ||
+        !std::isfinite(end.x) || !std::isfinite(end.y) ||
+        !std::isfinite(projectileRadius)) {
+        return finishQuery(false);
     }
 
-    constexpr float MAX_PROBE_SPACING = 8.0f;
-    Vector2 segment = { end.x - start.x, end.y - start.y };
-    float distance = std::sqrt(segment.x * segment.x + segment.y * segment.y);
-    int probeCount = std::max(1, (int)std::ceil(distance / MAX_PROBE_SPACING));
+    float radius = std::max(0.0f, projectileRadius);
+    float tileSize = Constants::RENDER_TILE_SIZE;
+    float spanAsFloat = std::ceil(radius / tileSize);
+    if (spanAsFloat > 4096.0f) return finishQuery(false);
+    int neighborSpan = (int)spanAsFloat;
+    EnsureLineOfSightBlockerIndex();
 
-    for (int probeIndex = 0; probeIndex <= probeCount; ++probeIndex) {
-        float amount = (float)probeIndex / (float)probeCount;
-        Vector2 point = { start.x + segment.x * amount, start.y + segment.y * amount };
-        Rectangle probe = { point.x - radius, point.y - radius, radius * 2.0f, radius * 2.0f };
+    std::unordered_set<LineOfSightTile, LineOfSightTileHash>
+        visitedCenterTiles;
+    std::unordered_set<LineOfSightTile, LineOfSightTileHash>
+        visitedCandidateTiles;
+    std::unordered_set<const MapObject*> testedMapBlockers;
+    std::vector<Rectangle> staticColliders;
+    staticColliders.reserve(2);
 
-        for (const auto& entity : levelEntities) {
-            if (entity && entity->IsSolidNavigationObstacle()) {
-                if (CheckCollisionRecs(probe, entity->GetCollisionBox())) {
-                    return false;
+    auto testCollider = [&](Rectangle collider) {
+        int colliderIndex = -1;
+        if (recordDebug) {
+            colliderIndex = (int)debugTrace.testedColliders.size();
+            debugTrace.testedColliders.push_back(collider);
+        }
+        bool intersects =
+            LineOfSightGeometry::CapsuleIntersectsRectangle(
+                start,
+                end,
+                radius,
+                collider
+            );
+        if (recordDebug && intersects) {
+            debugTrace.blockingColliderIndex = colliderIndex;
+        }
+        return intersects;
+    };
+
+    auto visitCenterTile = [&](LineOfSightTile centerTile) {
+        if (!visitedCenterTiles.insert(centerTile).second) return false;
+        if (recordDebug) {
+            debugTrace.ddaTiles.push_back(
+                GetLineOfSightTileBounds(centerTile)
+            );
+        }
+
+        for (int offsetY = -neighborSpan;
+             offsetY <= neighborSpan;
+             ++offsetY) {
+            for (int offsetX = -neighborSpan;
+                 offsetX <= neighborSpan;
+                 ++offsetX) {
+                LineOfSightTile candidate = {
+                    centerTile.x + offsetX,
+                    centerTile.y + offsetY
+                };
+                if (!visitedCandidateTiles.insert(candidate).second) {
+                    continue;
+                }
+
+                Rectangle candidateBounds =
+                    GetLineOfSightTileBounds(candidate);
+                if (!LineOfSightGeometry::CapsuleIntersectsRectangle(
+                        start,
+                        end,
+                        radius,
+                        candidateBounds)) {
+                    continue;
+                }
+                if (recordDebug) {
+                    debugTrace.candidateTiles.push_back(candidateBounds);
+                }
+
+                staticColliders.clear();
+                currentLevelProvider->
+                    AppendStaticBlockingCollidersForTile(
+                        candidate.x,
+                        candidate.y,
+                        staticColliders
+                    );
+                for (Rectangle collider : staticColliders) {
+                    if (testCollider(collider)) return true;
+                }
+
+                auto dynamicEntry = lineOfSightDynamicBlockers.find(
+                    candidate
+                );
+                if (dynamicEntry == lineOfSightDynamicBlockers.end()) {
+                    continue;
+                }
+                for (const MapObject* blocker : dynamicEntry->second) {
+                    if (!blocker ||
+                        !blocker->IsSolid() ||
+                        !testedMapBlockers.insert(blocker).second) {
+                        continue;
+                    }
+                    if (testCollider(blocker->GetCollisionBox())) {
+                        return true;
+                    }
                 }
             }
         }
+        return false;
+    };
+
+    LineOfSightTile current = WorldToLineOfSightTile(start);
+    LineOfSightTile destination = WorldToLineOfSightTile(end);
+    if (visitCenterTile(current)) return finishQuery(false);
+    if (current == destination) return finishQuery(true);
+
+    float deltaX = end.x - start.x;
+    float deltaY = end.y - start.y;
+    int stepX = deltaX > 0.0f ? 1 : (deltaX < 0.0f ? -1 : 0);
+    int stepY = deltaY > 0.0f ? 1 : (deltaY < 0.0f ? -1 : 0);
+    float infinity = std::numeric_limits<float>::infinity();
+    float tDeltaX = stepX != 0 ? tileSize / std::abs(deltaX) : infinity;
+    float tDeltaY = stepY != 0 ? tileSize / std::abs(deltaY) : infinity;
+    Vector2 gridOrigin = GetLineOfSightGridOrigin();
+    float nextBoundaryX = gridOrigin.x +
+        (stepX > 0 ? current.x + 1 : current.x) * tileSize;
+    float nextBoundaryY = gridOrigin.y +
+        (stepY > 0 ? current.y + 1 : current.y) * tileSize;
+    float tMaxX = stepX != 0
+        ? (nextBoundaryX - start.x) / deltaX
+        : infinity;
+    float tMaxY = stepY != 0
+        ? (nextBoundaryY - start.y) / deltaY
+        : infinity;
+
+    constexpr float DDA_TIE_EPSILON = 0.000001f;
+    int maximumAdvances =
+        std::abs(destination.x - current.x) +
+        std::abs(destination.y - current.y) + 4;
+    int advances = 0;
+    while (!(current == destination)) {
+        if (++advances > maximumAdvances) return finishQuery(false);
+
+        if (tMaxX + DDA_TIE_EPSILON < tMaxY) {
+            current.x += stepX;
+            tMaxX += tDeltaX;
+            if (visitCenterTile(current)) return finishQuery(false);
+            continue;
+        }
+        if (tMaxY + DDA_TIE_EPSILON < tMaxX) {
+            current.y += stepY;
+            tMaxY += tDeltaY;
+            if (visitCenterTile(current)) return finishQuery(false);
+            continue;
+        }
+
+        LineOfSightTile sideX = { current.x + stepX, current.y };
+        LineOfSightTile sideY = { current.x, current.y + stepY };
+        if (stepX != 0 && visitCenterTile(sideX)) {
+            return finishQuery(false);
+        }
+        if (stepY != 0 && visitCenterTile(sideY)) {
+            return finishQuery(false);
+        }
+        current.x += stepX;
+        current.y += stepY;
+        tMaxX += tDeltaX;
+        tMaxY += tDeltaY;
+        if (visitCenterTile(current)) return finishQuery(false);
     }
 
-    return true;
+    return finishQuery(true);
 }
 
-bool LevelManager::IsValidSpawnLocation(const GameObject* entity) const {
-    if (!entity) return false;
+void LevelManager::DrawLineOfSightDebug() const {
+    for (const LineOfSightDebugTrace& trace : lineOfSightDebugTraces) {
+        Color resultColor = trace.clear ? LIME : RED;
+        for (Rectangle tile : trace.candidateTiles) {
+            DrawRectangleLinesEx(tile, 0.5f, Fade(YELLOW, 0.35f));
+        }
+        for (Rectangle tile : trace.ddaTiles) {
+            DrawRectangleLinesEx(tile, 1.0f, Fade(SKYBLUE, 0.8f));
+        }
+        for (std::size_t index = 0;
+             index < trace.testedColliders.size();
+             ++index) {
+            Rectangle collider = trace.testedColliders[index];
+            bool blocking = (int)index == trace.blockingColliderIndex;
+            if (blocking) {
+                DrawRectangleRec(collider, Fade(RED, 0.3f));
+            }
+            DrawRectangleLinesEx(
+                collider,
+                blocking ? 2.0f : 1.0f,
+                blocking ? RED : ORANGE
+            );
+        }
 
-    if (entity->GetObjectType() == GameObjectType::Enemy) {
-        const Enemy* enemy = static_cast<const Enemy*>(entity);
-        return !IsSolidCollision(enemy->GetNavigationFootprintAt(
-            enemy->GetPosition()
-        ));
+        float diameter = trace.radius * 2.0f;
+        if (diameter > 0.0f) {
+            DrawLineEx(
+                trace.start,
+                trace.end,
+                diameter,
+                Fade(resultColor, 0.15f)
+            );
+            DrawCircleV(
+                trace.start,
+                trace.radius,
+                Fade(resultColor, 0.15f)
+            );
+            DrawCircleV(
+                trace.end,
+                trace.radius,
+                Fade(resultColor, 0.15f)
+            );
+        }
+        DrawLineEx(trace.start, trace.end, 1.0f, resultColor);
+        DrawCircleV(trace.start, 2.0f, SKYBLUE);
+        DrawCircleV(trace.end, 3.0f, resultColor);
     }
+}
 
-    return !IsSolidCollision(entity->GetBoundingBox());
+void LevelManager::DrawMapCollisionDebug() const {
+    if (!Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) return;
+    for (const std::unique_ptr<MapObject>& object : mapObjects) {
+        if (!object) continue;
+        DrawRectangleLinesEx(
+            object->GetBoundingBox(),
+            Constants::DEBUG_COLLISION_LINE_THICKNESS * 2.0f,
+            PURPLE
+        );
+        DrawRectangleLinesEx(
+            object->GetCollisionBox(),
+            Constants::DEBUG_COLLISION_LINE_THICKNESS,
+            GOLD
+        );
+    }
 }
 
 Vector2 LevelManager::WorldToTile(Vector2 worldPos) const {
@@ -526,91 +699,30 @@ Vector2 LevelManager::TileToWorld(int tileX, int tileY) const {
 // Narrow level-access capabilities used by entities.
 //////////////////////////////////////////////
 
-void LevelManager::ProcessPendingMapObjectDestructions() {
-    for (const PendingMapObjectDestruction& request
-         : pendingMapObjectDestructions) {
-        GameObject* object = request.object;
-        if (!object) {
-            continue;
-        }
+void LevelManager::ProcessDestroyedMapObjects() {
+    bool navigationChanged = false;
+    mapObjects.erase(
+        std::remove_if(
+            mapObjects.begin(),
+            mapObjects.end(),
+            [this, &navigationChanged](const std::unique_ptr<MapObject>& object) {
+                if (!object || !object->IsDestroyed()) return false;
 
-        if (std::find(levelEntities.begin(), levelEntities.end(), object)
-            == levelEntities.end()) {
-            continue;
-        }
-
-        if (object->GetObjectType() != GameObjectType::Box) {
-            continue;
-        }
-
-        if (IsProceduralDungeon()) {
-            // In procedural dungeons, we just remove the entity. No mapObjectGrid exists to update.
-            QueueRemoval(object);
-            continue;
-        }
-
-        int row = request.cell.row;
-        int column = request.cell.column;
-        if (row < 0 || column < 0 ||
-            row >= (int)mapObjectGrid.size() ||
-            column >= (int)mapObjectGrid[row].size()) {
-            continue;
-        }
-
-        if (mapObjectGrid[row][column] != MapObjectId::DestructibleBox) {
-            continue;
-        }
-
-        mapObjectGrid[row][column] = MapObjectId::Empty;
-        QueueRemoval(object);
-    }
-
-    pendingMapObjectDestructions.clear();
-}
-
-void LevelManager::ProcessPendingRemovals() {
-    if (pendingRemoval.empty()) return;
-
-    bool navChanged = false;
-
-    levelEntities.erase(
-        std::remove_if(levelEntities.begin(), levelEntities.end(),
-            [this, &navChanged](GameObject* entity) {
-                if (pendingRemoval.count(entity)) {
-                    if (entity->IsSolidNavigationObstacle()) {
-                        navChanged = true;
-                    }
-                    delete entity;
-                    return true;
+                GameObjectCell cell = object->GetObjectCell();
+                if (!IsProceduralDungeon() &&
+                    cell.row >= 0 && cell.column >= 0 &&
+                    cell.row < (int)mapObjectGrid.size() &&
+                    cell.column < (int)mapObjectGrid[cell.row].size()) {
+                    mapObjectGrid[cell.row][cell.column] =
+                        MapObjectId::Empty;
                 }
-                return false;
-            }),
-        levelEntities.end()
+                navigationChanged = navigationChanged || object->IsSolid();
+                return true;
+            }
+        ),
+        mapObjects.end()
     );
-
-    if (navChanged) {
-        MarkNavigationChanged();
-    }
-    pendingRemoval.clear();
-}
-
-void LevelManager::BeginPathFinding(Enemy& enemy) {
-    enemyPathManager.AddEnemy(enemy);
-}
-
-void LevelManager::BeginPathFindingTo(
-    Enemy& enemy,
-    Vector2 worldGoal
-) {
-    enemyPathManager.AddEnemyTo(enemy, worldGoal);
-}
-
-void LevelManager::EndPathFinding(Enemy& enemy) {
-    enemyPathManager.RemoveEnemy(enemy);
-}
-
-bool LevelManager::IsBlocked(Rectangle bounds) const {
-    return IsSolidCollision(bounds);
+    if (navigationChanged) MarkNavigationChanged();
 }
 
 Rectangle LevelManager::GetLevelBounds() const {
@@ -641,137 +753,6 @@ bool LevelManager::IsPlayerInExitRoom(Vector2 playerPos) const {
         }
     }
     return false;
-}
-
-std::optional<Vector2> LevelManager::GetNextMoveTarget(
-    Enemy& enemy
-) {
-    return enemyPathManager.GetNextMoveTarget(
-        *this,
-        enemy
-    );
-}
-
-std::vector<Vector2> LevelManager::GetNavigableTileCentersWithin(
-    const Enemy& enemy,
-    Vector2 origin,
-    float radius
-) const {
-    std::vector<Vector2> candidates;
-    if (radius <= 0.0f) return candidates;
-
-    Rectangle searchBounds = GetCurrentRoomBounds();
-    float tileSize = Constants::RENDER_TILE_SIZE;
-    int minimumTileX = (int)std::floor(
-        std::max(searchBounds.x, origin.x - radius) / tileSize
-    );
-    int maximumTileX = (int)std::floor(
-        std::min(
-            searchBounds.x + searchBounds.width,
-            origin.x + radius
-        ) / tileSize
-    );
-    int minimumTileY = (int)std::floor(
-        std::max(searchBounds.y, origin.y - radius) / tileSize
-    );
-    int maximumTileY = (int)std::floor(
-        std::min(
-            searchBounds.y + searchBounds.height,
-            origin.y + radius
-        ) / tileSize
-    );
-    Vector2 originTile = WorldToTile(origin);
-    float radiusSquared = radius * radius;
-
-    auto isInsideSearchBounds = [searchBounds](Rectangle bounds) {
-        constexpr float BOUNDS_EPSILON = 0.001f;
-        return bounds.x >= searchBounds.x - BOUNDS_EPSILON &&
-            bounds.y >= searchBounds.y - BOUNDS_EPSILON &&
-            bounds.x + bounds.width <=
-                searchBounds.x + searchBounds.width + BOUNDS_EPSILON &&
-            bounds.y + bounds.height <=
-                searchBounds.y + searchBounds.height + BOUNDS_EPSILON;
-    };
-
-    for (int tileY = minimumTileY; tileY <= maximumTileY; ++tileY) {
-        for (int tileX = minimumTileX; tileX <= maximumTileX; ++tileX) {
-            if (tileX == (int)originTile.x &&
-                tileY == (int)originTile.y) {
-                continue;
-            }
-
-            Vector2 center = TileToWorld(tileX, tileY);
-            float deltaX = center.x - origin.x;
-            float deltaY = center.y - origin.y;
-            if (deltaX * deltaX + deltaY * deltaY > radiusSquared) {
-                continue;
-            }
-
-            Rectangle footprint = enemy.GetNavigationFootprintAt(center);
-            if (!isInsideSearchBounds(footprint) ||
-                IsSolidCollision(footprint)) {
-                continue;
-            }
-            candidates.push_back(center);
-        }
-    }
-
-    return candidates;
-}
-
-Vector2 LevelManager::GetLocalDirection(
-    Enemy& enemy,
-    Vector2 desiredDirection
-) {
-    return enemyPathManager.GetLocalAvoidanceDirection(
-        *this,
-        enemy,
-        desiredDirection
-    );
-}
-
-void LevelManager::QueueRemoval(GameObject* entity) {
-    if (entity) {
-        pendingRemoval.insert(entity);
-    }
-}
-
-void LevelManager::QueueMapObjectDestruction(
-    GameObject& object,
-    GameObjectCell cell
-) {
-    if (object.GetObjectType() != GameObjectType::Box) {
-        return;
-    }
-
-    if (std::find(levelEntities.begin(), levelEntities.end(), &object)
-        == levelEntities.end()) {
-        return;
-    }
-
-    if (!IsProceduralDungeon()) {
-        if (cell.row < 0 || cell.column < 0 ||
-            cell.row >= (int)mapObjectGrid.size() ||
-            cell.column >= (int)mapObjectGrid[cell.row].size()) {
-            return;
-        }
-
-        if (mapObjectGrid[cell.row][cell.column]
-            != MapObjectId::DestructibleBox) {
-            return;
-        }
-    }
-
-    auto duplicate = std::find_if(
-        pendingMapObjectDestructions.begin(),
-        pendingMapObjectDestructions.end(),
-        [&object](const PendingMapObjectDestruction& request) {
-            return request.object == &object;
-        }
-    );
-    if (duplicate == pendingMapObjectDestructions.end()) {
-        pendingMapObjectDestructions.push_back({ &object, cell });
-    }
 }
 
 Rectangle RoomNode::GetWorldBounds() const {
@@ -815,7 +796,8 @@ void RoomNode::CalculateWalkableGrid(LevelManager* lm) {
     }
 }
 
-void LevelManager::GenerateDungeon(TeamManager* teamManager) {
+DynamicSpawnList LevelManager::GenerateDungeon() {
+    DynamicSpawnList dynamicSpawns;
     printf("GenerateDungeon: Start\n");
     ClearLevel();
     printf("GenerateDungeon: Cleared level\n");
@@ -829,25 +811,35 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
     printf("GenerateDungeon: Map baked\n");
     roomOffset = {0.0f, 0.0f};
     
-    printf("GenerateDungeon: Generating walls\n");
-    currentRoomWalls = activeRoom->GenerateWallColliders(roomOffset, Constants::RENDER_TILE_SIZE, 1.0f);
-    printf("GenerateDungeon: Walls generated\n");
-    
     levelWidth = activeRoom->width * Constants::RENDER_TILE_SIZE;
     levelHeight = activeRoom->height * Constants::RENDER_TILE_SIZE;
-    GameManager::GetInstance().SetLevelBounds(levelWidth, levelHeight);
 
-    // Teleport player to spawn room center
+    currentLevelProvider = std::make_unique<ProceduralLevelProvider>(
+        activeRoom, roomOffset,
+        floorTileset, wallTileset, prop1Texture, prop2Texture,
+        boxTexture, gateTexture, levelMap
+    );
+
     if (levelMap.spawnRoom) {
         Rectangle bounds = levelMap.spawnRoom->GetWorldBounds();
         float spawnWorldX = bounds.x + bounds.width / 2.0f;
         float spawnWorldY = bounds.y + bounds.height / 2.0f;
-        teamManager->GetActivePaladin()->SetPosition({spawnWorldX, spawnWorldY});
 
-        // Add 3 testing pots
-        AddEntity(new HpPot({spawnWorldX - 40.0f, spawnWorldY - 50.0f}));
-        AddEntity(new ExPot({spawnWorldX, spawnWorldY - 50.0f}));
-        AddEntity(new QuintPot({spawnWorldX + 40.0f, spawnWorldY - 50.0f}));
+        dynamicSpawns.push_back({
+            MapObjectId::PotHP,
+            { spawnWorldX - 40.0f, spawnWorldY - 50.0f },
+            { -1, -1 }
+        });
+        dynamicSpawns.push_back({
+            MapObjectId::PotEX,
+            { spawnWorldX, spawnWorldY - 50.0f },
+            { -1, -1 }
+        });
+        dynamicSpawns.push_back({
+            MapObjectId::PotQuint,
+            { spawnWorldX + 40.0f, spawnWorldY - 50.0f },
+            { -1, -1 }
+        });
 
         // Auto-discover spawn room and mark it cleared (no combat in spawn)
         levelMap.spawnRoom->isDiscovered = true;
@@ -874,13 +866,19 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
                             (float)x * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f,
                             (float)y * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f
                         };
-                        AddEntity(EntityFactory::CreateEntity(
-                            type,
-                            worldPos,
-                            {y, x}, // cell
-                            teamManager,
-                            GetLevelAccessBundle()
-                        ));
+                        if (MapObjectFactory::IsMapObjectType(type)) {
+                            AddMapObject(MapObjectFactory::Create(
+                                type,
+                                worldPos,
+                                { y, x }
+                            ));
+                        } else {
+                            dynamicSpawns.push_back({
+                                type,
+                                worldPos,
+                                { y, x }
+                            });
+                        }
                     }
                 }
             }
@@ -903,8 +901,9 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
                             (gridStartX + x) * tileW,
                             (gridStartY + y) * tileW
                         };
-                        DoorGate* door = new DoorGate(worldPos);
-                        AddEntity(door);
+                        auto doorObject = std::make_unique<DoorGate>(worldPos);
+                        DoorGate* door = doorObject.get();
+                        AddMapObject(std::move(doorObject));
                         node->doors.push_back(door);
                     }
                 }
@@ -915,13 +914,8 @@ void LevelManager::GenerateDungeon(TeamManager* teamManager) {
         }
     }
 
-    currentLevelProvider = std::make_unique<ProceduralLevelProvider>(
-        activeRoom, roomOffset, levelEntities,
-        floorTileset, wallTileset, prop1Texture, prop2Texture,
-        boxTexture, gateTexture, levelMap
-    );
-
     printf("GenerateDungeon: Done\n");
+    return dynamicSpawns;
 }
 
 bool LevelManager::GetSafeSpawnPosition(std::shared_ptr<RoomNode> room, Vector2& outPos) {

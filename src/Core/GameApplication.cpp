@@ -6,7 +6,6 @@
 #include "Core/Manager/CameraManager.h"
 #include "Core/Manager/DialogueManager.h"
 #include "Core/Manager/GameManager.h"
-#include "Core/Manager/ParticleManager.h"
 #include "Core/Manager/UltimateIntroManager.h"
 #include "Core/DepthRenderItem.h"
 #include "Entities/Hub/HubPaladinStand.h"
@@ -106,7 +105,9 @@ namespace {
 }
 
 GameApplication::GameApplication() 
-    : teamManager(nullptr), 
+    : levelManager(*GameManager::GetInstance().GetLevelManager()),
+      waveManager(GameManager::GetInstance().GetEncounterManager()),
+      teamManager(nullptr),
       quitRequested(false), 
       systemInitialized(false),
       hasContinuableSession(false),
@@ -128,7 +129,7 @@ void GameApplication::Initialize() {
     SetExitKey(KEY_NULL);
 
     AudioManager::GetInstance().Initialize();
-    ParticleManager::GetInstance().Initialize();
+    GameManager::GetInstance().GetEffectManager().Initialize();
     DialogueManager::GetInstance().InitializeAssets();
     AssetManager::GetInstance().LoadGlobalFonts();
     AssetManager::GetInstance().LoadCommonAssets();
@@ -146,16 +147,19 @@ void GameApplication::Initialize() {
 }
 
 void GameApplication::Shutdown() {
+    GameManager& gameManager = GameManager::GetInstance();
+    gameManager.ResetWorld();
+    gameManager.GetEffectManager().Shutdown();
+    levelManager.ShutdownAssets();
     AssetManager::GetInstance().UnloadAll();
     CloseWindow();
 }
 
 void GameApplication::StartNewGame() {
     GameManager::GetInstance().ResetTransientState();
-    ParticleManager::GetInstance().Clear();
     DialogueManager::GetInstance().ResetSession();
     GameManager::GetInstance().ResetFloorCount();
-    levelManager.LoadLevel(HUB_LEVEL_PATH, teamManager.get());
+    GameManager::GetInstance().LoadLevel(HUB_LEVEL_PATH);
     teamManager->ResetForNewGame(GetLevelCenter(levelManager));
     waveManager.Reset(0, 0, 0);
     AudioManager::GetInstance().PlayMusicTrack("bgm_story_mode", 1.0f);
@@ -169,7 +173,7 @@ void GameApplication::ResetGame() {
     }
     GameManager::GetInstance().ClearProjectiles();
     GameManager::GetInstance().ResetFloorCount();
-    levelManager.GenerateDungeon(teamManager.get());
+    GameManager::GetInstance().GenerateDungeon();
     waveManager.Reset(0, 0, 0);
     AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
     GameManager::GetInstance().SetState(GameState::GAMEPLAY);
@@ -181,9 +185,8 @@ void GameApplication::ResetDemoGame() {
         paladin->ResetStats();
     }
     GameManager::GetInstance().ClearProjectiles();
-    levelManager.LoadLevel(
-        "assets/map/demo-big_Tile Layer 1.csv",
-        teamManager.get()
+    GameManager::GetInstance().LoadLevel(
+        "assets/map/demo-big_Tile Layer 1.csv"
     );
     waveManager.Reset(10, 0, 0);
     AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
@@ -195,7 +198,7 @@ void GameApplication::ReturnToHub() {
     for (auto* paladin : teamManager->GetTeam()) {
         paladin->ResetStats();
     }
-    levelManager.LoadLevel(HUB_LEVEL_PATH, teamManager.get());
+    GameManager::GetInstance().LoadLevel(HUB_LEVEL_PATH);
     teamManager->GetActivePaladin()->SetPosition(
         GetLevelCenter(levelManager)
     );
@@ -242,34 +245,33 @@ void GameApplication::RunLoop() {
             );
 
             Vector2 startPosition = {0.0f, 0.0f};
-            teamManager = std::make_unique<TeamManager>();
-            teamManager->AddMember(new Lance(
+            auto newTeamManager = std::make_unique<TeamManager>();
+            newTeamManager->AddMember(new Lance(
                 startPosition,
                 AssetManager::GetInstance().GetLanceSprites()
             ));
-            teamManager->AddMember(new Keith(
+            newTeamManager->AddMember(new Keith(
                 startPosition,
                 AssetManager::GetInstance().GetKeithSprites()
             ));
-            teamManager->AddMember(new Hunk(
+            newTeamManager->AddMember(new Hunk(
                 startPosition,
                 AssetManager::GetInstance().GetHunkSprites()
             ));
-            teamManager->AddMember(new Pidge(
+            newTeamManager->AddMember(new Pidge(
                 startPosition,
                 AssetManager::GetInstance().GetPidgeSprites()
             ));
 
+            gameManager.SetTeamManager(std::move(newTeamManager));
+            teamManager = gameManager.GetTeamManager();
+
             uiManager.Initialize();
-            uiManager.SetTeamManager(teamManager.get());
+            uiManager.SetTeamManager(teamManager);
             teamManager->RefreshAimStrategies();
 
-            levelManager.LoadLevel(
-                HUB_LEVEL_PATH,
-                teamManager.get()
-            );
+            gameManager.LoadLevel(HUB_LEVEL_PATH);
             teamManager->ResetForNewGame(GetLevelCenter(levelManager));
-            gameManager.SetLevelManager(&levelManager);
             AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
             systemInitialized = true;
         }
@@ -323,10 +325,10 @@ void GameApplication::RunLoop() {
             std::unique_ptr<IGameState> newState;
             switch(state) {
                 case GameState::HUB:
-                    newState = std::make_unique<HubState>(teamManager.get(), &levelManager, &waveManager, &paladinSelectionMenu);
+                    newState = std::make_unique<HubState>(teamManager, &levelManager, &waveManager, &paladinSelectionMenu);
                     break;
                 case GameState::GAMEPLAY:
-                    newState = std::make_unique<GameplayState>(teamManager.get(), &levelManager, &waveManager);
+                    newState = std::make_unique<GameplayState>(teamManager, &levelManager, &waveManager);
                     break;
                 case GameState::MAIN_MENU:
                     newState = std::make_unique<MainMenuState>(&mainMenu, this);
@@ -373,7 +375,7 @@ void GameApplication::RunLoop() {
                 CameraManager::GetInstance().GetCamera()
             ),
             levelManager,
-            teamManager.get(),
+            teamManager,
             state
         );
 

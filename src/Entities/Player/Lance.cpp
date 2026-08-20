@@ -121,9 +121,9 @@ void Lance::ExecuteUltimateAction() {
     AudioManager::GetInstance().PlaySoundEffect("fx_lance_ult");
     AudioManager::GetInstance().PlaySoundEffect("fx_ice_explode");
     
-    const std::vector<GameObject*>& entities = GameManager::GetInstance().GetLevelEntities();
-    for (GameObject* obj : entities) {
-        Enemy* enemy = dynamic_cast<Enemy*>(obj);
+    const std::vector<Enemy*>& enemies = GameManager::GetInstance()
+        .GetObjectManager().GetEnemies();
+    for (Enemy* enemy : enemies) {
         if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {
             enemy->GetStatusComponent().AddEffect(EffectType::FREEZE, 5.0f, 0.0f);
         }

@@ -3,6 +3,8 @@
 #include "raylib.h"
 #include <vector>
 
+class LevelManager;
+
 struct CorpseDecal {
     Vector2 position;
     Texture2D texture;
@@ -21,7 +23,7 @@ public:
     }
 
     void AddCorpse(Vector2 pos, Texture2D tex, bool facingLeft, Vector2 slideVel);
-    void Update(float deltaTime);
+    void Update(float deltaTime, const LevelManager* levelManager);
     void Draw();
     void Clear();
 

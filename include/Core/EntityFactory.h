@@ -1,16 +1,18 @@
 #pragma once
 #include "Core/LevelAccess.h"
 #include "Entities/GameObject.h"
+#include <memory>
 
 class TeamManager;
 
 class EntityFactory {
 public:
-    static GameObject* CreateEntity(
+    static std::unique_ptr<GameObject> CreateEntity(
         MapObjectId type,
         Vector2 position,
-        GameObjectCell cell,
         TeamManager* teamManager,
-        const LevelAccessBundle& levelAccess
+        IEntityRemovalAccess& removalAccess,
+        IEnemyPathAccess& pathAccess,
+        ILevelLineOfSightQuery& lineOfSight
     );
 };

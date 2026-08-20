@@ -1,9 +1,8 @@
 #include "Core/EntityFactory.h"
 #include "Entities/Enemy.h"
-#include "Entities/Wall.h"
 #include "Entities/NPC.h"
 #include "Entities/Hub/HubPaladinStand.h"
-#include "Entities/Props/Prop.h"
+#include "Entities/Props/Pot.h"
 #include "Entities/EnemyEntities/EnemyChaser.h"
 #include "Entities/EnemyEntities/Boss.h"
 #include "Entities/EnemyEntities/EnemyDiver.h"
@@ -12,16 +11,21 @@
 #include "Core/Manager/AssetManager.h"
 
 namespace {
-GameObject* CreateHubPaladinStand(PaladinId id, Vector2 position) {
+std::unique_ptr<GameObject> CreateHubPaladinStand(
+    PaladinId id,
+    Vector2 position
+) {
     const PaladinDefinition& definition = PaladinCatalog::Get(id);
-    return new HubPaladinStand(
+    return std::make_unique<HubPaladinStand>(
         id,
         position,
         AssetManager::GetInstance().GetTexture(definition.idleTextureKey)
     );
 }
 
-Enemy* PrepareEnemySpawn(Enemy* enemy) {
+std::unique_ptr<GameObject> PrepareEnemySpawn(
+    std::unique_ptr<Enemy> enemy
+) {
     if (enemy) {
         enemy->BeginSpawnSequence();
     }
@@ -29,66 +33,60 @@ Enemy* PrepareEnemySpawn(Enemy* enemy) {
 }
 }
 
-GameObject* EntityFactory::CreateEntity(
+std::unique_ptr<GameObject> EntityFactory::CreateEntity(
     MapObjectId type,
     Vector2 position,
-    GameObjectCell cell,
     TeamManager* teamManager,
-    const LevelAccessBundle& levelAccess
+    IEntityRemovalAccess& removalAccess,
+    IEnemyPathAccess& pathAccess,
+    ILevelLineOfSightQuery& lineOfSight
 ) {
     switch (type) {
-        case MapObjectId::DestructibleBox:
-        case MapObjectId::Prop1:
-        case MapObjectId::Prop2:
-        case MapObjectId::MockWall:
         case MapObjectId::PotEX:
+            return std::make_unique<ExPot>(position);
         case MapObjectId::PotHP:
+            return std::make_unique<HpPot>(position);
         case MapObjectId::PotQuint:
-            return new Prop(
-                position,
-                cell,
-                levelAccess.mapObjectDestruction,
-                type
-            );
+            return std::make_unique<QuintPot>(position);
         case MapObjectId::NPC:
-            return new NPC(position);
+            return std::make_unique<NPC>(position);
         case MapObjectId::Chaser:
-            return PrepareEnemySpawn(new EnemyChaser(
+            return PrepareEnemySpawn(std::make_unique<EnemyChaser>(
                 position,
                 teamManager,
-                levelAccess.removal,
-                levelAccess.pathFinding
+                removalAccess,
+                pathAccess
             ));
         case MapObjectId::Boss:
-            return PrepareEnemySpawn(new Boss(
+            return PrepareEnemySpawn(std::make_unique<Boss>(
                 position,
                 teamManager,
-                levelAccess.removal,
-                levelAccess.pathFinding
+                removalAccess,
+                pathAccess
             ));
         case MapObjectId::Range:
-            return PrepareEnemySpawn(new EnemyRange(
+            return PrepareEnemySpawn(std::make_unique<EnemyRange>(
                 position,
                 teamManager,
-                levelAccess.removal,
-                levelAccess.pathFinding,
-                levelAccess.lineOfSight
+                removalAccess,
+                pathAccess,
+                lineOfSight
             ));
         case MapObjectId::Drone:
-            return PrepareEnemySpawn(new Drone(
+            return PrepareEnemySpawn(std::make_unique<Drone>(
                 position,
                 teamManager,
-                levelAccess.removal,
-                levelAccess.pathFinding,
-                levelAccess.lineOfSight
+                removalAccess,
+                pathAccess,
+                lineOfSight
             ));
         case MapObjectId::Diver:
-            return PrepareEnemySpawn(new EnemyDiver(
+            return PrepareEnemySpawn(std::make_unique<EnemyDiver>(
                 position,
                 teamManager,
-                levelAccess.removal,
-                levelAccess.pathFinding,
-                levelAccess.lineOfSight
+                removalAccess,
+                pathAccess,
+                lineOfSight
             ));
         case MapObjectId::HubLanceStand:
             return CreateHubPaladinStand(PaladinId::Lance, position);
@@ -98,6 +96,10 @@ GameObject* EntityFactory::CreateEntity(
             return CreateHubPaladinStand(PaladinId::Hunk, position);
         case MapObjectId::HubPidgeStand:
             return CreateHubPaladinStand(PaladinId::Pidge, position);
+        case MapObjectId::DestructibleBox:
+        case MapObjectId::Prop1:
+        case MapObjectId::Prop2:
+        case MapObjectId::MockWall:
         case MapObjectId::Empty:
         default:
             return nullptr;
