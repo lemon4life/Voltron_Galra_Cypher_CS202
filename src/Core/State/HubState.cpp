@@ -10,6 +10,9 @@
 #include "Entities/NPC.h"
 #include "UI/UIUtils.h"
 #include <algorithm>
+#include <cmath>
+#include "raymath.h"
+#include "Core/Manager/AssetManager.h"
 
 namespace {
     GameObject* FindNearestHubInteractable(const std::vector<GameObject*>& entities, Vector2 playerPosition) {
@@ -43,13 +46,27 @@ namespace {
         UIUtils::DrawCenteredText("PixeloidSans", text, { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
     }
 
-    void DrawHubInteractionPrompt(GameObject* interactable) {
+    void DrawHubInteractionPrompt(GameObject* interactable, Camera2D uiCamera) {
         if (!interactable) return;
+
+        Vector2 screenPos = GetWorldToScreen2D(interactable->GetPosition(), CameraManager::GetInstance().GetRenderCamera());
+        Vector2 uiPos = GetScreenToWorld2D(screenPos, uiCamera);
+        
+        float yOffset = std::sin(GetTime() * 5.0f) * 3.0f;
+        uiPos.y -= 35.0f + yOffset;
 
         std::string text = "Press F to talk";
         if (interactable->GetObjectType() == GameObjectType::HubPaladinStand) {
             HubPaladinStand* stand = static_cast<HubPaladinStand*>(interactable);
             text = std::string("Press F to inspect ") + stand->GetDisplayName();
+
+            Texture2D selectTex = AssetManager::GetInstance().GetTexture("Select");
+            if (selectTex.id != 0) {
+                Vector2 origin = { selectTex.width / 2.0f, selectTex.height / 2.0f };
+                Rectangle dest = { uiPos.x, uiPos.y, (float)selectTex.width, (float)selectTex.height };
+                DrawTexturePro(selectTex, {0, 0, (float)selectTex.width, (float)selectTex.height}, dest, origin, 0.0f, WHITE);
+            }
+            UIUtils::DrawCenteredText("PixeloidSans", stand->GetDisplayName(), { uiPos.x, uiPos.y - 12.0f }, UIUtils::FontSize::SMALL, RAYWHITE);
         }
 
         DrawInteractionPrompt(text);
@@ -169,12 +186,29 @@ void HubState::Draw() {
         Vector2 uiMousePosition = UIUtils::GetVirtualMousePosition(uiCamera);
         paladinSelectionMenu->Draw(uiMousePosition, *teamManager);
     } else {
+        // Draw interact.png above all NPCs
+        for (GameObject* entity : GameManager::GetInstance().GetLevelEntities()) {
+            if (entity->GetObjectType() == GameObjectType::NPC) {
+                Vector2 screenPos = GetWorldToScreen2D(entity->GetPosition(), CameraManager::GetInstance().GetRenderCamera());
+                Vector2 uiPos = GetScreenToWorld2D(screenPos, uiCamera);
+                float yOffset = std::sin(GetTime() * 5.0f) * 3.0f;
+                uiPos.y -= 35.0f + yOffset;
+
+                Texture2D interactTex = AssetManager::GetInstance().GetTexture("Interact");
+                if (interactTex.id != 0) {
+                    Vector2 origin = { interactTex.width / 2.0f, interactTex.height / 2.0f };
+                    Rectangle dest = { uiPos.x, uiPos.y, (float)interactTex.width, (float)interactTex.height };
+                    DrawTexturePro(interactTex, {0, 0, (float)interactTex.width, (float)interactTex.height}, dest, origin, 0.0f, WHITE);
+                }
+            }
+        }
+
         GameObject* interactable = FindNearestHubInteractable(
             GameManager::GetInstance().GetLevelEntities(),
             teamManager->GetActivePaladin()->GetPosition()
         );
         if (interactable) {
-            DrawHubInteractionPrompt(interactable);
+            DrawHubInteractionPrompt(interactable, uiCamera);
         } else if (levelManager->IsPlayerInExitRoom(teamManager->GetActivePaladin()->GetPosition())) {
             DrawInteractionPrompt("Press F to go to the next floor");
         }

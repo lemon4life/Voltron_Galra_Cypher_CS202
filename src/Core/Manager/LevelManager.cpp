@@ -137,22 +137,6 @@ void LevelManager::LoadLevel(const std::string& filepath, TeamManager* teamManag
     gridCols = static_cast<int>(mapGridLayer1.front().size());
     levelWidth = gridCols * Constants::RENDER_TILE_SIZE;
     levelHeight = gridRows * Constants::RENDER_TILE_SIZE;
-
-    // Spawn NPC for dialogue interaction
-    Vector2 npcPos = {
-        10 * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f,
-        10 * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f
-    };
-    GameObject* npc = EntityFactory::CreateEntity(
-        MapObjectId::NPC,
-        npcPos,
-        {0, 0},
-        teamManager,
-        GetLevelAccessBundle()
-    );
-    if (npc) {
-        AddEntity(npc);
-    }
     
     // Spawn objects
     SpawnGameObjects(teamManager);

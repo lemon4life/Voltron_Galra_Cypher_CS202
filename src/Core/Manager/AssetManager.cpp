@@ -160,6 +160,8 @@ void AssetManager::QueueCharacterAssets() {
     // UI, Objects and Effects
     add("Player_Circle", "assets/UI/Player_Circle.png");
     add("Enemy_Circle", "assets/UI/Enemy_Circle.png");
+    add("Select", "assets/UI/select.png");
+    add("Interact", "assets/UI/interact.png");
     add("box", "assets/Objects/box.png", true);
     add("object_2", "assets/Objects/object_2.png", true);
     add("pot_ex", "assets/Objects/pot_ex.png", true);

@@ -11,6 +11,7 @@
 #include "UI/UIUtils.h"
 #include "Entities/Props/Pot.h"
 #include "raymath.h"
+#include <cmath>
 #include "Core/Manager/AssetManager.h"
 
 GameplayState::GameplayState(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager)
@@ -256,6 +257,24 @@ void GameplayState::Draw() {
         }
         
         if (nearestPot) {
+            std::string name = "Potion";
+            if (dynamic_cast<HpPot*>(nearestPot)) name = "HP Potion";
+            else if (dynamic_cast<ExPot*>(nearestPot)) name = "EX Potion";
+            else if (dynamic_cast<QuintPot*>(nearestPot)) name = "Quintessence";
+
+            Vector2 screenPos = GetWorldToScreen2D(nearestPot->GetPosition(), CameraManager::GetInstance().GetRenderCamera());
+            Vector2 uiPos = GetScreenToWorld2D(screenPos, uiCamera);
+            float yOffset = std::sin(GetTime() * 5.0f) * 3.0f;
+            uiPos.y -= 25.0f + yOffset;
+
+            Texture2D selectTex = AssetManager::GetInstance().GetTexture("Select");
+            if (selectTex.id != 0) {
+                Vector2 origin = { selectTex.width / 2.0f, selectTex.height / 2.0f };
+                Rectangle dest = { uiPos.x, uiPos.y, (float)selectTex.width, (float)selectTex.height };
+                DrawTexturePro(selectTex, {0, 0, (float)selectTex.width, (float)selectTex.height}, dest, origin, 0.0f, WHITE);
+            }
+            UIUtils::DrawCenteredText("PixeloidSans", name, { uiPos.x, uiPos.y - 12.0f }, UIUtils::FontSize::SMALL, RAYWHITE);
+
             float textWidth = UIUtils::MeasureText("PixeloidSans", "Press F to consume", UIUtils::FontSize::SMALL).x;
             Rectangle background = {
                 (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,

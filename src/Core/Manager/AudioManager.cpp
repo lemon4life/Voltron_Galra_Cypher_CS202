@@ -4,7 +4,7 @@
 #include <iostream>
 
 AudioManager::AudioManager() {
-    InitAudioDevice(); // Initialize Raylib Audio Device
+    InitAudioDevice(); 
 }
 
 AudioManager::~AudioManager() {
@@ -27,11 +27,10 @@ AudioManager::~AudioManager() {
     }
     music.clear();
 
-    CloseAudioDevice(); // Close Raylib Audio Device
+    CloseAudioDevice(); 
 }
 
 AudioManager& AudioManager::GetInstance() {
-    // Thread-safe in C++11+ (Meyers' Singleton)
     static AudioManager instance;
     return instance;
 }
@@ -297,8 +296,6 @@ void AudioManager::SetSoundEffectsVolume(float volume) {
 void AudioManager::SetMusicVolumeLevel(float volume) {
     musicVolume = std::clamp(volume, 0.0f, 1.0f);
 
-    // Only update the currently active track's volume according to its fade state.
-    // Inactive tracks remain at 0 volume so they don't unexpectedly play.
     if (!currentMusicName.empty() && music.find(currentMusicName) != music.end()) {
         ::SetMusicVolume(music[currentMusicName], currentTrackVolume * musicVolume);
     }
