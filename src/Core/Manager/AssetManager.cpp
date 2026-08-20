@@ -148,12 +148,20 @@ void AssetManager::QueueCharacterAssets() {
     add("HP_effect", "assets/sprites/Effects/HP_effect.png", true);
     add("Ex_effect", "assets/sprites/Effects/Ex_effect.png", true);
     add("Quint_effect", "assets/sprites/Effects/Quint_effect.png", true);
+    add("Freeze", "assets/sprites/Effects/freeze.png", true);
+    add("Freeze_Base", "assets/sprites/Effects/freeze_base.png", true);
+    add("Freeze_Big", "assets/sprites/Effects/freeze_big.png", true);
+    add("AppearLight", "assets/sprites/Effects/AppearLight.png", true);
+    add("AppearSmoke", "assets/sprites/Effects/AppearSmoke.png", true);
 
     // Objects
     add("Quint_Orb", "assets/Objects/quint.png", true);
 
     // UI, Objects and Effects
     add("Player_Circle", "assets/UI/Player_Circle.png");
+    add("Enemy_Circle", "assets/UI/Enemy_Circle.png");
+    add("Select", "assets/UI/select.png");
+    add("Interact", "assets/UI/interact.png");
     add("box", "assets/Objects/box.png", true);
     add("object_2", "assets/Objects/object_2.png", true);
     add("pot_ex", "assets/Objects/pot_ex.png", true);
@@ -165,6 +173,7 @@ void AssetManager::QueueCharacterAssets() {
     add("Galra_Walls", "assets/tileset/Galra_Walls.png", true);
     
     add("Run_Dust", "assets/UI/Run_Dust.png");
+    add("Aim", "assets/UI/aim.png");
 
     add("Knight_Idle", "assets/sprites/Enemy/Knight.png", true);
     add("Knight_Run", "assets/sprites/Enemy/Knight_run-Sheet.png", true);

@@ -72,6 +72,9 @@ void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
         paladin->ResetStats();
         paladin->SetAimTarget(spawnPosition);
     }
+    
+    StartSpawnAnimation();
+
     NotifyObservers();
 }
 
@@ -133,7 +136,11 @@ void TeamManager::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
         if (paladin == active) {
             items.push_back({
                 paladin->GetBoundingBox().y + paladin->GetBoundingBox().height,
-                [paladin]() { paladin->Draw(); }
+                [this, paladin]() { 
+                    if (!isSpawning || spawnAnimTimer >= 0.3f) {
+                        paladin->Draw();
+                    }
+                }
             });
         } else {
             items.push_back({
@@ -147,9 +154,44 @@ void TeamManager::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
     if (active && !sharedBuffs.empty()) {
         items.push_back({
             active->GetBoundingBox().y + active->GetBoundingBox().height - 0.1f,
-            [this]() { this->DrawBuffs(); }
+            [this]() { DrawBuffs(); }
         });
     }
+
+    if (isSpawning) {
+        items.push_back({
+            active->GetBoundingBox().y + active->GetBoundingBox().height + 0.1f,
+            [this, active]() {
+                int frame = (int)(spawnAnimTimer / 0.1f);
+                if (frame > 4) frame = 4;
+                Texture2D light = AssetManager::GetInstance().GetTexture("AppearLight");
+                Texture2D smoke = AssetManager::GetInstance().GetTexture("AppearSmoke");
+                
+                Vector2 pos = active->GetPosition();
+                float footY = active->GetBoundingBox().y + active->GetBoundingBox().height;
+
+                if (smoke.id != 0) {
+                    float fw = smoke.width / 5.0f;
+                    Rectangle src = { frame * fw, 0.0f, fw, (float)smoke.height };
+                    Rectangle dest = { pos.x, footY, fw, (float)smoke.height };
+                    DrawTexturePro(smoke, src, dest, { fw / 2.0f, (float)smoke.height }, 0.0f, WHITE);
+                }
+
+                if (light.id != 0) {
+                    float fw = light.width / 5.0f;
+                    Rectangle src = { frame * fw, 0.0f, fw, (float)light.height };
+                    Rectangle dest = { pos.x, footY, fw, (float)light.height };
+                    DrawTexturePro(light, src, dest, { fw / 2.0f, (float)light.height }, 0.0f, WHITE);
+                }
+            }
+        });
+    }
+}
+
+void TeamManager::StartSpawnAnimation() {
+    isSpawning = true;
+    spawnAnimTimer = 0.0f;
+    AudioManager::GetInstance().PlaySoundEffect("fx_show_up");
 }
 
 void TeamManager::SwapCharacter() {
@@ -277,6 +319,14 @@ void TeamManager::SwapDueToDeath() {
 #include "raymath.h"
 void TeamManager::Update(float deltaTime) {
     if (team.empty()) return;
+
+    if (isSpawning) {
+        spawnAnimTimer += deltaTime;
+        if (spawnAnimTimer >= 0.5f) {
+            isSpawning = false;
+        }
+        return; // Prevent input and movement while spawning
+    }
 
     displayedQuintessence = Lerp(displayedQuintessence, currentQuintessence, 10.0f * deltaTime);
 

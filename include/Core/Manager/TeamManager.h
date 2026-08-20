@@ -34,6 +34,9 @@ private:
 
     std::vector<std::unique_ptr<IBuff>> sharedBuffs;
 
+    bool isSpawning = false;
+    float spawnAnimTimer = 0.0f;
+
     // Aim strategies owned by the team — shared across all Paladins via raw ptr
     std::unique_ptr<IAimStrategy> autoStrategy;
     std::unique_ptr<IAimStrategy> mouseStrategy;
@@ -48,6 +51,7 @@ public:
     void DrawBuffs(); // Draw shared buffs
     void AddDepthRenderItems(std::vector<DepthRenderItem>& items);
     void RefreshAimStrategies(); // Apply the correct strategy to every team member
+    void StartSpawnAnimation();
     
     void AddSharedBuff(std::unique_ptr<IBuff> buff) {
         if (buff && GetActivePaladin()) {

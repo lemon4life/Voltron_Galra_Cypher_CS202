@@ -137,6 +137,7 @@ void GameManager::GenerateDungeon() {
             bounds.x + bounds.width * 0.5f,
             bounds.y + bounds.height * 0.5f
         });
+        teamManager->StartSpawnAnimation();
     }
 }
 
@@ -154,6 +155,7 @@ void GameManager::ResetTransientState() {
     objectManager.Clear();
     effectManager.ClearSession();
     hitstopTimer = 0.0f;
+    hasTalkedToShiro = false;
 }
 
 void GameManager::UpdateDynamicEntities(float deltaTime) {

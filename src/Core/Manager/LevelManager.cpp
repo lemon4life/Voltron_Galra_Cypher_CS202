@@ -93,6 +93,15 @@ DynamicSpawnList LevelManager::SpawnMapContent() {
                     position,
                     { row, column }
                 });
+                if (objectId == MapObjectId::NPC) {
+                    Vector2 shiroPos = position;
+                    shiroPos.x -= Constants::RENDER_TILE_SIZE * 2;
+                    dynamicSpawns.push_back({
+                        MapObjectId::ShiroNPC,
+                        shiroPos,
+                        { row, column - 2 }
+                    });
+                }
             }
         }
     }
@@ -139,13 +148,6 @@ DynamicSpawnList LevelManager::LoadLevel(const std::string& filepath) {
     levelWidth = gridCols * Constants::RENDER_TILE_SIZE;
     levelHeight = gridRows * Constants::RENDER_TILE_SIZE;
 
-    // Spawn NPC for dialogue interaction
-    Vector2 npcPos = {
-        10 * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f,
-        10 * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f
-    };
-    dynamicSpawns.push_back({ MapObjectId::NPC, npcPos, { 0, 0 } });
-    
     // Spawn objects
     DynamicSpawnList gridSpawns = SpawnMapContent();
     dynamicSpawns.insert(
@@ -824,7 +826,6 @@ DynamicSpawnList LevelManager::GenerateDungeon() {
         Rectangle bounds = levelMap.spawnRoom->GetWorldBounds();
         float spawnWorldX = bounds.x + bounds.width / 2.0f;
         float spawnWorldY = bounds.y + bounds.height / 2.0f;
-
         dynamicSpawns.push_back({
             MapObjectId::PotHP,
             { spawnWorldX - 40.0f, spawnWorldY - 50.0f },

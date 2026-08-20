@@ -49,7 +49,9 @@ std::unique_ptr<GameObject> EntityFactory::CreateEntity(
         case MapObjectId::PotQuint:
             return std::make_unique<QuintPot>(position);
         case MapObjectId::NPC:
-            return std::make_unique<NPC>(position);
+            return std::make_unique<NPC>(position, NpcId::Allura);
+        case MapObjectId::ShiroNPC:
+            return std::make_unique<NPC>(position, NpcId::Shiro);
         case MapObjectId::Chaser:
             return PrepareEnemySpawn(std::make_unique<EnemyChaser>(
                 position,

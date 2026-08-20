@@ -7,6 +7,31 @@
 #include "Core/Manager/AssetManager.h"
 #include <fstream>
 #include <iostream>
+#include <sstream>
+
+namespace {
+    std::string WrapText(const std::string& text, float maxWidth) {
+        std::string wrapped = "";
+        std::string currentLine = "";
+        std::istringstream words(text);
+        std::string word;
+        
+        while (words >> word) {
+            std::string testLine = currentLine.empty() ? word : currentLine + " " + word;
+            float width = UIUtils::MeasureText("PixeloidSans", testLine, UIUtils::FontSize::SMALL).x;
+            if (width > maxWidth && !currentLine.empty()) {
+                wrapped += currentLine + "\n";
+                currentLine = word;
+            } else {
+                currentLine = testLine;
+            }
+        }
+        if (!currentLine.empty()) {
+            wrapped += currentLine;
+        }
+        return wrapped;
+    }
+}
 
 DialogueManager::DialogueManager() : isDialogueActive(false), currentNode(0), selectedOption(0), missionRequested(false), typewriterTimer(0.0f), visibleCharCount(0) {}
 
@@ -62,9 +87,10 @@ void DialogueManager::LoadDialogueTree(const std::string& filepath) {
             while (!tempNode.speakerName.empty() && tempNode.speakerName[0] == ' ') tempNode.speakerName = tempNode.speakerName.substr(1);
             while (!tempNode.speakerName.empty() && (tempNode.speakerName.back() == ' ' || tempNode.speakerName.back() == '\r')) tempNode.speakerName.pop_back();
         } else if (line.rfind("TEXT:", 0) == 0) {
-            tempNode.text = line.substr(5);
-            while (!tempNode.text.empty() && tempNode.text[0] == ' ') tempNode.text = tempNode.text.substr(1);
-            while (!tempNode.text.empty() && (tempNode.text.back() == ' ' || tempNode.text.back() == '\r')) tempNode.text.pop_back();
+            std::string rawText = line.substr(5);
+            while (!rawText.empty() && rawText[0] == ' ') rawText = rawText.substr(1);
+            while (!rawText.empty() && (rawText.back() == ' ' || rawText.back() == '\r')) rawText.pop_back();
+            tempNode.text = WrapText(rawText, 500.0f);
         } else if (line.rfind("OPTION:", 0) == 0) {
             std::string optData = line.substr(7);
             while (!optData.empty() && optData[0] == ' ') optData = optData.substr(1);

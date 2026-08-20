@@ -39,6 +39,7 @@ private:
     int targetFPS = 0;
     float hitstopTimer = 0.0f;
     int currentFloor = 1;
+    bool hasTalkedToShiro = false;
     ComboMeter comboMeter;
 
     LevelManager levelManager;
@@ -81,6 +82,9 @@ public:
     int GetCurrentFloor() const { return currentFloor; }
     void AdvanceFloorCount() { ++currentFloor; }
     void ResetFloorCount() { currentFloor = 1; }
+
+    bool HasTalkedToShiro() const { return hasTalkedToShiro; }
+    void SetTalkedToShiro(bool talked) { hasTalkedToShiro = talked; }
     ComboMeter& GetComboMeter() { return comboMeter; }
 
     void UpdateTargetFPS(int fps) { targetFPS = fps; SetTargetFPS(fps); }

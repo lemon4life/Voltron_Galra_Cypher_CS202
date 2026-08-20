@@ -1,11 +1,13 @@
 #include "Entities/Props/Pot.h"
 #include "Entities/Player/Paladin.h"
+#include "Core/Manager/AudioManager.h"
 
 HpPot::HpPot(Vector2 pos) : Pot(pos, "pot_hp") {}
 
 void HpPot::OnConsume(TeamManager* team) {
     if (isConsumed || !team) return;
     isConsumed = true;
+    AudioManager::GetInstance().PlaySoundEffect("fx_get_buff");
     for (Paladin* p : team->GetTeam()) {
         if (p->GetHealth() > 0) {
             int healAmount = p->GetMaxHealth() * 0.2f;
@@ -20,6 +22,7 @@ ExPot::ExPot(Vector2 pos) : Pot(pos, "pot_ex") {}
 void ExPot::OnConsume(TeamManager* team) {
     if (isConsumed || !team) return;
     isConsumed = true;
+    AudioManager::GetInstance().PlaySoundEffect("fx_get_buff");
     for (Paladin* p : team->GetTeam()) {
         if (p->GetHealth() > 0) {
             float exAmount = p->GetMaxExEnergy() * 0.3f;
@@ -34,6 +37,7 @@ QuintPot::QuintPot(Vector2 pos) : Pot(pos, "pot_quint") {}
 void QuintPot::OnConsume(TeamManager* team) {
     if (isConsumed || !team) return;
     isConsumed = true;
+    AudioManager::GetInstance().PlaySoundEffect("fx_get_buff");
     team->AddQuintessence(20.0f);
     
     // Apply effect to active paladin

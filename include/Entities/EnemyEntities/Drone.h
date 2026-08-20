@@ -11,6 +11,7 @@ private:
     std::unique_ptr<DroneMovingState> movingState;
     std::unique_ptr<DroneIdleState> droneIdleState;
     ILevelLineOfSightQuery& lineOfSightQuery;
+    float hoverTime = 0.0f;
     
 public:
     Drone(

@@ -1,6 +1,7 @@
 #include "Core/State/GameplayState.h"
 #include "Core/Manager/UltimateIntroManager.h"
 #include "Core/Manager/CameraManager.h"
+#include "Core/Manager/DecalManager.h"
 #include "Core/Manager/InputManager.h"
 #include "Core/Constants.h"
 #include "Entities/Player/Paladin.h"
@@ -9,6 +10,8 @@
 #include "UI/UIUtils.h"
 #include "Entities/Props/Pot.h"
 #include "raymath.h"
+#include <cmath>
+#include "Core/Manager/AssetManager.h"
 
 GameplayState::GameplayState(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager)
     : teamManager(teamManager), levelManager(levelManager), waveManager(waveManager) {
@@ -73,6 +76,26 @@ void GameplayState::Update(float deltaTime) {
 void GameplayState::Draw() {
     BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
     levelManager->DrawLevelBase();
+    DecalManager::GetInstance().Draw();
+
+    if (Constants::isAutoAimEnabled && teamManager && teamManager->GetActivePaladin()) {
+        Paladin* activePaladin = teamManager->GetActivePaladin();
+        if (activePaladin->GetLockedEnemy()) {
+            Enemy* targetEnemy = activePaladin->GetLockedEnemy();
+            Vector2 footPos = targetEnemy->GetRenderFootPosition();
+
+            Texture2D enemyCircle = AssetManager::GetInstance().GetTexture("Enemy_Circle");
+            if (enemyCircle.id != 0) {
+                float scale = (targetEnemy->GetEnemyType() == EnemyType::BOSS) ? 2.0f : 1.0f;
+                float w = enemyCircle.width * scale;
+                float h = enemyCircle.height * scale;
+                Rectangle dest = { footPos.x, footPos.y, w, h };
+                Vector2 circleOrigin = { w / 2.0f, h / 2.0f };
+                DrawTexturePro(enemyCircle, {0, 0, (float)enemyCircle.width, (float)enemyCircle.height}, dest, circleOrigin, 0.0f, WHITE);
+            }
+        }
+    }
+
     GameManager::GetInstance().DrawEffects(true);
 
     std::vector<DepthRenderItem> renderItems;
@@ -102,20 +125,75 @@ void GameplayState::Draw() {
     GameManager::GetInstance().DrawOrbs();
     GameManager::GetInstance().DrawParticles();
 
+    for (Enemy* enemy : GameManager::GetInstance()
+             .GetObjectManager().GetEnemies()) {
+        if (!enemy ||
+            !enemy->GetStatusComponent().HasEffect(EffectType::FREEZE)) {
+            continue;
+        }
+        Texture2D tex = enemy->GetEnemyType() == EnemyType::BOSS
+            ? AssetManager::GetInstance().GetTexture("Freeze_Big")
+            : AssetManager::GetInstance().GetTexture("Freeze");
+        if (tex.id != 0) {
+            Vector2 footPos = enemy->GetRenderFootPosition();
+            Rectangle dest = {
+                footPos.x,
+                footPos.y,
+                (float)tex.width,
+                (float)tex.height
+            };
+            Vector2 origin = {
+                tex.width / 2.0f,
+                (float)tex.height - 5.0f
+            };
+            DrawTexturePro(
+                tex,
+                { 0, 0, (float)tex.width, (float)tex.height },
+                dest,
+                origin,
+                0.0f,
+                WHITE
+            );
+        }
+    }
+
     if (Constants::isAutoAimEnabled) {
         Paladin* activePaladin = teamManager->GetActivePaladin();
         if (activePaladin && activePaladin->GetLockedEnemy()) {
-            Vector2 targetPos = activePaladin->GetLockedEnemy()->GetPosition();
-            DrawCircleLines(static_cast<int>(targetPos.x), static_cast<int>(targetPos.y), 20.0f, RED);
-            DrawLine(targetPos.x - 25, targetPos.y, targetPos.x + 25, targetPos.y, RED);
-            DrawLine(targetPos.x, targetPos.y - 25, targetPos.x, targetPos.y + 25, RED);
+            Enemy* targetEnemy = activePaladin->GetLockedEnemy();
+            Vector2 targetPos = targetEnemy->GetPosition();
+
+            Vector2 weaponPos = activePaladin->GetWeaponPivot();
+            Vector2 dir = Vector2Subtract(targetPos, weaponPos);
+            float dist = Vector2Length(dir);
+            if (dist > 10.0f) {
+                dir = Vector2Normalize(dir);
+                float dotSpacing = 15.0f;
+                Color dotColor = { 255, 255, 255, (unsigned char)(255 * 0.15f) };
+                for (float d = dotSpacing; d < dist; d += dotSpacing) {
+                    Vector2 dotPos = Vector2Add(weaponPos, Vector2Scale(dir, d));
+                    DrawCircleV(dotPos, 1.0f, dotColor);
+                }
+            }
         }
     } else if (InputManager::GetMode() != InputMode::KEYBOARD_ONLY) {
-        Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), CameraManager::GetInstance().GetCamera());
-        DrawCircleLines(static_cast<int>(mouseWorld.x), static_cast<int>(mouseWorld.y), 10.0f, GREEN);
-        DrawLine(mouseWorld.x - 15, mouseWorld.y, mouseWorld.x + 15, mouseWorld.y, GREEN);
-        DrawLine(mouseWorld.x, mouseWorld.y - 15, mouseWorld.x, mouseWorld.y + 15, GREEN);
-        DrawCircle(static_cast<int>(mouseWorld.x), static_cast<int>(mouseWorld.y), 2.0f, GREEN);
+        Paladin* activePaladin = teamManager->GetActivePaladin();
+        if (activePaladin) {
+            Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), CameraManager::GetInstance().GetCamera());
+            Vector2 weaponPos = activePaladin->GetWeaponPivot();
+
+            Vector2 dir = Vector2Subtract(mouseWorld, weaponPos);
+            float dist = Vector2Length(dir);
+            if (dist > 10.0f) {
+                dir = Vector2Normalize(dir);
+                float dotSpacing = 15.0f;
+                Color dotColor = { 255, 255, 255, (unsigned char)(255 * 0.15f) };
+                for (float d = dotSpacing; d < dist; d += dotSpacing) {
+                    Vector2 dotPos = Vector2Add(weaponPos, Vector2Scale(dir, d));
+                    DrawCircleV(dotPos, 1.0f, dotColor);
+                }
+            }
+        }
     }
 
     GameManager::GetInstance().DrawDebugOverlays(teamManager);
@@ -175,6 +253,24 @@ void GameplayState::Draw() {
             .FindNearestPickup(active->GetPosition(), 50.0f);
         
         if (nearestPot) {
+            std::string name = "Potion";
+            if (dynamic_cast<HpPot*>(nearestPot)) name = "HP Potion";
+            else if (dynamic_cast<ExPot*>(nearestPot)) name = "EX Potion";
+            else if (dynamic_cast<QuintPot*>(nearestPot)) name = "Quintessence";
+
+            Vector2 screenPos = GetWorldToScreen2D(nearestPot->GetPosition(), CameraManager::GetInstance().GetRenderCamera());
+            Vector2 uiPos = GetScreenToWorld2D(screenPos, uiCamera);
+            float yOffset = std::sin(GetTime() * 5.0f) * 3.0f;
+            uiPos.y -= 25.0f + yOffset;
+
+            Texture2D selectTex = AssetManager::GetInstance().GetTexture("Select");
+            if (selectTex.id != 0) {
+                Vector2 origin = { selectTex.width / 2.0f, selectTex.height / 2.0f };
+                Rectangle dest = { uiPos.x, uiPos.y, (float)selectTex.width, (float)selectTex.height };
+                DrawTexturePro(selectTex, {0, 0, (float)selectTex.width, (float)selectTex.height}, dest, origin, 0.0f, WHITE);
+            }
+            UIUtils::DrawCenteredText("PixeloidSans", name, { uiPos.x, uiPos.y - 12.0f }, UIUtils::FontSize::SMALL, RAYWHITE);
+
             float textWidth = UIUtils::MeasureText("PixeloidSans", "Press F to consume", UIUtils::FontSize::SMALL).x;
             Rectangle background = {
                 (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
@@ -188,6 +284,17 @@ void GameplayState::Draw() {
     }
 
     UltimateIntroManager::GetInstance().Draw();
+
+    if (!Constants::isAutoAimEnabled && InputManager::GetMode() != InputMode::KEYBOARD_ONLY) {
+        Vector2 mouseUI = GetScreenToWorld2D(GetMousePosition(), uiCamera);
+        Texture2D aimTex = AssetManager::GetInstance().GetTexture("Aim");
+        if (aimTex.id != 0) {
+            Vector2 origin = { (float)aimTex.width / 2.0f, (float)aimTex.height / 2.0f };
+            Rectangle source = { 0.0f, 0.0f, (float)aimTex.width, (float)aimTex.height };
+            Rectangle dest = { mouseUI.x, mouseUI.y, (float)aimTex.width, (float)aimTex.height };
+            DrawTexturePro(aimTex, source, dest, origin, 0.0f, WHITE);
+        }
+    }
 
     EndMode2D();
 }

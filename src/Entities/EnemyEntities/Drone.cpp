@@ -40,7 +40,7 @@ Drone::Drone(
     baseAttackCooldown = DRONE_ATTACK_COOLDOWN;
     attackCooldown = 0.0f;
     SetEnemyCollisionEnabled(false);
-    SetRenderFootOffset({ 0.0f, DRONE_RENDER_HEIGHT * 0.5f });
+    SetRenderFootOffset({ 0.0f, 25.0f });
 
     movingState = std::make_unique<DroneMovingState>();
     droneIdleState = std::make_unique<DroneIdleState>();
@@ -59,8 +59,13 @@ void Drone::Update(float deltaTime) {
         UpdateMovementAnimationFlag(updateStartPosition);
         return;
     }
+
+    if (!statusComponent.HasEffect(EffectType::FREEZE)) {
+        hoverTime += deltaTime;
+    }
+
     UpdateKnockback(deltaTime);
-    
+
     if (statusComponent.Update(deltaTime, this)) {
         UpdateMovementAnimationFlag(updateStartPosition);
         return;
@@ -91,7 +96,7 @@ void Drone::Draw() {
 
     float hoverOffsetY = IsSpawnSequenceActive()
         ? 0.0f
-        : std::sin(GetTime() * 5.0f) * 4.0f;
+        : std::sin(hoverTime * 5.0f) * 4.0f;
     
     Rectangle source = { 0.0f, 0.0f, (float)sprites.idle.width, (float)sprites.idle.height };
     if (facingLeft) {

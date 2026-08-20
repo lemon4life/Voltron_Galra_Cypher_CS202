@@ -4,7 +4,7 @@
 #include <iostream>
 
 AudioManager::AudioManager() {
-    InitAudioDevice(); // Initialize Raylib Audio Device
+    InitAudioDevice(); 
 }
 
 AudioManager::~AudioManager() {
@@ -27,11 +27,10 @@ AudioManager::~AudioManager() {
     }
     music.clear();
 
-    CloseAudioDevice(); // Close Raylib Audio Device
+    CloseAudioDevice(); 
 }
 
 AudioManager& AudioManager::GetInstance() {
-    // Thread-safe in C++11+ (Meyers' Singleton)
     static AudioManager instance;
     return instance;
 }
@@ -97,6 +96,9 @@ void AudioManager::Initialize() {
     LoadSound("fx_doorgate", "assets/audio/SFX/Environment/fx_doorgate.wav");
     
     // SFX - Character Skills & Ults
+    LoadSound("fx_ice_explode", "assets/audio/SFX/Character/fx_ice_explode.wav");
+    LoadSound("fx_get_buff", "assets/audio/SFX/Character/fx_get_buff.wav");
+    LoadSound("fx_show_up", "assets/audio/SFX/UI/fx_show_up.wav");
     LoadSound("fx_lance_skill", "assets/audio/SFX/Character/fx_lance_skill.wav");
     LoadSound("fx_lance_ult", "assets/audio/SFX/Character/fx_lance_ult.wav");
     LoadSound("fx_pidge_ult", "assets/audio/SFX/Character/fx_pidge_ult.wav");
@@ -294,8 +296,6 @@ void AudioManager::SetSoundEffectsVolume(float volume) {
 void AudioManager::SetMusicVolumeLevel(float volume) {
     musicVolume = std::clamp(volume, 0.0f, 1.0f);
 
-    // Only update the currently active track's volume according to its fade state.
-    // Inactive tracks remain at 0 volume so they don't unexpectedly play.
     if (!currentMusicName.empty() && music.find(currentMusicName) != music.end()) {
         ::SetMusicVolume(music[currentMusicName], currentTrackVolume * musicVolume);
     }
