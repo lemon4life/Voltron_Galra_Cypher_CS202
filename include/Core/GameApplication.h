@@ -29,6 +29,9 @@ public:
     void ResetGame();
     void ResetDemoGame();
     void ReturnToHub();
+    void SuspendSessionToMainMenu();
+    bool ContinueSuspendedSession();
+    void ClearSuspendedSession();
 
     friend class MainMenuState;
     friend class PauseState;

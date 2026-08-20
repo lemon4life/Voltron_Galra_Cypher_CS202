@@ -28,6 +28,16 @@ namespace {
     constexpr float MAX_MODAL_SCALE = 1.35f;
     constexpr const char* HUB_LEVEL_PATH = "assets/map/hub_Tile Layer 1.csv";
 
+    bool IsPlayableSessionState(GameState state) {
+        return state == GameState::HUB || state == GameState::GAMEPLAY;
+    }
+
+    const char* GetSessionMusic(GameState state) {
+        return state == GameState::GAMEPLAY
+            ? "bgm_battle"
+            : "bgm_story_mode";
+    }
+
     Vector2 GetLevelCenter(const LevelManager& levelManager) {
         Rectangle bounds = levelManager.GetLevelBounds();
         return {
@@ -156,6 +166,7 @@ void GameApplication::Shutdown() {
 }
 
 void GameApplication::StartNewGame() {
+    ClearSuspendedSession();
     GameManager::GetInstance().ResetTransientState();
     DialogueManager::GetInstance().ResetSession();
     GameManager::GetInstance().ResetFloorCount();
@@ -204,6 +215,53 @@ void GameApplication::ReturnToHub() {
     );
     AudioManager::GetInstance().PlayMusicTrack("bgm_story_mode", 1.0f);
     GameManager::GetInstance().SetState(GameState::HUB);
+}
+
+void GameApplication::SuspendSessionToMainMenu() {
+    GameManager& gameManager = GameManager::GetInstance();
+    GameState suspendedState = gameManager.GetPreviousGameState();
+    if (!IsPlayableSessionState(suspendedState)) {
+        ClearSuspendedSession();
+        AudioManager::GetInstance().PlayMusicTrack(
+            "bgm_starter_menu",
+            1.0f
+        );
+        gameManager.SetState(GameState::MAIN_MENU);
+        return;
+    }
+
+    continueState = suspendedState;
+    continueMusicName = GetSessionMusic(suspendedState);
+    hasContinuableSession = true;
+    mainMenu.SetContinueAvailable(true);
+    AudioManager::GetInstance().PlayMusicTrack(
+        "bgm_starter_menu",
+        1.0f
+    );
+    gameManager.SetState(GameState::MAIN_MENU);
+}
+
+bool GameApplication::ContinueSuspendedSession() {
+    if (!hasContinuableSession ||
+        !IsPlayableSessionState(continueState)) {
+        return false;
+    }
+
+    GameState restoredState = continueState;
+    std::string restoredMusic = continueMusicName;
+    ClearSuspendedSession();
+    if (!restoredMusic.empty()) {
+        AudioManager::GetInstance().PlayMusicTrack(restoredMusic, 1.0f);
+    }
+    GameManager::GetInstance().SetState(restoredState);
+    return true;
+}
+
+void GameApplication::ClearSuspendedSession() {
+    hasContinuableSession = false;
+    continueState = GameState::HUB;
+    continueMusicName = "bgm_story_mode";
+    mainMenu.SetContinueAvailable(false);
 }
 
 void GameApplication::RunLoop() {

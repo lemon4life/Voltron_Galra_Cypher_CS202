@@ -19,16 +19,9 @@ void MainMenuState::Update(float deltaTime) {
     
     if (menuAction == MainMenuAction::StartGame && app->systemInitialized) {
         app->paladinSelectionMenu.Close();
-        app->hasContinuableSession = false;
-        menu->SetContinueAvailable(false);
         app->StartNewGame();
     } else if (menuAction == MainMenuAction::Continue && app->hasContinuableSession) {
-        app->hasContinuableSession = false;
-        menu->SetContinueAvailable(false);
-        if (!app->continueMusicName.empty()) {
-            AudioManager::GetInstance().PlayMusicTrack(app->continueMusicName, 1.0f);
-        }
-        GameManager::GetInstance().SetState(app->continueState);
+        app->ContinueSuspendedSession();
     } else if (menuAction == MainMenuAction::OpenEditor) {
         GameManager::GetInstance().SetState(GameState::ROOM_EDITOR);
     }
@@ -63,12 +56,7 @@ void PauseState::Update(float deltaTime) {
             break;
         case PauseMenuAction::BackToMainMenu:
         case PauseMenuAction::Quit:
-            app->continueState = GameState::HUB;
-            app->continueMusicName = "bgm_story_mode";
-            app->hasContinuableSession = true;
-            app->mainMenu.SetContinueAvailable(true);
-            AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
-            GameManager::GetInstance().SetState(GameState::MAIN_MENU);
+            app->SuspendSessionToMainMenu();
             break;
         case PauseMenuAction::None:
             break;

@@ -7,23 +7,35 @@
 
 #include "Core/Manager/GameManager.h"
 
-void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int currentGridY, Vector2 anchor, int currentFloor) {
+void MinimapRenderer::Draw(
+    const LevelMap& levelMap,
+    int currentGridX,
+    int currentGridY,
+    Rectangle bounds,
+    int currentFloor
+) {
     if (levelMap.grid.empty() || levelMap.generatedNodes.empty()) return;
 
-    float minimapSize = 100.0f; // Shrink to prevent overlap with Stats HUD
+    Vector2 anchor = { bounds.x, bounds.y };
 
-    
     // Draw background panel
-    DrawRectangle(anchor.x - 2, anchor.y - 2, minimapSize + 4, minimapSize + 4, Fade(WHITE, 0.15f));
-    DrawRectangle(anchor.x, anchor.y, minimapSize, minimapSize, Fade(BLACK, 0.75f));
-    DrawRectangleLinesEx({anchor.x, anchor.y, minimapSize, minimapSize}, 1.5f, Fade(WHITE, 0.3f));
+    DrawRectangleRec(
+        { bounds.x - 2.0f, bounds.y - 2.0f,
+          bounds.width + 4.0f, bounds.height + 4.0f },
+        Fade(WHITE, 0.15f)
+    );
+    DrawRectangleRec(bounds, Fade(BLACK, 0.75f));
+    DrawRectangleLinesEx(bounds, 1.5f, Fade(WHITE, 0.3f));
 
     float roomSize = 14.0f;
     float spacing = 22.0f;
     float corridorThickness = 4.0f;
     
     // Center the minimap view on the player's current room
-    Vector2 centerMap = { anchor.x + minimapSize / 2.0f, anchor.y + minimapSize / 2.0f };
+    Vector2 centerMap = {
+        bounds.x + bounds.width / 2.0f,
+        bounds.y + bounds.height / 2.0f
+    };
     
     auto checkRevealed = [](const std::shared_ptr<RoomNode>& n) {
         if (!n) return false;
@@ -56,8 +68,8 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
             float corrW = neighborDrawX - roomSize / 2.0f - corrX;
             float corrH = corridorThickness;
             
-            if (corrX >= anchor.x && corrX + corrW <= anchor.x + minimapSize &&
-                corrY >= anchor.y && corrY + corrH <= anchor.y + minimapSize) {
+            if (corrX >= bounds.x && corrX + corrW <= bounds.x + bounds.width &&
+                corrY >= bounds.y && corrY + corrH <= bounds.y + bounds.height) {
                 DrawRectangle(corrX, corrY, corrW, corrH, Fade(LIGHTGRAY, 0.5f));
             }
         }
@@ -72,8 +84,8 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
             float corrW = corridorThickness;
             float corrH = neighborDrawY - roomSize / 2.0f - corrY;
             
-            if (corrX >= anchor.x && corrX + corrW <= anchor.x + minimapSize &&
-                corrY >= anchor.y && corrY + corrH <= anchor.y + minimapSize) {
+            if (corrX >= bounds.x && corrX + corrW <= bounds.x + bounds.width &&
+                corrY >= bounds.y && corrY + corrH <= bounds.y + bounds.height) {
                 DrawRectangle(corrX, corrY, corrW, corrH, Fade(LIGHTGRAY, 0.5f));
             }
         }
@@ -90,8 +102,8 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
         float drawY = centerMap.y + dy * spacing - roomSize / 2.0f;
         
         // Clip rooms outside the minimap bounds
-        if (drawX < anchor.x - roomSize || drawX > anchor.x + minimapSize ||
-            drawY < anchor.y - roomSize || drawY > anchor.y + minimapSize) {
+        if (drawX < bounds.x - roomSize || drawX > bounds.x + bounds.width ||
+            drawY < bounds.y - roomSize || drawY > bounds.y + bounds.height) {
             continue;
         }
         
@@ -145,5 +157,11 @@ void MinimapRenderer::Draw(const LevelMap& levelMap, int currentGridX, int curre
     }
     
     // Draw minimap label    
-    UIUtils::DrawText("PixeloidSans", TextFormat("FLOOR: %d / %d", currentFloor, GameManager::MAX_FLOORS), { anchor.x + 4, anchor.y + minimapSize - 14 }, static_cast<UIUtils::FontSize>(10), Fade(WHITE, 0.5f));
+    UIUtils::DrawText(
+        "PixeloidSans",
+        TextFormat("FLOOR: %d / %d", currentFloor, GameManager::MAX_FLOORS),
+        { bounds.x + 4.0f, bounds.y + bounds.height - 14.0f },
+        static_cast<UIUtils::FontSize>(10),
+        Fade(WHITE, 0.5f)
+    );
 }

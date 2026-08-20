@@ -1,4 +1,5 @@
 #include "UI/UIManager.h"
+#include "UI/GameplayHUDLayout.h"
 #include "UI/UIUtils.h"
 #include "Core/Constants.h"
 #include "Core/Manager/InputManager.h"
@@ -6,12 +7,10 @@
 #include "Entities/Player/Paladin.h"
 #include "UI/PaladinPortrait.h"
 #include "Core/Manager/AssetManager.h"
+#include <algorithm>
+#include <cmath>
 #include <string>
 #include <vector>
-
-namespace {
-constexpr Rectangle PAUSE_BUTTON_BOUNDS = {1.0f, 10.0f, 30.0f, 48.0f};
-}
 
 UIManager::UIManager() : teamManager(nullptr) {
     statsShell.id = 0;
@@ -33,12 +32,15 @@ void UIManager::Initialize() {
 }
 
 bool UIManager::IsPauseButtonPressed(Rectangle windowBounds, Vector2 mousePosition) const {
-    float S = 1.5f;
-    float startX = windowBounds.x + 10.0f + (30.0f * S);
-    float startY = windowBounds.y + 10.0f;
-    Rectangle pauseBtn = { startX - (30.0f * S), startY, 30.0f * S, 48.0f * S };
-    
-    return CheckCollisionPointRec(mousePosition, pauseBtn) &&
+    if (!teamManager) return false;
+    GameplayHUDLayout::Result layout = GameplayHUDLayout::Calculate(
+        windowBounds,
+        teamManager->GetTeam().size()
+    );
+    return CheckCollisionPointRec(
+               mousePosition,
+               layout.pauseButtonBounds
+           ) &&
            IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
@@ -60,22 +62,18 @@ void UIManager::DrawTeamHUD(
     int numPaladins = roster.size();
     if (numPaladins == 0) return;
 
-    float S = 1.5f;
-
-    // Determine shell width based on number of paladins (doubled)
-    float baseShellWidth = 226.0f;
-    if (numPaladins == 2) baseShellWidth = 354.0f;
-    else if (numPaladins == 3) baseShellWidth = 482.0f;
-    
-    float shellWidth = baseShellWidth * S;
-
-    // Position of the Stats HUD container in Top-Left of the physical window
-    // Pause button is 30*S wide and we want it to start at x = windowBounds.x + 10.0f
-    float startX = windowBounds.x + 10.0f + (30.0f * S);
-    float startY = windowBounds.y + 10.0f;
+    GameplayHUDLayout::Result layout = GameplayHUDLayout::Calculate(
+        windowBounds,
+        roster.size()
+    );
+    float S = layout.scale;
+    float baseShellWidth = layout.baseShellWidth;
+    float shellWidth = layout.teamShellBounds.width;
+    float startX = layout.teamShellBounds.x;
+    float startY = layout.teamShellBounds.y;
 
     // --- Pause Button (Top Left of HUD) ---
-    Rectangle pauseBtn = { startX - (30.0f * S), startY, 30.0f * S, 48.0f * S };
+    Rectangle pauseBtn = layout.pauseButtonBounds;
     bool isHovered = CheckCollisionPointRec(mousePosition, pauseBtn);
     Texture2D pauseTex = AssetManager::GetInstance().GetTexture("button_pause");
     if (pauseTex.id != 0) {
@@ -107,7 +105,13 @@ void UIManager::DrawTeamHUD(
 
     // --- Layer 0: Lowest Layer (Stats Shell Back) ---
     if (statsShellBack.id != 0) {
-        Rectangle sourceRec = {0, 0, baseShellWidth * S, 48.0f * S};
+        Rectangle sourceRec = {
+            0,
+            0,
+            baseShellWidth * GameplayHUDLayout::HUD_TEXTURE_SOURCE_SCALE,
+            GameplayHUDLayout::HUD_BASE_HEIGHT *
+                GameplayHUDLayout::HUD_TEXTURE_SOURCE_SCALE
+        };
         DrawTexturePro(statsShellBack, sourceRec, {startX, startY, shellWidth, 48.0f * S}, {0.0f, 0.0f}, 0.0f, WHITE);
     }
 
@@ -120,7 +124,7 @@ void UIManager::DrawTeamHUD(
     auto DrawPortraitNumber = [&](int idx, Rectangle dest) {
         int num = idx + 1;
         DrawCircle(dest.x + dest.width - 8*S, dest.y + dest.height - 8*S, 8*S, Fade(BLACK, 0.7f));
-        int fSize = 10 * S;
+        int fSize = std::max(1, (int)std::round(10.0f * S));
         Vector2 numSize = MeasureTextEx(fontMono, TextFormat("%d", num), fSize, 1.0f);
         UIUtils::DrawText("PixeloidMono", TextFormat("%d", num), { dest.x + dest.width - 8*S - numSize.x/2, dest.y + dest.height - 8*S - numSize.y/2 }, static_cast<UIUtils::FontSize>(fSize), WHITE);
     };
@@ -210,7 +214,13 @@ void UIManager::DrawTeamHUD(
 
     // --- Layer 5: Stats Shell Overlay ---
     if (statsShell.id != 0) {
-        Rectangle sourceRec = {0, 0, baseShellWidth * S, 48.0f * S};
+        Rectangle sourceRec = {
+            0,
+            0,
+            baseShellWidth * GameplayHUDLayout::HUD_TEXTURE_SOURCE_SCALE,
+            GameplayHUDLayout::HUD_BASE_HEIGHT *
+                GameplayHUDLayout::HUD_TEXTURE_SOURCE_SCALE
+        };
         DrawTexturePro(statsShell, sourceRec, {startX, startY, shellWidth, 48.0f * S}, {0.0f, 0.0f}, 0.0f, WHITE);
     }
 
@@ -254,7 +264,7 @@ void UIManager::DrawTeamHUD(
     char hpText[32];
     snprintf(hpText, sizeof(hpText), "%d/%d", active->GetHealth(), active->GetMaxHealth());
     
-    int fontSize = 10 * S;
+    int fontSize = std::max(1, (int)std::round(10.0f * S));
     Vector2 textSize = MeasureTextEx(fontMono, hpText, fontSize, 1.0f);
     float textX = startX + 98*S + (44*S - textSize.x) / 2;
     float textY = startY + 34*S + (12*S - textSize.y) / 2;

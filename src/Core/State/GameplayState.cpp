@@ -6,6 +6,7 @@
 #include "Core/Constants.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Enemy.h"
+#include "UI/GameplayHUDLayout.h"
 #include "UI/MinimapRenderer.h"
 #include "UI/UIUtils.h"
 #include "Entities/Props/Pot.h"
@@ -203,6 +204,17 @@ void GameplayState::Draw() {
     // UI Rendering
     float viewportScale = std::min((float)GetScreenWidth() / Constants::GAME_WIDTH, (float)GetScreenHeight() / Constants::GAME_HEIGHT);
     Camera2D uiCamera = UIUtils::CreateCenteredUICamera(viewportScale);
+    Rectangle virtualWindowBounds = {
+        -uiCamera.offset.x / uiCamera.zoom,
+        -uiCamera.offset.y / uiCamera.zoom,
+        GetScreenWidth() / uiCamera.zoom,
+        GetScreenHeight() / uiCamera.zoom
+    };
+    GameplayHUDLayout::Result gameplayHudLayout =
+        GameplayHUDLayout::Calculate(
+            virtualWindowBounds,
+            teamManager ? teamManager->GetTeam().size() : 0
+        );
 
     BeginMode2D(uiCamera);
     
@@ -222,15 +234,11 @@ void GameplayState::Draw() {
             currentGridX = (int)(paladin->GetPosition().x / (roomOuterSize * tileW));
             currentGridY = (int)(paladin->GetPosition().y / (roomOuterSize * tileW));
         }
-        float padding = 10.0f;
-        float minimapSize = 100.0f; // Width and height of minimap area
-        float anchorX = (GetScreenWidth() - uiCamera.offset.x) / viewportScale - minimapSize - padding;
-        float anchorY = padding - uiCamera.offset.y / viewportScale;
         MinimapRenderer::Draw(
             levelManager->GetLevelMap(),
             currentGridX,
             currentGridY,
-            { anchorX, anchorY },
+            gameplayHudLayout.minimapBounds,
             GameManager::GetInstance().GetCurrentFloor()
         );
     }
