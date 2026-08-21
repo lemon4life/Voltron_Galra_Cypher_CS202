@@ -8,6 +8,7 @@
 #include "Entities/EnemyEntities/EnemyDiver.h"
 #include "Entities/EnemyEntities/EnemyRange.h"
 #include "Entities/EnemyEntities/Drone.h"
+#include "Entities/EnemyEntities/DemonTHA.h"
 #include "Core/Manager/AssetManager.h"
 
 namespace {
@@ -84,6 +85,14 @@ std::unique_ptr<GameObject> EntityFactory::CreateEntity(
             ));
         case MapObjectId::Diver:
             return PrepareEnemySpawn(std::make_unique<EnemyDiver>(
+                position,
+                teamManager,
+                removalAccess,
+                pathAccess,
+                lineOfSight
+            ));
+        case MapObjectId::DemonTHA:
+            return PrepareEnemySpawn(std::make_unique<DemonTHA>(
                 position,
                 teamManager,
                 removalAccess,

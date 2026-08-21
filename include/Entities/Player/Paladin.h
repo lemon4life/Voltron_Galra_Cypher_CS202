@@ -221,6 +221,7 @@ public:
 
     Rectangle GetBoundingBox() const override;
     Rectangle GetCollisionBox() const override;
+    Vector2 MoveAgainstLevel(Vector2 desiredDisplacement);
     bool CheckCollision(const std::vector<GameObject*>& entities) const;
 
     // Getters

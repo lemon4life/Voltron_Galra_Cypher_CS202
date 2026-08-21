@@ -1,6 +1,5 @@
 #include "Entities/Player/PlayerState.h"
 #include "Entities/Player/Paladin.h"
-#include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/TeamManager.h"
@@ -107,47 +106,11 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
         player->UpdateFootsteps(deltaTime);
     }
 
-    // Update position with axis-separated collision logic
-    Vector2 currentPos = player->GetPosition();
-    Vector2 prevPos = currentPos;
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
     float speed = player->GetSpeed();
-    
-    // Get level bounds
-    Rectangle bounds = {0, 0, GameManager::GetInstance().GetLevelWidth(), GameManager::GetInstance().GetLevelHeight()};
-    if (levelManager) {
-        bounds = levelManager->GetLevelBounds();
-    }
-
-    // Check X axis
-    currentPos.x += moveDir.x * speed * deltaTime;
-    // Keep within level bounds
-    if (bounds.width > 0) {
-        if (currentPos.x < bounds.x) currentPos.x = bounds.x;
-        if (currentPos.x > bounds.x + bounds.width) currentPos.x = bounds.x + bounds.width;
-    }
-    
-    player->SetPosition(currentPos);
-    if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
-        currentPos.x = prevPos.x;
-        player->SetPosition(currentPos);
-    }
-
-    prevPos = player->GetPosition(); // update prevPos for Y check
-
-    // Check Y axis
-    currentPos.y += moveDir.y * speed * deltaTime;
-    // Keep within level bounds
-    if (bounds.height > 0) {
-        if (currentPos.y < bounds.y) currentPos.y = bounds.y;
-        if (currentPos.y > bounds.y + bounds.height) currentPos.y = bounds.y + bounds.height;
-    }
-
-    player->SetPosition(currentPos);
-    if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
-        currentPos.y = prevPos.y;
-        player->SetPosition(currentPos);
-    }
+    player->MoveAgainstLevel(Vector2Scale(
+        moveDir,
+        speed * deltaTime
+    ));
 
     player->UpdateAnimation(deltaTime);
 }

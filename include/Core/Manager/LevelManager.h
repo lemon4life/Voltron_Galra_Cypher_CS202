@@ -7,6 +7,7 @@
 #include <memory>
 #include "raylib.h"
 #include "Core/LevelAccess.h"
+#include "Core/Utils/CollisionMovement.h"
 #include "Core/World/MapObject.h"
 #include "Core/World/WorldDefinition.h"
 #include "Core/Level/Tilemap.h"
@@ -136,6 +137,10 @@ public:
         Vector2& escapePosition
     ) const;
     bool IsSolidCollision(Rectangle box) const;
+    CollisionMovementResult ResolveSolidMovement(
+        Rectangle collisionBox,
+        Vector2 desiredDisplacement
+    ) const;
     MapObject* FindSolidMapObjectCollision(Rectangle box) const;
     void ClearLevel();
     MapObject* AddMapObject(std::unique_ptr<MapObject> object);

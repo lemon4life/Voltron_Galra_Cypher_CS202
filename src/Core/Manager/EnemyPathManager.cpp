@@ -251,18 +251,50 @@ namespace {
             inner.y + inner.height <= outer.y + outer.height + EDGE_PADDING;
     }
 
-    bool IsBodyClearAtWorldPosition(
+    Vector2 NavigationCenterAtEntityPosition(
+        const Enemy& enemy,
+        Vector2 entityPosition
+    ) {
+        Vector2 offset = enemy.GetCollisionProfile().navigationCenterOffset;
+        return Vector2Add(entityPosition, offset);
+    }
+
+    Vector2 EntityPositionAtNavigationCenter(
+        const Enemy& enemy,
+        Vector2 navigationCenter
+    ) {
+        Vector2 offset = enemy.GetCollisionProfile().navigationCenterOffset;
+        return Vector2Subtract(navigationCenter, offset);
+    }
+
+    Rectangle NavigationFootprintAtCenter(
+        const Enemy& enemy,
+        Vector2 navigationCenter
+    ) {
+        Vector2 size = enemy.GetCollisionProfile().navigationSize;
+        return {
+            navigationCenter.x - size.x * 0.5f,
+            navigationCenter.y - size.y * 0.5f,
+            size.x,
+            size.y
+        };
+    }
+
+    bool IsBodyClearAtNavigationCenter(
         const LevelManager& levelManager,
         const Enemy& enemy,
-        Vector2 worldPosition,
+        Vector2 navigationCenter,
         Rectangle searchBounds
     ) {
-        Rectangle footprint = enemy.GetNavigationFootprintAt(worldPosition);
+        Rectangle footprint = NavigationFootprintAtCenter(
+            enemy,
+            navigationCenter
+        );
         return ContainsRectangle(searchBounds, footprint) &&
             !levelManager.IsSolidCollision(footprint);
     }
 
-    bool IsBodyPathClear(
+    bool IsNavigationPathClear(
         const LevelManager& levelManager,
         const Enemy& enemy,
         Vector2 start,
@@ -277,17 +309,47 @@ namespace {
 
         for (int sample = 0; sample <= sampleCount; ++sample) {
             float amount = (float)sample / (float)sampleCount;
-            Vector2 position = Vector2Lerp(start, end, amount);
-            if (!IsBodyClearAtWorldPosition(
+            Vector2 navigationCenter = Vector2Lerp(start, end, amount);
+            if (!IsBodyClearAtNavigationCenter(
                     levelManager,
                     enemy,
-                    position,
+                    navigationCenter,
                     searchBounds)) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    bool IsBodyClearAtWorldPosition(
+        const LevelManager& levelManager,
+        const Enemy& enemy,
+        Vector2 entityPosition,
+        Rectangle searchBounds
+    ) {
+        return IsBodyClearAtNavigationCenter(
+            levelManager,
+            enemy,
+            NavigationCenterAtEntityPosition(enemy, entityPosition),
+            searchBounds
+        );
+    }
+
+    bool IsBodyPathClear(
+        const LevelManager& levelManager,
+        const Enemy& enemy,
+        Vector2 entityStart,
+        Vector2 entityEnd,
+        Rectangle searchBounds
+    ) {
+        return IsNavigationPathClear(
+            levelManager,
+            enemy,
+            NavigationCenterAtEntityPosition(enemy, entityStart),
+            NavigationCenterAtEntityPosition(enemy, entityEnd),
+            searchBounds
+        );
     }
 
     std::optional<std::vector<Vector2>> ConnectPositions(
@@ -297,7 +359,7 @@ namespace {
         Vector2 end,
         Rectangle searchBounds
     ) {
-        if (IsBodyPathClear(
+        if (IsNavigationPathClear(
                 levelManager,
                 enemy,
                 start,
@@ -314,18 +376,18 @@ namespace {
         float bestLength = std::numeric_limits<float>::max();
 
         for (Vector2 corner : corners) {
-            if (!IsBodyClearAtWorldPosition(
+            if (!IsBodyClearAtNavigationCenter(
                     levelManager,
                     enemy,
                     corner,
                     searchBounds) ||
-                !IsBodyPathClear(
+                !IsNavigationPathClear(
                     levelManager,
                     enemy,
                     start,
                     corner,
                     searchBounds) ||
-                !IsBodyPathClear(
+                !IsNavigationPathClear(
                     levelManager,
                     enemy,
                     corner,
@@ -421,7 +483,7 @@ namespace {
             std::int8_t& cached = grid->clearTiles[index];
             if (cached >= 0) return cached != 0;
 
-            bool clear = IsBodyClearAtWorldPosition(
+            bool clear = IsBodyClearAtNavigationCenter(
                 levelManager,
                 enemy,
                 levelManager.TileToWorld(tile.x, tile.y),
@@ -513,7 +575,7 @@ namespace {
                 }
             }
 
-            return IsBodyPathClear(
+            return IsNavigationPathClear(
                 levelManager,
                 enemy,
                 levelManager.TileToWorld(current.x, current.y),
@@ -551,7 +613,10 @@ namespace {
         SearchCollisionCache& cache,
         Rectangle searchBounds
     ) {
-        Vector2 start = enemy.GetPosition();
+        Vector2 start = NavigationCenterAtEntityPosition(
+            enemy,
+            enemy.GetPosition()
+        );
         Tile startTile = WorldTile(levelManager, start);
         std::optional<PositionConnection> best;
 
@@ -621,7 +686,7 @@ namespace {
                 ++connectionAttempts;
 
                 Vector2 anchor = Vector2Add(tileCenter, offset);
-                if (!IsBodyClearAtWorldPosition(
+                if (!IsBodyClearAtNavigationCenter(
                         levelManager,
                         enemy,
                         anchor,
@@ -656,6 +721,18 @@ namespace {
         return best;
     }
 
+    Tile PlayerCollisionTile(
+        const LevelManager& levelManager,
+        const Paladin& target
+    ) {
+        Rectangle collisionBox = target.GetCollisionBox();
+        Vector2 collisionCenter = {
+            collisionBox.x + collisionBox.width * 0.5f,
+            collisionBox.y + collisionBox.height * 0.5f
+        };
+        return WorldTile(levelManager, collisionCenter);
+    }
+
     std::vector<Vector2> GenerateGoalCandidates(
         const LevelManager& levelManager,
         const Paladin& target
@@ -668,7 +745,7 @@ namespace {
 
         std::vector<Vector2> candidates;
         candidates.reserve(NEIGHBOR_OFFSETS.size());
-        Tile playerTile = WorldTile(levelManager, target.GetPosition());
+        Tile playerTile = PlayerCollisionTile(levelManager, target);
 
         for (Tile offset : NEIGHBOR_OFFSETS) {
             candidates.push_back(levelManager.TileToWorld(
@@ -693,7 +770,7 @@ namespace {
         EnemyNavigationCacheStore& store,
         Rectangle searchBounds
     ) {
-        Tile targetTile = WorldTile(levelManager, target.GetPosition());
+        Tile targetTile = PlayerCollisionTile(levelManager, target);
         Rectangle targetBounds = target.GetBoundingBox();
         bool sameGoalLayout = store.goalsValid &&
             store.goalTarget == &target &&
@@ -717,6 +794,14 @@ namespace {
 
         std::vector<EnemyPathDebugPoint> refreshedGoals;
         refreshedGoals.reserve(candidates.size());
+        Vector2 targetTileCenter = levelManager.TileToWorld(
+            targetTile.x,
+            targetTile.y
+        );
+        bool targetTileInsideDomain = CheckCollisionPointRec(
+            targetTileCenter,
+            searchBounds
+        );
         for (Vector2 candidate : candidates) {
             Vector2 closestHitboxPoint = ClosestPointOnRectangle(
                 candidate,
@@ -726,7 +811,14 @@ namespace {
                 candidate,
                 searchBounds
             );
-            bool hasLineOfSight = insideDomain &&
+            bool hasClearTileConnection = insideDomain &&
+                targetTileInsideDomain &&
+                levelManager.HasClearLineOfSight(
+                    candidate,
+                    targetTileCenter,
+                    GOAL_LINE_OF_SIGHT_CORNER_MARGIN
+                );
+            bool hasLineOfSight = hasClearTileConnection &&
                 levelManager.HasClearLineOfSight(
                     candidate,
                     closestHitboxPoint,
@@ -961,7 +1053,10 @@ namespace {
         const FlowFieldData& field,
         Rectangle searchBounds
     ) {
-        Vector2 start = enemy.GetPosition();
+        Vector2 start = NavigationCenterAtEntityPosition(
+            enemy,
+            enemy.GetPosition()
+        );
         Tile startTile = WorldTile(levelManager, start);
         std::optional<PositionConnection> best;
         float bestTotalCost = std::numeric_limits<float>::max();
@@ -1022,7 +1117,7 @@ namespace {
             for (Vector2 offset : ANCHOR_OFFSETS) {
                 if (attempts++ >= MAX_START_CONNECTION_ATTEMPTS) return best;
                 Vector2 anchor = Vector2Add(graphCenter, offset);
-                if (!IsBodyClearAtWorldPosition(
+                if (!IsBodyClearAtNavigationCenter(
                         levelManager,
                         enemy,
                         anchor,
@@ -1060,7 +1155,10 @@ namespace {
         Rectangle searchBounds
     ) {
         std::vector<Vector2> condensed;
-        Vector2 cursor = enemy.GetPosition();
+        Vector2 cursor = NavigationCenterAtEntityPosition(
+            enemy,
+            enemy.GetPosition()
+        );
         std::size_t index = 0;
 
         while (index < rawWaypoints.size() &&
@@ -1068,7 +1166,7 @@ namespace {
             std::size_t farthest = index;
             for (std::size_t candidate = rawWaypoints.size();
                  candidate-- > index;) {
-                if (IsBodyPathClear(
+                if (IsNavigationPathClear(
                         levelManager,
                         enemy,
                         cursor,
@@ -1101,6 +1199,21 @@ namespace {
         return condensed;
     }
 
+    std::vector<Vector2> ConvertNavigationWaypointsToEntityPositions(
+        const Enemy& enemy,
+        const std::vector<Vector2>& navigationWaypoints
+    ) {
+        std::vector<Vector2> entityWaypoints;
+        entityWaypoints.reserve(navigationWaypoints.size());
+        for (Vector2 navigationCenter : navigationWaypoints) {
+            entityWaypoints.push_back(EntityPositionAtNavigationCenter(
+                enemy,
+                navigationCenter
+            ));
+        }
+        return entityWaypoints;
+    }
+
     PathSearchResult FindPathFromFlowField(
         LevelManager& levelManager,
         Enemy& enemy,
@@ -1122,9 +1235,17 @@ namespace {
             return result;
         }
 
+        Vector2 currentNavigationCenter = NavigationCenterAtEntityPosition(
+            enemy,
+            enemy.GetPosition()
+        );
+
         for (const EnemyPathDebugPoint& candidate : candidates) {
             if (candidate.hasLineOfSight &&
-                DistanceSquared(enemy.GetPosition(), candidate.position) <=
+                DistanceSquared(
+                    currentNavigationCenter,
+                    candidate.position
+                ) <=
                     POSITION_EPSILON_SQUARED) {
                 result.status = EnemyPathStatus::AtGoal;
                 result.selectedGoal = candidate.position;
@@ -1166,13 +1287,18 @@ namespace {
         const FlowFieldTerminal& terminal = field.terminals[terminalIndex];
         result.selectedGoal = terminal.goalPosition;
 
-        if (IsBodyPathClear(
+        if (IsNavigationPathClear(
                 levelManager,
                 enemy,
-                enemy.GetPosition(),
+                currentNavigationCenter,
                 terminal.goalPosition,
                 searchBounds)) {
-            result.waypoints = { terminal.goalPosition };
+            result.waypoints = {
+                EntityPositionAtNavigationCenter(
+                    enemy,
+                    terminal.goalPosition
+                )
+            };
             result.status = EnemyPathStatus::Ready;
             return result;
         }
@@ -1203,11 +1329,14 @@ namespace {
             terminal.suffix.begin(),
             terminal.suffix.end()
         );
-        result.waypoints = CondenseWaypoints(
-            levelManager,
+        result.waypoints = ConvertNavigationWaypointsToEntityPositions(
             enemy,
-            rawWaypoints,
-            searchBounds
+            CondenseWaypoints(
+                levelManager,
+                enemy,
+                rawWaypoints,
+                searchBounds
+            )
         );
         result.status = result.waypoints.empty()
             ? EnemyPathStatus::AtGoal
@@ -1233,6 +1362,11 @@ namespace {
             return result;
         }
 
+        Vector2 currentNavigationCenter = NavigationCenterAtEntityPosition(
+            enemy,
+            enemy.GetPosition()
+        );
+
         SearchCollisionCache cache(
             levelManager,
             enemy,
@@ -1257,7 +1391,10 @@ namespace {
 
         for (const EnemyPathDebugPoint& candidate : result.debugGoals) {
             if (candidate.hasLineOfSight &&
-                DistanceSquared(enemy.GetPosition(), candidate.position) <=
+                DistanceSquared(
+                    currentNavigationCenter,
+                    candidate.position
+                ) <=
                     POSITION_EPSILON_SQUARED) {
                 result.status = EnemyPathStatus::AtGoal;
                 result.selectedGoal = candidate.position;
@@ -1348,11 +1485,14 @@ namespace {
                     reachedGoal->suffix.end()
                 );
 
-                result.waypoints = CondenseWaypoints(
-                    levelManager,
+                result.waypoints = ConvertNavigationWaypointsToEntityPositions(
                     enemy,
-                    rawWaypoints,
-                    searchBounds
+                    CondenseWaypoints(
+                        levelManager,
+                        enemy,
+                        rawWaypoints,
+                        searchBounds
+                    )
                 );
                 result.status = result.waypoints.empty()
                     ? EnemyPathStatus::AtGoal
@@ -1431,7 +1571,10 @@ namespace {
         std::uint64_t navigationRevision
     ) {
         const std::vector<EnemyPathDebugPoint> candidates = {
-            { worldGoal, true }
+            {
+                NavigationCenterAtEntityPosition(enemy, worldGoal),
+                true
+            }
         };
         return FindPathToCandidates(
             levelManager,
@@ -1505,22 +1648,32 @@ std::vector<Vector2> PathFindingManager::GetNavigableTileCentersWithin(
     if (radius <= 0.0f) return candidates;
 
     Rectangle searchBounds = levelManager.GetCurrentRoomBounds();
+    Vector2 originNavigationCenter = NavigationCenterAtEntityPosition(
+        enemy,
+        origin
+    );
     float tileSize = Constants::RENDER_TILE_SIZE;
     int minimumTileX = (int)std::floor(
-        std::max(searchBounds.x, origin.x - radius) / tileSize
+        std::max(
+            searchBounds.x,
+            originNavigationCenter.x - radius
+        ) / tileSize
     );
     int maximumTileX = (int)std::floor(
         std::min(searchBounds.x + searchBounds.width,
-                 origin.x + radius) / tileSize
+                 originNavigationCenter.x + radius) / tileSize
     );
     int minimumTileY = (int)std::floor(
-        std::max(searchBounds.y, origin.y - radius) / tileSize
+        std::max(
+            searchBounds.y,
+            originNavigationCenter.y - radius
+        ) / tileSize
     );
     int maximumTileY = (int)std::floor(
         std::min(searchBounds.y + searchBounds.height,
-                 origin.y + radius) / tileSize
+                 originNavigationCenter.y + radius) / tileSize
     );
-    Vector2 originTile = levelManager.WorldToTile(origin);
+    Vector2 originTile = levelManager.WorldToTile(originNavigationCenter);
     float radiusSquared = radius * radius;
 
     auto isInsideSearchBounds = [searchBounds](Rectangle bounds) {
@@ -1540,16 +1693,25 @@ std::vector<Vector2> PathFindingManager::GetNavigableTileCentersWithin(
                 continue;
             }
 
-            Vector2 center = levelManager.TileToWorld(tileX, tileY);
-            Vector2 delta = Vector2Subtract(center, origin);
+            Vector2 navigationCenter = levelManager.TileToWorld(tileX, tileY);
+            Vector2 delta = Vector2Subtract(
+                navigationCenter,
+                originNavigationCenter
+            );
             if (Vector2LengthSqr(delta) > radiusSquared) continue;
 
-            Rectangle footprint = enemy.GetNavigationFootprintAt(center);
+            Rectangle footprint = NavigationFootprintAtCenter(
+                enemy,
+                navigationCenter
+            );
             if (!isInsideSearchBounds(footprint) ||
                 levelManager.IsSolidCollision(footprint)) {
                 continue;
             }
-            candidates.push_back(center);
+            candidates.push_back(EntityPositionAtNavigationCenter(
+                enemy,
+                navigationCenter
+            ));
         }
     }
     return candidates;
@@ -1996,7 +2158,7 @@ void PathFindingManager::Update(float deltaTime) {
 
         Paladin* target = getPlayerTarget(*enemy);
         if (!target) continue;
-        Tile targetTile = WorldTile(levelManager, target->GetPosition());
+        Tile targetTile = PlayerCollisionTile(levelManager, *target);
         bool targetChanged = !record.hasTargetTile ||
             record.targetTileX != targetTile.x ||
             record.targetTileY != targetTile.y;
@@ -2115,14 +2277,18 @@ void PathFindingManager::Update(float deltaTime) {
         if (!usesAStar(*enemy, record)) continue;
 
         Paladin* target = nullptr;
-        Vector2 targetPosition = record.explicitGoal;
+        Tile targetTile = WorldTile(
+            levelManager,
+            NavigationCenterAtEntityPosition(
+                *enemy,
+                record.explicitGoal
+            )
+        );
         if (record.mode == NavigationMode::PlayerFlowField) {
             target = getPlayerTarget(*enemy);
             if (!target) continue;
-            targetPosition = target->GetPosition();
+            targetTile = PlayerCollisionTile(levelManager, *target);
         }
-
-        Tile targetTile = WorldTile(levelManager, targetPosition);
         bool targetChanged = !record.hasTargetTile ||
             record.targetTileX != targetTile.x ||
             record.targetTileY != targetTile.y;

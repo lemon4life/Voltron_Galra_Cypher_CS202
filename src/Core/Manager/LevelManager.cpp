@@ -393,6 +393,19 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
     return FindSolidMapObjectCollision(box) != nullptr;
 }
 
+CollisionMovementResult LevelManager::ResolveSolidMovement(
+    Rectangle collisionBox,
+    Vector2 desiredDisplacement
+) const {
+    return CollisionMovement::ResolveSlide(
+        collisionBox,
+        desiredDisplacement,
+        [this](Rectangle candidate) {
+            return IsSolidCollision(candidate);
+        }
+    );
+}
+
 MapObject* LevelManager::FindSolidMapObjectCollision(
     Rectangle box
 ) const {

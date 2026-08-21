@@ -109,21 +109,22 @@ void Rover::Update(float deltaTime) {
             currentVelocity.x += (desiredVelocity.x - currentVelocity.x) * smoothingFactor * deltaTime;
             currentVelocity.y += (desiredVelocity.y - currentVelocity.y) * smoothingFactor * deltaTime;
             
-            position.x += currentVelocity.x * deltaTime;
-            boundingBox.x = position.x - 8.0f;
-            if (levelManager && levelManager->IsSolidCollision(boundingBox)) {
-                position.x -= currentVelocity.x * deltaTime;
-                boundingBox.x = position.x - 8.0f;
-                currentVelocity.x = 0.0f;
+            Vector2 desiredDisplacement = Vector2Scale(
+                currentVelocity,
+                deltaTime
+            );
+            Vector2 appliedDisplacement = desiredDisplacement;
+            if (levelManager) {
+                CollisionMovementResult movement =
+                    levelManager->ResolveSolidMovement(
+                        boundingBox,
+                        desiredDisplacement
+                    );
+                appliedDisplacement = movement.appliedDisplacement;
+                if (movement.blockedX) currentVelocity.x = 0.0f;
+                if (movement.blockedY) currentVelocity.y = 0.0f;
             }
-            
-            position.y += currentVelocity.y * deltaTime;
-            boundingBox.y = position.y - 8.0f;
-            if (levelManager && levelManager->IsSolidCollision(boundingBox)) {
-                position.y -= currentVelocity.y * deltaTime;
-                boundingBox.y = position.y - 8.0f;
-                currentVelocity.y = 0.0f;
-            }
+            position = Vector2Add(position, appliedDisplacement);
         }
         
         if (currentVelocity.x < -0.1f) facingLeft = true;

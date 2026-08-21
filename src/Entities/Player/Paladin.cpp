@@ -261,34 +261,22 @@ void Paladin::Update(float deltaTime) {
         knockbackVelocity.x -= knockbackVelocity.x * 15.0f * deltaTime;
         knockbackVelocity.y -= knockbackVelocity.y * 15.0f * deltaTime;
         
-        Vector2 currentPos = GetPosition();
-        LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-        float levelWidth = GameManager::GetInstance().GetLevelWidth();
-        float levelHeight = GameManager::GetInstance().GetLevelHeight();
-        
-        Vector2 prevPos = currentPos;
-
-        // X Movement
-        currentPos.x += knockbackVelocity.x * deltaTime;
-        if (currentPos.x < 0.0f) currentPos.x = 0.0f;
-        if (currentPos.x > levelWidth) currentPos.x = levelWidth;
-        SetPosition(currentPos);
-        if (levelManager && levelManager->IsSolidCollision(GetCollisionBox())) {
-            currentPos.x = prevPos.x;
-            SetPosition(currentPos);
+        Vector2 desiredDisplacement = Vector2Scale(
+            knockbackVelocity,
+            deltaTime
+        );
+        Vector2 appliedDisplacement = MoveAgainstLevel(
+            desiredDisplacement
+        );
+        constexpr float BLOCKED_MOVEMENT_EPSILON = 0.001f;
+        if (std::abs(
+                appliedDisplacement.x - desiredDisplacement.x
+            ) > BLOCKED_MOVEMENT_EPSILON) {
             knockbackVelocity.x = 0.0f;
         }
-
-        prevPos = GetPosition();
-
-        // Y Movement
-        currentPos.y += knockbackVelocity.y * deltaTime;
-        if (currentPos.y < 0.0f) currentPos.y = 0.0f;
-        if (currentPos.y > levelHeight) currentPos.y = levelHeight;
-        SetPosition(currentPos);
-        if (levelManager && levelManager->IsSolidCollision(GetCollisionBox())) {
-            currentPos.y = prevPos.y;
-            SetPosition(currentPos);
+        if (std::abs(
+                appliedDisplacement.y - desiredDisplacement.y
+            ) > BLOCKED_MOVEMENT_EPSILON) {
             knockbackVelocity.y = 0.0f;
         }
     } else {
@@ -342,8 +330,9 @@ void Paladin::ResetStats() {
 }
 
 Rectangle Paladin::GetBoundingBox() const {
-    // 16x24 bounding box centered on position for 32x32 sprite
-    return { position.x - 8.0f, position.y - 12.0f, 16.0f, 24.0f };
+    // Inset one pixel on each side and two pixels from the top while
+    // preserving the original bottom edge at position.y + 12.
+    return { position.x - 7.0f, position.y - 10.0f, 14.0f, 22.0f };
 }
 
 Rectangle Paladin::GetCollisionBox() const {
@@ -354,6 +343,24 @@ Rectangle Paladin::GetCollisionBox() const {
         Constants::RENDER_TILE_SIZE - HORIZONTAL_INSET * 2.0f,
         8.0f
     };
+}
+
+Vector2 Paladin::MoveAgainstLevel(Vector2 desiredDisplacement) {
+    LevelManager* levelManager =
+        GameManager::GetInstance().GetLevelManager();
+    Vector2 appliedDisplacement = desiredDisplacement;
+    if (levelManager) {
+        CollisionMovementResult movement =
+            levelManager->ResolveSolidMovement(
+                GetCollisionBox(),
+                desiredDisplacement
+            );
+        appliedDisplacement = movement.appliedDisplacement;
+    }
+
+    position.x += appliedDisplacement.x;
+    position.y += appliedDisplacement.y;
+    return appliedDisplacement;
 }
 
 bool Paladin::CheckCollision(const std::vector<GameObject*>& entities) const {

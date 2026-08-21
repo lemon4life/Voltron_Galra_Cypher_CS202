@@ -200,6 +200,18 @@ void AssetManager::QueueCharacterAssets() {
     add("Drone", "assets/sprites/Enemy/Drone.png", true);
     add("Drone_bullet", "assets/sprites/Enemy/Drone_bullet.png", true);
     add("Drone_down", "assets/sprites/Enemy/Drone_down.png", true);
+
+    // Demon_THA
+    add("THA_Idle", "assets/sprites/Enemy/THA-idle.png", true);
+    add("THA_Run", "assets/sprites/Enemy/THA-running.png", true);
+    add("THA_Down", "assets/sprites/Enemy/THA-Down.png", true);
+    add("THA_Shooting", "assets/sprites/Enemy/THA-shooting.png", true);
+    add("THA_Gun_Idle", "assets/sprites/Enemy/THA-gun-idle.png", true);
+    add(
+        "THA_Gun_Shooting",
+        "assets/sprites/Enemy/THA-gun-shooting.png",
+        true
+    );
 }
 
 bool AssetManager::UpdateLoading(float& outProgress) {

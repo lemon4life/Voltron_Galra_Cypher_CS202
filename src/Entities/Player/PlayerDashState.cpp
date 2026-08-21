@@ -1,7 +1,6 @@
 #include "Entities/Player/PlayerDashState.h"
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/GameManager.h"
-#include "Core/Manager/LevelManager.h"
 #include "raymath.h"
 
 void PlayerDashState::Enter(Paladin* player) {
@@ -55,44 +54,10 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
     // Peak speed scaled by PI/2 to maintain the same total dash distance as linear 2.5x speed
     float peakSpeedMultiplier = 2.5f * (PI / 2.0f);
     float dashSpeed = player->GetSpeed() * peakSpeedMultiplier * sinf(t * PI);
-    LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
-
-    Vector2 currentPos = player->GetPosition();
-    Vector2 prevPos = currentPos;
-    Rectangle bounds = {0, 0, GameManager::GetInstance().GetLevelWidth(), GameManager::GetInstance().GetLevelHeight()};
-    if (levelManager) {
-        bounds = levelManager->GetLevelBounds();
-    }
-
-    // Check X axis
-    currentPos.x += dashDirection.x * dashSpeed * deltaTime;
-    // Keep within level bounds
-    if (bounds.width > 0) {
-        if (currentPos.x < bounds.x) currentPos.x = bounds.x;
-        if (currentPos.x > bounds.x + bounds.width) currentPos.x = bounds.x + bounds.width;
-    }
-
-    player->SetPosition(currentPos);
-    if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
-        currentPos.x = prevPos.x;
-        player->SetPosition(currentPos);
-    }
-    
-    prevPos = player->GetPosition();
-
-    // Check Y axis
-    currentPos.y += dashDirection.y * dashSpeed * deltaTime;
-    // Keep within level bounds
-    if (bounds.height > 0) {
-        if (currentPos.y < bounds.y) currentPos.y = bounds.y;
-        if (currentPos.y > bounds.y + bounds.height) currentPos.y = bounds.y + bounds.height;
-    }
-
-    player->SetPosition(currentPos);
-    if (levelManager && levelManager->IsSolidCollision(player->GetCollisionBox())) {
-        currentPos.y = prevPos.y;
-        player->SetPosition(currentPos);
-    }
+    player->MoveAgainstLevel(Vector2Scale(
+        dashDirection,
+        dashSpeed * deltaTime
+    ));
 
     // Emit a sprite ghost every 0.05s for the dash trail
     trailTimer -= deltaTime;

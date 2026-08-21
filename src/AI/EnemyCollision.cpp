@@ -1,15 +1,13 @@
 #include "AI/EnemyCollision.h"
 
 #include "Core/LevelAccess.h"
+#include "Core/Utils/CollisionMovement.h"
 #include "Entities/Enemy.h"
 #include "Entities/Player/Paladin.h"
 
-#include <algorithm>
-#include <cmath>
 #include <optional>
 
 namespace {
-    constexpr float MAX_MOVEMENT_SUBSTEP = 2.0f;
     constexpr int EMBEDDED_RECOVERY_RADIUS = 32;
 
     Vector2 ClampFootprintToLevel(
@@ -55,6 +53,22 @@ namespace {
     ) {
         origin = ClampFootprintToLevel(enemy, origin, levelBounds);
         if (IsMapPositionClear(enemy, origin, pathAccess)) return origin;
+
+        CollisionMovementResult tinyRecovery =
+            CollisionMovement::ResolveSlide(
+                enemy.GetNavigationFootprintAt(origin),
+                { 0.0f, 0.0f },
+                [&pathAccess](Rectangle candidate) {
+                    return pathAccess.IsBlocked(candidate);
+                }
+            );
+        Vector2 recoveredOrigin = {
+            origin.x + tinyRecovery.appliedDisplacement.x,
+            origin.y + tinyRecovery.appliedDisplacement.y
+        };
+        if (IsMapPositionClear(enemy, recoveredOrigin, pathAccess)) {
+            return recoveredOrigin;
+        }
 
         auto testCandidate = [&](float x, float y)
             -> std::optional<Vector2> {
@@ -134,70 +148,29 @@ EnemyMoveResult EnemyCollision::MoveAgainstWalls(
     }
     enemy.SetPosition(*clearStart);
 
-    float maximumAxisDistance = std::max(
-        std::abs(displacement.x),
-        std::abs(displacement.y)
-    );
-    int stepCount = std::max(
-        1,
-        (int)std::ceil(maximumAxisDistance / MAX_MOVEMENT_SUBSTEP)
-    );
-    Vector2 step = {
-        displacement.x / (float)stepCount,
-        displacement.y / (float)stepCount
+    auto isBlocked = [&pathAccess](Rectangle candidate) {
+        return pathAccess.IsBlocked(candidate);
     };
+    CollisionMovementResult movement =
+        response == EnemyWallResponse::Stop
+        ? CollisionMovement::ResolveStop(
+            enemy.GetCollisionBox(),
+            displacement,
+            isBlocked
+        )
+        : CollisionMovement::ResolveSlide(
+            enemy.GetCollisionBox(),
+            displacement,
+            isBlocked
+        );
 
-    for (int stepIndex = 0; stepIndex < stepCount; ++stepIndex) {
-        Vector2 currentPosition = enemy.GetPosition();
-        if (response == EnemyWallResponse::Stop) {
-            Vector2 nextPosition = ClampFootprintToLevel(
-                enemy,
-                {
-                    currentPosition.x + step.x,
-                    currentPosition.y + step.y
-                },
-                levelBounds
-            );
-            if (!IsMapPositionClear(enemy, nextPosition, pathAccess)) {
-                result.blockedX = result.blockedX || step.x != 0.0f;
-                result.blockedY = result.blockedY || step.y != 0.0f;
-                result.hitWall = true;
-                break;
-            }
-            enemy.SetPosition(nextPosition);
-            continue;
-        }
-
-        if (step.x != 0.0f) {
-            Vector2 nextX = ClampFootprintToLevel(
-                enemy,
-                { currentPosition.x + step.x, currentPosition.y },
-                levelBounds
-            );
-            if (IsMapPositionClear(enemy, nextX, pathAccess)) {
-                enemy.SetPosition(nextX);
-            } else {
-                result.blockedX = true;
-                result.hitWall = true;
-            }
-        }
-
-        currentPosition = enemy.GetPosition();
-        if (step.y != 0.0f) {
-            Vector2 nextY = ClampFootprintToLevel(
-                enemy,
-                { currentPosition.x, currentPosition.y + step.y },
-                levelBounds
-            );
-            if (IsMapPositionClear(enemy, nextY, pathAccess)) {
-                enemy.SetPosition(nextY);
-            } else {
-                result.blockedY = true;
-                result.hitWall = true;
-            }
-        }
-    }
-
-    result.finalPosition = enemy.GetPosition();
+    result.finalPosition = {
+        clearStart->x + movement.appliedDisplacement.x,
+        clearStart->y + movement.appliedDisplacement.y
+    };
+    result.blockedX = movement.blockedX;
+    result.blockedY = movement.blockedY;
+    result.hitWall = movement.HitObstacle();
+    enemy.SetPosition(result.finalPosition);
     return result;
 }

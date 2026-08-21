@@ -24,7 +24,8 @@ constexpr float PANEL_PADDING = 14.0f;
 constexpr float TOGGLE_HEIGHT = 32.0f;
 constexpr float BUTTON_HEIGHT = 38.0f;
 constexpr float PROPERTY_ROW_HEIGHT = 58.0f;
-constexpr float PROPERTY_START_Y = 410.0f;
+constexpr float SPAWN_BUTTON_START_Y = 231.0f;
+constexpr float SPAWN_BUTTON_GAP_Y = 6.0f;
 constexpr int TEXT_SIZE = 18;
 constexpr int SMALL_TEXT_SIZE = 16;
 constexpr int TITLE_TEXT_SIZE = 26;
@@ -38,6 +39,22 @@ constexpr Color BUTTON_HOVER_COLOR = { 64, 78, 101, 255 };
 constexpr Color BUTTON_SELECTED_COLOR = { 40, 112, 92, 255 };
 constexpr Color SLIDER_TRACK_COLOR = { 55, 65, 82, 255 };
 constexpr Color SLIDER_FILL_COLOR = { 62, 173, 142, 255 };
+
+constexpr std::array<MapObjectId, 5> SPAWN_TYPES = {
+    MapObjectId::Chaser,
+    MapObjectId::Range,
+    MapObjectId::Diver,
+    MapObjectId::Boss,
+    MapObjectId::DemonTHA
+};
+constexpr std::size_t SPAWN_COLUMN_COUNT = 2;
+constexpr std::size_t SPAWN_ROW_COUNT =
+    (SPAWN_TYPES.size() + SPAWN_COLUMN_COUNT - 1) / SPAWN_COLUMN_COUNT;
+constexpr float ACTION_BUTTON_Y = SPAWN_BUTTON_START_Y +
+    (float)SPAWN_ROW_COUNT * (BUTTON_HEIGHT + SPAWN_BUTTON_GAP_Y) + 2.0f;
+constexpr float STATUS_TEXT_Y = ACTION_BUTTON_Y + 46.0f;
+constexpr float PROPERTY_HEADING_Y = ACTION_BUTTON_Y + 68.0f;
+constexpr float PROPERTY_START_Y = ACTION_BUTTON_Y + 89.0f;
 
 enum class EnemyProperty {
     Health,
@@ -82,7 +99,7 @@ constexpr std::array<PropertyDefinition, 14> PROPERTIES = {{
     { EnemyProperty::NavigationOffsetY, "Collision offset Y", 1.0f, -128.0f, 128.0f, 0 }
 }};
 
-constexpr std::array<std::array<float, 14>, 4> DEFAULT_SPAWN_VALUES = {{
+constexpr std::array<std::array<float, 14>, 5> DEFAULT_SPAWN_VALUES = {{
     { 80.0f, 80.0f, 150.0f, 15.0f, 1.0f, 1.0f, 2.0f, 0.25f,
       20.0f, 20.0f, 16.0f, 8.0f, 0.0f, 8.0f },
     { 70.0f, 70.0f, 120.0f, 12.0f, 1.0f, 1.0f, 2.0f, 0.10f,
@@ -90,7 +107,9 @@ constexpr std::array<std::array<float, 14>, 4> DEFAULT_SPAWN_VALUES = {{
     { 200.0f, 200.0f, 160.0f, 70.0f, 2.5f, 2.5f, 2.0f, 0.50f,
       24.0f, 24.0f, 18.0f, 8.0f, 0.0f, 8.0f },
     { 500.0f, 500.0f, 75.0f, 25.0f, 0.8f, 0.8f, 2.0f, 1.0f,
-      47.0f, 69.0f, 32.0f, 12.0f, 0.0f, 28.5f }
+      47.0f, 69.0f, 32.0f, 12.0f, 0.0f, 28.5f },
+    { 120.0f, 120.0f, 100.0f, 15.0f, 0.4f, 0.0f, 2.0f, 0.25f,
+      34.0f, 30.0f, 14.0f, 8.0f, 0.0f, 10.5f }
 }};
 
 bool IsPointInside(Rectangle bounds, Vector2 point) {
@@ -131,6 +150,7 @@ const char* EnemyTypeName(MapObjectId type) {
         case MapObjectId::Range: return "Ranger";
         case MapObjectId::Diver: return "Diver";
         case MapObjectId::Boss: return "Boss";
+        case MapObjectId::DemonTHA: return "Demon_THA";
         default: return "Unknown";
     }
 }
@@ -219,6 +239,7 @@ std::size_t AdminPanel::GetSpawnTypeIndex() const {
         case MapObjectId::Range: return 1;
         case MapObjectId::Diver: return 2;
         case MapObjectId::Boss: return 3;
+        case MapObjectId::DemonTHA: return 4;
         default: return 0;
     }
 }
@@ -406,22 +427,19 @@ void AdminPanel::Update(
             !Constants::DEBUG_PLAYER_IMMUNITY;
     }
 
-    constexpr std::array<MapObjectId, 4> TYPES = {
-        MapObjectId::Chaser,
-        MapObjectId::Range,
-        MapObjectId::Diver,
-        MapObjectId::Boss
-    };
     float buttonWidth = (contentWidth - 8.0f) * 0.5f;
-    for (std::size_t index = 0; index < TYPES.size(); ++index) {
+    for (std::size_t index = 0; index < SPAWN_TYPES.size(); ++index) {
         Rectangle button = {
-            contentX + (index % 2) * (buttonWidth + 8.0f),
-            panel.y + 231.0f + (index / 2) * (BUTTON_HEIGHT + 6.0f),
+            contentX + (index % SPAWN_COLUMN_COUNT) *
+                (buttonWidth + 8.0f),
+            panel.y + SPAWN_BUTTON_START_Y +
+                (index / SPAWN_COLUMN_COUNT) *
+                    (BUTTON_HEIGHT + SPAWN_BUTTON_GAP_Y),
             buttonWidth,
             BUTTON_HEIGHT
         };
         if (WasButtonPressed(button, mousePosition)) {
-            spawnType = TYPES[index];
+            spawnType = SPAWN_TYPES[index];
             placementArmed = true;
             propertyScroll = 0.0f;
             statusMessage = std::string("Editing next ") +
@@ -432,13 +450,13 @@ void AdminPanel::Update(
     float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
     Rectangle cancelButton = {
         contentX,
-        panel.y + 321.0f,
+        panel.y + ACTION_BUTTON_Y,
         actionButtonWidth,
         BUTTON_HEIGHT
     };
     Rectangle deleteAllButton = {
         contentX + actionButtonWidth + 8.0f,
-        panel.y + 321.0f,
+        panel.y + ACTION_BUTTON_Y,
         actionButtonWidth,
         BUTTON_HEIGHT
     };
@@ -636,38 +654,35 @@ void AdminPanel::Draw() const {
         TEXT_SIZE,
         GOLD
     );
-    constexpr std::array<MapObjectId, 4> TYPES = {
-        MapObjectId::Chaser,
-        MapObjectId::Range,
-        MapObjectId::Diver,
-        MapObjectId::Boss
-    };
     float buttonWidth = (contentWidth - 8.0f) * 0.5f;
-    for (std::size_t index = 0; index < TYPES.size(); ++index) {
+    for (std::size_t index = 0; index < SPAWN_TYPES.size(); ++index) {
         Rectangle button = {
-            contentX + (index % 2) * (buttonWidth + 8.0f),
-            panel.y + 231.0f + (index / 2) * (BUTTON_HEIGHT + 6.0f),
+            contentX + (index % SPAWN_COLUMN_COUNT) *
+                (buttonWidth + 8.0f),
+            panel.y + SPAWN_BUTTON_START_Y +
+                (index / SPAWN_COLUMN_COUNT) *
+                    (BUTTON_HEIGHT + SPAWN_BUTTON_GAP_Y),
             buttonWidth,
             BUTTON_HEIGHT
         };
         DrawButton(
             button,
-            EnemyTypeName(TYPES[index]),
+            EnemyTypeName(SPAWN_TYPES[index]),
             mousePosition,
-            spawnType == TYPES[index]
+            spawnType == SPAWN_TYPES[index]
         );
     }
 
     float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
     Rectangle cancelButton = {
         contentX,
-        panel.y + 321.0f,
+        panel.y + ACTION_BUTTON_Y,
         actionButtonWidth,
         BUTTON_HEIGHT
     };
     Rectangle deleteAllButton = {
         contentX + actionButtonWidth + 8.0f,
-        panel.y + 321.0f,
+        panel.y + ACTION_BUTTON_Y,
         actionButtonWidth,
         BUTTON_HEIGHT
     };
@@ -677,7 +692,7 @@ void AdminPanel::Draw() const {
     DrawTextAdmin(
         statusMessage.c_str(),
         (int)contentX,
-        (int)panel.y + 367,
+        (int)(panel.y + STATUS_TEXT_Y),
         SMALL_TEXT_SIZE,
         placementArmed ? YELLOW : LIGHTGRAY
     );
@@ -687,7 +702,7 @@ void AdminPanel::Draw() const {
     DrawTextAdmin(
         heading.c_str(),
         (int)contentX,
-        (int)panel.y + 389,
+        (int)(panel.y + PROPERTY_HEADING_Y),
         TEXT_SIZE,
         GOLD
     );

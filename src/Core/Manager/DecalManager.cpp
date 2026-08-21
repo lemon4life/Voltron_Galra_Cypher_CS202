@@ -27,22 +27,23 @@ void DecalManager::Update(
             // 1. Horizontal Sliding, Collision & Friction
             Rectangle corpseBox = { corpse.position.x - 8.0f, corpse.position.y - 8.0f, 16.0f, 16.0f };
 
-            // X-axis collision
-            corpse.position.x += corpse.slideVelocity.x * deltaTime;
-            corpseBox.x = corpse.position.x - 8.0f;
-            if (levelManager && levelManager->IsSolidCollision(corpseBox)) {
-                corpse.position.x -= corpse.slideVelocity.x * deltaTime; // revert X
-                corpse.slideVelocity.x *= -0.5f; // bounce and dampen
-                corpseBox.x = corpse.position.x - 8.0f; // reset box X for Y check
+            Vector2 desiredDisplacement = {
+                corpse.slideVelocity.x * deltaTime,
+                corpse.slideVelocity.y * deltaTime
+            };
+            Vector2 appliedDisplacement = desiredDisplacement;
+            if (levelManager) {
+                CollisionMovementResult movement =
+                    levelManager->ResolveSolidMovement(
+                        corpseBox,
+                        desiredDisplacement
+                    );
+                appliedDisplacement = movement.appliedDisplacement;
+                if (movement.blockedX) corpse.slideVelocity.x *= -0.5f;
+                if (movement.blockedY) corpse.slideVelocity.y *= -0.5f;
             }
-
-            // Y-axis collision
-            corpse.position.y += corpse.slideVelocity.y * deltaTime;
-            corpseBox.y = corpse.position.y - 8.0f;
-            if (levelManager && levelManager->IsSolidCollision(corpseBox)) {
-                corpse.position.y -= corpse.slideVelocity.y * deltaTime; // revert Y
-                corpse.slideVelocity.y *= -0.5f; // bounce and dampen
-            }
+            corpse.position.x += appliedDisplacement.x;
+            corpse.position.y += appliedDisplacement.y;
             
             // High friction to make them skid to a halt quickly
             corpse.slideVelocity.x -= corpse.slideVelocity.x * 8.0f * deltaTime;

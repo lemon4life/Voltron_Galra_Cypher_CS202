@@ -167,6 +167,8 @@ void ObjectManager::FinalizeEnemyDeath(Enemy& enemy) {
         AssetManager::GetInstance().GetTexture("Enemy_Down");
     if (enemy.GetEnemyType() == EnemyType::DRONE) {
         downTexture = AssetManager::GetInstance().GetTexture("Drone_down");
+    } else if (enemy.GetEnemyType() == EnemyType::DEMON_THA) {
+        downTexture = AssetManager::GetInstance().GetTexture("THA_Down");
     }
     effectManager->AddCorpse(
         enemy.GetPosition(),
