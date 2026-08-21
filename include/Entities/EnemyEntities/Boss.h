@@ -2,6 +2,12 @@
 
 #include "Entities/Enemy.h"
 
+enum class BossPhase {
+    Phase1,
+    Phase2,
+    Phase3
+};
+
 class Boss : public Enemy {
 private:
     std::unique_ptr<BossSpellingState> spellingState;
@@ -40,7 +46,14 @@ public:
     bool IsSpelling() const { return currentState == spellingState.get(); }
     bool IsPunching() const { return currentState == punchState.get(); }
     bool IsStomping() const { return currentState == stompingState.get(); }
-    bool TrySummonRandomEnemy();
+    BossPhase GetPhase() const;
+    int GetIdleMinimumMilliseconds() const;
+    int GetIdleMaximumMilliseconds() const;
+    int GetStompsPerState() const;
+    int GetPunchesPerState() const;
+    float GetSpellSummonInterval() const;
+    int GetSpellSummonChancePercent() const;
+    bool TrySummonRandomEnemy(int& demonsSummonedThisSpell);
     void SpawnStompSmoke();
     void FireStompProjectiles();
     void FirePunchProjectile(

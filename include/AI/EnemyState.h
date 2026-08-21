@@ -148,6 +148,7 @@ private:
     float elapsedTime = 0.0f;
     float spellDuration = 0.0f;
     float nextSummonCheck = 0.0f;
+    int demonsSummoned = 0;
 
 public:
     void Enter(Boss* enemy) override;
@@ -167,6 +168,7 @@ private:
     float frameTimer = 0.0f;
     int frameIndex = 0;
     int completedPunches = 0;
+    int punchesForState = 0;
     float bulletSpeed = 250.0f;
     float changeAngleDegreesPerSecond = 30.0f;
 
@@ -185,6 +187,7 @@ private:
     float frameTimer = 0.0f;
     int frameIndex = 0;
     int completedStomps = 0;
+    int stompsForState = 0;
 
 public:
     void Enter(Boss* enemy) override;

@@ -15,7 +15,24 @@
 #include <cmath>
 
 namespace {
-    constexpr int BOSS_MAX_HEALTH = 500;
+    constexpr int BOSS_MAX_HEALTH = 2000;
+    constexpr int BOSS_PHASE_ONE_MIN_HEALTH = 1500;
+    constexpr int BOSS_PHASE_TWO_MIN_HEALTH = 1000;
+    constexpr int BOSS_PHASE_ONE_IDLE_MIN_MILLISECONDS = 3000;
+    constexpr int BOSS_PHASE_ONE_IDLE_MAX_MILLISECONDS = 5000;
+    constexpr int BOSS_HARDER_PHASE_IDLE_MIN_MILLISECONDS = 2000;
+    constexpr int BOSS_HARDER_PHASE_IDLE_MAX_MILLISECONDS = 4000;
+    constexpr int BOSS_PHASE_ONE_STOMPS = 2;
+    constexpr int BOSS_HARDER_PHASE_STOMPS = 3;
+    constexpr int BOSS_PHASE_ONE_PUNCHES = 4;
+    constexpr int BOSS_PHASE_TWO_PUNCHES = 7;
+    constexpr int BOSS_PHASE_THREE_PUNCHES = 10;
+    constexpr float BOSS_NORMAL_SPELL_SUMMON_INTERVAL = 0.5f;
+    constexpr float BOSS_PHASE_THREE_SPELL_SUMMON_INTERVAL = 0.2f;
+    constexpr int BOSS_PHASE_ONE_SUMMON_CHANCE_PERCENT = 50;
+    constexpr int BOSS_HARDER_PHASE_SUMMON_CHANCE_PERCENT = 70;
+    constexpr int BOSS_PHASE_THREE_MAX_DEMON_SUMMONS = 2;
+    constexpr float BOSS_PHASE_THREE_STOMP_BULLET_SPEED_SCALE = 1.5f;
     constexpr float BOSS_SPEED = 75.0f;
     constexpr int BOSS_DAMAGE = 25;
     constexpr float BOSS_ATTACK_COOLDOWN = 0.8f;
@@ -419,7 +436,55 @@ void Boss::Draw() {
     DrawSpawnEffect();
 }
 
-bool Boss::TrySummonRandomEnemy() {
+BossPhase Boss::GetPhase() const {
+    if (health >= BOSS_PHASE_ONE_MIN_HEALTH) return BossPhase::Phase1;
+    if (health >= BOSS_PHASE_TWO_MIN_HEALTH) return BossPhase::Phase2;
+    return BossPhase::Phase3;
+}
+
+int Boss::GetIdleMinimumMilliseconds() const {
+    return GetPhase() == BossPhase::Phase1
+        ? BOSS_PHASE_ONE_IDLE_MIN_MILLISECONDS
+        : BOSS_HARDER_PHASE_IDLE_MIN_MILLISECONDS;
+}
+
+int Boss::GetIdleMaximumMilliseconds() const {
+    return GetPhase() == BossPhase::Phase1
+        ? BOSS_PHASE_ONE_IDLE_MAX_MILLISECONDS
+        : BOSS_HARDER_PHASE_IDLE_MAX_MILLISECONDS;
+}
+
+int Boss::GetStompsPerState() const {
+    return GetPhase() == BossPhase::Phase1
+        ? BOSS_PHASE_ONE_STOMPS
+        : BOSS_HARDER_PHASE_STOMPS;
+}
+
+int Boss::GetPunchesPerState() const {
+    switch (GetPhase()) {
+        case BossPhase::Phase1:
+            return BOSS_PHASE_ONE_PUNCHES;
+        case BossPhase::Phase2:
+            return BOSS_PHASE_TWO_PUNCHES;
+        case BossPhase::Phase3:
+        default:
+            return BOSS_PHASE_THREE_PUNCHES;
+    }
+}
+
+float Boss::GetSpellSummonInterval() const {
+    return GetPhase() == BossPhase::Phase3
+        ? BOSS_PHASE_THREE_SPELL_SUMMON_INTERVAL
+        : BOSS_NORMAL_SPELL_SUMMON_INTERVAL;
+}
+
+int Boss::GetSpellSummonChancePercent() const {
+    return GetPhase() == BossPhase::Phase1
+        ? BOSS_PHASE_ONE_SUMMON_CHANCE_PERCENT
+        : BOSS_HARDER_PHASE_SUMMON_CHANCE_PERCENT;
+}
+
+bool Boss::TrySummonRandomEnemy(int& demonsSummonedThisSpell) {
     LevelManager* levelManager =
         GameManager::GetInstance().GetLevelManager();
     if (!levelManager || !targetTeam) return false;
@@ -427,9 +492,17 @@ bool Boss::TrySummonRandomEnemy() {
     constexpr MapObjectId SUMMON_TYPES[] = {
         MapObjectId::Chaser,
         MapObjectId::Range,
-        MapObjectId::Diver
+        MapObjectId::Diver,
+        MapObjectId::DemonTHA
     };
-    MapObjectId summonType = SUMMON_TYPES[GetRandomValue(0, 2)];
+    BossPhase phase = GetPhase();
+    bool canSummonDemon = phase != BossPhase::Phase1 &&
+        (phase != BossPhase::Phase3 ||
+         demonsSummonedThisSpell < BOSS_PHASE_THREE_MAX_DEMON_SUMMONS);
+    int maximumTypeIndex = canSummonDemon ? 3 : 2;
+    MapObjectId summonType = SUMMON_TYPES[
+        GetRandomValue(0, maximumTypeIndex)
+    ];
 
     for (int attempt = 0; attempt < BOSS_SUMMON_ATTEMPTS; ++attempt) {
         float angle = (float)GetRandomValue(0, 359) * DEG2RAD;
@@ -444,6 +517,9 @@ bool Boss::TrySummonRandomEnemy() {
         if (GameManager::GetInstance()
                 .GetObjectManager()
                 .QueueSpawn(summonType, summonPosition)) {
+            if (summonType == MapObjectId::DemonTHA) {
+                ++demonsSummonedThisSpell;
+            }
             return true;
         }
     }
@@ -481,6 +557,9 @@ void Boss::SpawnStompSmoke() {
 void Boss::FireStompProjectiles() {
     Vector2 origin = GetStompFootWorldPosition();
     GameManager& gameManager = GameManager::GetInstance();
+    float speedScale = GetPhase() == BossPhase::Phase3
+        ? BOSS_PHASE_THREE_STOMP_BULLET_SPEED_SCALE
+        : 1.0f;
 
     if (stompDroneBulletTexture.id != 0) {
         for (int index = 0;
@@ -499,9 +578,9 @@ void Boss::FireStompProjectiles() {
             gameManager.AddProjectile(new DroneBullet(
                 spawnPosition,
                 direction,
-                STOMP_DRONE_BULLET_INITIAL_SPEED,
-                STOMP_DRONE_BULLET_MINIMUM_SPEED,
-                STOMP_DRONE_BULLET_DRAG,
+                STOMP_DRONE_BULLET_INITIAL_SPEED * speedScale,
+                STOMP_DRONE_BULLET_MINIMUM_SPEED * speedScale,
+                STOMP_DRONE_BULLET_DRAG * speedScale,
                 STOMP_DRONE_BULLET_LIFETIME,
                 STOMP_DRONE_BULLET_RADIUS,
                 STOMP_DRONE_BULLET_DAMAGE,
@@ -527,7 +606,10 @@ void Boss::FireStompProjectiles() {
             );
             gameManager.AddProjectile(new Projectile(
                 spawnPosition,
-                Vector2Scale(direction, STOMP_KNIGHT_BULLET_SPEED),
+                Vector2Scale(
+                    direction,
+                    STOMP_KNIGHT_BULLET_SPEED * speedScale
+                ),
                 STOMP_KNIGHT_BULLET_LIFETIME,
                 STOMP_KNIGHT_BULLET_DAMAGE,
                 stompKnightBulletTexture,

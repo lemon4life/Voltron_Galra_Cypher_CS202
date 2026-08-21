@@ -13,20 +13,15 @@
 #include <array>
 
 namespace {
-    constexpr int BOSS_IDLE_MIN_MILLISECONDS = 3000;
-    constexpr int BOSS_IDLE_MAX_MILLISECONDS = 5000;
     constexpr int BOSS_CHASE_MIN_MILLISECONDS = 5000;
     constexpr int BOSS_CHASE_MAX_MILLISECONDS = 7000;
     constexpr int BOSS_SPELL_MIN_MILLISECONDS = 4000;
     constexpr int BOSS_SPELL_MAX_MILLISECONDS = 6000;
-    constexpr float BOSS_SPELL_SUMMON_INTERVAL = 0.5f;
     constexpr int BOSS_PUNCH_READY_FRAME_COUNT = 10;
     constexpr int BOSS_PUNCH_PLAY_FRAME_COUNT = 4;
     constexpr int BOSS_PUNCH_FIRE_FRAME_INDEX = 2;
-    constexpr int BOSS_PUNCHES_PER_STATE = 10;
     constexpr float BOSS_PUNCH_FRAME_DURATION = 0.06f;
     constexpr int BOSS_STOMP_FRAME_COUNT = 5;
-    constexpr int BOSS_STOMPS_PER_STATE = 3;
     constexpr float BOSS_STOMP_SLOW_FRAME_DURATION = 0.35f;
     constexpr float BOSS_STOMP_FAST_FRAME_DURATION = 0.10f;
 
@@ -82,8 +77,8 @@ namespace {
 void BossIdlingState::Enter(Boss* enemy) {
     elapsedTime = 0.0f;
     idleDuration = RollDuration(
-        BOSS_IDLE_MIN_MILLISECONDS,
-        BOSS_IDLE_MAX_MILLISECONDS
+        enemy->GetIdleMinimumMilliseconds(),
+        enemy->GetIdleMaximumMilliseconds()
     );
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
 }
@@ -187,7 +182,8 @@ void BossSpellingState::Enter(Boss* enemy) {
         BOSS_SPELL_MIN_MILLISECONDS,
         BOSS_SPELL_MAX_MILLISECONDS
     );
-    nextSummonCheck = BOSS_SPELL_SUMMON_INTERVAL;
+    nextSummonCheck = enemy->GetSpellSummonInterval();
+    demonsSummoned = 0;
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
     enemy->ResetAnimationCycle();
@@ -198,10 +194,11 @@ void BossSpellingState::Update(Boss* enemy, float deltaTime) {
 
     while (nextSummonCheck <= spellDuration &&
            elapsedTime >= nextSummonCheck) {
-        if (GetRandomValue(0, 1) == 0) {
-            enemy->TrySummonRandomEnemy();
+        if (GetRandomValue(1, 100) <=
+            enemy->GetSpellSummonChancePercent()) {
+            enemy->TrySummonRandomEnemy(demonsSummoned);
         }
-        nextSummonCheck += BOSS_SPELL_SUMMON_INTERVAL;
+        nextSummonCheck += enemy->GetSpellSummonInterval();
     }
 
     if (elapsedTime >= spellDuration) {
@@ -220,6 +217,7 @@ void BossPunchState::Enter(Boss* enemy) {
     frameTimer = 0.0f;
     frameIndex = 0;
     completedPunches = 0;
+    punchesForState = enemy->GetPunchesPerState();
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
 }
@@ -249,7 +247,7 @@ void BossPunchState::Update(Boss* enemy, float deltaTime) {
         if (frameIndex >= BOSS_PUNCH_PLAY_FRAME_COUNT) {
             frameIndex = 0;
             ++completedPunches;
-            if (completedPunches >= BOSS_PUNCHES_PER_STATE) {
+            if (completedPunches >= punchesForState) {
                 enemy->ChangeState(enemy->GetIdlingState());
                 return;
             }
@@ -268,6 +266,7 @@ void BossStompingState::Enter(Boss* enemy) {
     frameTimer = 0.0f;
     frameIndex = 0;
     completedStomps = 0;
+    stompsForState = enemy->GetStompsPerState();
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
     enemy->ResetAnimationCycle();
@@ -288,7 +287,7 @@ void BossStompingState::Update(Boss* enemy, float deltaTime) {
         if (frameIndex >= BOSS_STOMP_FRAME_COUNT) {
             frameIndex = 0;
             ++completedStomps;
-            if (completedStomps >= BOSS_STOMPS_PER_STATE) {
+            if (completedStomps >= stompsForState) {
                 enemy->ChangeState(enemy->GetIdlingState());
                 return;
             }

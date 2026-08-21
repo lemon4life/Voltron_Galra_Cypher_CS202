@@ -50,7 +50,8 @@ struct RoomNode {
           
         if (t == RoomType::BOSS) roomSize = 25;
         else if (t == RoomType::BATTLE) {
-            roomSize = (GetRandomValue(0, 1) == 0) ? 20 : 25;
+            // Boss rooms are the unique largest room category.
+            roomSize = (GetRandomValue(0, 1) == 0) ? 15 : 20;
         } else {
             roomSize = 15;
         }

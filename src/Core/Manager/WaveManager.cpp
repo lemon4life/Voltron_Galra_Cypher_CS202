@@ -242,7 +242,11 @@ void WaveManager::SpawnEnemy(
         // Apply Roguelike scaling buff
         int currentFloor = GameManager::GetInstance().GetCurrentFloor();
         float floorMultiplier = 1.0f + ((currentFloor - 1) * 0.3f);
-        static_cast<Enemy*>(newEnemy)->ApplyStatMultiplier(floorMultiplier);
+        if (spawnType != MapObjectId::Boss) {
+            static_cast<Enemy*>(newEnemy)->ApplyStatMultiplier(
+                floorMultiplier
+            );
+        }
 
         if (spawnType == MapObjectId::Range &&
             rangeEnemiesToSpawn > 0) {
