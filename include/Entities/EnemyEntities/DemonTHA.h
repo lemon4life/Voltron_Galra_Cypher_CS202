@@ -20,7 +20,7 @@ private:
     struct GunPose {
         Vector2 anchorWorld = { 0.0f, 0.0f };
         Vector2 drawOrigin = { 0.0f, 0.0f };
-        Vector2 muzzleWorld = { 0.0f, 0.0f };
+        Vector2 shotOriginWorld = { 0.0f, 0.0f };
         float angleDegrees = 0.0f;
         bool flipSprite = false;
     };
@@ -41,6 +41,7 @@ private:
     int bodyFrameIndex = 0;
     bool gunShooting = false;
     float gunFrameTimer = 0.0f;
+    float gunShotTimer = 0.0f;
     int gunFrameIndex = 0;
     bool nextWanderGoalUsesLineOfSight = false;
 

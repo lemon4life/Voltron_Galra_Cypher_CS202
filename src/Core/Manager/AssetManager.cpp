@@ -205,6 +205,7 @@ void AssetManager::QueueCharacterAssets() {
     add("THA_Idle", "assets/sprites/Enemy/THA-idle.png", true);
     add("THA_Run", "assets/sprites/Enemy/THA-running.png", true);
     add("THA_Down", "assets/sprites/Enemy/THA-Down.png", true);
+    add("THA_Light_Bullet", "assets/sprites/Enemy/light-bullet.png", true);
     add("THA_Shooting", "assets/sprites/Enemy/THA-shooting.png", true);
     add("THA_Gun_Idle", "assets/sprites/Enemy/THA-gun-idle.png", true);
     add(

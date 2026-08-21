@@ -6,7 +6,7 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
-#include "Entities/Projectile.h"
+#include "Entities/Projectiles/DemonTHABullet.h"
 
 #include "raymath.h"
 
@@ -40,18 +40,20 @@ namespace {
     constexpr float GUN_FRAME_WIDTH = 35.0f;
     constexpr float GUN_FRAME_HEIGHT = 17.0f;
     constexpr int GUN_SHOOTING_FRAME_COUNT = 4;
-    constexpr int GUN_FIRE_FRAME_INDEX = 1;
     constexpr float GUN_FRAME_DURATION = 0.10f;
     constexpr Vector2 GUN_ROOT = { 19.0f, 0.0f };
     constexpr Vector2 GUN_MUZZLE_POINT = { 2.0f, 10.0f };
     constexpr Vector2 GUN_REAR_ALIGNMENT_POINT = { 29.0f, 10.0f };
+    constexpr Vector2 GUN_SHOT_ORIGIN_POINT = { 11.0f, 11.0f };
     constexpr bool SOURCE_ART_FACES_LEFT = true;
 
     constexpr float AGGRO_DISTANCE = 100.0f;
     constexpr int DISTANT_IDLE_AGGRO_PERCENT = 30;
-    constexpr float PROJECTILE_SPEED = 320.0f;
-    constexpr float PROJECTILE_LIFETIME = 2.0f;
+    constexpr float PROJECTILE_SPEED = 150.0f;
+    constexpr float PROJECTILE_LIFETIME = 3.0f;
     constexpr float PROJECTILE_RADIUS = 5.0f;
+    constexpr float PROJECTILE_FIRE_INTERVAL = 0.3f;
+    constexpr int PROJECTILE_SPREAD_CENTIDEGREES = 500;
     constexpr float HEALTH_BAR_GAP = 8.0f;
     constexpr float HEALTH_BAR_HEIGHT = 4.0f;
     constexpr float MIN_DIRECTION_LENGTH = 0.001f;
@@ -116,7 +118,7 @@ DemonTHA::DemonTHA(
         { 0 },
         idleGunTexture,
         { 0 },
-        assets.GetTexture("Knight_Gun_Bullet")
+        assets.GetTexture("THA_Light_Bullet")
     });
 
     ChangeState(wanderIdleState.get());
@@ -164,6 +166,9 @@ DemonTHA::GunPose DemonTHA::CalculateGunPose(
     float rearAlignmentX = flipSprite
         ? GUN_FRAME_WIDTH - 1.0f - GUN_REAR_ALIGNMENT_POINT.x
         : GUN_REAR_ALIGNMENT_POINT.x;
+    float shotOriginX = flipSprite
+        ? GUN_FRAME_WIDTH - 1.0f - GUN_SHOT_ORIGIN_POINT.x
+        : GUN_SHOT_ORIGIN_POINT.x;
     Vector2 muzzleFromRoot = {
         muzzleX - gunRootX,
         GUN_MUZZLE_POINT.y - GUN_ROOT.y
@@ -200,12 +205,18 @@ DemonTHA::GunPose DemonTHA::CalculateGunPose(
         desiredForwardAngle -= std::asin(alignmentRatio) * RAD2DEG;
     }
     float angleDegrees = desiredForwardAngle - sourceForwardAngle;
-    Vector2 muzzleOffset = RotateVector(muzzleFromRoot, angleDegrees);
+    Vector2 shotOriginOffset = RotateVector(
+        {
+            shotOriginX - gunRootX,
+            GUN_SHOT_ORIGIN_POINT.y - GUN_ROOT.y
+        },
+        angleDegrees
+    );
 
     return {
         anchor,
         { gunRootX, GUN_ROOT.y },
-        Vector2Add(anchor, muzzleOffset),
+        Vector2Add(anchor, shotOriginOffset),
         angleDegrees,
         flipSprite
     };
@@ -224,11 +235,11 @@ bool DemonTHA::HasClearShotFrom(
            ) &&
            lineOfSightQuery.HasClearLineOfSight(
                entityPosition,
-               pose.muzzleWorld,
+               pose.shotOriginWorld,
                PROJECTILE_RADIUS
            ) &&
            lineOfSightQuery.HasClearLineOfSight(
-               pose.muzzleWorld,
+               pose.shotOriginWorld,
                targetPosition,
                PROJECTILE_RADIUS
            );
@@ -271,6 +282,7 @@ void DemonTHA::SetGunShooting(bool shooting) {
     if (gunShooting == shooting) return;
     gunShooting = shooting;
     gunFrameTimer = 0.0f;
+    gunShotTimer = 0.0f;
     gunFrameIndex = 0;
 }
 
@@ -283,34 +295,31 @@ DemonTHA::BodyAnimation DemonTHA::GetDesiredBodyAnimation() const {
 
 bool DemonTHA::TryFireAtActivePlayer() {
     Paladin* target = GetActiveTarget();
-    if (!target || GetAttackCooldown() > 0.0f ||
-        !HasClearShotFrom(position, *target)) {
-        return false;
-    }
+    if (!target) return false;
 
     Vector2 playerCenter = GetPlayerCenter(*target);
     GunPose pose = CalculateGunPose(position, playerCenter);
     Vector2 direction = Vector2Subtract(
         playerCenter,
-        pose.muzzleWorld
+        pose.shotOriginWorld
     );
     if (Vector2Length(direction) <= MIN_DIRECTION_LENGTH) return false;
     direction = Vector2Normalize(direction);
+    float spreadDegrees = (float)GetRandomValue(
+        -PROJECTILE_SPREAD_CENTIDEGREES,
+        PROJECTILE_SPREAD_CENTIDEGREES
+    ) / 100.0f;
+    direction = Vector2Rotate(direction, spreadDegrees * DEG2RAD);
 
-    Texture2D projectileTexture =
-        AssetManager::GetInstance().GetTexture("Knight_Gun_Bullet");
-    auto* projectile = new Projectile(
-        pose.muzzleWorld,
+    auto* projectile = new DemonTHABullet(
+        pose.shotOriginWorld,
         Vector2Scale(direction, PROJECTILE_SPEED),
         PROJECTILE_LIFETIME,
         GetDamage(),
-        projectileTexture,
-        true,
-        PROJECTILE_RADIUS
+        sprites.projectile
     );
     GameManager::GetInstance().AddProjectile(projectile);
     AudioManager::GetInstance().PlayRandomLaser();
-    ResetAttackCooldown();
     return true;
 }
 
@@ -340,6 +349,7 @@ void DemonTHA::UpdateAnimations(float deltaTime) {
 
     if (!gunShooting) {
         gunFrameTimer = 0.0f;
+        gunShotTimer = 0.0f;
         gunFrameIndex = 0;
         return;
     }
@@ -349,9 +359,12 @@ void DemonTHA::UpdateAnimations(float deltaTime) {
         gunFrameTimer -= GUN_FRAME_DURATION;
         gunFrameIndex =
             (gunFrameIndex + 1) % GUN_SHOOTING_FRAME_COUNT;
-        if (gunFrameIndex == GUN_FIRE_FRAME_INDEX) {
-            TryFireAtActivePlayer();
-        }
+    }
+
+    gunShotTimer += std::max(0.0f, deltaTime);
+    while (gunShotTimer >= PROJECTILE_FIRE_INTERVAL) {
+        gunShotTimer -= PROJECTILE_FIRE_INTERVAL;
+        TryFireAtActivePlayer();
     }
 }
 
