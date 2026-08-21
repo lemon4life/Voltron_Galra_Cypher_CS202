@@ -11,6 +11,12 @@ Texture2D AssetManager::LoadTexture2D(const std::string& key, const std::string&
         return textures[key]; // Already loaded
     }
 
+    auto pathIt = texturesByPath.find(path);
+    if (pathIt != texturesByPath.end()) {
+        textures[key] = pathIt->second;
+        return pathIt->second;
+    }
+
     Texture2D tex = LoadTexture(path.c_str());
     if (tex.id == 0) {
         std::cerr << "Failed to load texture: " << path << std::endl;
@@ -19,6 +25,7 @@ Texture2D AssetManager::LoadTexture2D(const std::string& key, const std::string&
     }
 
     textures[key] = tex;
+    texturesByPath[path] = tex;
     return tex;
 }
 
@@ -67,15 +74,28 @@ void AssetManager::LoadCommonAssets() {
 }
 
 void AssetManager::UnloadAll() {
-    for (auto& pair : textures) {
+    for (auto& pair : texturesByPath) {
         UnloadTexture(pair.second);
     }
     textures.clear();
+    texturesByPath.clear();
     
     for (auto& pair : fonts) {
         UnloadFont(pair.second);
     }
     fonts.clear();
+}
+
+std::size_t AssetManager::GetEstimatedTextureBytes() const {
+    std::size_t total = 0;
+    for (const auto& pair : texturesByPath) {
+        const Texture2D& texture = pair.second;
+        if (texture.width > 0 && texture.height > 0) {
+            total += static_cast<std::size_t>(texture.width) *
+                static_cast<std::size_t>(texture.height) * 4U;
+        }
+    }
+    return total;
 }
 
 void AssetManager::QueueCharacterAssets() {

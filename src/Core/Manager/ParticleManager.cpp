@@ -2,6 +2,10 @@
 #include "raymath.h"
 #include <cmath>
 
+namespace {
+constexpr std::size_t MAX_ACTIVE_PARTICLES = 2048;
+}
+
 // ─── Constructor ────────────────────────────────────────────────────────────
 
 ParticleManager::ParticleManager() : silhouetteShader({ 0 }) {
@@ -12,6 +16,7 @@ ParticleManager::~ParticleManager() {
 }
 
 void ParticleManager::Initialize() {
+    if (silhouetteShader.id != 0) return;
     // Fragment shader: uses the sprite's alpha for the shape, but replaces
     // all RGB with the tint color (fragColor). This produces a solid-fill silhouette.
     static const char* fragSrc = R"(
@@ -108,12 +113,14 @@ bool SpriteParticle::IsDead() const {
 // ─── Emission ────────────────────────────────────────────────────────────────
 
 void ParticleManager::Emit(Vector2 position, Vector2 velocity, Color color, float size, float lifeSpan) {
+    if (activeParticles.size() >= MAX_ACTIVE_PARTICLES) return;
     activeParticles.push_back(std::make_unique<SpriteParticle>(position, velocity, color, size, lifeSpan));
 }
 
 void ParticleManager::EmitSprite(Vector2 position, Vector2 velocity, Texture2D texture,
                                   Rectangle sourceRect, float rotation, float size,
                                   float lifeSpan, Color tint, bool silhouette) {
+    if (activeParticles.size() >= MAX_ACTIVE_PARTICLES) return;
     activeParticles.push_back(std::make_unique<SpriteParticle>(position, velocity, tint, size, lifeSpan, texture, sourceRect, rotation, silhouette));
 }
 
@@ -141,7 +148,7 @@ void ParticleManager::Draw() {
 // ─── Utility ─────────────────────────────────────────────────────────────────
 
 void ParticleManager::Clear() {
-    activeParticles.clear();
+    decltype(activeParticles){}.swap(activeParticles);
 }
 
 // ─── Combat Emitters ─────────────────────────────────────────────────────────
@@ -219,6 +226,7 @@ void ParticleManager::SpawnImpact(Vector2 pos, Vector2 projectileVelocity, Color
 #include "Core/Visuals/DamageTextParticle.h"
 
 void ParticleManager::SpawnDamageNumber(Vector2 pos, int damage) {
+    if (activeParticles.size() >= MAX_ACTIVE_PARTICLES) return;
     // Generate a random slight upward/outward velocity (less extreme)
     float angle = (float)GetRandomValue(-120, -60) * DEG2RAD;
     float speed = (float)GetRandomValue(50, 100);

@@ -105,9 +105,10 @@ void Projectile::Draw() {
 }
 
 bool Projectile::HasHitTarget(GameObject* target) const {
-    return hitTargets.find(target) != hitTargets.end();
+    return std::find(hitTargets.begin(), hitTargets.end(), target) !=
+        hitTargets.end();
 }
 
 void Projectile::RecordHit(GameObject* target) {
-    hitTargets.insert(target);
+    if (target && !HasHitTarget(target)) hitTargets.push_back(target);
 }

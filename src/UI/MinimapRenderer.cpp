@@ -37,7 +37,7 @@ void MinimapRenderer::Draw(
         bounds.y + bounds.height / 2.0f
     };
     
-    auto checkRevealed = [](const std::shared_ptr<RoomNode>& n) {
+    auto checkRevealed = [](const RoomNode* n) {
         if (!n) return false;
         if (n->isDiscovered) return true;
         if (n->north && n->north->isDiscovered) return true;
@@ -49,7 +49,7 @@ void MinimapRenderer::Draw(
     
     // --- PASS 1: Draw corridors (connections) behind rooms ---
     for (const auto& node : levelMap.generatedNodes) {
-        if (!checkRevealed(node)) continue;
+        if (!checkRevealed(node.get())) continue;
         
         int dx = node->gridX - currentGridX;
         int dy = node->gridY - currentGridY;
@@ -93,7 +93,7 @@ void MinimapRenderer::Draw(
     
     // --- PASS 2: Draw room squares on top ---
     for (const auto& node : levelMap.generatedNodes) {
-        if (!checkRevealed(node)) continue;
+        if (!checkRevealed(node.get())) continue;
         
         int dx = node->gridX - currentGridX;
         int dy = node->gridY - currentGridY;

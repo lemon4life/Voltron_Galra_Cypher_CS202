@@ -28,7 +28,8 @@ private:
     bool continueAvailable = false;
     MainMenuAction pendingAction = MainMenuAction::None;
 
-    std::vector<Texture2D> bgSlides;
+    Texture2D backgroundTexture = {};
+    static constexpr int BACKGROUND_COUNT = 9;
     int currentSlideIndex;
     float slideTimer;
     float panTimer;
@@ -38,6 +39,7 @@ private:
     std::vector<MenuButton> buttons;
 
     void RebuildButtons();
+    void LoadCurrentBackground();
     
     // Lerping parameters
     float baseScale = 1.0f;
@@ -51,6 +53,7 @@ public:
     ~MainMenu();
 
     void Initialize();
+    void Shutdown();
     void Update(float deltaTime);
     bool IsReady() const { return isReady; }
     MenuState GetState() const { return currentState; }

@@ -82,10 +82,10 @@ void LevelMap::Generate(int width, int height) {
         generatedNodes.push_back(nextNode);
         
         // Link them
-        if (slot.dy == -1) { slot.neighbor->north = nextNode; nextNode->south = slot.neighbor; }
-        if (slot.dy == 1) { slot.neighbor->south = nextNode; nextNode->north = slot.neighbor; }
-        if (slot.dx == 1) { slot.neighbor->east = nextNode; nextNode->west = slot.neighbor; }
-        if (slot.dx == -1) { slot.neighbor->west = nextNode; nextNode->east = slot.neighbor; }
+        if (slot.dy == -1) { slot.neighbor->north = nextNode.get(); nextNode->south = slot.neighbor.get(); }
+        if (slot.dy == 1) { slot.neighbor->south = nextNode.get(); nextNode->north = slot.neighbor.get(); }
+        if (slot.dx == 1) { slot.neighbor->east = nextNode.get(); nextNode->west = slot.neighbor.get(); }
+        if (slot.dx == -1) { slot.neighbor->west = nextNode.get(); nextNode->east = slot.neighbor.get(); }
     }
 }
 

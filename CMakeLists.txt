@@ -27,6 +27,17 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 # Create the main executable target
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+option(ENABLE_ADDRESS_SANITIZER "Enable AddressSanitizer for memory debugging" OFF)
+if(ENABLE_ADDRESS_SANITIZER)
+    if(MSVC)
+        target_compile_options(${PROJECT_NAME} PRIVATE /fsanitize=address /Zi)
+        target_link_options(${PROJECT_NAME} PRIVATE /INCREMENTAL:NO)
+    else()
+        target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+        target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+    endif()
+endif()
+
 # Specify target include directories
 target_include_directories(${PROJECT_NAME} PRIVATE include src)
 
@@ -34,6 +45,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE include src)
 # Raylib's CMake configuration automatically handles platform-specific
 # dependencies (like OpenGL, Cocoa/IOKit on macOS, etc.)
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE psapi)
+endif()
 
 # Copy assets folder to the build directory after building so new assets are always included
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

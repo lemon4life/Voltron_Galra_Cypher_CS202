@@ -74,6 +74,9 @@ cmake-build-debug/
 # Local tmp folder
 /tmp/*
 
+# Runtime diagnostics
+/log.txt
+
 #locoal AGENTS.md
 AGENTS.md
 .vscode/settings.json

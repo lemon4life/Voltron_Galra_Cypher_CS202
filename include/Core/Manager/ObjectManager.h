@@ -27,7 +27,22 @@ struct QuintessenceOrb {
     Vector2 position = { 0.0f, 0.0f };
     Vector2 velocity = { 0.0f, 0.0f };
     bool isAttracted = false;
+    float age = 0.0f;
     std::deque<Vector2> positionHistory;
+};
+
+struct ObjectManagerMemoryStats {
+    std::size_t enemies = 0;
+    std::size_t enemyCapacity = 0;
+    std::size_t projectiles = 0;
+    std::size_t projectileCapacity = 0;
+    std::size_t pickups = 0;
+    std::size_t assists = 0;
+    std::size_t interactables = 0;
+    std::size_t orbs = 0;
+    std::size_t orbCapacity = 0;
+    std::size_t pendingAdditions = 0;
+    std::size_t pendingRemovals = 0;
 };
 
 class ObjectManager : public IEntityRemovalAccess {
@@ -106,6 +121,7 @@ public:
         return interactableView;
     }
     std::size_t GetEnemyCount() const { return enemies.size(); }
+    ObjectManagerMemoryStats GetMemoryStats() const;
     GameObject* FindObject(ObjectId id) const;
     Enemy* FindEnemy(ObjectId id) const;
     Pot* FindNearestPickup(Vector2 position, float radius) const;

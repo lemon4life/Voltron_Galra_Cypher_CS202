@@ -14,7 +14,7 @@ Pidge::Pidge(Vector2 startPos, CharacterSprites sprites)
     introData = {"PIDGE", "ROVER OVERRIDE", GREEN, "Card_Pidge", "pidge_ult_voice"};
     weaponRotation = 0.0f;
     isWeaponThrown = false;
-    thrownWeapon = nullptr;
+    thrownWeaponId = INVALID_OBJECT_ID;
     
     const WeaponDefinition& weapon = PaladinCatalog::Get(PaladinId::Pidge).weapon;
     currentWeapon = new RangedAttackStrategy(
@@ -55,7 +55,12 @@ void Pidge::Update(float deltaTime) {
     Paladin::Update(deltaTime);
     
     // Check if thrown weapon is no longer active (e.g. destroyed by something else or expired)
-    if (isWeaponThrown && thrownWeapon && !thrownWeapon->IsActive()) {
+    Projectile* thrownWeapon = dynamic_cast<Projectile*>(
+        GameManager::GetInstance().GetObjectManager().FindObject(
+            thrownWeaponId
+        )
+    );
+    if (isWeaponThrown && (!thrownWeapon || !thrownWeapon->IsActive())) {
         CatchWeapon();
     }
     
@@ -90,12 +95,18 @@ void Pidge::Attack() {
     float speed = 800.0f; // Fast Boomerang speed
     int baseDamage = BaseStats::Damage * PaladinCatalog::Get(PaladinId::Pidge).weapon.minDamageScalar;
     
-    thrownWeapon = SpawnLinearProjectile(dir, speed, baseDamage, 0.5f, true, sprites.weapon, true);
+    Projectile* projectile = SpawnLinearProjectile(
+        dir, speed, baseDamage, 0.5f, true, sprites.weapon, true
+    );
+    thrownWeaponId = projectile
+        ? projectile->GetObjectId()
+        : INVALID_OBJECT_ID;
+    if (!projectile) isWeaponThrown = false;
 }
 
 void Pidge::CatchWeapon() {
     isWeaponThrown = false;
-    thrownWeapon = nullptr;
+    thrownWeaponId = INVALID_OBJECT_ID;
 }
 
 void Pidge::UseSkill() {
@@ -131,6 +142,11 @@ void Pidge::Draw() {
     }
 
     // Draw visual tether if weapon is thrown
+    Projectile* thrownWeapon = dynamic_cast<Projectile*>(
+        GameManager::GetInstance().GetObjectManager().FindObject(
+            thrownWeaponId
+        )
+    );
     if (isWeaponThrown && thrownWeapon && thrownWeapon->IsActive()) {
         DrawLineEx(GetWeaponPivot(), thrownWeapon->GetPosition(), 2.0f, GREEN);
     }

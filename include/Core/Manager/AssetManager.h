@@ -11,6 +11,7 @@
 class AssetManager {
 private:
     std::unordered_map<std::string, Texture2D> textures;
+    std::unordered_map<std::string, Texture2D> texturesByPath;
     std::unordered_map<std::string, Font> fonts;
     std::vector<std::function<void()>> loadTasks;
     int totalTasks = 0;
@@ -36,6 +37,10 @@ public:
     void LoadCommonAssets();
     
     void UnloadAll();
+    std::size_t GetTextureAliasCount() const { return textures.size(); }
+    std::size_t GetUniqueTextureCount() const { return texturesByPath.size(); }
+    std::size_t GetFontCount() const { return fonts.size(); }
+    std::size_t GetEstimatedTextureBytes() const;
 
     // Helper to load all character sprites
     void QueueCharacterAssets();

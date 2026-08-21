@@ -8,6 +8,7 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/UltimateIntroManager.h"
 #include "Core/DepthRenderItem.h"
+#include "Core/Diagnostics/MemoryDiagnostics.h"
 #include "Entities/Hub/HubPaladinStand.h"
 #include "Entities/NPC.h"
 #include "Entities/Player/Hunk.h"
@@ -137,6 +138,7 @@ void GameApplication::Initialize() {
         Constants::GAME_TITLE
     );
     SetExitKey(KEY_NULL);
+    MemoryDiagnostics::ResetLog();
 
     AudioManager::GetInstance().Initialize();
     GameManager::GetInstance().GetEffectManager().Initialize();
@@ -158,10 +160,14 @@ void GameApplication::Initialize() {
 
 void GameApplication::Shutdown() {
     GameManager& gameManager = GameManager::GetInstance();
+    MemoryDiagnostics::Capture("shutdown_begin", gameManager);
     gameManager.ResetWorld();
     gameManager.GetEffectManager().Shutdown();
     levelManager.ShutdownAssets();
+    mainMenu.Shutdown();
     AssetManager::GetInstance().UnloadAll();
+    MemoryDiagnostics::Capture("resources_unloaded", gameManager);
+    AudioManager::GetInstance().Shutdown();
     CloseWindow();
 }
 
@@ -332,6 +338,10 @@ void GameApplication::RunLoop() {
             teamManager->ResetForNewGame(GetLevelCenter(levelManager));
             AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
             systemInitialized = true;
+            MemoryDiagnostics::Capture(
+                "startup_assets_and_system_ready",
+                gameManager
+            );
         }
 
         Vector2 mouseWorld = {0.0f, 0.0f};
@@ -409,6 +419,7 @@ void GameApplication::RunLoop() {
             }
             gameManager.SetCurrentStateObj(std::move(newState));
             previousEnumState = state;
+            MemoryDiagnostics::Capture("state_changed", gameManager);
         }
 
         if (auto* stateObj = gameManager.GetCurrentStateObj()) {
@@ -455,5 +466,6 @@ void GameApplication::RunLoop() {
         adminPanel.Draw();
 
         EndDrawing();
+        MemoryDiagnostics::UpdatePeriodic(deltaTime, gameManager);
     }
 }

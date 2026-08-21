@@ -8,6 +8,15 @@ AudioManager::AudioManager() {
 }
 
 AudioManager::~AudioManager() {
+    Shutdown();
+}
+
+void AudioManager::Shutdown() {
+    if (!IsAudioDeviceReady()) {
+        initialized = false;
+        return;
+    }
+
     for (auto& pair : sounds) {
         UnloadSound(pair.second);
     }
@@ -16,18 +25,28 @@ AudioManager::~AudioManager() {
     for (auto& s : laserSounds) UnloadSound(s);
     laserSounds.clear();
 
+    for (auto& s : laserGunSounds) UnloadSound(s);
+    laserGunSounds.clear();
+
     for (auto& s : footstepSounds) UnloadSound(s);
     footstepSounds.clear();
 
     for (auto& s : clickSounds) UnloadSound(s);
     clickSounds.clear();
 
+    for (auto& s : swordSlashSounds) UnloadSound(s);
+    swordSlashSounds.clear();
+
     for (auto& pair : music) {
         UnloadMusicStream(pair.second);
     }
     music.clear();
 
-    CloseAudioDevice(); 
+    currentMusicName.clear();
+    nextMusicName.clear();
+    currentFadeState = MusicFadeState::NONE;
+    initialized = false;
+    CloseAudioDevice();
 }
 
 AudioManager& AudioManager::GetInstance() {
@@ -36,11 +55,8 @@ AudioManager& AudioManager::GetInstance() {
 }
 
 void AudioManager::Initialize() {
-    laserSounds.clear();
-    laserGunSounds.clear();
-    footstepSounds.clear();
-    clickSounds.clear();
-    swordSlashSounds.clear();
+    if (initialized) return;
+    if (!IsAudioDeviceReady()) InitAudioDevice();
 
     for (int i = 0; i < 5; ++i) {
         std::string num_str = std::to_string(i);
@@ -123,6 +139,7 @@ void AudioManager::Initialize() {
     currentFootstepIndex = 0;
     SetSoundEffectsVolume(soundEffectsVolume);
     SetMusicVolumeLevel(musicVolume);
+    initialized = true;
 }
 
 
@@ -285,10 +302,16 @@ void AudioManager::SetSoundEffectsVolume(float volume) {
     for (Sound& sound : laserSounds) {
         ::SetSoundVolume(sound, soundEffectsVolume);
     }
+    for (Sound& sound : laserGunSounds) {
+        ::SetSoundVolume(sound, soundEffectsVolume);
+    }
     for (Sound& sound : footstepSounds) {
         ::SetSoundVolume(sound, soundEffectsVolume);
     }
     for (Sound& sound : clickSounds) {
+        ::SetSoundVolume(sound, soundEffectsVolume);
+    }
+    for (Sound& sound : swordSlashSounds) {
         ::SetSoundVolume(sound, soundEffectsVolume);
     }
 }
@@ -307,4 +330,10 @@ float AudioManager::GetSoundEffectsVolume() const {
 
 float AudioManager::GetMusicVolumeLevel() const {
     return musicVolume;
+}
+
+std::size_t AudioManager::GetSoundCount() const {
+    return sounds.size() + laserSounds.size() + laserGunSounds.size() +
+        footstepSounds.size() + clickSounds.size() +
+        swordSlashSounds.size();
 }

@@ -14,6 +14,17 @@
 #include "Core/DepthRenderItem.h"
 #include "Core/Level/ILevelProvider.h"
 
+struct LevelMemoryStats {
+    std::size_t roomNodes = 0;
+    std::size_t liveRoomNodes = 0;
+    std::size_t mapObjects = 0;
+    std::size_t staticSpawnNodes = 0;
+    std::size_t layerCells = 0;
+    std::size_t lineOfSightBlockerTiles = 0;
+    std::size_t lineOfSightTraces = 0;
+    std::size_t lineOfSightRectangles = 0;
+};
+
 class LevelManager : public ILevelLineOfSightQuery {
 private:
     enum class LevelMode {
@@ -165,4 +176,5 @@ public:
     const std::vector<std::unique_ptr<MapObject>>& GetMapObjects() const {
         return mapObjects;
     }
+    LevelMemoryStats GetMemoryStats() const;
 };

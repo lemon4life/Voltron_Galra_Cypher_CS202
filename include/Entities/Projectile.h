@@ -1,7 +1,7 @@
 #pragma once
 #include "Entities/GameObject.h"
 #include "Core/World/ObjectId.h"
-#include <unordered_set>
+#include <vector>
 
 class Projectile : public GameObject {
 private:
@@ -22,8 +22,8 @@ private:
     GameObject* owner = nullptr;
     float maxFlyTime = 0.0f;
     float flightTimer = 0.0f;
-    std::unordered_set<GameObject*> hitTargets;
-    std::unordered_set<MapObjectHandle> hitMapObjects;
+    std::vector<GameObject*> hitTargets;
+    std::vector<MapObjectHandle> hitMapObjects;
 
 public:
     Projectile(
@@ -72,11 +72,15 @@ public:
     bool HasHitTarget(GameObject* target) const;
     void RecordHit(GameObject* target);
     bool HasHitMapObject(MapObjectHandle handle) const {
-        return hitMapObjects.count(handle) > 0;
+        for (MapObjectHandle recorded : hitMapObjects) {
+            if (recorded == handle) return true;
+        }
+        return false;
     }
     void RecordHitMapObject(MapObjectHandle handle) {
-        if (handle != INVALID_MAP_OBJECT_HANDLE) {
-            hitMapObjects.insert(handle);
+        if (handle != INVALID_MAP_OBJECT_HANDLE &&
+            !HasHitMapObject(handle)) {
+            hitMapObjects.push_back(handle);
         }
     }
 };

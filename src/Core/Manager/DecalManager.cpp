@@ -1,8 +1,17 @@
 #include "Core/Manager/DecalManager.h"
 #include "Core/Manager/LevelManager.h"
 #include <cmath>
+#include <algorithm>
+
+namespace {
+constexpr std::size_t MAX_CORPSE_DECALS = 128;
+constexpr float CORPSE_DECAL_LIFETIME = 45.0f;
+}
 
 void DecalManager::AddCorpse(Vector2 pos, Texture2D tex, bool facingLeft, Vector2 slideVel) {
+    if (corpses.size() >= MAX_CORPSE_DECALS) {
+        corpses.erase(corpses.begin());
+    }
     CorpseDecal corpse;
     corpse.position = pos;
     corpse.texture = tex;
@@ -15,7 +24,7 @@ void DecalManager::AddCorpse(Vector2 pos, Texture2D tex, bool facingLeft, Vector
 }
 
 void DecalManager::Clear() {
-    corpses.clear();
+    decltype(corpses){}.swap(corpses);
 }
 
 void DecalManager::Update(
@@ -23,6 +32,7 @@ void DecalManager::Update(
     const LevelManager* levelManager
 ) {
     for (auto& corpse : corpses) {
+        corpse.age += deltaTime;
         if (!corpse.settled) {
             // 1. Horizontal Sliding, Collision & Friction
             Rectangle corpseBox = { corpse.position.x - 8.0f, corpse.position.y - 8.0f, 16.0f, 16.0f };
@@ -65,6 +75,16 @@ void DecalManager::Update(
             }
         }
     }
+    corpses.erase(
+        std::remove_if(
+            corpses.begin(),
+            corpses.end(),
+            [](const CorpseDecal& corpse) {
+                return corpse.age >= CORPSE_DECAL_LIFETIME;
+            }
+        ),
+        corpses.end()
+    );
 }
 
 void DecalManager::Draw() {

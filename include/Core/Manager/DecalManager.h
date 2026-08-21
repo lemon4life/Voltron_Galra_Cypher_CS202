@@ -13,6 +13,7 @@ struct CorpseDecal {
     float verticalVelocity; 
     Vector2 slideVelocity;
     bool settled;           // Stops updating once finished bouncing
+    float age = 0.0f;
 };
 
 class DecalManager {
@@ -26,6 +27,8 @@ public:
     void Update(float deltaTime, const LevelManager* levelManager);
     void Draw();
     void Clear();
+    std::size_t GetCount() const { return corpses.size(); }
+    std::size_t GetCapacity() const { return corpses.capacity(); }
 
 private:
     DecalManager() = default;

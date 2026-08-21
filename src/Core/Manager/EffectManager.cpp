@@ -5,6 +5,10 @@
 
 #include <algorithm>
 
+namespace {
+constexpr std::size_t MAX_ACTIVE_EFFECTS = 512;
+}
+
 void EffectManager::Initialize() {
     ParticleManager::GetInstance().Initialize();
 }
@@ -22,7 +26,8 @@ void EffectManager::AddEffect(
     bool drawBehind,
     Color tint
 ) {
-    if (frames <= 0 || lifetime <= 0.0f) return;
+    if (frames <= 0 || lifetime <= 0.0f ||
+        activeEffects.size() >= MAX_ACTIVE_EFFECTS) return;
     AddAnchoredEffect(
         position,
         texture,
@@ -170,7 +175,7 @@ void EffectManager::DrawParticles() const {
 }
 
 void EffectManager::ClearSession() {
-    activeEffects.clear();
+    decltype(activeEffects){}.swap(activeEffects);
     ParticleManager::GetInstance().Clear();
     DecalManager::GetInstance().Clear();
 }

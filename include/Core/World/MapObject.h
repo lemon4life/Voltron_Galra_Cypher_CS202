@@ -6,11 +6,13 @@
 #include "raylib.h"
 
 #include <cstdint>
+#include <cstddef>
 #include <vector>
 
 class MapObject {
 private:
     inline static MapObjectHandle nextHandle = 1;
+    inline static std::size_t liveCount = 0;
     const MapObjectHandle handle;
 
 protected:
@@ -31,11 +33,13 @@ public:
           boundingBox(bounds),
           objectCell(cell),
           mapObjectType(type) {
+        ++liveCount;
     }
 
-    virtual ~MapObject() = default;
+    virtual ~MapObject() { --liveCount; }
 
     MapObjectHandle GetHandle() const noexcept { return handle; }
+    static std::size_t GetLiveCount() noexcept { return liveCount; }
     Vector2 GetPosition() const noexcept { return position; }
     GameObjectCell GetObjectCell() const noexcept { return objectCell; }
     MapObjectId GetMapObjectType() const noexcept { return mapObjectType; }

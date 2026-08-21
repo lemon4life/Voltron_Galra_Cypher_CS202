@@ -75,4 +75,8 @@ public:
     void Draw(bool background) const;
     void DrawParticles() const;
     void ClearSession();
+    std::size_t GetActiveEffectCount() const { return activeEffects.size(); }
+    std::size_t GetActiveEffectCapacity() const {
+        return activeEffects.capacity();
+    }
 };

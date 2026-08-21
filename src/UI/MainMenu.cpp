@@ -15,17 +15,23 @@ MainMenu::MainMenu() : currentSlideIndex(0), slideTimer(0.0f), panTimer(0.0f), s
 MainMenu::~MainMenu() {
 }
 
+void MainMenu::LoadCurrentBackground() {
+    if (backgroundTexture.id != 0) {
+        UnloadTexture(backgroundTexture);
+        backgroundTexture = {};
+    }
+    std::string path = "assets/img/Background/bg_" +
+        std::to_string(currentSlideIndex + 1) + ".png";
+    backgroundTexture = LoadTexture(path.c_str());
+    if (backgroundTexture.id != 0) {
+        SetTextureFilter(backgroundTexture, TEXTURE_FILTER_BILINEAR);
+    }
+}
+
 void MainMenu::Initialize() {
     AssetManager& assets = AssetManager::GetInstance();
-    
-    // Load 9 background slides
-    bgSlides.clear();
-    for (int i = 1; i <= 9; i++) {
-        std::string path = "assets/img/Background/bg_" + std::to_string(i) + ".png";
-        std::string key = "bg_" + std::to_string(i);
-        // Load with applyPointFilter = false to render at standard resolution smoothly
-        bgSlides.push_back(assets.LoadTexture2D(key, path, false));
-    }
+    currentSlideIndex = 0;
+    LoadCurrentBackground();
     
     // Load logo with point filter to keep logo crisp if needed, or false.
     // The previous implementation used true for logo. We'll stick to true.
@@ -33,6 +39,13 @@ void MainMenu::Initialize() {
     
     // Initialize buttons
     RebuildButtons();
+}
+
+void MainMenu::Shutdown() {
+    if (backgroundTexture.id != 0) {
+        UnloadTexture(backgroundTexture);
+        backgroundTexture = {};
+    }
 }
 
 void MainMenu::RebuildButtons() {
@@ -64,7 +77,8 @@ void MainMenu::Update(float deltaTime) {
     panTimer += deltaTime;
     
     if (slideTimer >= 10.15f && !switchedIndex) {
-        currentSlideIndex = (currentSlideIndex + 1) % bgSlides.size();
+        currentSlideIndex = (currentSlideIndex + 1) % BACKGROUND_COUNT;
+        LoadCurrentBackground();
         switchedIndex = true;
         panTimer = 0.0f;
     }
@@ -180,8 +194,8 @@ void MainMenu::SetContinueAvailable(bool available) {
 
 void MainMenu::Draw(int screenWidth, int screenHeight) {
     // 1. Draw Slideshow Background with Pan
-    if (!bgSlides.empty()) {
-        Texture2D& currentBg = bgSlides[currentSlideIndex];
+    if (backgroundTexture.id != 0) {
+        Texture2D& currentBg = backgroundTexture;
         
         if (currentBg.id != 0) {
             float scaleX = (float)screenWidth / currentBg.width;

@@ -1,6 +1,7 @@
 #include "Core/Manager/GameManager.h"
 
 #include "Core/Constants.h"
+#include "Core/Diagnostics/MemoryDiagnostics.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/State/IGameState.h"
 #include "Entities/GameObject.h"
@@ -115,14 +116,17 @@ void GameManager::SetTeamManager(std::unique_ptr<TeamManager> team) {
 }
 
 void GameManager::LoadLevel(const std::string& path) {
+    MemoryDiagnostics::Capture("before_load_level", *this);
     pathFindingManager.Clear();
     objectManager.Clear();
     effectManager.ClearSession();
     DynamicSpawnList spawns = levelManager.LoadLevel(path);
     objectManager.SpawnAll(spawns);
+    MemoryDiagnostics::Capture("after_load_level", *this);
 }
 
 void GameManager::GenerateDungeon() {
+    MemoryDiagnostics::Capture("before_generate_dungeon", *this);
     pathFindingManager.Clear();
     objectManager.Clear();
     effectManager.ClearSession();
@@ -139,23 +143,28 @@ void GameManager::GenerateDungeon() {
         });
         teamManager->StartSpawnAnimation();
     }
+    MemoryDiagnostics::Capture("after_generate_dungeon", *this);
 }
 
 void GameManager::ResetWorld() {
+    MemoryDiagnostics::Capture("before_reset_world", *this);
     pathFindingManager.Clear();
     objectManager.Clear();
     effectManager.ClearSession();
     levelManager.ClearLevel();
     encounterManager.Reset(0, 0, 0);
     hitstopTimer = 0.0f;
+    MemoryDiagnostics::Capture("after_reset_world", *this);
 }
 
 void GameManager::ResetTransientState() {
+    MemoryDiagnostics::Capture("before_reset_transient", *this);
     pathFindingManager.Clear();
     objectManager.Clear();
     effectManager.ClearSession();
     hitstopTimer = 0.0f;
     hasTalkedToShiro = false;
+    MemoryDiagnostics::Capture("after_reset_transient", *this);
 }
 
 void GameManager::UpdateDynamicEntities(float deltaTime) {

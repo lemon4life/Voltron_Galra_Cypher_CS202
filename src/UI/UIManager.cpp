@@ -18,17 +18,18 @@ UIManager::UIManager() : teamManager(nullptr) {
 }
 
 UIManager::~UIManager() {
-    if (statsShell.id != 0) {
-        UnloadTexture(statsShell);
-    }
-    if (statsShellBack.id != 0) {
-        UnloadTexture(statsShellBack);
-    }
 }
 
 void UIManager::Initialize() {
-    statsShell = LoadTexture("assets/UI/Team_StatsShell.png");
-    statsShellBack = LoadTexture("assets/UI/Team_StatsShell_Back.png");
+    AssetManager& assets = AssetManager::GetInstance();
+    statsShell = assets.LoadTexture2D(
+        "Team_StatsShell",
+        "assets/UI/Team_StatsShell.png"
+    );
+    statsShellBack = assets.LoadTexture2D(
+        "Team_StatsShell_Back",
+        "assets/UI/Team_StatsShell_Back.png"
+    );
 }
 
 bool UIManager::IsPauseButtonPressed(Rectangle windowBounds, Vector2 mousePosition) const {

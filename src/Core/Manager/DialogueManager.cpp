@@ -36,9 +36,6 @@ namespace {
 DialogueManager::DialogueManager() : isDialogueActive(false), currentNode(0), selectedOption(0), missionRequested(false), typewriterTimer(0.0f), visibleCharCount(0) {}
 
 DialogueManager::~DialogueManager() {
-    for (auto& pair : portraits) {
-        UnloadTexture(pair.second);
-    }
 }
 
 DialogueManager& DialogueManager::GetInstance() {
@@ -47,14 +44,20 @@ DialogueManager& DialogueManager::GetInstance() {
 }
 
 void DialogueManager::InitializeAssets() {
-    portraits["Lance"] = LoadTexture("assets/img/Lance.PNG");
-    portraits["Keith"] = LoadTexture("assets/img/Keith.PNG");
-    portraits["Shiro"] = LoadTexture("assets/img/Shiro.PNG");
-    portraits["Allura"] = LoadTexture("assets/img/Allura.PNG");
-    portraits["Pidge"] = LoadTexture("assets/img/Pidge.PNG");
+    AssetManager& assets = AssetManager::GetInstance();
+    portraits["Lance"] = assets.LoadTexture2D(
+        "Portrait_Lance", "assets/img/Lance.PNG");
+    portraits["Keith"] = assets.LoadTexture2D(
+        "Portrait_Keith", "assets/img/Keith.PNG");
+    portraits["Shiro"] = assets.LoadTexture2D(
+        "Portrait_Shiro", "assets/img/Shiro.PNG");
+    portraits["Allura"] = assets.LoadTexture2D(
+        "Portrait_Allura", "assets/img/Allura.PNG");
+    portraits["Pidge"] = assets.LoadTexture2D(
+        "Portrait_Pidge", "assets/img/Pidge.PNG");
 
     for (auto& pair : portraits) {
-        SetTextureFilter(pair.second, TEXTURE_FILTER_BILINEAR); // High HD filtering
+        SetTextureFilter(pair.second, TEXTURE_FILTER_BILINEAR);
     }
     
     LoadDialogueTree("assets/story/intro.txt");
@@ -62,6 +65,8 @@ void DialogueManager::InitializeAssets() {
 
 void DialogueManager::LoadDialogueTree(const std::string& filepath) {
     currentTree.clear();
+    showingTransientResponse = false;
+    transientResponse = DialogueNode{};
     std::ifstream file(filepath);
     if (!file.is_open()) {
         std::cerr << "Failed to open dialogue file: " << filepath << std::endl;
@@ -122,6 +127,8 @@ void DialogueManager::StartDialogue() {
     missionRequested = false;
     visibleCharCount = 0;
     typewriterTimer = 0.0f;
+    showingTransientResponse = false;
+    transientResponse = DialogueNode{};
 }
 
 void DialogueManager::ResetSession() {
@@ -132,6 +139,8 @@ void DialogueManager::ResetSession() {
     requestedMissionId = 0;
     typewriterTimer = 0.0f;
     visibleCharCount = 0;
+    showingTransientResponse = false;
+    transientResponse = DialogueNode{};
 }
 
 void DialogueManager::Update(float deltaTime) {
@@ -141,7 +150,14 @@ void DialogueManager::Update(float deltaTime) {
         return;
     }
 
-    const DialogueNode& node = currentTree[currentNode];
+    if (!showingTransientResponse &&
+        (currentNode < 0 || currentNode >= (int)currentTree.size())) {
+        isDialogueActive = false;
+        return;
+    }
+    const DialogueNode& node = showingTransientResponse
+        ? transientResponse
+        : currentTree[currentNode];
     bool isTyping = (visibleCharCount < (int)node.text.length());
 
     if (isTyping) {
@@ -184,6 +200,7 @@ void DialogueManager::Update(float deltaTime) {
                     missionRequested = true;
                     requestedMissionId = next;
                 } else {
+                    showingTransientResponse = false;
                     currentNode = next;
                     selectedOption = 0;
                     visibleCharCount = 0;
@@ -200,16 +217,11 @@ void DialogueManager::Update(float deltaTime) {
                     playerName = "Keith";
                 }
 
-                // Inject the player's response as a new temporary node
-                DialogueNode tempNode;
-                tempNode.speakerName = playerName;
-                tempNode.text = node.options[selectedOption];
-                tempNode.nextNodeIndices.push_back(next);
-
-                int tempIdx = currentTree.size();
-                currentTree.push_back(tempNode);
-
-                currentNode = tempIdx;
+                transientResponse = DialogueNode{};
+                transientResponse.speakerName = playerName;
+                transientResponse.text = node.options[selectedOption];
+                transientResponse.nextNodeIndices.push_back(next);
+                showingTransientResponse = true;
                 selectedOption = 0;
                 visibleCharCount = 0;
                 typewriterTimer = 0.0f;
@@ -225,7 +237,14 @@ void DialogueManager::Draw(int screenWidth, int screenHeight) {
         return;
     }
 
-    const DialogueNode& node = currentTree[currentNode];
+    if (!showingTransientResponse &&
+        (currentNode < 0 || currentNode >= (int)currentTree.size())) {
+        isDialogueActive = false;
+        return;
+    }
+    const DialogueNode& node = showingTransientResponse
+        ? transientResponse
+        : currentTree[currentNode];
     constexpr float MARGIN = 10.0f;
     constexpr float PORTRAIT_HEIGHT = 400.0f;
     constexpr float PORTRAIT_BOTTOM_OFFSET = 100.0f;

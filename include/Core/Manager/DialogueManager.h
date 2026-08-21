@@ -17,6 +17,8 @@ private:
     ~DialogueManager();
 
     std::vector<DialogueNode> currentTree;
+    DialogueNode transientResponse;
+    bool showingTransientResponse = false;
     bool isDialogueActive;
     int currentNode;
     int selectedOption;
@@ -49,4 +51,6 @@ public:
     bool IsMissionRequested() const { return missionRequested; }
     int GetRequestedMissionId() const { return requestedMissionId; }
     void ClearMissionRequest() { missionRequested = false; }
+    std::size_t GetDialogueNodeCount() const { return currentTree.size(); }
+    bool HasTransientResponse() const { return showingTransientResponse; }
 };

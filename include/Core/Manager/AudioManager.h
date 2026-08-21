@@ -14,6 +14,7 @@ private:
     std::vector<Sound> footstepSounds;
     std::vector<Sound> clickSounds;
     std::vector<Sound> swordSlashSounds;
+    bool initialized = false;
 
     int currentFootstepIndex = 0;
     float soundEffectsVolume = 0.4f;
@@ -32,6 +33,7 @@ public:
     AudioManager& operator=(AudioManager&&) = delete;
 
     void Initialize();
+    void Shutdown();
     void PlayRandomLaser();
     void PlaySequentialFootstep();
     void PlayRandomClick();
@@ -62,4 +64,6 @@ public:
     void SetMusicVolumeLevel(float volume);
     float GetSoundEffectsVolume() const;
     float GetMusicVolumeLevel() const;
+    std::size_t GetSoundCount() const;
+    std::size_t GetMusicCount() const { return music.size(); }
 };

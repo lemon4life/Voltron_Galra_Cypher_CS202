@@ -1741,17 +1741,45 @@ void PathFindingManager::AddEnemy(Enemy& enemy) {
 }
 
 void PathFindingManager::Clear() {
-    enemies.clear();
-    pathRecords.clear();
+    decltype(enemies){}.swap(enemies);
+    decltype(pathRecords){}.swap(pathRecords);
     nextEnemyIndex = 0;
     searchCredits = 0.0f;
-    navigationCacheStore->grids.clear();
+    decltype(navigationCacheStore->grids){}.swap(
+        navigationCacheStore->grids
+    );
     navigationCacheStore->goalsValid = false;
     navigationCacheStore->goalTarget = nullptr;
     navigationCacheStore->goalTargetBounds = {};
     navigationCacheStore->goalRevision = 0;
-    navigationCacheStore->sharedGoals.clear();
-    navigationCacheStore->flowFields.clear();
+    decltype(navigationCacheStore->sharedGoals){}.swap(
+        navigationCacheStore->sharedGoals
+    );
+    decltype(navigationCacheStore->flowFields){}.swap(
+        navigationCacheStore->flowFields
+    );
+}
+
+PathFindingMemoryStats PathFindingManager::GetMemoryStats() const {
+    PathFindingMemoryStats stats;
+    stats.enemies = enemies.size();
+    stats.enemyCapacity = enemies.capacity();
+    stats.pathRecords = pathRecords.size();
+    stats.navigationGrids = navigationCacheStore->grids.size();
+    for (const auto& entry : navigationCacheStore->grids) {
+        stats.navigationGridCells += entry.second.clearTiles.capacity();
+        stats.navigationGridCells += entry.second.clearEdges.capacity();
+    }
+    stats.flowFields = navigationCacheStore->flowFields.size();
+    for (const auto& entry : navigationCacheStore->flowFields) {
+        stats.flowFieldCells += entry.second.cells.capacity();
+        for (const FlowFieldTerminal& terminal : entry.second.terminals) {
+            stats.flowFieldCells += terminal.suffix.capacity();
+        }
+    }
+    stats.sharedGoals = navigationCacheStore->sharedGoals.size();
+    stats.sharedGoalCapacity = navigationCacheStore->sharedGoals.capacity();
+    return stats;
 }
 
 void PathFindingManager::AddEnemyTo(Enemy& enemy, Vector2 worldGoal) {
@@ -2142,6 +2170,14 @@ void PathFindingManager::Update(float deltaTime) {
             profilingFlowMillisecondsMaximum,
             elapsedMilliseconds
         );
+    }
+    for (auto field = navigationCacheStore->flowFields.begin();
+         field != navigationCacheStore->flowFields.end();) {
+        if (activeFlowProfiles.count(field->first) == 0) {
+            field = navigationCacheStore->flowFields.erase(field);
+        } else {
+            ++field;
+        }
     }
     profilingStats.activeFlowFieldProfiles =
         (int)activeFlowProfiles.size();

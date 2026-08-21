@@ -1,12 +1,12 @@
 #pragma once
 #include "Entities/Player/Paladin.h"
-#include "Entities/Projectile.h"
+#include "Core/World/ObjectId.h"
 
 class Pidge : public Paladin {
 private:
     float weaponRotation;
     bool isWeaponThrown;
-    Projectile* thrownWeapon;
+    ObjectId thrownWeaponId = INVALID_OBJECT_ID;
 
     // Venom Zone State
     bool isVenomZoneActive = false;

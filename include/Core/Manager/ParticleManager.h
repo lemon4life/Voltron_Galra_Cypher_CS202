@@ -74,6 +74,8 @@ public:
     void Draw();
 
     void Clear();
+    std::size_t GetActiveCount() const { return activeParticles.size(); }
+    std::size_t GetCapacity() const { return activeParticles.capacity(); }
     
     Shader GetSilhouetteShader() const { return silhouetteShader; }
 

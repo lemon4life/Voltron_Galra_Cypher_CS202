@@ -1,9 +1,7 @@
 #include "Entities/NPC.h"
+#include "Core/Manager/AssetManager.h"
 #include "UI/UIUtils.h"
 #include <cmath>
-
-static Texture2D alluraSprite = { 0 };
-static Texture2D shiroSprite = { 0 };
 
 NPC::NPC(Vector2 pos, NpcId id)
     : GameObject(pos, GameObjectType::NPC),
@@ -12,14 +10,16 @@ NPC::NPC(Vector2 pos, NpcId id)
       frameTimer(0.0f),
       frameDuration(0.1f),
       numFrames(4) {
-    if (alluraSprite.id == 0) {
-        alluraSprite = LoadTexture("assets/sprites/Allura/Idle_Sheet.png");
-        SetTextureFilter(alluraSprite, TEXTURE_FILTER_POINT);
-    }
-    if (shiroSprite.id == 0) {
-        shiroSprite = LoadTexture("assets/sprites/Shiro/Idle_Sheet.png");
-        SetTextureFilter(shiroSprite, TEXTURE_FILTER_POINT);
-    }
+    AssetManager::GetInstance().LoadTexture2D(
+        "NPC_Allura_Idle",
+        "assets/sprites/Allura/Idle_Sheet.png",
+        true
+    );
+    AssetManager::GetInstance().LoadTexture2D(
+        "NPC_Shiro_Idle",
+        "assets/sprites/Shiro/Idle_Sheet.png",
+        true
+    );
 }
 
 void NPC::Update(float deltaTime) {
@@ -31,7 +31,9 @@ void NPC::Update(float deltaTime) {
 }
 
 void NPC::Draw() {
-    Texture2D tex = (npcId == NpcId::Shiro) ? shiroSprite : alluraSprite;
+    Texture2D tex = AssetManager::GetInstance().GetTexture(
+        npcId == NpcId::Shiro ? "NPC_Shiro_Idle" : "NPC_Allura_Idle"
+    );
     
     if (tex.id != 0) {
         int frameWidthI  = tex.width / numFrames;

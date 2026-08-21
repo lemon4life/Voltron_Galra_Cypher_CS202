@@ -101,6 +101,7 @@ public:
         return pathFindingManager;
     }
     EffectManager& GetEffectManager() { return effectManager; }
+    const EffectManager& GetEffectManager() const { return effectManager; }
     EncounterManager& GetEncounterManager() { return encounterManager; }
     TeamManager* GetTeamManager() const { return teamManager.get(); }
     void SetTeamManager(std::unique_ptr<TeamManager> team);

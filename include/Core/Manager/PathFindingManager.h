@@ -35,6 +35,18 @@ struct EnemyPathProfilingStats {
     float maximumSearchMilliseconds = 0.0f;
 };
 
+struct PathFindingMemoryStats {
+    std::size_t enemies = 0;
+    std::size_t enemyCapacity = 0;
+    std::size_t pathRecords = 0;
+    std::size_t navigationGrids = 0;
+    std::size_t navigationGridCells = 0;
+    std::size_t flowFields = 0;
+    std::size_t flowFieldCells = 0;
+    std::size_t sharedGoals = 0;
+    std::size_t sharedGoalCapacity = 0;
+};
+
 class PathFindingManager : public IEnemyPathAccess {
 private:
     enum class NavigationMode {
@@ -114,4 +126,5 @@ public:
     const EnemyPathProfilingStats& GetProfilingStats() const {
         return profilingStats;
     }
+    PathFindingMemoryStats GetMemoryStats() const;
 };

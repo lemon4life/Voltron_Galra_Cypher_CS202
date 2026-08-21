@@ -20,6 +20,9 @@
 #include <string>
 
 namespace {
+constexpr std::size_t MAX_QUINTESSENCE_ORBS = 256;
+constexpr float QUINTESSENCE_ORB_LIFETIME = 30.0f;
+
 void DrawObjectCollisionDebug(const GameObject& object) {
     Color hitboxColor = PURPLE;
     Color collisionColor = GOLD;
@@ -455,6 +458,9 @@ void ObjectManager::UpdateAssists(float deltaTime) {
 }
 
 void ObjectManager::SpawnQuintessenceOrb(Vector2 position) {
+    if (orbs.size() >= MAX_QUINTESSENCE_ORBS) {
+        orbs.erase(orbs.begin());
+    }
     QuintessenceOrb orb;
     orb.position = position;
     orb.velocity = {
@@ -467,6 +473,11 @@ void ObjectManager::SpawnQuintessenceOrb(Vector2 position) {
 void ObjectManager::UpdateOrbs(float deltaTime) {
     Paladin* player = teamManager ? teamManager->GetActivePaladin() : nullptr;
     for (auto iterator = orbs.begin(); iterator != orbs.end();) {
+        iterator->age += deltaTime;
+        if (iterator->age >= QUINTESSENCE_ORB_LIFETIME) {
+            iterator = orbs.erase(iterator);
+            continue;
+        }
         if (!iterator->isAttracted) {
             iterator->velocity.x -= iterator->velocity.x * 4.0f * deltaTime;
             iterator->velocity.y -= iterator->velocity.y * 4.0f * deltaTime;
@@ -673,23 +684,39 @@ bool ObjectManager::IsDynamicCollisionBlocked(
 }
 
 void ObjectManager::Clear() {
-    pendingRemoval.clear();
-    pendingAddition.clear();
-    finalizedDeaths.clear();
-    silentRemoval.clear();
-    projectiles.clear();
-    assists.clear();
-    orbs.clear();
-    pickups.clear();
-    interactables.clear();
-    enemies.clear();
+    decltype(pendingRemoval){}.swap(pendingRemoval);
+    decltype(pendingAddition){}.swap(pendingAddition);
+    decltype(finalizedDeaths){}.swap(finalizedDeaths);
+    decltype(silentRemoval){}.swap(silentRemoval);
+    decltype(projectiles){}.swap(projectiles);
+    decltype(assists){}.swap(assists);
+    decltype(orbs){}.swap(orbs);
+    decltype(pickups){}.swap(pickups);
+    decltype(interactables){}.swap(interactables);
+    decltype(enemies){}.swap(enemies);
     RebuildViews();
 }
 
 void ObjectManager::ClearProjectiles() {
-    projectiles.clear();
+    decltype(projectiles){}.swap(projectiles);
 }
 
 void ObjectManager::ClearOrbs() {
-    orbs.clear();
+    decltype(orbs){}.swap(orbs);
+}
+
+ObjectManagerMemoryStats ObjectManager::GetMemoryStats() const {
+    ObjectManagerMemoryStats stats;
+    stats.enemies = enemies.size();
+    stats.enemyCapacity = enemies.capacity();
+    stats.projectiles = projectiles.size();
+    stats.projectileCapacity = projectiles.capacity();
+    stats.pickups = pickups.size();
+    stats.assists = assists.size();
+    stats.interactables = interactables.size();
+    stats.orbs = orbs.size();
+    stats.orbCapacity = orbs.capacity();
+    stats.pendingAdditions = pendingAddition.size();
+    stats.pendingRemovals = pendingRemoval.size();
+    return stats;
 }

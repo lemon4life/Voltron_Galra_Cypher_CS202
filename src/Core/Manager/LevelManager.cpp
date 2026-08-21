@@ -3,6 +3,7 @@
 #include "Core/MapObjectFactory.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/AudioManager.h"
+#include "Core/Manager/AssetManager.h"
 #include "Core/LevelAccess.h"
 #include "Entities/Props/DoorGate.h"
 
@@ -32,19 +33,19 @@ LevelManager::LevelManager()
 }
 
 void LevelManager::InitializeAssets() {
-    floorTileset = LoadTexture("assets/tileset/Galra_Floors.png");
-    wallTileset = LoadTexture("assets/tileset/Galra_Walls.png");
-    prop1Texture = LoadTexture("assets/Objects/tall_object_1_8.png");
-    prop2Texture = LoadTexture("assets/Objects/object_2.png");
-    boxTexture = LoadTexture("assets/Objects/box.png");
-    gateTexture = LoadTexture("assets/Objects/Transfer_gate.png");
-
-    SetTextureFilter(floorTileset, TEXTURE_FILTER_POINT);
-    SetTextureFilter(wallTileset, TEXTURE_FILTER_POINT);
-    SetTextureFilter(prop1Texture, TEXTURE_FILTER_POINT);
-    SetTextureFilter(prop2Texture, TEXTURE_FILTER_POINT);
-    SetTextureFilter(boxTexture, TEXTURE_FILTER_POINT);
-    SetTextureFilter(gateTexture, TEXTURE_FILTER_POINT);
+    AssetManager& assets = AssetManager::GetInstance();
+    floorTileset = assets.LoadTexture2D(
+        "Galra_Floors", "assets/tileset/Galra_Floors.png", true);
+    wallTileset = assets.LoadTexture2D(
+        "Galra_Walls", "assets/tileset/Galra_Walls.png", true);
+    prop1Texture = assets.LoadTexture2D(
+        "tall_object_1_8", "assets/Objects/tall_object_1_8.png", true);
+    prop2Texture = assets.LoadTexture2D(
+        "object_2", "assets/Objects/object_2.png", true);
+    boxTexture = assets.LoadTexture2D(
+        "box", "assets/Objects/box.png", true);
+    gateTexture = assets.LoadTexture2D(
+        "Transfer_gate", "assets/Objects/Transfer_gate.png", true);
 }
 
 LevelManager::~LevelManager() {
@@ -53,12 +54,6 @@ LevelManager::~LevelManager() {
 }
 
 void LevelManager::ShutdownAssets() {
-    if (floorTileset.id != 0) UnloadTexture(floorTileset);
-    if (wallTileset.id != 0) UnloadTexture(wallTileset);
-    if (prop1Texture.id != 0) UnloadTexture(prop1Texture);
-    if (prop2Texture.id != 0) UnloadTexture(prop2Texture);
-    if (boxTexture.id != 0) UnloadTexture(boxTexture);
-    if (gateTexture.id != 0) UnloadTexture(gateTexture);
     floorTileset = {};
     wallTileset = {};
     prop1Texture = {};
@@ -359,18 +354,29 @@ void LevelManager::ClearLevel() {
     for (const std::shared_ptr<RoomNode>& node : levelMap.generatedNodes) {
         if (node) node->doors.clear();
     }
-    mapObjects.clear();
-    levelMap = LevelMap{};
-    mapGridLayer1.clear();
-    mapGridLayer2.clear();
-    mapObjectGrid.clear();
-    activeRoom = nullptr;
+    currentLevelProvider.reset();
     currentlyLockedRoom = nullptr;
+    activeRoom = nullptr;
+    decltype(mapObjects){}.swap(mapObjects);
+    levelMap = LevelMap{};
+    decltype(mapGridLayer1){}.swap(mapGridLayer1);
+    decltype(mapGridLayer2){}.swap(mapGridLayer2);
+    decltype(mapObjectGrid){}.swap(mapObjectGrid);
+    decltype(staticSpawnNodes){}.swap(staticSpawnNodes);
+    decltype(lineOfSightDynamicBlockers){}.swap(
+        lineOfSightDynamicBlockers
+    );
+    decltype(lineOfSightDebugTraces){}.swap(lineOfSightDebugTraces);
+    lineOfSightBlockerIndexValid = false;
+    lineOfSightBlockerIndexRoom = nullptr;
+    levelWidth = 0.0f;
+    levelHeight = 0.0f;
+    gridRows = 0;
+    gridCols = 0;
     roomOffset = {0.0f, 0.0f};
     nudgePosition = {0.0f, 0.0f};
     needsNudge = false;
     levelMode = LevelMode::Layered;
-    currentLevelProvider.reset();
     MarkNavigationChanged();
 }
 
@@ -538,7 +544,9 @@ bool LevelManager::HasClearLineOfSight(
     debugTrace.radius = std::max(0.0f, projectileRadius);
 
     auto finishQuery = [&](bool clear) {
-        if (recordDebug) {
+        constexpr std::size_t MAX_DEBUG_TRACES = 256;
+        if (recordDebug &&
+            lineOfSightDebugTraces.size() < MAX_DEBUG_TRACES) {
             debugTrace.clear = clear;
             lineOfSightDebugTraces.push_back(std::move(debugTrace));
         }
@@ -714,6 +722,25 @@ bool LevelManager::HasClearLineOfSight(
     }
 
     return finishQuery(true);
+}
+
+LevelMemoryStats LevelManager::GetMemoryStats() const {
+    LevelMemoryStats stats;
+    stats.roomNodes = levelMap.generatedNodes.size();
+    stats.liveRoomNodes = RoomNode::liveCount;
+    stats.mapObjects = mapObjects.size();
+    stats.staticSpawnNodes = staticSpawnNodes.size();
+    for (const auto& row : mapGridLayer1) stats.layerCells += row.size();
+    for (const auto& row : mapGridLayer2) stats.layerCells += row.size();
+    for (const auto& row : mapObjectGrid) stats.layerCells += row.size();
+    stats.lineOfSightBlockerTiles = lineOfSightDynamicBlockers.size();
+    stats.lineOfSightTraces = lineOfSightDebugTraces.size();
+    for (const LineOfSightDebugTrace& trace : lineOfSightDebugTraces) {
+        stats.lineOfSightRectangles += trace.ddaTiles.size();
+        stats.lineOfSightRectangles += trace.candidateTiles.size();
+        stats.lineOfSightRectangles += trace.testedColliders.size();
+    }
+    return stats;
 }
 
 void LevelManager::DrawLineOfSightDebug() const {

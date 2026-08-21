@@ -32,4 +32,4 @@ Note that week 7 starts from 20 July, 2026
 
 
 ## Fallback
-If any of the build run failed, stop and return the answer, do need to force build success
+If a build fails because of a compiler, configuration, or source-code error, diagnose it, fix it, and rerun the build until it is resolved. Stop and return immediately only when the failure is a linker error.

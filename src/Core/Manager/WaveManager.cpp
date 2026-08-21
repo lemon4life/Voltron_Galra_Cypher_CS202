@@ -7,6 +7,7 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/AssetManager.h"
+#include "Core/Diagnostics/MemoryDiagnostics.h"
 #include "Core/Level/RoomNode.h"
 #include "raymath.h"
 #include <algorithm>
@@ -85,6 +86,10 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
                 GameManager::GetInstance().SetState(GameState::VICTORY);
             } else {
                 currentWave++;
+                MemoryDiagnostics::Capture(
+                    "static_wave_completed",
+                    GameManager::GetInstance()
+                );
                 if (currentWave == 5) {
                     enemiesToSpawn = 1;
                     AudioManager::GetInstance().PlayMusicTrack("bgm_boss_theme", 1.5f);
@@ -137,6 +142,10 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
         currentWave = 1;
         timeBetweenWaves = 1.5f;
         showWaveTextTimer = 2.0f;
+        MemoryDiagnostics::Capture(
+            isBossRoom ? "boss_room_started" : "battle_room_started",
+            GameManager::GetInstance()
+        );
         return;
     }
 
@@ -176,6 +185,10 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
                 currentWave = 0;
                 isBossRoom = false;
                 showWaveTextTimer = 1.5f;
+                MemoryDiagnostics::Capture(
+                    "battle_room_completed",
+                    GameManager::GetInstance()
+                );
             } else {
                 // Next wave
                 dungeonCurrentWave++;
@@ -191,6 +204,10 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
 
                 timeBetweenWaves = 2.0f;
                 showWaveTextTimer = 2.0f;
+                MemoryDiagnostics::Capture(
+                    "dungeon_wave_completed",
+                    GameManager::GetInstance()
+                );
             }
         }
     }
