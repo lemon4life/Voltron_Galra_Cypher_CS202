@@ -123,7 +123,6 @@ void BossChaseState::Update(Boss* enemy, float deltaTime) {
     }
 
     Vector2 ePos = enemy->GetPosition();
-    Vector2 pPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
 
     IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
     std::optional<Vector2> moveTarget =
@@ -150,22 +149,15 @@ void BossChaseState::Update(Boss* enemy, float deltaTime) {
         enemy->SetAttackCooldown(remainingCooldown > 0.0f ? remainingCooldown : 0.0f);
     }
     
-    // Check collision with Player for overlap resolution and damage
+    // Contact is an attack overlap only; enemies do not physically separate
+    // from or collide with the player.
     Paladin* activePaladin = enemy->GetTargetTeam()->GetActivePaladin();
-    if (EnemyCollision::CheckPlayerCollision(*enemy, *activePaladin)) {
+    if (EnemyCollision::CheckPlayerAttackOverlap(*enemy, *activePaladin)) {
         // Attack if cooldown allows
         if (enemy->GetAttackCooldown() <= 0.0f) {
             activePaladin->TakeDamage(enemy->GetDamage());
             enemy->ResetAttackCooldown();
         }
-        
-        // Separation knockback (push enemy away from player to prevent freeze/deadlock)
-        ePos = enemy->GetPosition();
-        Vector2 pushDir = Vector2Subtract(ePos, pPos);
-        if (Vector2Length(pushDir) == 0.0f) pushDir = {1.0f, 0.0f}; // Fallback if exactly on top
-        pushDir = Vector2Normalize(pushDir);
-
-        enemy->ApplyCollisionPush(pushDir, 20.0f);
     }
 }
 

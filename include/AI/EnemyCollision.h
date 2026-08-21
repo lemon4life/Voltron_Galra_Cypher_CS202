@@ -2,10 +2,7 @@
 
 #include "raylib.h"
 
-#include <vector>
-
 class Enemy;
-class GameObject;
 class IEnemyPathAccess;
 class Paladin;
 
@@ -22,19 +19,9 @@ struct EnemyMoveResult {
 };
 
 struct EnemyCollision {
-    static bool CheckPlayerCollision(
+    static bool CheckPlayerAttackOverlap(
         const Enemy& enemy,
         const Paladin& player
-    );
-
-    static bool CheckEnemyCollision(
-        const Enemy& enemy,
-        const Enemy& other
-    );
-
-    static bool CheckAnyEnemyCollision(
-        const Enemy& enemy,
-        const std::vector<GameObject*>& entities
     );
 
     static bool CheckParry(

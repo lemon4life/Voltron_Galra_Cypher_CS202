@@ -106,7 +106,9 @@ struct EnemyNavigationCacheStore {
     int goalTargetTileX = 0;
     int goalTargetTileY = 0;
     Rectangle goalSearchBounds = {};
+    Rectangle goalTargetBounds = {};
     const Paladin* goalTarget = nullptr;
+    std::uint64_t goalRevision = 0;
     std::vector<EnemyPathDebugPoint> sharedGoals;
     std::unordered_map<
         NavigationCacheKey,
@@ -120,6 +122,7 @@ struct EnemyNavigationCacheStore {
         grids.clear();
         goalsValid = false;
         goalTarget = nullptr;
+        goalTargetBounds = {};
         sharedGoals.clear();
         flowFields.clear();
     }
@@ -137,6 +140,7 @@ namespace {
     constexpr int MAX_SEARCHES_PER_FRAME = 1;
     constexpr int MAX_START_CONNECTION_ATTEMPTS = 32;
     constexpr float FAILED_PATH_RETRY_INTERVAL = 1.2f;
+    constexpr float GOAL_LINE_OF_SIGHT_CORNER_MARGIN = 0.5f;
 
     struct Tile {
         int x;
@@ -690,31 +694,33 @@ namespace {
         Rectangle searchBounds
     ) {
         Tile targetTile = WorldTile(levelManager, target.GetPosition());
-        if (store.goalsValid &&
+        Rectangle targetBounds = target.GetBoundingBox();
+        bool sameGoalLayout = store.goalsValid &&
             store.goalTarget == &target &&
             store.goalTargetTileX == targetTile.x &&
             store.goalTargetTileY == targetTile.y &&
-            SameRectangle(store.goalSearchBounds, searchBounds)) {
+            SameRectangle(store.goalSearchBounds, searchBounds);
+        if (sameGoalLayout &&
+            SameRectangle(store.goalTargetBounds, targetBounds)) {
             return store.sharedGoals;
         }
 
-        store.goalsValid = true;
-        store.goalTarget = &target;
-        store.goalTargetTileX = targetTile.x;
-        store.goalTargetTileY = targetTile.y;
-        store.goalSearchBounds = searchBounds;
-        store.sharedGoals.clear();
-        store.flowFields.clear();
+        std::vector<Vector2> candidates;
+        if (sameGoalLayout) {
+            candidates.reserve(store.sharedGoals.size());
+            for (const EnemyPathDebugPoint& goal : store.sharedGoals) {
+                candidates.push_back(goal.position);
+            }
+        } else {
+            candidates = GenerateGoalCandidates(levelManager, target);
+        }
 
-        std::vector<Vector2> candidates = GenerateGoalCandidates(
-            levelManager,
-            target
-        );
-        store.sharedGoals.reserve(candidates.size());
+        std::vector<EnemyPathDebugPoint> refreshedGoals;
+        refreshedGoals.reserve(candidates.size());
         for (Vector2 candidate : candidates) {
             Vector2 closestHitboxPoint = ClosestPointOnRectangle(
                 candidate,
-                target.GetBoundingBox()
+                targetBounds
             );
             bool insideDomain = CheckCollisionPointRec(
                 candidate,
@@ -724,9 +730,35 @@ namespace {
                 levelManager.HasClearLineOfSight(
                     candidate,
                     closestHitboxPoint,
-                    0.0f
+                    GOAL_LINE_OF_SIGHT_CORNER_MARGIN
                 );
-            store.sharedGoals.push_back({ candidate, hasLineOfSight });
+            refreshedGoals.push_back({ candidate, hasLineOfSight });
+        }
+
+        bool availabilityChanged = !sameGoalLayout ||
+            refreshedGoals.size() != store.sharedGoals.size();
+        if (!availabilityChanged) {
+            for (std::size_t index = 0;
+                 index < refreshedGoals.size();
+                 ++index) {
+                if (refreshedGoals[index].hasLineOfSight !=
+                    store.sharedGoals[index].hasLineOfSight) {
+                    availabilityChanged = true;
+                    break;
+                }
+            }
+        }
+
+        store.goalsValid = true;
+        store.goalTarget = &target;
+        store.goalTargetTileX = targetTile.x;
+        store.goalTargetTileY = targetTile.y;
+        store.goalSearchBounds = searchBounds;
+        store.goalTargetBounds = targetBounds;
+        store.sharedGoals = std::move(refreshedGoals);
+        if (availabilityChanged) {
+            ++store.goalRevision;
+            store.flowFields.clear();
         }
         return store.sharedGoals;
     }
@@ -1554,6 +1586,8 @@ void PathFindingManager::Clear() {
     navigationCacheStore->grids.clear();
     navigationCacheStore->goalsValid = false;
     navigationCacheStore->goalTarget = nullptr;
+    navigationCacheStore->goalTargetBounds = {};
+    navigationCacheStore->goalRevision = 0;
     navigationCacheStore->sharedGoals.clear();
     navigationCacheStore->flowFields.clear();
 }
@@ -1617,22 +1651,76 @@ Vector2 PathFindingManager::GetLocalDirection(
     if (Vector2Length(desiredDirection) <= 0.001f) {
         return { 0.0f, 0.0f };
     }
-    if (!enemy.IsEnemyCollisionEnabled()) {
-        return Vector2Normalize(desiredDirection);
+    desiredDirection = Vector2Normalize(desiredDirection);
+    if (!enemy.IsLocalEnemyAvoidanceEnabled()) {
+        return desiredDirection;
     }
 
-    Vector2 finalDirection = desiredDirection;
     Vector2 enemyPosition = enemy.GetPosition();
     Rectangle searchBounds = levelManager.GetCurrentRoomBounds();
-    constexpr float SEPARATION_RADIUS = 42.0f;
+    constexpr float FORWARD_PROBE_DISTANCE = 18.0f;
+    constexpr float SIDE_CLEARANCE_DISTANCE = 12.0f;
+    constexpr float SEPARATION_RADIUS = 36.0f;
     constexpr float SEPARATION_RADIUS_SQUARED =
         SEPARATION_RADIUS * SEPARATION_RADIUS;
-    constexpr float SEPARATION_WEIGHT = 0.85f;
+    constexpr float SEPARATION_WEIGHT = 0.4f;
+    constexpr float MINIMUM_FORWARD_DOT = 0.5f;
+
+    auto isDirectionClear = [&](Vector2 direction, float distance) {
+        return IsBodyPathClear(
+            levelManager,
+            enemy,
+            enemyPosition,
+            Vector2Add(
+                enemyPosition,
+                Vector2Scale(direction, distance)
+            ),
+            searchBounds
+        );
+    };
+
+    Vector2 left = { -desiredDirection.y, desiredDirection.x };
+    Vector2 right = { desiredDirection.y, -desiredDirection.x };
+    bool desiredClear = isDirectionClear(
+        desiredDirection,
+        FORWARD_PROBE_DISTANCE
+    );
+    if (!desiredClear) {
+        Vector2 leftForward = Vector2Normalize(Vector2Add(
+            desiredDirection,
+            Vector2Scale(left, 0.75f)
+        ));
+        Vector2 rightForward = Vector2Normalize(Vector2Add(
+            desiredDirection,
+            Vector2Scale(right, 0.75f)
+        ));
+        bool leftForwardClear = isDirectionClear(
+            leftForward,
+            FORWARD_PROBE_DISTANCE
+        );
+        bool rightForwardClear = isDirectionClear(
+            rightForward,
+            FORWARD_PROBE_DISTANCE
+        );
+        if (leftForwardClear && !rightForwardClear) return leftForward;
+        if (rightForwardClear && !leftForwardClear) return rightForward;
+        if (leftForwardClear && rightForwardClear) return leftForward;
+        return desiredDirection;
+    }
+
+    // Crowd avoidance is optional. In a narrow passage, ignore nearby enemies
+    // and keep following the globally valid map path.
+    if (!isDirectionClear(left, SIDE_CLEARANCE_DISTANCE) ||
+        !isDirectionClear(right, SIDE_CLEARANCE_DISTANCE)) {
+        return desiredDirection;
+    }
+
+    Vector2 separation = { 0.0f, 0.0f };
 
     for (Enemy* otherEnemy : objectManager.GetEnemies()) {
         if (!otherEnemy) continue;
         if (otherEnemy == &enemy ||
-            !otherEnemy->IsEnemyCollisionEnabled() ||
+            !otherEnemy->IsLocalEnemyAvoidanceEnabled() ||
             otherEnemy->IsDead() ||
             !otherEnemy->IsEnabled()) continue;
         if (!ContainsRectangle(
@@ -1651,8 +1739,8 @@ Vector2 PathFindingManager::GetLocalDirection(
             float distance = std::sqrt(distanceSquared);
             float strength = (SEPARATION_RADIUS - distance) /
                 SEPARATION_RADIUS;
-            finalDirection = Vector2Add(
-                finalDirection,
+            separation = Vector2Add(
+                separation,
                 Vector2Scale(
                     Vector2Normalize(away),
                     strength * SEPARATION_WEIGHT
@@ -1661,52 +1749,20 @@ Vector2 PathFindingManager::GetLocalDirection(
         }
     }
 
-    constexpr float PROBE_DISTANCE = 18.0f;
-    Vector2 forwardProbe = Vector2Add(
-        enemyPosition,
-        Vector2Scale(desiredDirection, PROBE_DISTANCE)
-    );
-    if (!IsBodyClearAtWorldPosition(
-            levelManager,
-            enemy,
-            forwardProbe,
-            searchBounds)) {
-        Vector2 left = { -desiredDirection.y, desiredDirection.x };
-        Vector2 right = { desiredDirection.y, -desiredDirection.x };
-        bool leftClear = IsBodyClearAtWorldPosition(
-            levelManager,
-            enemy,
-            Vector2Add(enemyPosition, Vector2Scale(left, PROBE_DISTANCE)),
-            searchBounds
-        );
-        bool rightClear = IsBodyClearAtWorldPosition(
-            levelManager,
-            enemy,
-            Vector2Add(enemyPosition, Vector2Scale(right, PROBE_DISTANCE)),
-            searchBounds
-        );
-
-        if (leftClear && !rightClear) {
-            finalDirection = Vector2Add(
-                finalDirection,
-                Vector2Scale(left, 0.75f)
-            );
-        } else if (rightClear && !leftClear) {
-            finalDirection = Vector2Add(
-                finalDirection,
-                Vector2Scale(right, 0.75f)
-            );
-        } else if (leftClear && rightClear) {
-            finalDirection = Vector2Add(
-                finalDirection,
-                Vector2Scale(left, 0.35f)
-            );
-        }
+    if (Vector2LengthSqr(separation) <= 0.000001f) {
+        return desiredDirection;
     }
 
-    return Vector2Length(finalDirection) > 0.001f
-        ? Vector2Normalize(finalDirection)
-        : desiredDirection;
+    Vector2 candidateDirection = Vector2Normalize(Vector2Add(
+        desiredDirection,
+        separation
+    ));
+    if (Vector2DotProduct(candidateDirection, desiredDirection) <
+            MINIMUM_FORWARD_DOT ||
+        !isDirectionClear(candidateDirection, FORWARD_PROBE_DISTANCE)) {
+        return desiredDirection;
+    }
+    return candidateDirection;
 }
 
 void PathFindingManager::Update(float deltaTime) {
@@ -1787,11 +1843,13 @@ void PathFindingManager::Update(float deltaTime) {
                            PathRecord& record,
                            PathSearchResult result,
                            Tile targetTile,
-                           bool navigationChanged) {
+                           bool navigationChanged,
+                           bool goalChanged) {
         record.hasTargetTile = true;
         record.targetTileX = targetTile.x;
         record.targetTileY = targetTile.y;
         record.navigationRevision = navigationRevision;
+        record.goalRevision = navigationCacheStore->goalRevision;
         record.pathAge = 0.0f;
         record.forceRepath = false;
         record.lastSearchFailed =
@@ -1822,7 +1880,7 @@ void PathFindingManager::Update(float deltaTime) {
             return;
         }
 
-        bool existingPathValid = !navigationChanged &&
+        bool existingPathValid = !navigationChanged && !goalChanged &&
             enemy.HasTargetPosition() &&
             IsBodyPathClear(
                 levelManager,
@@ -1944,10 +2002,12 @@ void PathFindingManager::Update(float deltaTime) {
             record.targetTileY != targetTile.y;
         bool navigationChanged =
             record.navigationRevision != navigationRevision;
+        bool goalChanged =
+            record.goalRevision != navigationCacheStore->goalRevision;
         bool failedPathRetry = record.lastSearchFailed &&
             record.pathAge >= FAILED_PATH_RETRY_INTERVAL;
         bool needsRoute = record.forceRepath || targetChanged ||
-            navigationChanged || failedPathRetry;
+            navigationChanged || goalChanged || failedPathRetry;
         if (!needsRoute) continue;
 
         const std::vector<EnemyPathDebugPoint>& candidates =
@@ -1966,7 +2026,7 @@ void PathFindingManager::Update(float deltaTime) {
         );
         auto fieldIt = navigationCacheStore->flowFields.find(cache.GetKey());
         if (fieldIt == navigationCacheStore->flowFields.end()) {
-            if (navigationChanged) {
+            if (navigationChanged || goalChanged) {
                 enemy->ClearTargetPosition();
                 enemy->ClearSelectedPathGoal();
             }
@@ -1990,7 +2050,8 @@ void PathFindingManager::Update(float deltaTime) {
             record,
             std::move(result),
             targetTile,
-            navigationChanged
+            navigationChanged,
+            goalChanged
         );
     }
 
@@ -2067,10 +2128,12 @@ void PathFindingManager::Update(float deltaTime) {
             record.targetTileY != targetTile.y;
         bool navigationChanged =
             record.navigationRevision != navigationRevision;
+        bool goalChanged = record.mode == NavigationMode::PlayerFlowField &&
+            record.goalRevision != navigationCacheStore->goalRevision;
         bool failedPathRetry = record.lastSearchFailed &&
             record.pathAge >= FAILED_PATH_RETRY_INTERVAL;
         bool needsSearch = record.forceRepath || targetChanged ||
-            navigationChanged || failedPathRetry;
+            navigationChanged || goalChanged || failedPathRetry;
         if (!needsSearch) continue;
 
         PopReachedTargets(*enemy);
@@ -2131,7 +2194,8 @@ void PathFindingManager::Update(float deltaTime) {
             record,
             std::move(result),
             targetTile,
-            navigationChanged
+            navigationChanged,
+            goalChanged
         );
     }
 }

@@ -15,6 +15,7 @@
 
 namespace {
     constexpr float MIN_DIRECTION_LENGTH = 0.001f;
+    constexpr float MAX_CHARGE_COLLISION_STEP = 2.0f;
 
     Vector2 NormalizeOrFallback(Vector2 direction, Vector2 fallback) {
         if (Vector2Length(direction) <= MIN_DIRECTION_LENGTH) {
@@ -130,18 +131,15 @@ void EnemyChaserDamageState::Update(
         chargeSpeed * activeTime
     );
 
-    Rectangle body = enemy->GetBoundingBox();
-    float maximumSubstep = std::max(
-        1.0f,
-        std::min(body.width, body.height) / 2.0f
-    );
     int substepCount = std::max(
         1,
-        (int)std::ceil(frameDistance / maximumSubstep)
+        (int)std::ceil(frameDistance / MAX_CHARGE_COLLISION_STEP)
     );
     float substepDistance = frameDistance / (float)substepCount;
 
     for (int step = 0; step < substepCount; ++step) {
+        // Charge ignores local enemy avoidance, but every position change is
+        // validated against walls and solid map objects before it is applied.
         EnemyMoveResult moveResult = EnemyCollision::MoveAgainstWalls(
             *enemy,
             Vector2Scale(chargeDirection, substepDistance),
@@ -160,7 +158,7 @@ void EnemyChaserDamageState::Update(
         );
 
         if (attackResolved ||
-            !EnemyCollision::CheckPlayerCollision(*enemy, *player)) {
+            !EnemyCollision::CheckPlayerAttackOverlap(*enemy, *player)) {
             continue;
         }
 

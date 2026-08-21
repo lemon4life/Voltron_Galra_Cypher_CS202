@@ -3,6 +3,10 @@
 #include "Core/Level/RoomNode.h"
 #include <cmath>
 
+namespace {
+    constexpr float COLLISION_EDGE_PADDING = 0.001f;
+}
+
 ProceduralLevelProvider::ProceduralLevelProvider(
     std::shared_ptr<RoomTemplate>& activeRoom,
     Vector2& roomOffset,
@@ -53,19 +57,35 @@ void ProceduralLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& 
 }
 
 bool ProceduralLevelProvider::IsSolidCollision(Rectangle box) const {
-    // First: do a fast O(1) tile-based lookup for wall and void tiles.
-    if (activeRoom) {
-        float ts = Constants::RENDER_TILE_SIZE;
-        float cx[5] = { box.x + 1.f, box.x + box.width - 1.f, box.x + 1.f, box.x + box.width - 1.f, box.x + box.width * 0.5f };
-        float cy[5] = { box.y + 1.f, box.y + 1.f, box.y + box.height - 1.f, box.y + box.height - 1.f, box.y + box.height * 0.5f };
-        for (int i = 0; i < 5; ++i) {
-            int tx = (int)std::floor((cx[i] - roomOffset.x) / ts);
-            int ty = (int)std::floor((cy[i] - roomOffset.y) / ts);
-            if (tx < 0 || ty < 0 || tx >= activeRoom->width || ty >= activeRoom->height) {
-                return true; // Out of map bounds = solid
+    if (!activeRoom) return false;
+
+    const float tileSize = Constants::RENDER_TILE_SIZE;
+    const int minimumTileX = (int)std::floor(
+        (box.x + COLLISION_EDGE_PADDING - roomOffset.x) / tileSize
+    );
+    const int maximumTileX = (int)std::floor(
+        (box.x + box.width - COLLISION_EDGE_PADDING - roomOffset.x) /
+            tileSize
+    );
+    const int minimumTileY = (int)std::floor(
+        (box.y + COLLISION_EDGE_PADDING - roomOffset.y) / tileSize
+    );
+    const int maximumTileY = (int)std::floor(
+        (box.y + box.height - COLLISION_EDGE_PADDING - roomOffset.y) /
+            tileSize
+    );
+
+    for (int tileY = minimumTileY; tileY <= maximumTileY; ++tileY) {
+        for (int tileX = minimumTileX; tileX <= maximumTileX; ++tileX) {
+            if (tileX < 0 || tileY < 0 ||
+                tileX >= activeRoom->width || tileY >= activeRoom->height) {
+                return true;
             }
-            int tile = activeRoom->layer0_tiles[ty][tx];
-            if (tile == 1 || tile == 2) return true; // Wall or void
+
+            const int tile = activeRoom->layer0_tiles[tileY][tileX];
+            if (tile == 1 || tile == 2) {
+                return true;
+            }
         }
     }
 

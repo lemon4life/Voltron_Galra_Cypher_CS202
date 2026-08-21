@@ -299,10 +299,6 @@ void Enemy::DrawPathDebug() const {
     }
 }
 
-bool Enemy::CheckCollision(const std::vector<GameObject*>& entities) const {
-    return EnemyCollision::CheckAnyEnemyCollision(*this, entities);
-}
-
 void Enemy::StartPathFinding() {
     if (usePathFinding) return;
 
@@ -391,7 +387,15 @@ EnemyMoveResult Enemy::UpdateMovement(Vector2 desiredVelocity, float deltaTime, 
     currentVelocity.y += (desiredVelocity.y - currentVelocity.y) * friction * deltaTime;
     
     Vector2 displacement = { currentVelocity.x * deltaTime, currentVelocity.y * deltaTime };
-    return EnemyCollision::MoveAgainstWalls(*this, displacement, pathAccess, response);
+    EnemyMoveResult moveResult = EnemyCollision::MoveAgainstWalls(
+        *this,
+        displacement,
+        pathAccess,
+        response
+    );
+    if (moveResult.blockedX) currentVelocity.x = 0.0f;
+    if (moveResult.blockedY) currentVelocity.y = 0.0f;
+    return moveResult;
 }
 
 void Enemy::ApplyStatMultiplier(float multiplier) {

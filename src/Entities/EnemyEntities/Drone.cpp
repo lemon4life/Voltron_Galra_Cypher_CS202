@@ -39,7 +39,7 @@ Drone::Drone(
     damage = 15;
     baseAttackCooldown = DRONE_ATTACK_COOLDOWN;
     attackCooldown = 0.0f;
-    SetEnemyCollisionEnabled(false);
+    SetLocalEnemyAvoidanceEnabled(false);
     SetRenderFootOffset({ 0.0f, 25.0f });
 
     movingState = std::make_unique<DroneMovingState>();

@@ -14,7 +14,6 @@
 
 namespace {
     constexpr float MIN_DIRECTION_LENGTH = 0.001f;
-    constexpr float PLAYER_SEPARATION_DISTANCE = 20.0f;
 
     void UpdateAttackCooldown(EnemyDiver* enemy, float deltaTime) {
         if (enemy->GetAttackCooldown() <= 0.0f) return;
@@ -75,19 +74,11 @@ void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
         direction = pathAccess.GetLocalDirection(*enemy, direction);
     }
 
-    enemy->UpdateMovement(Vector2Scale(direction, enemy->GetSpeed()), deltaTime, EnemyWallResponse::Slide);
-
-    if (!EnemyCollision::CheckPlayerCollision(*enemy, *player)) {
-        return;
-    }
-
-    enemyPosition = enemy->GetPosition();
-    Vector2 pushDirection = NormalizeOrFallback(
-        Vector2Subtract(enemyPosition, playerPosition),
-        { 1.0f, 0.0f }
+    enemy->UpdateMovement(
+        Vector2Scale(direction, enemy->GetSpeed()),
+        deltaTime,
+        EnemyWallResponse::Slide
     );
-
-    enemy->ApplyCollisionPush(pushDirection, PLAYER_SEPARATION_DISTANCE);
 }
 
 void EnemyDiverChaseState::Exit(EnemyDiver* enemy) {
@@ -190,7 +181,7 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
         }
 
         if (!hasDamagedPlayer && player &&
-            EnemyCollision::CheckPlayerCollision(*enemy, *player)) {
+            EnemyCollision::CheckPlayerAttackOverlap(*enemy, *player)) {
             hasDamagedPlayer = true;
 
             if (EnemyCollision::CheckParry(*enemy, *player)) {

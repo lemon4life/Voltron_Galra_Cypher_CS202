@@ -85,7 +85,7 @@ protected:
     std::unique_ptr<EnemyDazeState> dazeState;
 
     bool deathNotified = false;
-    bool enemyCollisionEnabled = true;
+    bool localEnemyAvoidanceEnabled = true;
     IEntityRemovalAccess& removalAccess;
     IEnemyPathAccess& pathAccess;
 
@@ -143,7 +143,6 @@ public:
     void UpdateKnockback(float deltaTime);
     EnemyMoveResult UpdateMovement(Vector2 desiredVelocity, float deltaTime, EnemyWallResponse response = EnemyWallResponse::Slide);
     bool IsDead() const { return health <= 0; }
-    bool CheckCollision(const std::vector<GameObject*>& entities) const;
 
     Rectangle GetBoundingBox() const override;
     Rectangle GetCollisionBox() const override;
@@ -221,9 +220,11 @@ public:
     void StartPathFindingTo(Vector2 worldGoal);
     void EndPathFinding();
     bool IsPathFinding() const { return usePathFinding; }
-    bool IsEnemyCollisionEnabled() const { return enemyCollisionEnabled; }
-    void SetEnemyCollisionEnabled(bool enabled) {
-        enemyCollisionEnabled = enabled;
+    bool IsLocalEnemyAvoidanceEnabled() const {
+        return localEnemyAvoidanceEnabled;
+    }
+    void SetLocalEnemyAvoidanceEnabled(bool enabled) {
+        localEnemyAvoidanceEnabled = enabled;
     }
 
     void ClearTargetPosition() { targetPositions.clear(); }

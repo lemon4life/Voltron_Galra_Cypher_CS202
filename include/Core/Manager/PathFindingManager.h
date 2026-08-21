@@ -47,6 +47,7 @@ private:
         int targetTileX = 0;
         int targetTileY = 0;
         std::uint64_t navigationRevision = 0;
+        std::uint64_t goalRevision = 0;
         float pathAge = 0.0f;
         bool forceRepath = true;
         bool lastSearchFailed = false;
