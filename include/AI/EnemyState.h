@@ -167,7 +167,7 @@ private:
     float frameTimer = 0.0f;
     int frameIndex = 0;
     int completedPunches = 0;
-    float bulletSpeed = 400.0f;
+    float bulletSpeed = 250.0f;
     float changeAngleDegreesPerSecond = 30.0f;
 
 public:
@@ -178,4 +178,19 @@ public:
     Phase GetPhase() const { return phase; }
     int GetFrameIndex() const { return frameIndex; }
     int GetCompletedPunches() const { return completedPunches; }
+};
+
+class BossStompingState : public ITypedEnemyState<Boss> {
+private:
+    float frameTimer = 0.0f;
+    int frameIndex = 0;
+    int completedStomps = 0;
+
+public:
+    void Enter(Boss* enemy) override;
+    void Update(Boss* enemy, float deltaTime) override;
+    void Exit(Boss* enemy) override;
+
+    int GetFrameIndex() const { return frameIndex; }
+    int GetCompletedStomps() const { return completedStomps; }
 };

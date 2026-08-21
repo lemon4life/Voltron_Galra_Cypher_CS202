@@ -13,6 +13,7 @@ struct ImpactEffect {
     Texture2D texture;
     bool drawBehind;
     Color tint = WHITE;
+    Vector2 origin = { 0.0f, 0.0f };
 };
 
 class LevelManager;
@@ -36,6 +37,15 @@ public:
         Texture2D texture,
         int frames,
         float lifetime,
+        bool drawBehind = false,
+        Color tint = WHITE
+    );
+    void AddAnchoredEffect(
+        Vector2 position,
+        Texture2D texture,
+        int frames,
+        float lifetime,
+        Vector2 origin,
         bool drawBehind = false,
         Color tint = WHITE
     );

@@ -6,11 +6,18 @@ class Boss : public Enemy {
 private:
     std::unique_ptr<BossSpellingState> spellingState;
     std::unique_ptr<BossPunchState> punchState;
+    std::unique_ptr<BossStompingState> stompingState;
     Texture2D spellTexture = { 0 };
     Texture2D punchReadyTexture = { 0 };
     Texture2D punchBodyTexture = { 0 };
     Texture2D punchHandTexture = { 0 };
     Texture2D firePunchTexture = { 0 };
+    Texture2D stompTexture = { 0 };
+    Texture2D stompSmokeTexture = { 0 };
+    Texture2D stompDroneBulletTexture = { 0 };
+    Texture2D stompKnightBulletTexture = { 0 };
+
+    Vector2 GetStompFootWorldPosition() const;
 
 public:
     Boss(
@@ -29,9 +36,13 @@ public:
     }
     BossSpellingState* GetSpellingState() { return spellingState.get(); }
     BossPunchState* GetPunchState() { return punchState.get(); }
+    BossStompingState* GetStompingState() { return stompingState.get(); }
     bool IsSpelling() const { return currentState == spellingState.get(); }
     bool IsPunching() const { return currentState == punchState.get(); }
+    bool IsStomping() const { return currentState == stompingState.get(); }
     bool TrySummonRandomEnemy();
+    void SpawnStompSmoke();
+    void FireStompProjectiles();
     void FirePunchProjectile(
         float bulletSpeed,
         float changeAngleDegreesPerSecond

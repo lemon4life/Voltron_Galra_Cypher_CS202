@@ -25,11 +25,16 @@ namespace {
     constexpr int BOSS_PUNCH_FIRE_FRAME_INDEX = 2;
     constexpr int BOSS_PUNCHES_PER_STATE = 10;
     constexpr float BOSS_PUNCH_FRAME_DURATION = 0.06f;
+    constexpr int BOSS_STOMP_FRAME_COUNT = 5;
+    constexpr int BOSS_STOMPS_PER_STATE = 3;
+    constexpr float BOSS_STOMP_SLOW_FRAME_DURATION = 0.35f;
+    constexpr float BOSS_STOMP_FAST_FRAME_DURATION = 0.10f;
 
     enum class BossOffense {
         Chase,
         Spell,
-        Punch
+        Punch,
+        Stomp
     };
 
     struct BossOffenseChoice {
@@ -37,13 +42,19 @@ namespace {
         int probabilityPercent;
     };
 
-    // Offense probabilities after each idle phase:
-    // Chase: 40%, Spell: 30%, Punch: 30%.
-    constexpr std::array<BossOffenseChoice, 3> BOSS_OFFENSE_CHOICES = {{
-        { BossOffense::Chase, 0 },
-        { BossOffense::Spell, 0 },
-        { BossOffense::Punch, 100 }
+    // The percentage of Boss entering each offense state after the idle state
+    constexpr std::array<BossOffenseChoice, 4> BOSS_OFFENSE_CHOICES = {{
+        { BossOffense::Chase, 20 },
+        { BossOffense::Spell, 27 },
+        { BossOffense::Punch, 26 },
+        { BossOffense::Stomp, 27 }
     }};
+
+    float GetStompFrameDuration(int frameIndex) {
+        return frameIndex < 2
+            ? BOSS_STOMP_SLOW_FRAME_DURATION
+            : BOSS_STOMP_FAST_FRAME_DURATION;
+    }
 
     float RollDuration(int minimumMilliseconds, int maximumMilliseconds) {
         return (float)GetRandomValue(
@@ -87,6 +98,9 @@ void BossIdlingState::Update(Boss* enemy, float deltaTime) {
                 break;
             case BossOffense::Punch:
                 nextState = enemy->GetPunchState();
+                break;
+            case BossOffense::Stomp:
+                nextState = enemy->GetStompingState();
                 break;
             case BossOffense::Chase:
             default:
@@ -244,6 +258,45 @@ void BossPunchState::Update(Boss* enemy, float deltaTime) {
 }
 
 void BossPunchState::Exit(Boss* enemy) {
+    enemy->SetCurrentVelocity({ 0.0f, 0.0f });
+    enemy->ResetAnimationCycle();
+}
+
+// Boss Stomping State
+
+void BossStompingState::Enter(Boss* enemy) {
+    frameTimer = 0.0f;
+    frameIndex = 0;
+    completedStomps = 0;
+    enemy->EndPathFinding();
+    enemy->SetCurrentVelocity({ 0.0f, 0.0f });
+    enemy->ResetAnimationCycle();
+}
+
+void BossStompingState::Update(Boss* enemy, float deltaTime) {
+    frameTimer += std::max(0.0f, deltaTime);
+
+    while (frameTimer >= GetStompFrameDuration(frameIndex)) {
+        frameTimer -= GetStompFrameDuration(frameIndex);
+        ++frameIndex;
+
+        if (frameIndex == BOSS_STOMP_FRAME_COUNT - 1) {
+            enemy->SpawnStompSmoke();
+            enemy->FireStompProjectiles();
+        }
+
+        if (frameIndex >= BOSS_STOMP_FRAME_COUNT) {
+            frameIndex = 0;
+            ++completedStomps;
+            if (completedStomps >= BOSS_STOMPS_PER_STATE) {
+                enemy->ChangeState(enemy->GetIdlingState());
+                return;
+            }
+        }
+    }
+}
+
+void BossStompingState::Exit(Boss* enemy) {
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
     enemy->ResetAnimationCycle();
 }

@@ -6,6 +6,8 @@
 #include "Core/Manager/TeamManager.h"
 #include "Entities/BossFirePunchProjectile.h"
 #include "Entities/Player/Paladin.h"
+#include "Entities/Projectile.h"
+#include "Entities/Projectiles/DroneBullet.h"
 
 #include "raymath.h"
 
@@ -22,6 +24,7 @@ namespace {
     constexpr int BOSS_SPELL_FRAME_COUNT = 6;
     constexpr int BOSS_PUNCH_READY_FRAME_COUNT = 10;
     constexpr int BOSS_PUNCH_BODY_FRAME_COUNT = 4;
+    constexpr int BOSS_STOMP_FRAME_COUNT = 5;
     constexpr float BOSS_FRAME_WIDTH = 64.0f;
     constexpr float BOSS_FRAME_HEIGHT = 72.0f;
     constexpr float BOSS_PUNCH_HAND_FRAME_WIDTH = 54.0f;
@@ -30,6 +33,23 @@ namespace {
     constexpr float BOSS_RUN_FRAME_DURATION = 0.11f;
     constexpr float BOSS_SPELL_FRAME_DURATION = 0.11f;
     constexpr float BOSS_KNOCKBACK_RESISTANCE = 1.0f;
+    constexpr int BOSS_STOMP_SMOKE_FRAME_COUNT = 9;
+    constexpr float BOSS_STOMP_SMOKE_FRAME_DURATION = 0.10f;
+    constexpr Vector2 BOSS_STOMP_FOOT_PIXEL = { 41.0f, 71.0f };
+    constexpr Vector2 BOSS_STOMP_SMOKE_ORIGIN = { 47.0f, 44.0f };
+    constexpr int BOSS_STOMP_DRONE_BULLET_COUNT = 36;
+    constexpr int BOSS_STOMP_KNIGHT_BULLET_COUNT = 12;
+    constexpr float BOSS_STOMP_PROJECTILE_SPAWN_RADIUS = 15.0f;
+    constexpr float STOMP_DRONE_BULLET_INITIAL_SPEED = 200.0f;
+    constexpr float STOMP_DRONE_BULLET_MINIMUM_SPEED = 40.0f;
+    constexpr float STOMP_DRONE_BULLET_DRAG = 400.0f;
+    constexpr float STOMP_DRONE_BULLET_LIFETIME = 4.0f;
+    constexpr float STOMP_DRONE_BULLET_RADIUS = 4.0f;
+    constexpr int STOMP_DRONE_BULLET_DAMAGE = 15;
+    constexpr float STOMP_KNIGHT_BULLET_SPEED = 160.0f;
+    constexpr float STOMP_KNIGHT_BULLET_LIFETIME = 2.0f;
+    constexpr float STOMP_KNIGHT_BULLET_RADIUS = 5.0f;
+    constexpr int STOMP_KNIGHT_BULLET_DAMAGE = 12;
 
     // Across the ten idle and six running frames, visible pixels occupy the
     // combined x=8..54 and y=3..71 bounds inside each 64x72 cell.
@@ -171,6 +191,7 @@ Boss::Boss(
     chaseState = std::make_unique<BossChaseState>();
     spellingState = std::make_unique<BossSpellingState>();
     punchState = std::make_unique<BossPunchState>();
+    stompingState = std::make_unique<BossStompingState>();
 
     SetEnemySprites(AssetManager::GetInstance().GetBossSprites());
     spellTexture = AssetManager::GetInstance().GetTexture("Boss_Spell");
@@ -185,6 +206,16 @@ Boss::Boss(
     );
     firePunchTexture = AssetManager::GetInstance().GetTexture(
         "Boss_Fire_Punch"
+    );
+    stompTexture = AssetManager::GetInstance().GetTexture("Boss_Stomp");
+    stompSmokeTexture = AssetManager::GetInstance().GetTexture(
+        "Boss_Stomp_Smoke"
+    );
+    stompDroneBulletTexture = AssetManager::GetInstance().GetTexture(
+        "Drone_bullet"
+    );
+    stompKnightBulletTexture = AssetManager::GetInstance().GetTexture(
+        "Knight_Gun_Bullet"
     );
 
     ChangeState(GetIdlingState());
@@ -223,7 +254,7 @@ void Boss::Update(float deltaTime) {
             position.x;
     }
 
-    if (IsPunching()) {
+    if (IsPunching() || IsStomping()) {
         return;
     }
 
@@ -289,7 +320,13 @@ void Boss::Draw() {
     };
 
     bool drewBody = false;
-    if (IsPunching()) {
+    if (IsStomping()) {
+        drewBody = DrawBossBodyFrame(
+            stompTexture,
+            GetStompingState()->GetFrameIndex(),
+            BOSS_STOMP_FRAME_COUNT
+        );
+    } else if (IsPunching()) {
         BossPunchState* punchAnimation = GetPunchState();
         int punchFrame = punchAnimation->GetFrameIndex();
         bool isReady = punchAnimation->GetPhase() ==
@@ -412,6 +449,93 @@ bool Boss::TrySummonRandomEnemy() {
     }
 
     return false;
+}
+
+Vector2 Boss::GetStompFootWorldPosition() const {
+    Vector2 bodyDrawPosition = {
+        std::round(position.x),
+        std::round(position.y)
+    };
+    float footPixelX = facingLeft
+        ? BOSS_FRAME_WIDTH - 1.0f - BOSS_STOMP_FOOT_PIXEL.x
+        : BOSS_STOMP_FOOT_PIXEL.x;
+    return {
+        bodyDrawPosition.x + footPixelX - BOSS_DRAW_ORIGIN.x,
+        bodyDrawPosition.y + BOSS_STOMP_FOOT_PIXEL.y - BOSS_DRAW_ORIGIN.y
+    };
+}
+
+void Boss::SpawnStompSmoke() {
+    if (stompSmokeTexture.id == 0) return;
+
+    GameManager::GetInstance().GetEffectManager().AddAnchoredEffect(
+        GetStompFootWorldPosition(),
+        stompSmokeTexture,
+        BOSS_STOMP_SMOKE_FRAME_COUNT,
+        BOSS_STOMP_SMOKE_FRAME_COUNT *
+            BOSS_STOMP_SMOKE_FRAME_DURATION,
+        BOSS_STOMP_SMOKE_ORIGIN
+    );
+}
+
+void Boss::FireStompProjectiles() {
+    Vector2 origin = GetStompFootWorldPosition();
+    GameManager& gameManager = GameManager::GetInstance();
+
+    if (stompDroneBulletTexture.id != 0) {
+        for (int index = 0;
+             index < BOSS_STOMP_DRONE_BULLET_COUNT;
+             ++index) {
+            float angle = 2.0f * PI * index /
+                BOSS_STOMP_DRONE_BULLET_COUNT;
+            Vector2 direction = { std::cos(angle), std::sin(angle) };
+            Vector2 spawnPosition = Vector2Add(
+                origin,
+                Vector2Scale(
+                    direction,
+                    BOSS_STOMP_PROJECTILE_SPAWN_RADIUS
+                )
+            );
+            gameManager.AddProjectile(new DroneBullet(
+                spawnPosition,
+                direction,
+                STOMP_DRONE_BULLET_INITIAL_SPEED,
+                STOMP_DRONE_BULLET_MINIMUM_SPEED,
+                STOMP_DRONE_BULLET_DRAG,
+                STOMP_DRONE_BULLET_LIFETIME,
+                STOMP_DRONE_BULLET_RADIUS,
+                STOMP_DRONE_BULLET_DAMAGE,
+                stompDroneBulletTexture,
+                true
+            ));
+        }
+    }
+
+    if (stompKnightBulletTexture.id != 0) {
+        for (int index = 0;
+             index < BOSS_STOMP_KNIGHT_BULLET_COUNT;
+             ++index) {
+            float angle = 2.0f * PI * index /
+                BOSS_STOMP_KNIGHT_BULLET_COUNT;
+            Vector2 direction = { std::cos(angle), std::sin(angle) };
+            Vector2 spawnPosition = Vector2Add(
+                origin,
+                Vector2Scale(
+                    direction,
+                    BOSS_STOMP_PROJECTILE_SPAWN_RADIUS
+                )
+            );
+            gameManager.AddProjectile(new Projectile(
+                spawnPosition,
+                Vector2Scale(direction, STOMP_KNIGHT_BULLET_SPEED),
+                STOMP_KNIGHT_BULLET_LIFETIME,
+                STOMP_KNIGHT_BULLET_DAMAGE,
+                stompKnightBulletTexture,
+                true,
+                STOMP_KNIGHT_BULLET_RADIUS
+            ));
+        }
+    }
 }
 
 void Boss::FirePunchProjectile(

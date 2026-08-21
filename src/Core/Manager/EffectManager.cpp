@@ -23,6 +23,30 @@ void EffectManager::AddEffect(
     Color tint
 ) {
     if (frames <= 0 || lifetime <= 0.0f) return;
+    AddAnchoredEffect(
+        position,
+        texture,
+        frames,
+        lifetime,
+        {
+            (float)texture.width / frames * 0.5f,
+            (float)texture.height * 0.5f
+        },
+        drawBehind,
+        tint
+    );
+}
+
+void EffectManager::AddAnchoredEffect(
+    Vector2 position,
+    Texture2D texture,
+    int frames,
+    float lifetime,
+    Vector2 origin,
+    bool drawBehind,
+    Color tint
+) {
+    if (frames <= 0 || lifetime <= 0.0f) return;
     activeEffects.push_back({
         position,
         lifetime,
@@ -31,7 +55,8 @@ void EffectManager::AddEffect(
         frames,
         texture,
         drawBehind,
-        tint
+        tint,
+        origin
     });
 }
 
@@ -133,7 +158,7 @@ void EffectManager::Draw(bool background) const {
             effect.texture,
             source,
             destination,
-            { frameWidth * 0.5f, frameHeight * 0.5f },
+            effect.origin,
             0.0f,
             effect.tint
         );
