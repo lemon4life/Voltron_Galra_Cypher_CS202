@@ -65,6 +65,15 @@ void AssetManager::LoadCommonAssets() {
     LoadTexture2D("dialogue_panel", "assets/UI/dialogue.png");
     LoadTexture2D("select_arrow", "assets/UI/select_arrow.png");
 
+    // Pots & Pickups
+    LoadTexture2D("pot_hp",    "assets/Objects/pot_hp.png", true);
+    LoadTexture2D("pot_ex",    "assets/Objects/pot_ex.png", true);
+    LoadTexture2D("pot_quint", "assets/Objects/pot_quint.png", true);
+
+    // Chest
+    LoadTexture2D("chest_bottom", "assets/Objects/chest_bottom.png", true);
+    LoadTexture2D("chest_top",    "assets/Objects/chest_top.png", true);
+
     // Minimap Icons & Indicators
     LoadTexture2D("minimap_current", "assets/UI/minimap/current_room.png", true);
     LoadTexture2D("minimap_event",   "assets/UI/minimap/event.png", true);

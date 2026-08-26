@@ -139,8 +139,10 @@ void MinimapRenderer::Draw(
             case RoomType::SPAWN:
                 iconKey = "minimap_home";
                 break;
-            case RoomType::EVENT:
             case RoomType::CHEST:
+                iconKey = "minimap_chest";
+                break;
+            case RoomType::EVENT:
                 iconKey = "minimap_event";
                 break;
             case RoomType::EXIT:

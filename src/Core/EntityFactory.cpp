@@ -3,6 +3,7 @@
 #include "Entities/NPC.h"
 #include "Entities/Hub/HubPaladinStand.h"
 #include "Entities/Props/Pot.h"
+#include "Entities/Props/Chest.h"
 #include "Entities/EnemyEntities/EnemyChaser.h"
 #include "Entities/EnemyEntities/Boss.h"
 #include "Entities/EnemyEntities/EnemyDiver.h"
@@ -43,6 +44,8 @@ std::unique_ptr<GameObject> EntityFactory::CreateEntity(
     ILevelLineOfSightQuery& lineOfSight
 ) {
     switch (type) {
+        case MapObjectId::Chest:
+            return std::make_unique<Chest>(position);
         case MapObjectId::PotEX:
             return std::make_unique<ExPot>(position);
         case MapObjectId::PotHP:

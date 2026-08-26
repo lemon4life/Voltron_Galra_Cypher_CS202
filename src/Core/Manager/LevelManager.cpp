@@ -925,6 +925,24 @@ DynamicSpawnList LevelManager::GenerateDungeon() {
         levelMap.spawnRoom->state = RoomState::CLEARED;
     }
 
+    // Spawn Chest entity in the center of CHEST rooms
+    for (const auto& node : levelMap.generatedNodes) {
+        if (node && node->type == RoomType::CHEST) {
+            Rectangle bounds = node->GetWorldBounds();
+            Vector2 chestPos = {
+                bounds.x + bounds.width / 2.0f,
+                bounds.y + bounds.height / 2.0f
+            };
+            dynamicSpawns.push_back({
+                MapObjectId::Chest,
+                chestPos,
+                { -1, -1 }
+            });
+            node->isCleared = true;
+            node->state = RoomState::CLEARED;
+        }
+    }
+
     printf("GenerateDungeon: Spawning props\n");
     // Instantiate procedural props as actual game entities
     if (activeRoom) {
@@ -946,8 +964,20 @@ DynamicSpawnList LevelManager::GenerateDungeon() {
                             (float)y * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f
                         };
 
-                        // Strict guard: Skip prop/pot instantiation if inside the spawn room
+                        // Strict guard: Skip prop/pot instantiation if inside spawn or chest room
+                        bool skipProp = false;
                         if (levelMap.spawnRoom && CheckCollisionPointRec(worldPos, levelMap.spawnRoom->GetWorldBounds())) {
+                            skipProp = true;
+                        }
+                        if (!skipProp) {
+                            for (const auto& node : levelMap.generatedNodes) {
+                                if (node && node->type == RoomType::CHEST && CheckCollisionPointRec(worldPos, node->GetWorldBounds())) {
+                                    skipProp = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (skipProp) {
                             continue;
                         }
 

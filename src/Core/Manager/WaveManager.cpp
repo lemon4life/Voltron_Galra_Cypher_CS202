@@ -124,9 +124,10 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
             }
         }
 
-        // If the locked room is an EVENT, EXIT, SPAWN, or small utility room, do NOT spawn combat waves
-        if (!lockedNode || lockedNode->type == RoomType::EVENT ||
-            lockedNode->type == RoomType::EXIT || lockedNode->type == RoomType::SPAWN ||
+        // If the locked room is a CHEST, EVENT, EXIT, SPAWN, or small utility room, do NOT spawn combat waves
+        if (!lockedNode || lockedNode->type == RoomType::CHEST ||
+            lockedNode->type == RoomType::EVENT || lockedNode->type == RoomType::EXIT ||
+            lockedNode->type == RoomType::SPAWN ||
             (lockedNode->roomSize == 15 && lockedNode->type != RoomType::BOSS)) {
             return;
         }

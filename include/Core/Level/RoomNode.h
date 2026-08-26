@@ -52,16 +52,8 @@ struct RoomNode {
         if (t == RoomType::BOSS) {
             roomSize = 25;
         } else if (t == RoomType::BATTLE) {
-            // Small rooms (15) are strictly non-combat EVENT rooms. Medium rooms (20) are BATTLE rooms.
-            if (GetRandomValue(0, 1) == 0) {
-                roomSize = 15;
-                type = RoomType::EVENT;
-                isCleared = true;
-                state = RoomState::CLEARED;
-            } else {
-                roomSize = 20;
-            }
-        } else if (t == RoomType::EVENT || t == RoomType::SPAWN) {
+            roomSize = 20;
+        } else if (t == RoomType::EVENT || t == RoomType::CHEST || t == RoomType::SPAWN || t == RoomType::EXIT) {
             roomSize = 15;
             isCleared = true;
             state = RoomState::CLEARED;
