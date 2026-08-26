@@ -64,6 +64,14 @@ void AssetManager::LoadCommonAssets() {
     LoadTexture2D("button_pause", "assets/UI/button_pause.png");
     LoadTexture2D("dialogue_panel", "assets/UI/dialogue.png");
     LoadTexture2D("select_arrow", "assets/UI/select_arrow.png");
+
+    // Minimap Icons & Indicators
+    LoadTexture2D("minimap_current", "assets/UI/minimap/current_room.png", true);
+    LoadTexture2D("minimap_event",   "assets/UI/minimap/event.png", true);
+    LoadTexture2D("minimap_home",    "assets/UI/minimap/home.png", true);
+    LoadTexture2D("minimap_exit",    "assets/UI/minimap/exit.png", true);
+    LoadTexture2D("minimap_boss",    "assets/UI/minimap/boss.png", true);
+    LoadTexture2D("minimap_chest",   "assets/UI/minimap/chest.png", true);
 }
 
 void AssetManager::UnloadAll() {

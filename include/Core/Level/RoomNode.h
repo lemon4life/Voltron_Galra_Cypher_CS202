@@ -17,6 +17,7 @@ enum class RoomType {
     SPAWN,
     BATTLE,
     CHEST,
+    EVENT,
     BOSS,
     EXIT
 };
