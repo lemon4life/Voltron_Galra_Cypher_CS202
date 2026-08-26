@@ -49,10 +49,22 @@ struct RoomNode {
           north(nullptr), south(nullptr), east(nullptr), west(nullptr),
           isDiscovered(false), isCleared(false), state(RoomState::IDLE) {
           
-        if (t == RoomType::BOSS) roomSize = 25;
-        else if (t == RoomType::BATTLE) {
-            // Boss rooms are the unique largest room category.
-            roomSize = (GetRandomValue(0, 1) == 0) ? 15 : 20;
+        if (t == RoomType::BOSS) {
+            roomSize = 25;
+        } else if (t == RoomType::BATTLE) {
+            // Small rooms (15) are strictly non-combat EVENT rooms. Medium rooms (20) are BATTLE rooms.
+            if (GetRandomValue(0, 1) == 0) {
+                roomSize = 15;
+                type = RoomType::EVENT;
+                isCleared = true;
+                state = RoomState::CLEARED;
+            } else {
+                roomSize = 20;
+            }
+        } else if (t == RoomType::EVENT || t == RoomType::SPAWN) {
+            roomSize = 15;
+            isCleared = true;
+            state = RoomState::CLEARED;
         } else {
             roomSize = 15;
         }

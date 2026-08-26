@@ -4,6 +4,7 @@
 #include "Core/Constants.h"
 #include "Core/Level/RoomNode.h"
 #include <cmath>
+#include <algorithm>
 
 void MinimapRenderer::Draw(
     const LevelMap& levelMap,
@@ -14,30 +15,31 @@ void MinimapRenderer::Draw(
 ) {
     if (levelMap.grid.empty() || levelMap.generatedNodes.empty()) return;
 
-    // 1. Base Panel: Dark rounded rectangle with 80% opacity
+    // --- LAYER 1: Background Panel ---
     DrawRectangleRounded(bounds, 0.12f, 8, ColorAlpha(Color{ 10, 10, 15, 255 }, 0.8f));
     DrawRectangleRoundedLinesEx(bounds, 0.12f, 8, 1.0f, ColorAlpha(GRAY, 0.4f));
 
-    // 2. Floor Indicator: Render current floor in dim white
-    UIUtils::DrawText(
-        "PixeloidSans",
-        TextFormat("FLOOR %d", currentFloor),
-        { bounds.x + 8.0f, bounds.y + bounds.height - 18.0f },
-        static_cast<UIUtils::FontSize>(10),
-        Color{ 200, 200, 200, 255 }
-    );
+    // 1.5x Scaled Dimensions
+    const float roomSize = 12.0f;           // 8 * 1.5
+    const float iconSize = 9.0f;            // 6 * 1.5
+    const float currentFrameSize = 15.0f;   // 10 * 1.5
+    const float corridorThickness = 3.0f;   // 2 * 1.5
+    const float spacing = 24.0f;            // 16 * 1.5
 
-    // 2x Scaled Grid Dimensions
-    const float roomSize = 16.0f;
-    const float spacing = 32.0f;
-    const float corridorThickness = 4.0f;
-    
-    // Center the minimap view on the player's current room
-    Vector2 centerMap = {
-        bounds.x + bounds.width / 2.0f,
-        bounds.y + bounds.height / 2.0f
+    // 1. Active-Room-Centric Panel Center (adjusted for bottom floor header)
+    Vector2 panelCenter = {
+        bounds.x + bounds.width * 0.5f,
+        bounds.y + (bounds.height - 20.0f) * 0.5f + 2.0f
     };
-    
+
+    // Calculate any room (gx, gy)'s center relative to the active room
+    auto getNodeCenter = [&](int gx, int gy) -> Vector2 {
+        return {
+            panelCenter.x + (gx - currentGridX) * spacing,
+            panelCenter.y + (gy - currentGridY) * spacing
+        };
+    };
+
     auto checkRevealed = [](const std::shared_ptr<RoomNode>& n) {
         if (!n) return false;
         if (n->isDiscovered) return true;
@@ -47,91 +49,91 @@ void MinimapRenderer::Draw(
         if (n->west && n->west->isDiscovered) return true;
         return false;
     };
-    
-    // --- PASS 1: Draw corridors (connections) behind rooms ---
+
+    // Calculate screen-space coordinates for Raylib's BeginScissorMode
+    float viewportScale = std::min(
+        (float)GetScreenWidth() / (float)Constants::GAME_WIDTH,
+        (float)GetScreenHeight() / (float)Constants::GAME_HEIGHT
+    );
+    Vector2 cameraOffset = {
+        (GetScreenWidth()  - (float)Constants::GAME_WIDTH  * viewportScale) * 0.5f,
+        (GetScreenHeight() - (float)Constants::GAME_HEIGHT * viewportScale) * 0.5f
+    };
+
+    int scissorX = (int)std::round((bounds.x + 2.0f) * viewportScale + cameraOffset.x);
+    int scissorY = (int)std::round((bounds.y + 2.0f) * viewportScale + cameraOffset.y);
+    int scissorW = (int)std::round((bounds.width - 4.0f) * viewportScale);
+    int scissorH = (int)std::round((bounds.height - 4.0f) * viewportScale);
+
+    // --- LAYER 2: Scissor Masked Drawing (Crops anything extending past panel bounds) ---
+    BeginScissorMode(scissorX, scissorY, scissorW, scissorH);
+
+    // Pass 1: Connecting Corridors Behind Nodes
     for (const auto& node : levelMap.generatedNodes) {
         if (!checkRevealed(node)) continue;
         
-        int dx = node->gridX - currentGridX;
-        int dy = node->gridY - currentGridY;
+        Vector2 c1 = getNodeCenter(node->gridX, node->gridY);
         
-        float nodeDrawX = centerMap.x + dx * spacing - roomSize / 2.0f;
-        float nodeDrawY = centerMap.y + dy * spacing - roomSize / 2.0f;
-        
-        // Draw corridor to the EAST neighbor
+        // Corridor to EAST neighbor
         if (node->east && checkRevealed(node->east)) {
-            float neighborDrawX = centerMap.x + (node->east->gridX - currentGridX) * spacing - roomSize / 2.0f;
+            Vector2 c2 = getNodeCenter(node->east->gridX, node->east->gridY);
             
-            float corrX = nodeDrawX + roomSize;
-            float corrY = nodeDrawY + (roomSize - corridorThickness) / 2.0f;
-            float corrW = neighborDrawX - corrX;
+            float corrX = c1.x + roomSize * 0.5f;
+            float corrY = c1.y - corridorThickness * 0.5f;
+            float corrW = (c2.x - roomSize * 0.5f) - corrX;
             float corrH = corridorThickness;
-            
-            if (corrX >= bounds.x && corrX + corrW <= bounds.x + bounds.width &&
-                corrY >= bounds.y && corrY + corrH <= bounds.y + bounds.height) {
-                Color corrColor = (node->isDiscovered && node->east->isDiscovered)
-                    ? Color{ 140, 140, 150, 200 }
-                    : Color{ 70, 70, 75, 200 };
-                DrawRectangle((int)corrX, (int)corrY, (int)corrW, (int)corrH, corrColor);
-            }
+
+            Color corrColor = (node->isDiscovered && node->east->isDiscovered)
+                ? Color{ 140, 140, 150, 200 }
+                : Color{ 70, 70, 75, 200 };
+            DrawRectangle((int)corrX, (int)corrY, (int)corrW, (int)corrH, corrColor);
         }
         
-        // Draw corridor to the SOUTH neighbor
+        // Corridor to SOUTH neighbor
         if (node->south && checkRevealed(node->south)) {
-            float neighborDrawY = centerMap.y + (node->south->gridY - currentGridY) * spacing - roomSize / 2.0f;
+            Vector2 c2 = getNodeCenter(node->south->gridX, node->south->gridY);
             
-            float corrX = nodeDrawX + (roomSize - corridorThickness) / 2.0f;
-            float corrY = nodeDrawY + roomSize;
+            float corrX = c1.x - corridorThickness * 0.5f;
+            float corrY = c1.y + roomSize * 0.5f;
             float corrW = corridorThickness;
-            float corrH = neighborDrawY - corrY;
-            
-            if (corrX >= bounds.x && corrX + corrW <= bounds.x + bounds.width &&
-                corrY >= bounds.y && corrY + corrH <= bounds.y + bounds.height) {
-                Color corrColor = (node->isDiscovered && node->south->isDiscovered)
-                    ? Color{ 140, 140, 150, 200 }
-                    : Color{ 70, 70, 75, 200 };
-                DrawRectangle((int)corrX, (int)corrY, (int)corrW, (int)corrH, corrColor);
-            }
+            float corrH = (c2.y - roomSize * 0.5f) - corrY;
+
+            Color corrColor = (node->isDiscovered && node->south->isDiscovered)
+                ? Color{ 140, 140, 150, 200 }
+                : Color{ 70, 70, 75, 200 };
+            DrawRectangle((int)corrX, (int)corrY, (int)corrW, (int)corrH, corrColor);
         }
     }
-    
-    // --- PASS 2: Draw room base nodes (16x16) and 12x12 icons ---
-    float currentRoomDrawX = 0.0f;
-    float currentRoomDrawY = 0.0f;
-    bool hasCurrentRoom = false;
+
+    // Pass 2: Base Nodes (12x12) & Room Type Icons (9x9)
+    Vector2 activeNodeCenter = { 0.0f, 0.0f };
+    bool hasActiveNode = false;
 
     for (const auto& node : levelMap.generatedNodes) {
         if (!checkRevealed(node)) continue;
         
-        int dx = node->gridX - currentGridX;
-        int dy = node->gridY - currentGridY;
-        
-        float drawX = centerMap.x + dx * spacing - roomSize / 2.0f;
-        float drawY = centerMap.y + dy * spacing - roomSize / 2.0f;
-        
-        // Clip rooms outside the minimap bounds
-        if (drawX < bounds.x - roomSize || drawX > bounds.x + bounds.width ||
-            drawY < bounds.y - roomSize || drawY > bounds.y + bounds.height) {
-            continue;
-        }
+        Vector2 nodeCenter = getNodeCenter(node->gridX, node->gridY);
 
-        bool isCurrent = (dx == 0 && dy == 0);
+        bool isCurrent = (node->gridX == currentGridX && node->gridY == currentGridY);
         if (isCurrent) {
-            currentRoomDrawX = drawX;
-            currentRoomDrawY = drawY;
-            hasCurrentRoom = true;
+            activeNodeCenter = nodeCenter;
+            hasActiveNode = true;
         }
 
-        // Base 16x16 node color:
-        // Unvisited Rooms: Medium-dark gray (Color{70, 70, 75, 255})
-        // Visited Rooms: Light gray (Color{140, 140, 150, 255})
+        // Base 12x12 node centered at nodeCenter (offset -6.0f, -6.0f)
         Color nodeColor = node->isDiscovered
             ? Color{ 140, 140, 150, 255 }
             : Color{ 70, 70, 75, 255 };
 
-        DrawRectangle((int)drawX, (int)drawY, (int)roomSize, (int)roomSize, nodeColor);
+        DrawRectangle(
+            (int)(nodeCenter.x - 6.0f),
+            (int)(nodeCenter.y - 6.0f),
+            (int)roomSize,
+            (int)roomSize,
+            nodeColor
+        );
 
-        // Room Icon Mapping (12x12 centered inside 16x16 node -> offset +2, +2)
+        // Room Type Icon (9x9 centered at nodeCenter: offset -4.5f, -4.5f)
         const char* iconKey = nullptr;
         switch (node->type) {
             case RoomType::SPAWN:
@@ -149,7 +151,7 @@ void MinimapRenderer::Draw(
                 break;
             case RoomType::BATTLE:
             default:
-                iconKey = nullptr; // Blank base 16x16 node
+                iconKey = nullptr; // Blank base 12x12 node
                 break;
         }
 
@@ -157,20 +159,40 @@ void MinimapRenderer::Draw(
             Texture2D icon = AssetManager::GetInstance().GetTexture(iconKey);
             if (icon.id != 0) {
                 Rectangle src = { 0.0f, 0.0f, (float)icon.width, (float)icon.height };
-                Rectangle dest = { drawX + 2.0f, drawY + 2.0f, 12.0f, 12.0f };
+                Rectangle dest = {
+                    nodeCenter.x - 4.5f,
+                    nodeCenter.y - 4.5f,
+                    iconSize,
+                    iconSize
+                };
                 DrawTexturePro(icon, src, dest, { 0.0f, 0.0f }, 0.0f, WHITE);
             }
         }
     }
 
-    // --- PASS 3: Active Room Outer Corner Indicator ---
-    // Draw minimap_current (20x20) centered over the active 16x16 node (drawX - 2, drawY - 2)
-    if (hasCurrentRoom) {
+    // Pass 3: Active Room Outer Frame (15x15)
+    if (hasActiveNode) {
         Texture2D currentTex = AssetManager::GetInstance().GetTexture("minimap_current");
         if (currentTex.id != 0) {
             Rectangle src = { 0.0f, 0.0f, (float)currentTex.width, (float)currentTex.height };
-            Rectangle dest = { currentRoomDrawX - 2.0f, currentRoomDrawY - 2.0f, 20.0f, 20.0f };
+            Rectangle dest = {
+                activeNodeCenter.x - 7.5f,
+                activeNodeCenter.y - 7.5f,
+                currentFrameSize,
+                currentFrameSize
+            };
             DrawTexturePro(currentTex, src, dest, { 0.0f, 0.0f }, 0.0f, WHITE);
         }
     }
+
+    EndScissorMode();
+
+    // --- LAYER 3 (Outside Scissor / Top): Floor Header Text ---
+    UIUtils::DrawText(
+        "PixeloidSans",
+        TextFormat("FLOOR %d", currentFloor),
+        { bounds.x + 8.0f, bounds.y + bounds.height - 18.0f },
+        static_cast<UIUtils::FontSize>(10),
+        Color{ 200, 200, 200, 255 }
+    );
 }

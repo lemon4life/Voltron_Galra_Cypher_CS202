@@ -919,29 +919,8 @@ DynamicSpawnList LevelManager::GenerateDungeon() {
         activeRoom, roomOffset,
         floorTileset, wallTileset, prop1Texture, prop2Texture,
         boxTexture, gateTexture, levelMap
-    );
-
-    if (levelMap.spawnRoom) {
-        Rectangle bounds = levelMap.spawnRoom->GetWorldBounds();
-        float spawnWorldX = bounds.x + bounds.width / 2.0f;
-        float spawnWorldY = bounds.y + bounds.height / 2.0f;
-        dynamicSpawns.push_back({
-            MapObjectId::PotHP,
-            { spawnWorldX - 40.0f, spawnWorldY - 50.0f },
-            { -1, -1 }
-        });
-        dynamicSpawns.push_back({
-            MapObjectId::PotEX,
-            { spawnWorldX, spawnWorldY - 50.0f },
-            { -1, -1 }
-        });
-        dynamicSpawns.push_back({
-            MapObjectId::PotQuint,
-            { spawnWorldX + 40.0f, spawnWorldY - 50.0f },
-            { -1, -1 }
-        });
-
-        // Auto-discover spawn room and mark it cleared (no combat in spawn)
+    );    if (levelMap.spawnRoom) {
+        // Auto-discover spawn room and mark it cleared (no combat, pots, or enemies in spawn)
         levelMap.spawnRoom->isDiscovered = true;
         levelMap.spawnRoom->state = RoomState::CLEARED;
     }
@@ -966,6 +945,12 @@ DynamicSpawnList LevelManager::GenerateDungeon() {
                             (float)x * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f,
                             (float)y * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f
                         };
+
+                        // Strict guard: Skip prop/pot instantiation if inside the spawn room
+                        if (levelMap.spawnRoom && CheckCollisionPointRec(worldPos, levelMap.spawnRoom->GetWorldBounds())) {
+                            continue;
+                        }
+
                         if (MapObjectFactory::IsMapObjectType(type)) {
                             AddMapObject(MapObjectFactory::Create(
                                 type,
