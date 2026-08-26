@@ -368,6 +368,8 @@ void TeamManager::Update(float deltaTime) {
     for (auto* paladin : team) {
         paladin->TickUltimateCooldown(deltaTime);
     }
+
+    NotifyObservers();
 }
 
 void TeamManager::Draw() {
@@ -389,19 +391,47 @@ void TeamManager::DrawBuffs() {
     }
 }
 
-
-
 void TeamManager::NotifyObservers() {
-    Paladin* active = GetActivePaladin();
-    if (!active) return;
+    if (team.empty()) return;
     
+    for (std::size_t i = 0; i < team.size(); ++i) {
+        Paladin* p = team[i];
+        if (!p) continue;
+
+        PlayerStatsSnapshot stats;
+        stats.slotIndex = static_cast<int>(i);
+        stats.health = p->GetHealth();
+        stats.maxHealth = p->GetMaxHealth();
+        stats.displayedHp = p->GetDisplayedHp();
+        stats.ghostHp = p->GetGhostHp();
+        stats.exEnergy = p->GetExEnergy();
+        stats.displayedEx = p->GetDisplayedExEnergy();
+        stats.maxEx = p->GetMaxExEnergy();
+        stats.skillCost = p->GetSkillCost();
+        stats.isDowned = (p->GetHealth() <= 0);
+
+        for (auto* observer : observers) {
+            if (observer) {
+                observer->OnPlayerStatsChanged(stats, static_cast<int>(i));
+            }
+        }
+    }
+
+    TeamStatsSnapshot teamStats;
+    teamStats.activeIndex = activeIndex;
+    teamStats.sharedArmor = sharedArmor;
+    teamStats.maxSharedArmor = maxSharedArmor;
+    teamStats.currentQuintessence = currentQuintessence;
+    teamStats.displayedQuintessence = displayedQuintessence;
+    teamStats.maxQuintessence = maxQuintessence;
+
     for (auto* observer : observers) {
-        // Observers will need to be updated to handle the new stats format.
-        // We will pass the active paladin's HP and the shared armor.
-        // Note: isPlayingAsLance boolean flag is now obsolete.
-        observer->OnPlayerStatsChanged(active->GetHealth(), active->GetMaxHealth(), 0, 0, activeIndex == 0);
+        if (observer) {
+            observer->OnTeamStatsChanged(teamStats);
+        }
     }
 }
+
 bool TeamManager::IsTeamDead() const {
     for (auto* paladin : team) {
         if (paladin->GetHealth() > 0) return false;
@@ -417,6 +447,7 @@ void TeamManager::AddQuintessence(float amount) {
     if (currentQuintessence > maxQuintessence) {
         currentQuintessence = maxQuintessence;
     }
+    NotifyObservers();
 }
 
 bool TeamManager::ConsumeQuintessence(float amount) {
@@ -424,5 +455,6 @@ bool TeamManager::ConsumeQuintessence(float amount) {
         return false;
     }
     currentQuintessence -= amount;
+    NotifyObservers();
     return true;
 }

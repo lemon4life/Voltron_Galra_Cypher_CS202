@@ -44,6 +44,19 @@ bool UIManager::IsPauseButtonPressed(Rectangle windowBounds, Vector2 mousePositi
            IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
+void UIManager::OnPlayerStatsChanged(const PlayerStatsSnapshot& stats, int slotIndex) {
+    if (slotIndex >= static_cast<int>(cachedPlayerStats.size())) {
+        cachedPlayerStats.resize(slotIndex + 1);
+    }
+    cachedPlayerStats[slotIndex] = stats;
+    hasReceivedStats = true;
+}
+
+void UIManager::OnTeamStatsChanged(const TeamStatsSnapshot& stats) {
+    cachedTeamStats = stats;
+    hasReceivedStats = true;
+}
+
 void UIManager::DrawHUD(Rectangle windowBounds, Vector2 mousePosition) {
     if (!teamManager) return;
     DrawTeamHUD(teamManager, windowBounds, mousePosition);
@@ -91,7 +104,7 @@ void UIManager::DrawTeamHUD(
     // Prepare off-field characters
     Paladin* offField1 = nullptr;
     Paladin* offField2 = nullptr;
-    int activeIdx = team->GetActiveIndex();
+    int activeIdx = hasReceivedStats ? cachedTeamStats.activeIndex : team->GetActiveIndex();
     
     int offIndex = 0;
     int offField1Idx = -1;
@@ -129,26 +142,29 @@ void UIManager::DrawTeamHUD(
         UIUtils::DrawText("PixeloidMono", TextFormat("%d", num), { dest.x + dest.width - 8*S - numSize.x/2, dest.y + dest.height - 8*S - numSize.y/2 }, static_cast<UIUtils::FontSize>(fSize), WHITE);
     };
 
-    auto DrawCardPortrait = [&](Paladin* p, Rectangle dest) {
+    auto DrawCardPortrait = [&](Paladin* p, int slotIdx, Rectangle dest) {
         if (!p) return;
         Texture2D cardTex = AssetManager::GetInstance().GetTexture(p->GetIntroData().portraitTextureID);
         Rectangle sourceRec = p->GetHudPortraitSlice();
-        Color tint = p->GetHealth() <= 0 ? DARKGRAY : WHITE;
+        bool isDowned = (hasReceivedStats && slotIdx >= 0 && slotIdx < static_cast<int>(cachedPlayerStats.size()))
+            ? cachedPlayerStats[slotIdx].isDowned
+            : (p->GetHealth() <= 0);
+        Color tint = isDowned ? DARKGRAY : WHITE;
         DrawTexturePro(cardTex, sourceRec, dest, {0.0f, 0.0f}, 0.0f, tint);
     };
 
     Rectangle activeDest = {startX + 4*S, startY + 4*S, 90*S, 40*S};
-    DrawCardPortrait(active, activeDest);
+    DrawCardPortrait(active, activeIdx, activeDest);
     DrawPortraitNumber(activeIdx, activeDest);
 
     if (offField1) {
         Rectangle off1Dest = {startX + 226*S, startY + 4*S, 60*S, 28*S};
-        DrawCardPortrait(offField1, off1Dest);
+        DrawCardPortrait(offField1, offField1Idx, off1Dest);
         DrawPortraitNumber(offField1Idx, off1Dest);
     }
     if (offField2) {
         Rectangle off2Dest = {startX + 354*S, startY + 4*S, 60*S, 28*S};
-        DrawCardPortrait(offField2, off2Dest);
+        DrawCardPortrait(offField2, offField2Idx, off2Dest);
         DrawPortraitNumber(offField2Idx, off2Dest);
     }
 
@@ -156,13 +172,27 @@ void UIManager::DrawTeamHUD(
     float frameW = checkTex.id != 0 ? checkTex.width / 2.0f : 0.0f;
     float frameH = checkTex.id != 0 ? checkTex.height : 0.0f;
 
-    // Helper lambda for HP
-    auto DrawHP = [&](Paladin* p, float x, float y, float maxW, float h) {
-        if (!p || p->GetHealth() <= 0) return; // Don't draw bars if downed
-        float hp = p->GetHealth();
-        float displayedHp = p->GetDisplayedHp();
-        float ghost = p->GetGhostHp();
-        float maxHp = p->GetMaxHealth();
+    // Helper lambda for HP (consuming Observer cached stats)
+    auto DrawHP = [&](Paladin* p, int slotIdx, float x, float y, float maxW, float h) {
+        float hp = 0.0f;
+        float displayedHp = 0.0f;
+        float ghost = 0.0f;
+        float maxHp = 0.0f;
+
+        if (hasReceivedStats && slotIdx >= 0 && slotIdx < static_cast<int>(cachedPlayerStats.size())) {
+            const auto& s = cachedPlayerStats[slotIdx];
+            if (s.isDowned) return;
+            hp = static_cast<float>(s.health);
+            displayedHp = s.displayedHp;
+            ghost = s.ghostHp;
+            maxHp = static_cast<float>(s.maxHealth);
+        } else {
+            if (!p || p->GetHealth() <= 0) return;
+            hp = static_cast<float>(p->GetHealth());
+            displayedHp = p->GetDisplayedHp();
+            ghost = p->GetGhostHp();
+            maxHp = static_cast<float>(p->GetMaxHealth());
+        }
         
         float pctGhost = maxHp > 0 ? (ghost / maxHp) : 0.0f;
         float pctReal = maxHp > 0 ? (displayedHp / maxHp) : 0.0f;
@@ -177,37 +207,52 @@ void UIManager::DrawTeamHUD(
     };
 
     // --- Layer 2: HP Bars (Doubled) ---
-    DrawHP(active, 98*S, 4*S, 124*S, 26*S);
-    DrawHP(offField1, 290*S, 4*S, 60*S, 12*S);
-    DrawHP(offField2, 418*S, 4*S, 60*S, 12*S);
+    DrawHP(active, activeIdx, 98*S, 4*S, 124*S, 26*S);
+    DrawHP(offField1, offField1Idx, 290*S, 4*S, 60*S, 12*S);
+    DrawHP(offField2, offField2Idx, 418*S, 4*S, 60*S, 12*S);
 
     // --- Layer 3: Mask Rectangle ---
     Color maskColor = { 57, 57, 68, 255 }; // #5b5b67
     DrawRectangle(startX + 146*S, startY + 20*S, 76*S, 12*S, maskColor);
-    // Helper lambda for EX Energy (BLUE — for Skills)
-    auto DrawEX = [&](Paladin* p, float x, float y, float maxW, float h) {
-        if (!p) return;
-        float ex = p->GetExEnergy();
-        float displayedEx = p->GetDisplayedExEnergy();
-        float maxEx = p->GetMaxExEnergy();
+
+    // Helper lambda for EX Energy (BLUE — for Skills, consuming Observer cached stats)
+    auto DrawEX = [&](Paladin* p, int slotIdx, float x, float y, float maxW, float h) {
+        float ex = 0.0f;
+        float displayedEx = 0.0f;
+        float maxEx = 0.0f;
+        float exThreshold = 0.0f;
+
+        if (hasReceivedStats && slotIdx >= 0 && slotIdx < static_cast<int>(cachedPlayerStats.size())) {
+            const auto& s = cachedPlayerStats[slotIdx];
+            ex = s.exEnergy;
+            displayedEx = s.displayedEx;
+            maxEx = s.maxEx;
+            exThreshold = s.skillCost;
+        } else {
+            if (!p) return;
+            ex = p->GetExEnergy();
+            displayedEx = p->GetDisplayedExEnergy();
+            maxEx = p->GetMaxExEnergy();
+            exThreshold = p->GetSkillCost();
+        }
+
         float pct = maxEx > 0 ? (displayedEx / maxEx) : 0;
         
         Rectangle exBounds = { startX + x, startY + y, maxW, h };
-        float exThreshold = p->GetSkillCost();
         bool isReady = ex >= exThreshold;
         UIUtils::DrawGradientPulseBar(exBounds, pct, UIUtils::EX_GRADIENT_LEFT, UIUtils::EX_GRADIENT_RIGHT, isReady, !isReady);
     };
 
     // --- Layer 4: EX Bars (BLUE) ---
-    DrawEX(active, 146*S, 20*S, 76*S, 10*S);
-    DrawEX(offField1, 290*S, 20*S, 60*S, 10*S);
-    DrawEX(offField2, 418*S, 20*S, 60*S, 10*S);
+    DrawEX(active, activeIdx, 146*S, 20*S, 76*S, 10*S);
+    DrawEX(offField1, offField1Idx, 290*S, 20*S, 60*S, 10*S);
+    DrawEX(offField2, offField2Idx, 418*S, 20*S, 60*S, 10*S);
 
     // --- Layer 4.5: Quintessence Bar (PURPLE — shared team ultimate fuel, 3 cells) ---
     Rectangle qBar = { startX + 146*S, startY + 34*S, 332*S, 12*S };
-    float quint = team->GetQuintessence();
-    float displayedQuint = team->GetDisplayedQuintessence();
-    float maxQuint = team->GetMaxQuintessence();
+    float quint = hasReceivedStats ? cachedTeamStats.currentQuintessence : team->GetQuintessence();
+    float displayedQuint = hasReceivedStats ? cachedTeamStats.displayedQuintessence : team->GetDisplayedQuintessence();
+    float maxQuint = hasReceivedStats ? cachedTeamStats.maxQuintessence : team->GetMaxQuintessence();
     float quintPct = maxQuint > 0 ? (displayedQuint / maxQuint) : 0.0f;
     bool quintReady = quint >= TeamManager::ULTIMATE_COST;
     UIUtils::DrawGradientPulseBar(qBar, quintPct, UIUtils::QUINT_GRADIENT_LEFT, UIUtils::QUINT_GRADIENT_RIGHT, quintReady, !quintReady);
@@ -226,11 +271,23 @@ void UIManager::DrawTeamHUD(
 
     // --- Layer 6: Checkpoint Markers (Over Shell) ---
     if (checkTex.id != 0) {
-        auto DrawExCheckpoint = [&](Paladin* p, Rectangle exBounds) {
-            if (!p) return;
-            float ex = p->GetExEnergy();
-            float maxEx = p->GetMaxExEnergy();
-            float exThreshold = p->GetSkillCost();
+        auto DrawExCheckpoint = [&](Paladin* p, int slotIdx, Rectangle exBounds) {
+            float ex = 0.0f;
+            float maxEx = 0.0f;
+            float exThreshold = 0.0f;
+
+            if (hasReceivedStats && slotIdx >= 0 && slotIdx < static_cast<int>(cachedPlayerStats.size())) {
+                const auto& s = cachedPlayerStats[slotIdx];
+                ex = s.exEnergy;
+                maxEx = s.maxEx;
+                exThreshold = s.skillCost;
+            } else {
+                if (!p) return;
+                ex = p->GetExEnergy();
+                maxEx = p->GetMaxExEnergy();
+                exThreshold = p->GetSkillCost();
+            }
+
             if (maxEx > 0) {
                 bool isReady = ex >= exThreshold;
                 float markerX = exBounds.x + (exBounds.width * (exThreshold / maxEx));
@@ -241,9 +298,9 @@ void UIManager::DrawTeamHUD(
         };
 
         // EX Checkpoints
-        DrawExCheckpoint(active, { startX + 146*S, startY + 20*S, 76*S, 10*S });
-        DrawExCheckpoint(offField1, { startX + 290*S, startY + 20*S, 60*S, 10*S });
-        DrawExCheckpoint(offField2, { startX + 418*S, startY + 20*S, 60*S, 10*S });
+        DrawExCheckpoint(active, activeIdx, { startX + 146*S, startY + 20*S, 76*S, 10*S });
+        DrawExCheckpoint(offField1, offField1Idx, { startX + 290*S, startY + 20*S, 60*S, 10*S });
+        DrawExCheckpoint(offField2, offField2Idx, { startX + 418*S, startY + 20*S, 60*S, 10*S });
         
         // Quintessence Checkpoints
         if (maxQuint > 0) {
@@ -262,7 +319,11 @@ void UIManager::DrawTeamHUD(
 
     // --- Active HP Text ---
     char hpText[32];
-    snprintf(hpText, sizeof(hpText), "%d/%d", active->GetHealth(), active->GetMaxHealth());
+    if (hasReceivedStats && activeIdx >= 0 && activeIdx < static_cast<int>(cachedPlayerStats.size())) {
+        snprintf(hpText, sizeof(hpText), "%d/%d", cachedPlayerStats[activeIdx].health, cachedPlayerStats[activeIdx].maxHealth);
+    } else {
+        snprintf(hpText, sizeof(hpText), "%d/%d", active->GetHealth(), active->GetMaxHealth());
+    }
     
     int fontSize = std::max(1, (int)std::round(10.0f * S));
     Vector2 textSize = MeasureTextEx(fontMono, hpText, fontSize, 1.0f);

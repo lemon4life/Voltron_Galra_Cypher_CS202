@@ -326,10 +326,12 @@ void GameApplication::RunLoop() {
 
             uiManager.Initialize();
             uiManager.SetTeamManager(teamManager);
+            teamManager->AddObserver(&uiManager);
             teamManager->RefreshAimStrategies();
 
             gameManager.LoadLevel(HUB_LEVEL_PATH);
             teamManager->ResetForNewGame(GetLevelCenter(levelManager));
+            teamManager->NotifyObservers();
             AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
             systemInitialized = true;
         }
