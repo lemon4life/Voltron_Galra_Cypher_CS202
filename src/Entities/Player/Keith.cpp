@@ -30,14 +30,14 @@ Keith::Keith(Vector2 pos, CharacterSprites sprites)
 }
 
 void Keith::UseSkill() {
-    if (exEnergy < skillCost) {
+    if (exEnergy < skillCost || isSkillActive) {
         return; 
     }
     
+    ActivateSkill(5.0f);
     if (teamManager) {
         teamManager->AddSharedBuff(std::make_unique<FireCircleBuff>(5.0f));
     }
-    exEnergy -= skillCost;
     AudioManager::GetInstance().PlaySoundEffect("fx_fire");
 }
 

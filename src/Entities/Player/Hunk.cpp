@@ -62,9 +62,9 @@ void Hunk::Draw() {
 }
 
 void Hunk::UseSkill() {
-    if (exEnergy < skillCost) return;
-    exEnergy -= skillCost;
+    if (exEnergy < skillCost || isSkillActive) return;
     
+    ActivateSkill(2.0f);
     AudioManager::GetInstance().PlaySoundEffect("fx_hunk_skill");
     
     isEarthshatterFlash = true;

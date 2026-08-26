@@ -89,6 +89,12 @@ protected:
     float skillCost = 0.0f;
     Rectangle hudPortraitSlice = {0.0f, 0.0f, 0.0f, 0.0f};
 
+    // Active Skill State & Continuous EX Depletion
+    bool isSkillActive = false;
+    float activeSkillDuration = 0.0f;
+    float activeSkillTimer = 0.0f;
+    float skillInitialEx = 0.0f;
+
     // Ultimate cooldown (separate from EX — gated by Quintessence)
     float ultimateCooldownTimer = 0.0f;
     
@@ -237,12 +243,14 @@ public:
     float GetDisplayedExEnergy() const { return displayedExEnergy; }
     float GetExEnergy() const { return exEnergy; }
     float GetMaxExEnergy() const { return maxExEnergy; }
-    void AddExEnergy(float amount) {
-        exEnergy += amount;
-        if (exEnergy > maxExEnergy) exEnergy = maxExEnergy;
-    }
+    void AddExEnergy(float amount);
     float GetSkillCost() const { return skillCost; }
     Rectangle GetHudPortraitSlice() const { return hudPortraitSlice; }
+
+    bool IsSkillActive() const { return isSkillActive; }
+    float GetActiveSkillTimer() const { return activeSkillTimer; }
+    float GetActiveSkillDuration() const { return activeSkillDuration; }
+    void ActivateSkill(float duration = 5.0f);
 
     // Ultimate cooldown
     static constexpr float ULTIMATE_COOLDOWN_MAX = 5.0f;

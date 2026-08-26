@@ -91,9 +91,9 @@ void Lance::Draw() {
 }
 
 void Lance::UseSkill() {
-    if (exEnergy < skillCost) return;
+    if (exEnergy < skillCost || isSkillActive) return;
     
-    exEnergy -= skillCost;
+    ActivateSkill(5.0f);
     AudioManager::GetInstance().PlaySoundEffect("fx_lance_skill");
     AudioManager::GetInstance().PlaySoundEffect("vl_lance_skill");
     AddPersonalBuff(std::make_unique<DualWieldBuff>(5.0f));

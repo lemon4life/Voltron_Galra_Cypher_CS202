@@ -148,6 +148,18 @@ void Paladin::TickTimers(float deltaTime) {
         }
     }
 
+    // Continuous EX Depletion during active skill execution
+    if (isSkillActive) {
+        activeSkillTimer -= deltaTime;
+        float progress = std::max(0.0f, activeSkillTimer / activeSkillDuration);
+        exEnergy = skillInitialEx * progress;
+        if (activeSkillTimer <= 0.0f) {
+            exEnergy = 0.0f;
+            isSkillActive = false;
+            activeSkillTimer = 0.0f;
+        }
+    }
+
     // Update attached effects
     for (auto it = attachedEffects.begin(); it != attachedEffects.end();) {
         it->lifetime -= deltaTime;
@@ -305,6 +317,10 @@ void Paladin::ResetStats() {
     displayedHp = static_cast<float>(maxHealth);
     exEnergy = 0.0f;
     displayedExEnergy = 0.0f;
+    isSkillActive = false;
+    activeSkillDuration = 0.0f;
+    activeSkillTimer = 0.0f;
+    skillInitialEx = 0.0f;
     dashCooldown = 0.0f;
     dashTimer = 0.0f;
     isInvincible = false;
@@ -483,11 +499,28 @@ void Paladin::UpdateFootsteps(float dt) {
     }
 }
 
-void Paladin::OnHitEnemy(int damage) {
-    exEnergy += (float)damage * 0.15f; // Slower EX generation
+void Paladin::ActivateSkill(float duration) {
+    isSkillActive = true;
+    activeSkillDuration = duration > 0.0f ? duration : 5.0f;
+    activeSkillTimer = activeSkillDuration;
+    skillInitialEx = exEnergy;
+}
+
+void Paladin::AddExEnergy(float amount) {
+    if (isSkillActive) {
+        return; // Completely disable EX gain while skill is active
+    }
+    exEnergy += amount;
     if (exEnergy > maxExEnergy) {
         exEnergy = maxExEnergy;
     }
+}
+
+void Paladin::OnHitEnemy(int damage) {
+    if (isSkillActive) {
+        return; // Completely disable EX gain while skill is active
+    }
+    AddExEnergy((float)damage * 0.15f);
 }
 
 void Paladin::SetParrying(bool parry) {
