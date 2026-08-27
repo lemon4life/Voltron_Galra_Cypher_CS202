@@ -7,6 +7,8 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/AssetManager.h"
+#include "Core/Manager/ObjectManager.h"
+#include "Entities/Props/Chest.h"
 #include "Core/Level/RoomNode.h"
 #include "raymath.h"
 #include <algorithm>
@@ -188,6 +190,20 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
                 if (isBossRoom) {
                     // Boss defeated — room cleared, player can continue
                     AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
+                }
+
+                // Spawn reward chest at active Paladin's position with teleport VFX
+                if (teamManager && teamManager->GetActivePaladin()) {
+                    Vector2 spawnPos = teamManager->GetActivePaladin()->GetPosition();
+                    Texture2D smoke = AssetManager::GetInstance().GetTexture("AppearSmoke");
+                    Texture2D light = AssetManager::GetInstance().GetTexture("AppearLight");
+                    GameManager::GetInstance().AddEffect(spawnPos, smoke, 5, 0.5f);
+                    GameManager::GetInstance().AddEffect(spawnPos, light, 5, 0.5f);
+                    AudioManager::GetInstance().PlaySoundEffect("fx_show_up");
+
+                    GameManager::GetInstance().GetObjectManager().AddObject(
+                        std::make_unique<Chest>(spawnPos, ChestRewardType::Coins)
+                    );
                 }
 
                 // Reset for next room

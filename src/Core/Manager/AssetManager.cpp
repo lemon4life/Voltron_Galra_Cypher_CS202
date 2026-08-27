@@ -75,6 +75,10 @@ void AssetManager::LoadCommonAssets() {
     LoadTexture2D("chest_top",    "assets/Objects/chest_top.png", true);
     LoadTexture2D("machine",      "assets/Objects/Machine.png", true);
 
+    // Coins
+    LoadTexture2D("coin_world", "assets/Objects/coin.png", true);
+    LoadTexture2D("coin_icon",  "assets/UI/coin.png", true);
+
     // Minimap Icons & Indicators
     LoadTexture2D("minimap_current", "assets/UI/minimap/current_room.png", true);
     LoadTexture2D("minimap_event",   "assets/UI/minimap/event.png", true);

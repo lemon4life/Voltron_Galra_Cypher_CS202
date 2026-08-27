@@ -37,6 +37,10 @@ public:
         Rectangle windowBounds,
         Vector2 mousePosition
     );
+    void DrawCoinHUD(
+        Rectangle bounds,
+        int coins
+    );
 
     // --- Core UI Helpers ---
     // Draws a full-screen semi-transparent black rectangle over previous renders

@@ -338,9 +338,47 @@ void UIManager::DrawTeamHUD(
     }
 
 
+    // --- Coin Counter Panel (Directly to the Left of Minimap) ---
+    DrawCoinHUD(layout.coinCounterBounds, team->GetCoins());
 }
 
-// --- Core UI Helpers ---
+void UIManager::DrawCoinHUD(Rectangle bounds, int coins) {
+    // Rounded background & border matching minimap style
+    DrawRectangleRounded(bounds, 0.25f, 6, ColorAlpha(Color{ 10, 10, 15, 255 }, 0.8f));
+    DrawRectangleRoundedLinesEx(bounds, 0.25f, 6, 1.0f, ColorAlpha(GRAY, 0.4f));
+
+    Texture2D coinIcon = AssetManager::GetInstance().GetTexture("coin_icon");
+    if (coinIcon.id != 0) {
+        float iconSize = std::min(bounds.height - 8.0f, (float)coinIcon.height);
+        float iconScale = (coinIcon.height > 0) ? (iconSize / coinIcon.height) : 1.0f;
+        float iconW = coinIcon.width * iconScale;
+        float iconH = coinIcon.height * iconScale;
+        Rectangle dest = {
+            bounds.x + 8.0f,
+            bounds.y + (bounds.height - iconH) * 0.5f,
+            iconW,
+            iconH
+        };
+        DrawTexturePro(
+            coinIcon,
+            { 0.0f, 0.0f, (float)coinIcon.width, (float)coinIcon.height },
+            dest,
+            { 0.0f, 0.0f },
+            0.0f,
+            WHITE
+        );
+    }
+
+    std::string coinText = std::to_string(coins);
+    Font fontMono = AssetManager::GetInstance().GetCustomFont("PixeloidMono");
+    float fontSize = 14.0f;
+    Vector2 textSize = MeasureTextEx(fontMono, coinText.c_str(), fontSize, 1.0f);
+    Vector2 textPos = {
+        bounds.x + bounds.width - textSize.x - 10.0f,
+        bounds.y + (bounds.height - textSize.y) * 0.5f
+    };
+    UIUtils::DrawText("PixeloidMono", coinText.c_str(), textPos, static_cast<UIUtils::FontSize>(fontSize), Color{ 255, 223, 80, 255 });
+}
 
 void UIManager::DrawModalOverlay() {
     DrawRectangle(-10000, -10000, 20000, 20000, Fade(BLACK, 0.6f));

@@ -1,4 +1,5 @@
 #include "Entities/Props/Chest.h"
+#include "Entities/Items/Coin.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/GameManager.h"
@@ -8,8 +9,9 @@
 #include "raymath.h"
 #include <algorithm>
 
-Chest::Chest(Vector2 pos)
-    : GameObject(pos, GameObjectType::Prop) {
+Chest::Chest(Vector2 pos, ChestRewardType reward)
+    : GameObject(pos, GameObjectType::Prop),
+      rewardType(reward) {
     chestBottom = AssetManager::GetInstance().GetTexture("chest_bottom");
     chestTop = AssetManager::GetInstance().GetTexture("chest_top");
     // Collision & depth sort box anchored so chest base draws behind the emerging pot
@@ -37,20 +39,33 @@ void Chest::Update(float deltaTime) {
         openProgress = std::min(1.0f, openProgress + deltaTime * 2.0f);
     }
 
-    // 3. Emerging Pot Animation & Spawning
+    // 3. Emerging Reward Animation & Spawning
     if (isOpening && openProgress >= 1.0f && !potSpawned) {
         potScaleProgress = std::min(1.0f, potScaleProgress + deltaTime * 2.5f);
 
         if (potScaleProgress >= 1.0f) {
-            MapObjectId potId = MapObjectId::PotHP;
-            if (selectedPotType == 1) potId = MapObjectId::PotEX;
-            else if (selectedPotType == 2) potId = MapObjectId::PotQuint;
+            if (rewardType == ChestRewardType::Pot) {
+                MapObjectId potId = MapObjectId::PotHP;
+                if (selectedPotType == 1) potId = MapObjectId::PotEX;
+                else if (selectedPotType == 2) potId = MapObjectId::PotQuint;
 
-            // Spawn the consumable pot centered on top of the chest opening
-            GameManager::GetInstance().GetObjectManager().QueueSpawn(
-                potId,
-                { position.x, position.y - 6.0f }
-            );
+                // Spawn the consumable pot centered on top of the chest opening
+                GameManager::GetInstance().GetObjectManager().QueueSpawn(
+                    potId,
+                    { position.x, position.y - 6.0f }
+                );
+            } else if (rewardType == ChestRewardType::Coins) {
+                // Burst spawn 5 to 10 Coin pickups outward in a radial arc
+                int coinCount = GetRandomValue(5, 10);
+                for (int i = 0; i < coinCount; ++i) {
+                    float angle = (float)GetRandomValue(0, 360) * DEG2RAD;
+                    float speed = (float)GetRandomValue(80, 180);
+                    Vector2 coinVel = { std::cos(angle) * speed, std::sin(angle) * speed - 60.0f };
+                    GameManager::GetInstance().GetObjectManager().AddObject(
+                        std::make_unique<Coin>(Vector2{ position.x, position.y - 6.0f }, coinVel)
+                    );
+                }
+            }
 
             potSpawned = true;
             isOpening = false;
@@ -82,8 +97,8 @@ void Chest::Draw() {
     Rectangle rightDest = { position.x + 8.0f * openProgress, position.y - 8.0f, 10.0f, 16.0f };
     DrawTexturePro(chestTop, rightSrc, rightDest, { 0.0f, 8.0f }, 0.0f, WHITE);
 
-    // --- Layer 3 (Topmost): Emerging Pot Preview (Rises and scales up on top of BOTH chest_bottom and chest_top) ---
-    if (isOpening && !potSpawned) {
+    // --- Layer 3 (Topmost): Emerging Pot Preview (Only for ChestRewardType::Pot) ---
+    if (isOpening && !potSpawned && rewardType == ChestRewardType::Pot) {
         const char* potTexKey = "pot_hp";
         if (selectedPotType == 1) potTexKey = "pot_ex";
         else if (selectedPotType == 2) potTexKey = "pot_quint";

@@ -64,6 +64,7 @@ void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
     sharedUltimateDecibels = 0.0f;
     currentQuintessence = 0.0f;
     displayedQuintessence = 0.0f;
+    coins = 0;
     timeSinceLastDamage = 0.0f;
     armorRegenTimer = 0.0f;
 
