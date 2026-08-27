@@ -109,6 +109,9 @@ protected:
     float baseAttackCooldown = 0.5f;
     float dashTimer;
 
+    // Unified Paladin Level Progression
+    int paladinLevel = 1;
+
     // Upgraded Stat Scalars
     float hpScalar = 1.0f;
     float attackCooldownScalar = 1.0f;
@@ -260,10 +263,26 @@ public:
     float GetActiveSkillDuration() const { return activeSkillDuration; }
     void ActivateSkill(float duration = 5.0f);
 
-    // Stat Upgrade System
-    bool CanUpgradeStat(StatType stat) const;
-    bool UpgradeStat(StatType stat);
-    float GetStatProgress(StatType stat) const;
+    // Unified Paladin Level Progression
+    static constexpr int MAX_PALADIN_LEVEL = 5;
+    static constexpr int MAX_STAT_LEVEL = 5;
+    int GetPaladinLevel() const { return paladinLevel; }
+    static int GetMaxPaladinLevel() { return MAX_PALADIN_LEVEL; }
+    bool IsMaxLevel() const { return paladinLevel >= MAX_PALADIN_LEVEL; }
+    int GetUpgradeCost() const { return 5 * paladinLevel; }
+    bool CanLevelUp(int currentCoins) const { return !IsMaxLevel() && currentCoins >= GetUpgradeCost(); }
+    bool LevelUp();
+    float GetPaladinProgress() const { return (MAX_PALADIN_LEVEL > 1) ? ((float)(paladinLevel - 1) / (float)(MAX_PALADIN_LEVEL - 1)) : 1.0f; }
+
+    // Compatibility methods
+    int GetStatLevel(StatType stat) const { return paladinLevel; }
+    int GetUpgradeCost(StatType stat) const { return GetUpgradeCost(); }
+    bool IsStatMaxed(StatType stat) const { return IsMaxLevel(); }
+    bool CanAffordUpgrade(StatType stat, int currentCoins) const { return CanLevelUp(currentCoins); }
+    bool CanUpgradeStat(StatType stat) const { return !IsMaxLevel(); }
+    bool UpgradeStat(StatType stat) { return LevelUp(); }
+    bool ExecuteUpgrade(StatType stat) { return LevelUp(); }
+    float GetStatProgress(StatType stat) const { return GetPaladinProgress(); }
     void RecalculateStats();
 
     float GetHpScalar() const { return hpScalar; }

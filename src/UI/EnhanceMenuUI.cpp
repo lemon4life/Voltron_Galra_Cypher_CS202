@@ -19,16 +19,13 @@ constexpr Rectangle CENTER_PANEL = {218.0f, 50.0f, 247.0f, 270.0f};
 constexpr Rectangle RIGHT_PANEL = {475.0f, 50.0f, 188.0f, 270.0f};
 constexpr Rectangle BACK_BUTTON = {575.0f, 466.0f, 76.0f, 28.0f};
 
-// Upgrade Buttons (centered below stat bars, width 88px, height 14px, 10px font)
-constexpr Rectangle BTN_HEALTH = {70.0f, 110.0f, 88.0f, 14.0f};
-constexpr Rectangle BTN_SPEED = {70.0f, 162.0f, 88.0f, 14.0f};
-constexpr Rectangle BTN_ATTACK_SPEED = {70.0f, 256.0f, 88.0f, 14.0f};
-constexpr Rectangle BTN_DAMAGE = {525.0f, 168.0f, 88.0f, 14.0f};
+// Unified Level Up Button centered horizontally between top inspector and bottom slot list
+constexpr Rectangle LEVEL_UP_BUTTON = {(683.0f - 160.0f) * 0.5f, 326.0f, 160.0f, 40.0f};
 
 constexpr float TEAM_CARD_X = 20.0f;
-constexpr float TEAM_CARD_Y = 350.0f;
+constexpr float TEAM_CARD_Y = 390.0f;
 constexpr float TEAM_CARD_WIDTH = 205.0f;
-constexpr float TEAM_CARD_HEIGHT = 68.0f;
+constexpr float TEAM_CARD_HEIGHT = 64.0f;
 constexpr float TEAM_CARD_GAP = 14.0f;
 
 Rectangle TeamCardBounds(std::size_t index) {
@@ -98,19 +95,83 @@ std::string FormatNumber(float value, int precision = 0) {
     return output.str();
 }
 
-void DrawUpgradeButton(
+void DrawLevelUpButton(
     Rectangle bounds,
-    bool canUpgrade,
+    int paladinLevel,
+    int maxLevel,
+    int cost,
+    int currentCoins,
     Vector2 mousePosition
 ) {
-    if (canUpgrade) {
+    if (paladinLevel >= maxLevel) {
+        UIUtils::DrawPanel(bounds, Color{45, 52, 65, 220});
+        DrawRectangleLinesEx(bounds, 1.0f, Color{80, 90, 105, 255});
+        UIUtils::DrawCenteredText("PixeloidBold", "[ MAX LEVEL ]", { bounds.x + bounds.width * 0.5f, bounds.y + bounds.height * 0.5f }, static_cast<UIUtils::FontSize>(12), Color{140, 150, 165, 255});
+    } else if (currentCoins >= cost) {
         bool hovered = CheckCollisionPointRec(mousePosition, bounds);
-        Color background = hovered ? Color{52, 152, 219, 255} : Color{41, 128, 185, 255};
+        Color background = hovered ? Color{52, 152, 219, 255} : Color{35, 110, 170, 255};
+        Color border = hovered ? GOLD : Color{90, 185, 255, 255};
         UIUtils::DrawPanel(bounds, background);
-        UIUtils::DrawCenteredText("PixeloidBold", "+ LEVEL UP", { bounds.x + bounds.width * 0.5f, bounds.y + bounds.height * 0.5f }, static_cast<UIUtils::FontSize>(10), RAYWHITE);
+        DrawRectangleLinesEx(bounds, hovered ? 2.0f : 1.0f, border);
+
+        // Line 1: "Level Up"
+        UIUtils::DrawCenteredText("PixeloidBold", "LEVEL UP", { bounds.x + bounds.width * 0.5f, bounds.y + 13.0f }, static_cast<UIUtils::FontSize>(12), RAYWHITE);
+
+        // Line 2: Coin Icon + Cost
+        Texture2D coinIcon = AssetManager::GetInstance().GetTexture("coin_icon");
+        std::string costStr = std::to_string(cost);
+        Font fontBold = AssetManager::GetInstance().GetCustomFont("PixeloidBold");
+        Vector2 numSize = MeasureTextEx(fontBold, costStr.c_str(), 11.0f, 1.0f);
+        float iconSize = 12.0f;
+        float totalW = (coinIcon.id != 0 ? (iconSize + 4.0f) : 0.0f) + numSize.x;
+        float startX = bounds.x + (bounds.width - totalW) * 0.5f;
+        float line2Y = bounds.y + 22.0f;
+
+        if (coinIcon.id != 0) {
+            DrawTexturePro(
+                coinIcon,
+                { 0.0f, 0.0f, (float)coinIcon.width, (float)coinIcon.height },
+                { startX, line2Y, iconSize, iconSize },
+                { 0.0f, 0.0f },
+                0.0f,
+                WHITE
+            );
+            UIUtils::DrawText("PixeloidBold", costStr.c_str(), { startX + iconSize + 4.0f, line2Y }, static_cast<UIUtils::FontSize>(11), Color{255, 223, 80, 255});
+        } else {
+            UIUtils::DrawText("PixeloidBold", (costStr + " Coins").c_str(), { startX, line2Y }, static_cast<UIUtils::FontSize>(11), Color{255, 223, 80, 255});
+        }
     } else {
-        UIUtils::DrawPanel(bounds, Color{45, 52, 65, 200});
-        UIUtils::DrawCenteredText("PixeloidSans", "[ MAX ]", { bounds.x + bounds.width * 0.5f, bounds.y + bounds.height * 0.5f }, static_cast<UIUtils::FontSize>(10), Color{130, 140, 155, 255});
+        bool hovered = CheckCollisionPointRec(mousePosition, bounds);
+        Color background = hovered ? Color{65, 30, 35, 240} : Color{48, 24, 28, 220};
+        UIUtils::DrawPanel(bounds, background);
+        DrawRectangleLinesEx(bounds, 1.0f, Color{120, 50, 55, 200});
+
+        // Line 1: "Level Up" (Dimmed)
+        UIUtils::DrawCenteredText("PixeloidBold", "LEVEL UP", { bounds.x + bounds.width * 0.5f, bounds.y + 13.0f }, static_cast<UIUtils::FontSize>(12), Color{180, 180, 190, 220});
+
+        // Line 2: Coin Icon (Dimmed) + Cost
+        Texture2D coinIcon = AssetManager::GetInstance().GetTexture("coin_icon");
+        std::string costStr = std::to_string(cost);
+        Font fontBold = AssetManager::GetInstance().GetCustomFont("PixeloidBold");
+        Vector2 numSize = MeasureTextEx(fontBold, costStr.c_str(), 11.0f, 1.0f);
+        float iconSize = 12.0f;
+        float totalW = (coinIcon.id != 0 ? (iconSize + 4.0f) : 0.0f) + numSize.x;
+        float startX = bounds.x + (bounds.width - totalW) * 0.5f;
+        float line2Y = bounds.y + 22.0f;
+
+        if (coinIcon.id != 0) {
+            DrawTexturePro(
+                coinIcon,
+                { 0.0f, 0.0f, (float)coinIcon.width, (float)coinIcon.height },
+                { startX, line2Y, iconSize, iconSize },
+                { 0.0f, 0.0f },
+                0.0f,
+                ColorAlpha(WHITE, 0.6f)
+            );
+            UIUtils::DrawText("PixeloidBold", costStr.c_str(), { startX + iconSize + 4.0f, line2Y }, static_cast<UIUtils::FontSize>(11), Color{235, 120, 120, 240});
+        } else {
+            UIUtils::DrawText("PixeloidBold", (costStr + " Coins").c_str(), { startX, line2Y }, static_cast<UIUtils::FontSize>(11), Color{235, 120, 120, 240});
+        }
     }
 }
 
@@ -148,7 +209,7 @@ void EnhanceMenuUI::Close() {
 
 void EnhanceMenuUI::SetFeedback(const std::string& text) {
     feedbackText = text;
-    feedbackTimer = 2.0f;
+    feedbackTimer = 2.5f;
 }
 
 void EnhanceMenuUI::Update(
@@ -165,8 +226,7 @@ void EnhanceMenuUI::Update(
         }
     }
 
-    if (IsKeyPressed(KEY_ESCAPE) || InputManager::IsInteractPressed()) {
-        AudioManager::GetInstance().PlayRandomClick();
+    if (IsKeyPressed(KEY_ESCAPE)) {
         Close();
         return;
     }
@@ -207,42 +267,17 @@ void EnhanceMenuUI::Update(
 
     if (!inspected) return;
 
-    // Health Upgrade
-    if (CheckCollisionPointRec(mousePosition, BTN_HEALTH)) {
-        if (inspected->UpgradeStat(StatType::Health)) {
+    // Single Unified Level Up Button Click
+    if (CheckCollisionPointRec(mousePosition, LEVEL_UP_BUTTON)) {
+        if (inspected->IsMaxLevel()) {
+            // Already maxed
+        } else if (!inspected->CanLevelUp(teamManager.GetCoins())) {
             audioManager.PlaySoundEffect("fx_button_click");
-            audioManager.PlaySoundEffect("fx_get_buff");
-            SetFeedback("Max Health enhanced!");
-        }
-        return;
-    }
-
-    // Speed Upgrade
-    if (CheckCollisionPointRec(mousePosition, BTN_SPEED)) {
-        if (inspected->UpgradeStat(StatType::Speed)) {
+            SetFeedback("Not enough Coins!");
+        } else if (inspected->LevelUp()) {
             audioManager.PlaySoundEffect("fx_button_click");
-            audioManager.PlaySoundEffect("fx_get_buff");
-            SetFeedback("Movement Speed enhanced!");
-        }
-        return;
-    }
-
-    // Attack Speed Upgrade
-    if (CheckCollisionPointRec(mousePosition, BTN_ATTACK_SPEED)) {
-        if (inspected->UpgradeStat(StatType::AttackSpeed)) {
-            audioManager.PlaySoundEffect("fx_button_click");
-            audioManager.PlaySoundEffect("fx_get_buff");
-            SetFeedback("Attack Speed enhanced!");
-        }
-        return;
-    }
-
-    // Damage Upgrade
-    if (CheckCollisionPointRec(mousePosition, BTN_DAMAGE)) {
-        if (inspected->UpgradeStat(StatType::Damage)) {
-            audioManager.PlaySoundEffect("fx_button_click");
-            audioManager.PlaySoundEffect("fx_get_buff");
-            SetFeedback("Weapon Damage enhanced!");
+            const std::string& name = PaladinCatalog::Get(inspected->GetPaladinId()).name;
+            SetFeedback(name + " leveled up to Tier " + std::to_string(inspected->GetPaladinLevel()) + "!");
         }
         return;
     }
@@ -270,6 +305,32 @@ void EnhanceMenuUI::Draw(
     // Overall Container
     UIUtils::DrawPanel(CONTAINER, Color{13, 18, 27, 252});
     UIUtils::DrawCenteredText("PixeloidBold", "ENHANCE MACHINE", { 683.0f * 0.5f, 27.0f }, UIUtils::FontSize::BODY, GOLD);
+
+    // Header Coin Balance Badge
+    int userCoins = teamManager.GetCoins();
+    Rectangle coinBadge = {
+        CONTAINER.x + CONTAINER.width - 105.0f,
+        16.0f,
+        90.0f,
+        22.0f
+    };
+    DrawRectangleRounded(coinBadge, 0.3f, 4, ColorAlpha(Color{10, 14, 22, 255}, 0.9f));
+    DrawRectangleRoundedLinesEx(coinBadge, 0.3f, 4, 1.0f, ColorAlpha(GRAY, 0.4f));
+
+    Texture2D coinIcon = AssetManager::GetInstance().GetTexture("coin_icon");
+    if (coinIcon.id != 0) {
+        float iconSize = 14.0f;
+        DrawTexturePro(
+            coinIcon,
+            { 0.0f, 0.0f, (float)coinIcon.width, (float)coinIcon.height },
+            { coinBadge.x + 6.0f, coinBadge.y + (coinBadge.height - iconSize) * 0.5f, iconSize, iconSize },
+            { 0.0f, 0.0f },
+            0.0f,
+            WHITE
+        );
+    }
+    std::string coinStr = std::to_string(userCoins);
+    UIUtils::DrawText("PixeloidMono", coinStr.c_str(), { coinBadge.x + 24.0f, coinBadge.y + 4.0f }, static_cast<UIUtils::FontSize>(11), Color{255, 223, 80, 255});
 
     DrawPanel(LEFT_PANEL, "PALADIN STATS");
     DrawPanel(CENTER_PANEL, definition.name.c_str());
@@ -308,32 +369,30 @@ void EnhanceMenuUI::Draw(
     int currentMinDmg = static_cast<int>(BaseStats::Damage * definition.weapon.minDamageScalar * currentDmgScalar);
     int currentMaxDmg = static_cast<int>(BaseStats::Damage * definition.weapon.maxDamageScalar * currentDmgScalar);
 
-    // --- Left Panel: Paladin Stats ---
+    // --- Left Panel: Paladin Stats (Cleaned of individual buttons, perfectly spaced) ---
     // 1. Health
     GUIStatBar::Draw(
-        {32.0f, 96.0f, 164.0f, 10.0f},
+        {32.0f, 100.0f, 164.0f, 12.0f},
         "Max Health",
         std::to_string(currentHp),
         (float)currentHp,
         maxHealthRef,
         Color{66, 190, 100, 255}
     );
-    DrawUpgradeButton(BTN_HEALTH, livePaladin ? livePaladin->CanUpgradeStat(StatType::Health) : false, mousePosition);
 
     // 2. Speed
     GUIStatBar::Draw(
-        {32.0f, 148.0f, 164.0f, 10.0f},
+        {32.0f, 151.0f, 164.0f, 12.0f},
         "Speed",
         FormatNumber(currentSpd),
         currentSpd,
         maxSpeedRef,
         Color{77, 180, 225, 255}
     );
-    DrawUpgradeButton(BTN_SPEED, livePaladin ? livePaladin->CanUpgradeStat(StatType::Speed) : false, mousePosition);
 
     // 3. EX Capacity
     GUIStatBar::Draw(
-        {32.0f, 200.0f, 164.0f, 10.0f},
+        {32.0f, 202.0f, 164.0f, 12.0f},
         "EX Capacity",
         FormatNumber(currentEx),
         currentEx,
@@ -343,14 +402,13 @@ void EnhanceMenuUI::Draw(
 
     // 4. Attack Speed
     GUIStatBar::Draw(
-        {32.0f, 242.0f, 164.0f, 10.0f},
+        {32.0f, 253.0f, 164.0f, 12.0f},
         "Attack Speed",
         FormatNumber(currentAtkSpd, 1) + "/s",
         currentAtkSpd,
         maxAttackSpeedRef,
         Color{235, 172, 59, 255}
     );
-    DrawUpgradeButton(BTN_ATTACK_SPEED, livePaladin ? livePaladin->CanUpgradeStat(StatType::AttackSpeed) : false, mousePosition);
 
     // --- Center Panel: Paladin Bio & Sprite ---
     Texture2D idleTexture = AssetManager::GetInstance().GetTexture(definition.idleTextureKey);
@@ -364,7 +422,7 @@ void EnhanceMenuUI::Draw(
 
     // --- Right Panel: Weapon Stats ---
     Texture2D weaponTexture = AssetManager::GetInstance().GetTexture(definition.weapon.textureKey);
-    DrawTextureAspectFit(weaponTexture, {495.0f, 76.0f, 148.0f, 56.0f});
+    DrawTextureAspectFit(weaponTexture, {495.0f, 81.0f, 148.0f, 72.0f});
 
     std::string damageText = (currentMinDmg == currentMaxDmg)
         ? std::to_string(currentMaxDmg)
@@ -372,18 +430,17 @@ void EnhanceMenuUI::Draw(
 
     // 1. Damage
     GUIStatBar::Draw(
-        {487.0f, 154.0f, 164.0f, 10.0f},
+        {487.0f, 188.0f, 164.0f, 12.0f},
         "Damage",
         damageText,
         (float)currentMaxDmg,
         maxDamageRef,
         Color{220, 76, 70, 255}
     );
-    DrawUpgradeButton(BTN_DAMAGE, livePaladin ? livePaladin->CanUpgradeStat(StatType::Damage) : false, mousePosition);
 
     // 2. Recoil
     GUIStatBar::Draw(
-        {487.0f, 206.0f, 164.0f, 10.0f},
+        {487.0f, 235.0f, 164.0f, 12.0f},
         "Recoil",
         definition.weapon.recoilApplicable ? FormatNumber(definition.weapon.recoil) : "N/A (melee)",
         definition.weapon.recoil,
@@ -393,13 +450,18 @@ void EnhanceMenuUI::Draw(
     );
     DrawWrappedText(
         definition.weapon.description,
-        {487.0f, 238.0f, 164.0f, 65.0f},
+        {487.0f, 262.0f, 164.0f, 48.0f},
         11,
         Color{205, 215, 230, 255}
     );
 
+    // --- Middle Section: Single Unified Level Up Button ---
+    int paladinLvl = livePaladin ? livePaladin->GetPaladinLevel() : 1;
+    int upgradeCost = livePaladin ? livePaladin->GetUpgradeCost() : 5;
+    DrawLevelUpButton(LEVEL_UP_BUTTON, paladinLvl, Paladin::MAX_PALADIN_LEVEL, upgradeCost, userCoins, mousePosition);
+
     // --- Bottom Section: Strike Team Slots ---
-    UIUtils::DrawCenteredText("PixeloidSans", "Select a Paladin below to inspect and enhance stats", { 683.0f * 0.5f, 335.0f }, static_cast<UIUtils::FontSize>(14), Color{218, 226, 240, 255});
+    UIUtils::DrawCenteredText("PixeloidSans", "Select a Paladin below to inspect and enhance stats", { 683.0f * 0.5f, 374.0f }, static_cast<UIUtils::FontSize>(12), Color{218, 226, 240, 255});
 
     for (std::size_t index = 0; index < team.size(); ++index) {
         Paladin* paladin = team[index];
@@ -419,13 +481,13 @@ void EnhanceMenuUI::Draw(
         if (paladin) {
             DrawPaladinPortrait(
                 paladin,
-                {card.x + 7.0f, card.y + 8.0f, 62.0f, 45.0f}
+                {card.x + 7.0f, card.y + 7.0f, 62.0f, 50.0f}
             );
             const PaladinDefinition& memberDefinition = PaladinCatalog::Get(paladin->GetPaladinId());
-            std::string slotLabel = "SLOT " + std::to_string(index + 1);
-            UIUtils::DrawText("PixeloidSans", slotLabel, { card.x + 79.0f, card.y + 10.0f }, static_cast<UIUtils::FontSize>(12), GRAY);
-            UIUtils::DrawText("PixeloidBold", memberDefinition.name, { card.x + 79.0f, card.y + 29.0f }, static_cast<UIUtils::FontSize>(18), RAYWHITE);
-            UIUtils::DrawText("PixeloidSans", inspected ? "Active" : "Click to select", { card.x + 79.0f, card.y + 50.0f }, static_cast<UIUtils::FontSize>(10), inspected ? GOLD : Color{170, 184, 204, 255});
+            std::string slotLabel = "SLOT " + std::to_string(index + 1) + " (Tier " + std::to_string(paladin->GetPaladinLevel()) + ")";
+            UIUtils::DrawText("PixeloidSans", slotLabel, { card.x + 77.0f, card.y + 8.0f }, static_cast<UIUtils::FontSize>(11), GRAY);
+            UIUtils::DrawText("PixeloidBold", memberDefinition.name, { card.x + 77.0f, card.y + 24.0f }, static_cast<UIUtils::FontSize>(16), RAYWHITE);
+            UIUtils::DrawText("PixeloidSans", inspected ? "Selected" : "Click to select", { card.x + 77.0f, card.y + 44.0f }, static_cast<UIUtils::FontSize>(10), inspected ? GOLD : Color{170, 184, 204, 255});
         }
     }
 

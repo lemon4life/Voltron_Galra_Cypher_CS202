@@ -346,6 +346,11 @@ void Paladin::ResetStats() {
     texture = GetIdleTexture();
     renderOffsetY = 0.0f;
     ultimateCooldownTimer = 0.0f;
+    paladinLevel = 1;
+    hpScalar = 1.0f;
+    attackCooldownScalar = 1.0f;
+    speedScalar = 1.0f;
+    damageScalar = 1.0f;
     ChangeState(&idleState);
     ResetAnimation();
 }
@@ -595,57 +600,31 @@ bool Paladin::CanParryAttack(Vector2 attackerPos) const {
 
 Texture2D Paladin::GetDownTexture() const { return sprites.down; }
 
-bool Paladin::CanUpgradeStat(StatType stat) const {
-    switch (stat) {
-        case StatType::Health:
-            return hpScalar < 2.5f - 0.001f;
-        case StatType::AttackSpeed:
-            return attackCooldownScalar > 0.4f + 0.001f;
-        case StatType::Speed:
-            return speedScalar < 1.6f - 0.001f;
-        case StatType::Damage:
-            return damageScalar < 2.5f - 0.001f;
-    }
-    return false;
-}
+bool Paladin::LevelUp() {
+    if (IsMaxLevel()) return false;
 
-bool Paladin::UpgradeStat(StatType stat) {
-    if (!CanUpgradeStat(stat)) return false;
+    TeamManager* tm = GameManager::GetInstance().GetTeamManager();
+    int cost = GetUpgradeCost();
+    if (!tm || tm->GetCoins() < cost) return false;
 
-    switch (stat) {
-        case StatType::Health:
-            hpScalar = std::min(2.5f, hpScalar + 0.2f);
-            break;
-        case StatType::AttackSpeed:
-            attackCooldownScalar = std::max(0.4f, attackCooldownScalar - 0.05f);
-            break;
-        case StatType::Speed:
-            speedScalar = std::min(1.6f, speedScalar + 0.1f);
-            break;
-        case StatType::Damage:
-            damageScalar = std::min(2.5f, damageScalar + 0.15f);
-            break;
-    }
+    // Deduct coins from team currency
+    tm->ConsumeCoins(cost);
+
+    // Increment paladin level
+    paladinLevel = std::min(MAX_PALADIN_LEVEL, paladinLevel + 1);
+
+    // Bump all stat scalars simultaneously
+    hpScalar = 1.0f + (paladinLevel - 1) * 0.2f;
+    speedScalar = 1.0f + (paladinLevel - 1) * 0.1f;
+    attackCooldownScalar = 1.0f - (paladinLevel - 1) * 0.05f;
+    damageScalar = 1.0f + (paladinLevel - 1) * 0.15f;
 
     RecalculateStats();
+    AudioManager::GetInstance().PlaySoundEffect("fx_get_buff");
     if (teamManager) {
         teamManager->NotifyObservers();
     }
     return true;
-}
-
-float Paladin::GetStatProgress(StatType stat) const {
-    switch (stat) {
-        case StatType::Health:
-            return std::clamp((hpScalar - 1.0f) / (2.5f - 1.0f), 0.0f, 1.0f);
-        case StatType::AttackSpeed:
-            return std::clamp((1.0f - attackCooldownScalar) / (1.0f - 0.4f), 0.0f, 1.0f);
-        case StatType::Speed:
-            return std::clamp((speedScalar - 1.0f) / (1.6f - 1.0f), 0.0f, 1.0f);
-        case StatType::Damage:
-            return std::clamp((damageScalar - 1.0f) / (2.5f - 1.0f), 0.0f, 1.0f);
-    }
-    return 0.0f;
 }
 
 void Paladin::RecalculateStats() {
