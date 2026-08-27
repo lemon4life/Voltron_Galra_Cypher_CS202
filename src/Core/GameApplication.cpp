@@ -446,9 +446,10 @@ void GameApplication::RunLoop() {
             stateObj->Draw();
         }
 
-        // Global HUD layer — rendered on top of all states
-        bool hubModalOpenLocal = state == GameState::HUB && paladinSelectionMenu.IsOpen();
-        if (systemInitialized && (state == GameState::HUB || state == GameState::GAMEPLAY) && !hubModalOpenLocal) {
+        // Global HUD layer — rendered on top of all states (hidden when selection/enhance modals are open)
+        bool modalOpen = (state == GameState::HUB && paladinSelectionMenu.IsOpen()) ||
+                         (state == GameState::GAMEPLAY && gameManager.IsEnhanceMenuOpen());
+        if (systemInitialized && (state == GameState::HUB || state == GameState::GAMEPLAY) && !modalOpen) {
             BeginMode2D(uiCamera);
             uiManager.DrawHUD(windowBounds, uiMousePosition);
             EndMode2D();

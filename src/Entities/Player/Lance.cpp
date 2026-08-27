@@ -29,9 +29,9 @@ void Lance::Update(float deltaTime) {
     Paladin::Update(deltaTime);
     
     if (HasPersonalBuff<DualWieldBuff>()) {
-        attackCooldown = 0.1f; // Halved attack cooldown
+        attackCooldown = baseAttackCooldown * 0.5f; // Halved attack cooldown
     } else {
-        attackCooldown = 0.2f; // Normal attack cooldown
+        attackCooldown = baseAttackCooldown; // Normal / upgraded attack cooldown
     }
     
     if (ultimateFlashTimer > 0.0f) {

@@ -38,4 +38,11 @@ public:
     void Draw(Vector2 playerPos, bool facingLeft) override;
     
     int GetComboStep() const { return comboStep; }
+    void SetDamage(int light, int heavy) override {
+        lightDamage = light;
+        heavyDamage = heavy;
+    }
+    void SetAttackSpeedScalar(float scalar) override {
+        timePerFrame = 0.05f * scalar;
+    }
 };

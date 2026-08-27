@@ -6,6 +6,8 @@
 #include "Core/Manager/GameManager.h"
 #include "raylib.h"
 
+#include "UI/EnhanceMenuUI.h"
+
 class GameplayState : public IGameState {
 public:
     GameplayState(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager);
@@ -14,8 +16,12 @@ public:
     void Update(float deltaTime) override;
     void Draw() override;
 
+    void OpenEnhanceMenu(PaladinId paladinId) { enhanceMenuUI.Open(paladinId); }
+    EnhanceMenuUI& GetEnhanceMenuUI() { return enhanceMenuUI; }
+
 private:
     TeamManager* teamManager;
     LevelManager* levelManager;
     WaveManager* waveManager;
+    EnhanceMenuUI enhanceMenuUI;
 };

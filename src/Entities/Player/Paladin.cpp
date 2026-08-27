@@ -34,7 +34,12 @@ Paladin::Paladin(
       displayedExEnergy(0.0f),
       dashCooldown(0.0f),
       attackCooldown(BaseStats::AttackCooldown * definition.attackCooldownScalar),
+      baseAttackCooldown(BaseStats::AttackCooldown * definition.attackCooldownScalar),
       dashTimer(0.0f),
+      hpScalar(1.0f),
+      attackCooldownScalar(1.0f),
+      speedScalar(1.0f),
+      damageScalar(1.0f),
       isInvincible(false),
       isParrying(false),
       parrySuccess(false),
@@ -589,3 +594,85 @@ bool Paladin::CanParryAttack(Vector2 attackerPos) const {
 }
 
 Texture2D Paladin::GetDownTexture() const { return sprites.down; }
+
+bool Paladin::CanUpgradeStat(StatType stat) const {
+    switch (stat) {
+        case StatType::Health:
+            return hpScalar < 2.5f - 0.001f;
+        case StatType::AttackSpeed:
+            return attackCooldownScalar > 0.4f + 0.001f;
+        case StatType::Speed:
+            return speedScalar < 1.6f - 0.001f;
+        case StatType::Damage:
+            return damageScalar < 2.5f - 0.001f;
+    }
+    return false;
+}
+
+bool Paladin::UpgradeStat(StatType stat) {
+    if (!CanUpgradeStat(stat)) return false;
+
+    switch (stat) {
+        case StatType::Health:
+            hpScalar = std::min(2.5f, hpScalar + 0.2f);
+            break;
+        case StatType::AttackSpeed:
+            attackCooldownScalar = std::max(0.4f, attackCooldownScalar - 0.05f);
+            break;
+        case StatType::Speed:
+            speedScalar = std::min(1.6f, speedScalar + 0.1f);
+            break;
+        case StatType::Damage:
+            damageScalar = std::min(2.5f, damageScalar + 0.15f);
+            break;
+    }
+
+    RecalculateStats();
+    if (teamManager) {
+        teamManager->NotifyObservers();
+    }
+    return true;
+}
+
+float Paladin::GetStatProgress(StatType stat) const {
+    switch (stat) {
+        case StatType::Health:
+            return std::clamp((hpScalar - 1.0f) / (2.5f - 1.0f), 0.0f, 1.0f);
+        case StatType::AttackSpeed:
+            return std::clamp((1.0f - attackCooldownScalar) / (1.0f - 0.4f), 0.0f, 1.0f);
+        case StatType::Speed:
+            return std::clamp((speedScalar - 1.0f) / (1.6f - 1.0f), 0.0f, 1.0f);
+        case StatType::Damage:
+            return std::clamp((damageScalar - 1.0f) / (2.5f - 1.0f), 0.0f, 1.0f);
+    }
+    return 0.0f;
+}
+
+void Paladin::RecalculateStats() {
+    const PaladinDefinition& def = PaladinCatalog::Get(paladinId);
+    
+    // 1. Max Health scaling
+    int newMaxHealth = static_cast<int>(BaseStats::HP * def.hpScalar * hpScalar);
+    int healthDiff = newMaxHealth - maxHealth;
+    maxHealth = newMaxHealth;
+    health = std::min(maxHealth, health + std::max(0, healthDiff));
+    ghostHp = static_cast<float>(health);
+    displayedHp = static_cast<float>(health);
+
+    // 2. Speed scaling
+    speed = BaseStats::Speed * def.speedScalar * speedScalar;
+
+    // 3. Attack cooldown scaling
+    baseAttackCooldown = BaseStats::AttackCooldown * def.attackCooldownScalar * attackCooldownScalar;
+    attackCooldown = baseAttackCooldown;
+    if (currentWeapon) {
+        currentWeapon->SetAttackSpeedScalar(attackCooldownScalar);
+    }
+
+    // 4. Weapon Damage scaling
+    int minDmg = static_cast<int>(BaseStats::Damage * def.weapon.minDamageScalar * damageScalar);
+    int maxDmg = static_cast<int>(BaseStats::Damage * def.weapon.maxDamageScalar * damageScalar);
+    if (currentWeapon) {
+        currentWeapon->SetDamage(minDmg, maxDmg);
+    }
+}

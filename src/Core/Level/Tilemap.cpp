@@ -247,8 +247,8 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
                             }
                         }
 
-                        // If it is a CHEST room, clear layer2_props so only the animated Chest entity is placed
-                        if (node->type == RoomType::CHEST) {
+                        // If it is a CHEST or EVENT room, clear layer2_props so only the animated entity is placed (Chest or EnhanceMachine)
+                        if (node->type == RoomType::CHEST || node->type == RoomType::EVENT) {
                             for (int y = 0; y < currentRoomSize; ++y) {
                                 for (int x = 0; x < currentRoomSize; ++x) {
                                     int px = startX + offset + x;

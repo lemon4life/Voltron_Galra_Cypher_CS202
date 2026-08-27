@@ -29,4 +29,9 @@ public:
     
     // Allows the strategy to draw its own debug hitboxes/effects
     virtual void Draw(Vector2 playerPos, bool facingLeft) = 0;
+
+    // Dynamic stat modification
+    virtual void SetDamage(int minDmg, int maxDmg) {}
+    virtual void SetDamage(int dmg) { SetDamage(dmg, dmg); }
+    virtual void SetAttackSpeedScalar(float scalar) {}
 };

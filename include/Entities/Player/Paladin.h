@@ -10,6 +10,7 @@
 #include <string>
 #include <memory>
 #include "Combat/IBuff.h"
+#include "Core/Systems/UpgradeCommands.h"
 
 struct BaseStats {
     static constexpr int HP = 100;
@@ -105,7 +106,14 @@ protected:
     // Dash mechanic properties
     float dashCooldown;
     float attackCooldown;
+    float baseAttackCooldown = 0.5f;
     float dashTimer;
+
+    // Upgraded Stat Scalars
+    float hpScalar = 1.0f;
+    float attackCooldownScalar = 1.0f;
+    float speedScalar = 1.0f;
+    float damageScalar = 1.0f;
 
     bool isInvincible;
     bool isParrying;
@@ -251,6 +259,18 @@ public:
     float GetActiveSkillTimer() const { return activeSkillTimer; }
     float GetActiveSkillDuration() const { return activeSkillDuration; }
     void ActivateSkill(float duration = 5.0f);
+
+    // Stat Upgrade System
+    bool CanUpgradeStat(StatType stat) const;
+    bool UpgradeStat(StatType stat);
+    float GetStatProgress(StatType stat) const;
+    void RecalculateStats();
+
+    float GetHpScalar() const { return hpScalar; }
+    float GetAttackCooldownScalar() const { return attackCooldownScalar; }
+    float GetSpeedScalar() const { return speedScalar; }
+    float GetDamageScalar() const { return damageScalar; }
+    float GetBaseAttackCooldown() const { return baseAttackCooldown; }
 
     // Ultimate cooldown
     static constexpr float ULTIMATE_COOLDOWN_MAX = 5.0f;

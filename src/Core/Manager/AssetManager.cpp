@@ -70,9 +70,10 @@ void AssetManager::LoadCommonAssets() {
     LoadTexture2D("pot_ex",    "assets/Objects/pot_ex.png", true);
     LoadTexture2D("pot_quint", "assets/Objects/pot_quint.png", true);
 
-    // Chest
+    // Chest & Machine
     LoadTexture2D("chest_bottom", "assets/Objects/chest_bottom.png", true);
     LoadTexture2D("chest_top",    "assets/Objects/chest_top.png", true);
+    LoadTexture2D("machine",      "assets/Objects/Machine.png", true);
 
     // Minimap Icons & Indicators
     LoadTexture2D("minimap_current", "assets/UI/minimap/current_room.png", true);
@@ -186,6 +187,9 @@ void AssetManager::QueueCharacterAssets() {
     add("pot_quint", "assets/Objects/pot_quint.png", true);
     add("tall_object_1_8", "assets/Objects/tall_object_1_8.png", true);
     add("Transfer_gate", "assets/Objects/Transfer_gate.png", true);
+    add("chest_bottom", "assets/Objects/chest_bottom.png", true);
+    add("chest_top", "assets/Objects/chest_top.png", true);
+    add("machine", "assets/Objects/Machine.png", true);
     add("Galra_Floors", "assets/tileset/Galra_Floors.png", true);
     add("Galra_Walls", "assets/tileset/Galra_Walls.png", true);
     

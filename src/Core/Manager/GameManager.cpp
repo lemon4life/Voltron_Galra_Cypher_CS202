@@ -3,6 +3,7 @@
 #include "Core/Constants.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/State/IGameState.h"
+#include "Core/State/GameplayState.h"
 #include "Entities/GameObject.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Projectile.h"
@@ -255,4 +256,17 @@ void GameManager::DrawDebugOverlays(TeamManager* team) const {
     if (Constants::DEBUG_DRAW_LINE_OF_SIGHT) {
         levelManager.DrawLineOfSightDebug();
     }
+}
+
+void GameManager::OpenEnhanceMenu(PaladinId paladinId) {
+    if (auto* gameplay = dynamic_cast<GameplayState*>(currentStateObj.get())) {
+        gameplay->OpenEnhanceMenu(paladinId);
+    }
+}
+
+bool GameManager::IsEnhanceMenuOpen() const {
+    if (auto* gameplay = dynamic_cast<GameplayState*>(currentStateObj.get())) {
+        return gameplay->GetEnhanceMenuUI().IsOpen();
+    }
+    return false;
 }
