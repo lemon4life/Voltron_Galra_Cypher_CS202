@@ -9,6 +9,7 @@
 #include "Core/Manager/UltimateIntroManager.h"
 #include "Core/DepthRenderItem.h"
 #include "Core/Diagnostics/MemoryDiagnostics.h"
+#include "Core/Diagnostics/FramePerformanceStats.h"
 #include "Entities/Hub/HubPaladinStand.h"
 #include "Entities/NPC.h"
 #include "Entities/Player/Hunk.h"
@@ -276,6 +277,10 @@ void GameApplication::RunLoop() {
     while (!WindowShouldClose() && !quitRequested) {
         InputManager::Update();
         float deltaTime = GetFrameTime();
+        FramePerformanceStats::GetInstance().Update(
+            deltaTime,
+            gameManager.GetTargetFPS()
+        );
         
         const float viewportScale = std::min(
             (float)GetScreenWidth() / Constants::GAME_WIDTH,

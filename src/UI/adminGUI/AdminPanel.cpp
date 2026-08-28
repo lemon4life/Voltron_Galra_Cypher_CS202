@@ -2,6 +2,7 @@
 
 #include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
+#include "Core/Diagnostics/FramePerformanceStats.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
@@ -24,7 +25,9 @@ constexpr float PANEL_PADDING = 14.0f;
 constexpr float TOGGLE_HEIGHT = 32.0f;
 constexpr float BUTTON_HEIGHT = 38.0f;
 constexpr float PROPERTY_ROW_HEIGHT = 58.0f;
-constexpr float SPAWN_BUTTON_START_Y = 231.0f;
+constexpr float TOGGLE_START_Y = 106.0f;
+constexpr float SPAWN_HEADING_Y = 258.0f;
+constexpr float SPAWN_BUTTON_START_Y = 285.0f;
 constexpr float SPAWN_BUTTON_GAP_Y = 6.0f;
 constexpr int TEXT_SIZE = 18;
 constexpr int SMALL_TEXT_SIZE = 16;
@@ -399,16 +402,16 @@ void AdminPanel::Update(
     float contentWidth = panel.width - PANEL_PADDING * 2.0f;
 
     Rectangle collisionToggle = {
-        contentX, panel.y + 52.0f, contentWidth, TOGGLE_HEIGHT
+        contentX, panel.y + TOGGLE_START_Y, contentWidth, TOGGLE_HEIGHT
     };
     Rectangle pathToggle = {
-        contentX, panel.y + 88.0f, contentWidth, TOGGLE_HEIGHT
+        contentX, panel.y + TOGGLE_START_Y + 36.0f, contentWidth, TOGGLE_HEIGHT
     };
     Rectangle lineOfSightToggle = {
-        contentX, panel.y + 124.0f, contentWidth, TOGGLE_HEIGHT
+        contentX, panel.y + TOGGLE_START_Y + 72.0f, contentWidth, TOGGLE_HEIGHT
     };
     Rectangle immunityToggle = {
-        contentX, panel.y + 160.0f, contentWidth, TOGGLE_HEIGHT
+        contentX, panel.y + TOGGLE_START_Y + 108.0f, contentWidth, TOGGLE_HEIGHT
     };
     if (WasButtonPressed(collisionToggle, mousePosition)) {
         Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES =
@@ -598,12 +601,47 @@ void AdminPanel::Draw() const {
         SMALL_TEXT_SIZE,
         GRAY
     );
+    const FramePerformanceSnapshot& frameStats =
+        FramePerformanceStats::GetInstance().GetSnapshot();
     DrawTextAdmin(
-        TextFormat("FPS: %i", GetFPS()),
-        (int)(panel.x + panel.width - 158.0f),
-        (int)panel.y + 17,
-        SMALL_TEXT_SIZE,
+        TextFormat(
+            "FPS %.0f | avg %.1f | min %.1f | max %.0f",
+            frameStats.currentFps,
+            frameStats.averageFps,
+            frameStats.lowestFps,
+            frameStats.highestFps
+        ),
+        (int)contentX,
+        (int)panel.y + 38,
+        13,
         LIME
+    );
+    DrawTextAdmin(
+        TextFormat(
+            "1%% low %.1f | 0.1%% low %.1f | below target %.1f%% | hitch %.1f%%",
+            frameStats.onePercentLowFps,
+            frameStats.pointOnePercentLowFps,
+            frameStats.belowTargetPercent,
+            frameStats.hitchPercent
+        ),
+        (int)contentX,
+        (int)panel.y + 54,
+        13,
+        SKYBLUE
+    );
+    DrawTextAdmin(
+        TextFormat(
+            "Frame ms: now %.2f avg %.2f P95 %.2f P99 %.2f max %.2f",
+            frameStats.currentFrameMilliseconds,
+            frameStats.averageFrameMilliseconds,
+            frameStats.p95FrameMilliseconds,
+            frameStats.p99FrameMilliseconds,
+            frameStats.maximumFrameMilliseconds
+        ),
+        (int)contentX,
+        (int)panel.y + 70,
+        13,
+        LIGHTGRAY
     );
     if (Constants::DEBUG_SHOW_PATHFINDING_PROFILING) {
         DrawTextAdmin(
@@ -616,32 +654,32 @@ void AdminPanel::Draw() const {
                 pathAverageMilliseconds
             ),
             (int)contentX,
-            (int)panel.y + 36,
+            (int)panel.y + 86,
             13,
             SKYBLUE
         );
     }
 
     DrawToggleRow(
-        { contentX, panel.y + 52.0f, contentWidth, TOGGLE_HEIGHT },
+        { contentX, panel.y + TOGGLE_START_Y, contentWidth, TOGGLE_HEIGHT },
         "Hitbox / collision boxes",
         Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES,
         mousePosition
     );
     DrawToggleRow(
-        { contentX, panel.y + 88.0f, contentWidth, TOGGLE_HEIGHT },
+        { contentX, panel.y + TOGGLE_START_Y + 36.0f, contentWidth, TOGGLE_HEIGHT },
         "Enemy paths and target points",
         Constants::DEBUG_DRAW_ENEMY_PATHS,
         mousePosition
     );
     DrawToggleRow(
-        { contentX, panel.y + 124.0f, contentWidth, TOGGLE_HEIGHT },
+        { contentX, panel.y + TOGGLE_START_Y + 72.0f, contentWidth, TOGGLE_HEIGHT },
         "All line-of-sight queries",
         Constants::DEBUG_DRAW_LINE_OF_SIGHT,
         mousePosition
     );
     DrawToggleRow(
-        { contentX, panel.y + 160.0f, contentWidth, TOGGLE_HEIGHT },
+        { contentX, panel.y + TOGGLE_START_Y + 108.0f, contentWidth, TOGGLE_HEIGHT },
         "Player immunity",
         Constants::DEBUG_PLAYER_IMMUNITY,
         mousePosition
@@ -650,7 +688,7 @@ void AdminPanel::Draw() const {
     DrawTextAdmin(
         "SPAWN ENEMY",
         (int)contentX,
-        (int)panel.y + 204,
+        (int)panel.y + SPAWN_HEADING_Y,
         TEXT_SIZE,
         GOLD
     );

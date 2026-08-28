@@ -1,5 +1,6 @@
 #include "Core/Diagnostics/MemoryDiagnostics.h"
 #include "Core/Diagnostics/ProcessMemory.h"
+#include "Core/Diagnostics/FramePerformanceStats.h"
 
 #include "Core/Constants.h"
 #include "Core/Level/RoomNode.h"
@@ -71,6 +72,8 @@ void MemoryDiagnostics::Capture(
     if (!Constants::DEBUG_MEMORY_DIAGNOSTICS) return;
 
     ProcessMemorySnapshot process = ReadProcessMemorySnapshot();
+    const FramePerformanceSnapshot& frameStats =
+        FramePerformanceStats::GetInstance().GetSnapshot();
     ObjectManagerMemoryStats objects =
         game.GetObjectManager().GetMemoryStats();
     PathFindingMemoryStats paths =
@@ -92,6 +95,23 @@ void MemoryDiagnostics::Capture(
            << " working_set=" << ToMegabytes(process.workingSet)
            << " peak_working_set=" << ToMegabytes(process.peakWorkingSet)
            << " commit=" << ToMegabytes(process.commitBytes) << '\n';
+    output << "  performance fps_current=" << frameStats.currentFps
+           << " fps_average=" << frameStats.averageFps
+           << " fps_lowest=" << frameStats.lowestFps
+           << " fps_highest=" << frameStats.highestFps
+           << " fps_1_percent_low=" << frameStats.onePercentLowFps
+           << " fps_0_1_percent_low=" << frameStats.pointOnePercentLowFps
+           << " below_target_percent=" << frameStats.belowTargetPercent
+           << " hitch_percent=" << frameStats.hitchPercent
+           << " frame_ms_current=" << frameStats.currentFrameMilliseconds
+           << " frame_ms_average=" << frameStats.averageFrameMilliseconds
+           << " frame_ms_p95=" << frameStats.p95FrameMilliseconds
+           << " frame_ms_p99=" << frameStats.p99FrameMilliseconds
+           << " frame_ms_max=" << frameStats.maximumFrameMilliseconds
+           << " frame_ms_deviation="
+           << frameStats.frameTimeDeviationMilliseconds
+           << " sample_window_seconds=" << frameStats.windowSeconds
+           << " samples=" << frameStats.sampleCount << '\n';
     output << "  objects enemies=" << objects.enemies << '/'
            << objects.enemyCapacity
            << " projectiles=" << objects.projectiles << '/'
