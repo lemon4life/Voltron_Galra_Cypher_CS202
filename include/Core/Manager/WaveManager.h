@@ -6,12 +6,21 @@
 class TeamManager;
 class LevelManager;
 
+enum class DungeonAnnouncement {
+    None,
+    EnemiesIncoming,
+    WaveStarted,
+    BossWarning,
+    RoomCleared
+};
+
 class WaveManager {
 private:
     int currentWave;
     int enemiesToSpawn;
     int rangeEnemiesToSpawn;
     int diverEnemiesToSpawn;
+    int droneEnemiesToSpawn;
     int demonTHAEnemiesToSpawn;
     float spawnTimer;
     float timeBetweenWaves;
@@ -21,8 +30,10 @@ private:
     int dungeonTotalWaves;
     int dungeonCurrentWave;
     bool isBossRoom;
+    DungeonAnnouncement dungeonAnnouncement;
 
     void UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, LevelManager* levelManager);
+    void ConfigureDungeonWave(int floorNumber, int waveNumber);
     void SpawnEnemy(
         float deltaTime,
         TeamManager* teamManager,
@@ -42,4 +53,8 @@ public:
     int GetCurrentWave() const { return currentWave; }
     void StartRoomWaves(int totalEnemies);
     bool IsRoomCleared() const;
+    bool SkipCurrentRoom(
+        TeamManager* teamManager,
+        LevelManager* levelManager
+    );
 };

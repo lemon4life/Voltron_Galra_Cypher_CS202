@@ -54,7 +54,7 @@ private:
     ~GameManager();
 
 public:
-    static constexpr int MAX_FLOORS = 3;
+    static constexpr int MAX_FLOORS = 5;
     static GameManager& GetInstance();
 
     GameManager(const GameManager&) = delete;

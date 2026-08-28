@@ -131,7 +131,7 @@ void GameManager::GenerateDungeon() {
     pathFindingManager.Clear();
     objectManager.Clear();
     effectManager.ClearSession();
-    DynamicSpawnList spawns = levelManager.GenerateDungeon();
+    DynamicSpawnList spawns = levelManager.GenerateDungeon(currentFloor);
     objectManager.SpawnAll(spawns);
 
     if (teamManager && teamManager->GetActivePaladin() &&

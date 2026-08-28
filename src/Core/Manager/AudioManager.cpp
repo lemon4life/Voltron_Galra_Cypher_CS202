@@ -96,6 +96,8 @@ void AudioManager::Initialize() {
     LoadSound("knight_dead_1", "assets/audio/SFX/Enemy/knight_dead_1.wav");
     LoadSound("drone_dead_0", "assets/audio/SFX/Enemy/drone_dead_0.wav");
     LoadSound("drone_dead_1", "assets/audio/SFX/Enemy/drone_dead_1.wav");
+    LoadSound("boss_fire_punch", "assets/audio/SFX/Enemy/boss_fire_punch.mp3");
+    LoadSound("boss_stomping", "assets/audio/SFX/Enemy/boss_stomp.mp3");
 
     // SFX - Combat
     LoadSound("fx_laser_bullet", "assets/audio/SFX/Combat/fx_laser_bullet.wav");

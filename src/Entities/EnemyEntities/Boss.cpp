@@ -1,6 +1,7 @@
 #include "Entities/EnemyEntities/Boss.h"
 
 #include "Core/Manager/AssetManager.h"
+#include "Core/Constants.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
@@ -18,10 +19,12 @@ namespace {
     constexpr int BOSS_MAX_HEALTH = 2000;
     constexpr int BOSS_PHASE_ONE_MIN_HEALTH = 1500;
     constexpr int BOSS_PHASE_TWO_MIN_HEALTH = 1000;
-    constexpr int BOSS_PHASE_ONE_IDLE_MIN_MILLISECONDS = 3000;
-    constexpr int BOSS_PHASE_ONE_IDLE_MAX_MILLISECONDS = 5000;
-    constexpr int BOSS_HARDER_PHASE_IDLE_MIN_MILLISECONDS = 2000;
-    constexpr int BOSS_HARDER_PHASE_IDLE_MAX_MILLISECONDS = 4000;
+    constexpr int BOSS_BASE_IDLE_MIN_MILLISECONDS = 2000;
+    constexpr int BOSS_BASE_IDLE_MAX_MILLISECONDS = 3000;
+    constexpr float BOSS_PHASE_TWO_IDLE_DURATION_SCALE = 0.70f;
+    constexpr float BOSS_PHASE_THREE_IDLE_DURATION_SCALE = 0.40f;
+    constexpr float BOSS_PHASE_TWO_MOVEMENT_SPEED_SCALE = 1.30f;
+    constexpr float BOSS_PHASE_THREE_MOVEMENT_SPEED_SCALE = 1.50f;
     constexpr int BOSS_PHASE_ONE_STOMPS = 2;
     constexpr int BOSS_HARDER_PHASE_STOMPS = 3;
     constexpr int BOSS_PHASE_ONE_PUNCHES = 4;
@@ -93,6 +96,8 @@ namespace {
     constexpr int BOSS_SUMMON_ATTEMPTS = 12;
     constexpr int BOSS_SUMMON_MIN_RADIUS_TENTHS = 560;
     constexpr int BOSS_SUMMON_MAX_RADIUS_TENTHS = 960;
+    constexpr float BOSS_SUMMON_CORRECTION_RADIUS =
+        Constants::RENDER_TILE_SIZE * 3.0f;
 
     struct BossPunchHandPose {
         Vector2 anchorWorld;
@@ -205,7 +210,6 @@ Boss::Boss(
     SetKnockbackResistance(BOSS_KNOCKBACK_RESISTANCE);
 
     idleState = std::make_unique<BossIdlingState>();
-    chaseState = std::make_unique<BossChaseState>();
     spellingState = std::make_unique<BossSpellingState>();
     punchState = std::make_unique<BossPunchState>();
     stompingState = std::make_unique<BossStompingState>();
@@ -443,15 +447,35 @@ BossPhase Boss::GetPhase() const {
 }
 
 int Boss::GetIdleMinimumMilliseconds() const {
-    return GetPhase() == BossPhase::Phase1
-        ? BOSS_PHASE_ONE_IDLE_MIN_MILLISECONDS
-        : BOSS_HARDER_PHASE_IDLE_MIN_MILLISECONDS;
+    float scale = 1.0f;
+    if (GetPhase() == BossPhase::Phase2) {
+        scale = BOSS_PHASE_TWO_IDLE_DURATION_SCALE;
+    } else if (GetPhase() == BossPhase::Phase3) {
+        scale = BOSS_PHASE_THREE_IDLE_DURATION_SCALE;
+    }
+    return (int)(BOSS_BASE_IDLE_MIN_MILLISECONDS * scale);
 }
 
 int Boss::GetIdleMaximumMilliseconds() const {
-    return GetPhase() == BossPhase::Phase1
-        ? BOSS_PHASE_ONE_IDLE_MAX_MILLISECONDS
-        : BOSS_HARDER_PHASE_IDLE_MAX_MILLISECONDS;
+    float scale = 1.0f;
+    if (GetPhase() == BossPhase::Phase2) {
+        scale = BOSS_PHASE_TWO_IDLE_DURATION_SCALE;
+    } else if (GetPhase() == BossPhase::Phase3) {
+        scale = BOSS_PHASE_THREE_IDLE_DURATION_SCALE;
+    }
+    return (int)(BOSS_BASE_IDLE_MAX_MILLISECONDS * scale);
+}
+
+float Boss::GetIdleMovementSpeedScale() const {
+    switch (GetPhase()) {
+        case BossPhase::Phase2:
+            return BOSS_PHASE_TWO_MOVEMENT_SPEED_SCALE;
+        case BossPhase::Phase3:
+            return BOSS_PHASE_THREE_MOVEMENT_SPEED_SCALE;
+        case BossPhase::Phase1:
+        default:
+            return 1.0f;
+    }
 }
 
 int Boss::GetStompsPerState() const {
@@ -488,6 +512,12 @@ bool Boss::TrySummonRandomEnemy(int& demonsSummonedThisSpell) {
     LevelManager* levelManager =
         GameManager::GetInstance().GetLevelManager();
     if (!levelManager || !targetTeam) return false;
+    std::shared_ptr<RoomNode> lockedRoom =
+        levelManager->GetCurrentlyLockedRoom();
+    if (!lockedRoom || lockedRoom->type != RoomType::BOSS ||
+        lockedRoom->state != RoomState::LOCKED) {
+        return false;
+    }
 
     constexpr MapObjectId SUMMON_TYPES[] = {
         MapObjectId::Chaser,
@@ -516,7 +546,12 @@ bool Boss::TrySummonRandomEnemy(int& demonsSummonedThisSpell) {
         };
         if (GameManager::GetInstance()
                 .GetObjectManager()
-                .QueueSpawn(summonType, summonPosition)) {
+                .QueueEnemySpawnSafely(
+                    summonType,
+                    summonPosition,
+                    lockedRoom->GetWorldBounds(),
+                    BOSS_SUMMON_CORRECTION_RADIUS
+                )) {
             if (summonType == MapObjectId::DemonTHA) {
                 ++demonsSummonedThisSpell;
             }

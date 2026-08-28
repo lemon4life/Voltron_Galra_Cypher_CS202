@@ -6,6 +6,8 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <queue>
+#include <unordered_map>
 
 std::vector<Rectangle> RoomTemplate::GenerateWallColliders(Vector2 offsetWorldPos, float tileSize, float scale) const {
     std::vector<Rectangle> colliders;
@@ -27,105 +29,236 @@ std::vector<Rectangle> RoomTemplate::GenerateWallColliders(Vector2 offsetWorldPo
     return colliders;
 }
 
-void LevelMap::Generate(int width, int height) {
-    grid.assign(height, std::vector<std::shared_ptr<RoomNode>>(width, nullptr));
-    generatedNodes.clear();
-    
-    int cx = width / 2;
-    int cy = height / 2;
-    spawnRoom = std::make_shared<RoomNode>(cx, cy, RoomType::SPAWN);
-    spawnRoom->isDiscovered = true;
-    spawnRoom->isCleared = true;
-    spawnRoom->state = RoomState::CLEARED;
-    grid[cy][cx] = spawnRoom;
-    generatedNodes.push_back(spawnRoom);
-    
-    int roomsToGenerate = 7;
-    
-    while (generatedNodes.size() < roomsToGenerate) {
-        struct OpenSlot {
-            int x, y;
-            std::shared_ptr<RoomNode> neighbor;
-            int dx, dy; // direction from neighbor to this slot
+void LevelMap::Generate(
+    int width,
+    int height,
+    int enemyRoomCount,
+    int chestRoomCount,
+    int enhanceRoomCount,
+    bool bossFloor
+) {
+    enemyRoomCount = std::max(1, enemyRoomCount);
+    chestRoomCount = std::clamp(chestRoomCount, 0, 2);
+    enhanceRoomCount = std::clamp(enhanceRoomCount, 0, 1);
+
+    struct OpenSlot {
+        int x;
+        int y;
+        std::shared_ptr<RoomNode> parent;
+        int dx;
+        int dy;
+    };
+
+    auto setRoomType = [](const std::shared_ptr<RoomNode>& node,
+                          RoomType type) {
+        node->type = type;
+        node->roomSize = type == RoomType::BOSS
+            ? 25
+            : (type == RoomType::BATTLE ? 20 : 15);
+        bool utility = type == RoomType::SPAWN ||
+            type == RoomType::CHEST || type == RoomType::EVENT ||
+            type == RoomType::EXIT;
+        node->isCleared = utility;
+        node->state = utility ? RoomState::CLEARED : RoomState::IDLE;
+    };
+
+    constexpr int MAX_GENERATION_ATTEMPTS = 32;
+    for (int attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; ++attempt) {
+        grid.assign(
+            height,
+            std::vector<std::shared_ptr<RoomNode>>(width, nullptr)
+        );
+        generatedNodes.clear();
+
+        int centerX = width / 2;
+        int centerY = height / 2;
+        spawnRoom = std::make_shared<RoomNode>(
+            centerX,
+            centerY,
+            RoomType::SPAWN
+        );
+        setRoomType(spawnRoom, RoomType::SPAWN);
+        spawnRoom->isDiscovered = true;
+        grid[centerY][centerX] = spawnRoom;
+        generatedNodes.push_back(spawnRoom);
+
+        auto collectOpenSlots = [&]() {
+            std::vector<OpenSlot> slots;
+            for (const auto& node : generatedNodes) {
+                int x = node->gridX;
+                int y = node->gridY;
+                if (y > 0 && !grid[y - 1][x]) {
+                    slots.push_back({ x, y - 1, node, 0, -1 });
+                }
+                if (y + 1 < height && !grid[y + 1][x]) {
+                    slots.push_back({ x, y + 1, node, 0, 1 });
+                }
+                if (x > 0 && !grid[y][x - 1]) {
+                    slots.push_back({ x - 1, y, node, -1, 0 });
+                }
+                if (x + 1 < width && !grid[y][x + 1]) {
+                    slots.push_back({ x + 1, y, node, 1, 0 });
+                }
+            }
+            return slots;
         };
-        std::vector<OpenSlot> openSlots;
-        
-        for (auto& node : generatedNodes) {
-            int nx = node->gridX;
-            int ny = node->gridY;
-            
-            // Check North
-            if (ny - 1 >= 0 && !grid[ny - 1][nx]) openSlots.push_back({nx, ny - 1, node, 0, -1});
-            // Check South
-            if (ny + 1 < height && !grid[ny + 1][nx]) openSlots.push_back({nx, ny + 1, node, 0, 1});
-            // Check West
-            if (nx - 1 >= 0 && !grid[ny][nx - 1]) openSlots.push_back({nx - 1, ny, node, -1, 0});
-            // Check East
-            if (nx + 1 < width && !grid[ny][nx + 1]) openSlots.push_back({nx + 1, ny, node, 1, 0});
-        }
-        
-        if (openSlots.empty()) {
-            printf("LevelMap::Generate: FAILED to find open slots, generatedNodes = %zu\n", generatedNodes.size());
-            break;
-        }
-        
-        // Pick a random open slot
-        int randIdx = GetRandomValue(0, openSlots.size() - 1);
-        OpenSlot slot = openSlots[randIdx];
-        
-        RoomType type = RoomType::BATTLE;
-        if (generatedNodes.size() == roomsToGenerate - 2) type = RoomType::BOSS;
-        else if (generatedNodes.size() == roomsToGenerate - 1) type = RoomType::EXIT;
-        
-        std::shared_ptr<RoomNode> nextNode = std::make_shared<RoomNode>(slot.x, slot.y, type);
-        grid[slot.y][slot.x] = nextNode;
-        generatedNodes.push_back(nextNode);
-        
-        // Link them
-        if (slot.dy == -1) { slot.neighbor->north = nextNode.get(); nextNode->south = slot.neighbor.get(); }
-        if (slot.dy == 1) { slot.neighbor->south = nextNode.get(); nextNode->north = slot.neighbor.get(); }
-        if (slot.dx == 1) { slot.neighbor->east = nextNode.get(); nextNode->west = slot.neighbor.get(); }
-        if (slot.dx == -1) { slot.neighbor->west = nextNode.get(); nextNode->east = slot.neighbor.get(); }
-    }
 
-    // Floor room allocation rule:
-    // Distinctively assign exactly 1 EVENT room (pots) and exactly 1 CHEST room among candidate middle rooms
-    std::vector<std::shared_ptr<RoomNode>> candidateRooms;
-    for (auto& node : generatedNodes) {
-        if (node->type != RoomType::SPAWN && node->type != RoomType::BOSS && node->type != RoomType::EXIT) {
-            candidateRooms.push_back(node);
-        }
-    }
-
-    if (candidateRooms.size() >= 2) {
-        int eventIdx = GetRandomValue(0, (int)candidateRooms.size() - 1);
-        int chestIdx = GetRandomValue(0, (int)candidateRooms.size() - 1);
-        while (chestIdx == eventIdx) {
-            chestIdx = GetRandomValue(0, (int)candidateRooms.size() - 1);
-        }
-
-        for (size_t i = 0; i < candidateRooms.size(); ++i) {
-            if ((int)i == eventIdx) {
-                // Exactly 1 EVENT room (small_01.csv pots layout)
-                candidateRooms[i]->type = RoomType::EVENT;
-                candidateRooms[i]->roomSize = 15;
-                candidateRooms[i]->isCleared = true;
-                candidateRooms[i]->state = RoomState::CLEARED;
-            } else if ((int)i == chestIdx) {
-                // Exactly 1 CHEST room (small room with centered animated chest)
-                candidateRooms[i]->type = RoomType::CHEST;
-                candidateRooms[i]->roomSize = 15;
-                candidateRooms[i]->isCleared = true;
-                candidateRooms[i]->state = RoomState::CLEARED;
+        auto connectRoom = [&](const OpenSlot& slot, RoomType type) {
+            auto node = std::make_shared<RoomNode>(slot.x, slot.y, type);
+            grid[slot.y][slot.x] = node;
+            generatedNodes.push_back(node);
+            if (slot.dx == 1) {
+                slot.parent->east = node.get();
+                node->west = slot.parent.get();
+            } else if (slot.dx == -1) {
+                slot.parent->west = node.get();
+                node->east = slot.parent.get();
+            } else if (slot.dy == 1) {
+                slot.parent->south = node.get();
+                node->north = slot.parent.get();
             } else {
-                // Remaining candidate rooms are standard BATTLE combat rooms (20x20)
-                candidateRooms[i]->type = RoomType::BATTLE;
-                candidateRooms[i]->roomSize = 20;
-                candidateRooms[i]->isCleared = false;
-                candidateRooms[i]->state = RoomState::IDLE;
+                slot.parent->north = node.get();
+                node->south = slot.parent.get();
+            }
+            return node;
+        };
+
+        int roomsBeforePortal = enemyRoomCount + chestRoomCount +
+            enhanceRoomCount + (bossFloor ? 0 : 1);
+        bool failed = false;
+        for (int index = 0; index < roomsBeforePortal; ++index) {
+            std::vector<OpenSlot> slots = collectOpenSlots();
+            if (slots.empty()) {
+                failed = true;
+                break;
+            }
+            connectRoom(
+                slots[GetRandomValue(0, (int)slots.size() - 1)],
+                RoomType::BATTLE
+            );
+        }
+        if (failed) continue;
+
+        std::unordered_map<RoomNode*, int> distances;
+        std::unordered_map<RoomNode*, RoomNode*> parents;
+        std::queue<RoomNode*> frontier;
+        distances[spawnRoom.get()] = 0;
+        parents[spawnRoom.get()] = nullptr;
+        frontier.push(spawnRoom.get());
+
+        while (!frontier.empty()) {
+            RoomNode* current = frontier.front();
+            frontier.pop();
+            RoomNode* neighbors[] = {
+                current->north,
+                current->south,
+                current->east,
+                current->west
+            };
+            for (RoomNode* neighbor : neighbors) {
+                if (!neighbor || distances.count(neighbor) > 0) continue;
+                distances[neighbor] = distances[current] + 1;
+                parents[neighbor] = current;
+                frontier.push(neighbor);
             }
         }
+
+        std::vector<std::shared_ptr<RoomNode>> farthestLeaves;
+        int farthestDistance = -1;
+        for (const auto& node : generatedNodes) {
+            if (node == spawnRoom) continue;
+            int connectionCount = (node->north ? 1 : 0) +
+                (node->south ? 1 : 0) + (node->east ? 1 : 0) +
+                (node->west ? 1 : 0);
+            if (connectionCount != 1) continue;
+
+            int distance = distances[node.get()];
+            if (distance > farthestDistance) {
+                farthestDistance = distance;
+                farthestLeaves.clear();
+            }
+            if (distance == farthestDistance) {
+                farthestLeaves.push_back(node);
+            }
+        }
+
+        if (bossFloor) {
+            farthestLeaves.erase(
+                std::remove_if(
+                    farthestLeaves.begin(),
+                    farthestLeaves.end(),
+                    [&](const std::shared_ptr<RoomNode>& node) {
+                        RoomNode* parent = parents[node.get()];
+                        int deltaX = node->gridX - parent->gridX;
+                        int deltaY = node->gridY - parent->gridY;
+                        int portalX = node->gridX + deltaX;
+                        int portalY = node->gridY + deltaY;
+                        return portalX < 0 || portalX >= width ||
+                            portalY < 0 || portalY >= height ||
+                            grid[portalY][portalX] != nullptr;
+                    }
+                ),
+                farthestLeaves.end()
+            );
+        }
+        if (farthestLeaves.empty()) continue;
+
+        auto progressionRoom = farthestLeaves[
+            GetRandomValue(0, (int)farthestLeaves.size() - 1)
+        ];
+        RoomNode* bossParent = nullptr;
+        if (bossFloor) {
+            setRoomType(progressionRoom, RoomType::BOSS);
+            bossParent = parents[progressionRoom.get()];
+            int deltaX = progressionRoom->gridX - bossParent->gridX;
+            int deltaY = progressionRoom->gridY - bossParent->gridY;
+            connectRoom(
+                {
+                    progressionRoom->gridX + deltaX,
+                    progressionRoom->gridY + deltaY,
+                    progressionRoom,
+                    deltaX,
+                    deltaY
+                },
+                RoomType::EXIT
+            );
+        } else {
+            setRoomType(progressionRoom, RoomType::EXIT);
+        }
+
+        std::vector<std::shared_ptr<RoomNode>> utilityCandidates;
+        for (const auto& node : generatedNodes) {
+            if (node == spawnRoom || node->type == RoomType::EXIT ||
+                node->type == RoomType::BOSS ||
+                node.get() == bossParent) {
+                continue;
+            }
+            utilityCandidates.push_back(node);
+        }
+        for (int index = (int)utilityCandidates.size() - 1;
+             index > 0;
+             --index) {
+            int swapIndex = GetRandomValue(0, index);
+            std::swap(utilityCandidates[index], utilityCandidates[swapIndex]);
+        }
+
+        int candidateIndex = 0;
+        for (int index = 0; index < chestRoomCount; ++index) {
+            setRoomType(
+                utilityCandidates[candidateIndex++],
+                RoomType::CHEST
+            );
+        }
+        for (int index = 0; index < enhanceRoomCount; ++index) {
+            setRoomType(
+                utilityCandidates[candidateIndex++],
+                RoomType::EVENT
+            );
+        }
+        return;
     }
+
+    printf("LevelMap::Generate: failed to build a valid room tree\n");
 }
 
 std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
@@ -174,8 +307,10 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
             }
         }
         
-        // Custom CSV Template Loading (skip for spawn — spawn keeps the default walled room above)
-        if (node->type != RoomType::SPAWN) {
+        // Spawn and Boss rooms use the fixed empty-room layout created above.
+        // Other room types may load randomized CSV layouts.
+        if (node->type != RoomType::SPAWN &&
+            node->type != RoomType::BOSS) {
             std::string sizePrefix = "Small";
             if (node->roomSize == 25) sizePrefix = "Large";
             else if (node->roomSize == 20) sizePrefix = "Medium";
@@ -274,6 +409,40 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
                                 }
                             }
                         }
+                }
+            }
+        }
+
+        if (node->type == RoomType::BOSS) {
+            // Keep the 25x25 Boss arena completely open inside its perimeter.
+            // Four 2x2 destructible-box groups sit halfway between the arena
+            // center and its corners.
+            for (int y = 1; y < currentRoomSize - 1; ++y) {
+                for (int x = 1; x < currentRoomSize - 1; ++x) {
+                    int px = startX + offset + x;
+                    int py = startY + offset + y;
+                    baked->layer0_tiles[py][px] = 0;
+                    baked->layer1_objects[py][px] = 0;
+                    baked->layer2_props[py][px] = 0;
+                }
+            }
+
+            int nearSide = currentRoomSize / 4 - 1;
+            int farSide = currentRoomSize - currentRoomSize / 4 - 2;
+            constexpr int clusterSize = 2;
+            const int clusterStarts[4][2] = {
+                { nearSide, nearSide },
+                { farSide, nearSide },
+                { nearSide, farSide },
+                { farSide, farSide }
+            };
+            for (const auto& clusterStart : clusterStarts) {
+                for (int dy = 0; dy < clusterSize; ++dy) {
+                    for (int dx = 0; dx < clusterSize; ++dx) {
+                        int px = startX + offset + clusterStart[0] + dx;
+                        int py = startY + offset + clusterStart[1] + dy;
+                        baked->layer2_props[py][px] = 5;
+                    }
                 }
             }
         }

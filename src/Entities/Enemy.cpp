@@ -8,6 +8,7 @@
 #include "Core/Manager/GameManager.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace {
     constexpr float DEBUG_PATH_THICKNESS = 2.0f;
@@ -404,4 +405,19 @@ void Enemy::ApplyStatMultiplier(float multiplier) {
     damage = (int)(damage * multiplier);
     // Slight speed buff (half of the multiplier scale)
     speed *= (1.0f + (multiplier - 1.0f) * 0.5f);
+}
+
+void Enemy::ApplyStatMultipliers(
+    float healthMultiplier,
+    float damageMultiplier,
+    float speedMultiplier
+) {
+    maxHealth = std::max(1, (int)std::round(
+        maxHealth * std::max(0.0f, healthMultiplier)
+    ));
+    health = maxHealth;
+    damage = std::max(0, (int)std::round(
+        damage * std::max(0.0f, damageMultiplier)
+    ));
+    speed *= std::max(0.0f, speedMultiplier);
 }

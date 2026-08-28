@@ -133,7 +133,7 @@ public:
     bool NeedsPlayerNudge() const { return needsNudge; }
     Vector2 ConsumeNudge() { needsNudge = false; return nudgePosition; }
     bool IsPlayerInExitRoom(Vector2 playerPos) const;
-    DynamicSpawnList GenerateDungeon();
+    DynamicSpawnList GenerateDungeon(int floorNumber = 1);
 
     void DrawLevelBase();
     void GetDepthRenderItems(std::vector<DepthRenderItem>& items);

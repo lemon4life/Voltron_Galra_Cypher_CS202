@@ -94,6 +94,12 @@ public:
     void SpawnAll(const DynamicSpawnList& requests);
     GameObject* Spawn(MapObjectId type, Vector2 position);
     bool QueueSpawn(MapObjectId type, Vector2 position);
+    bool QueueEnemySpawnSafely(
+        MapObjectId type,
+        Vector2 desiredPosition,
+        Rectangle allowedRoomBounds,
+        float correctionRadius
+    );
     void AddObject(std::unique_ptr<GameObject> object);
     void QueueRemoval(GameObject* object) override;
     void DeleteAllEnemies();

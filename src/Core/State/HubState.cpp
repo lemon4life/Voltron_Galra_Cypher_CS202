@@ -108,7 +108,7 @@ void HubState::Update(float deltaTime) {
             GameManager::GetInstance().ClearProjectiles();
             GameManager::GetInstance().ResetFloorCount();
             GameManager::GetInstance().GenerateDungeon();
-            waveManager->Reset(1, 0, 0);
+            waveManager->Reset(0, 0, 0, 0);
             GameManager::GetInstance().SetState(GameState::GAMEPLAY);
         }
     } else {

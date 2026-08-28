@@ -31,7 +31,14 @@ public:
     std::shared_ptr<RoomNode> spawnRoom;
 
     LevelMap() {}
-    void Generate(int width, int height); // macro layout generation
+    void Generate(
+        int width,
+        int height,
+        int enemyRoomCount,
+        int chestRoomCount,
+        int enhanceRoomCount,
+        bool bossFloor
+    ); // macro layout generation
     std::shared_ptr<RoomTemplate> BakeLevel();
     std::vector<std::shared_ptr<RoomNode>> generatedNodes;
 };

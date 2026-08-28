@@ -177,6 +177,11 @@ public:
 
     // Scalar scaling for Roguelike progression
     void ApplyStatMultiplier(float multiplier);
+    void ApplyStatMultipliers(
+        float healthMultiplier,
+        float damageMultiplier,
+        float speedMultiplier
+    );
 
     void SetKnockbackResistance(float resistance);
     float GetKnockbackMultiplier() const {

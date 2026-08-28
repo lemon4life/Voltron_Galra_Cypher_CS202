@@ -2,6 +2,7 @@
 
 #include "AI/EnemyCollision.h"
 #include "Core/LevelAccess.h"
+#include "Core/Manager/AudioManager.h"
 
 #include "Entities/EnemyEntities/Boss.h"
 #include "Entities/Player/Paladin.h"
@@ -13,8 +14,9 @@
 #include <array>
 
 namespace {
-    constexpr int BOSS_CHASE_MIN_MILLISECONDS = 5000;
-    constexpr int BOSS_CHASE_MAX_MILLISECONDS = 7000;
+    constexpr int BOSS_MOVE_MIN_MILLISECONDS = 2000;
+    constexpr int BOSS_MOVE_MAX_MILLISECONDS = 3000;
+    constexpr float BOSS_FINAL_IDLE_DURATION = 1.0f;
     constexpr int BOSS_SPELL_MIN_MILLISECONDS = 4000;
     constexpr int BOSS_SPELL_MAX_MILLISECONDS = 6000;
     constexpr int BOSS_PUNCH_READY_FRAME_COUNT = 10;
@@ -26,7 +28,6 @@ namespace {
     constexpr float BOSS_STOMP_FAST_FRAME_DURATION = 0.10f;
 
     enum class BossOffense {
-        Chase,
         Spell,
         Punch,
         Stomp
@@ -38,11 +39,10 @@ namespace {
     };
 
     // The percentage of Boss entering each offense state after the idle state
-    constexpr std::array<BossOffenseChoice, 4> BOSS_OFFENSE_CHOICES = {{
-        { BossOffense::Chase, 20 },
-        { BossOffense::Spell, 27 },
-        { BossOffense::Punch, 26 },
-        { BossOffense::Stomp, 27 }
+    constexpr std::array<BossOffenseChoice, 3> BOSS_OFFENSE_CHOICES = {{
+        { BossOffense::Spell, 34 },
+        { BossOffense::Punch, 33 },
+        { BossOffense::Stomp, 33 }
     }};
 
     float GetStompFrameDuration(int frameIndex) {
@@ -68,110 +68,117 @@ namespace {
             }
         }
 
-        return BossOffense::Chase;
+        return BossOffense::Stomp;
     }
 }
 
 // Boss Idling State
 
 void BossIdlingState::Enter(Boss* enemy) {
-    elapsedTime = 0.0f;
-    idleDuration = RollDuration(
+    stage = Stage::InitialIdle;
+    stageTimeRemaining = RollDuration(
         enemy->GetIdleMinimumMilliseconds(),
         enemy->GetIdleMaximumMilliseconds()
     );
+    enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
 }
 
 void BossIdlingState::Update(Boss* enemy, float deltaTime) {
-    elapsedTime += std::max(0.0f, deltaTime);
-    if (elapsedTime >= idleDuration) {
-        IEnemyState* nextState = enemy->GetChaseState();
-        switch (RollBossOffense()) {
-            case BossOffense::Spell:
-                nextState = enemy->GetSpellingState();
-                break;
-            case BossOffense::Punch:
-                nextState = enemy->GetPunchState();
-                break;
-            case BossOffense::Stomp:
-                nextState = enemy->GetStompingState();
-                break;
-            case BossOffense::Chase:
-            default:
-                break;
+    float safeDeltaTime = std::max(0.0f, deltaTime);
+    stageTimeRemaining -= safeDeltaTime;
+
+    if (stage == Stage::InitialIdle) {
+        enemy->SetCurrentVelocity({ 0.0f, 0.0f });
+        if (stageTimeRemaining <= 0.0f) {
+            stage = Stage::MoveToPlayer;
+            stageTimeRemaining = RollDuration(
+                BOSS_MOVE_MIN_MILLISECONDS,
+                BOSS_MOVE_MAX_MILLISECONDS
+            );
+            enemy->StartPathFinding();
         }
-        enemy->ChangeState(nextState);
-    }
-}
-
-void BossIdlingState::Exit(Boss* enemy) {
-}
-
-// Boss Chase State
-
-void BossChaseState::Enter(Boss* enemy) {
-    elapsedTime = 0.0f;
-    chaseDuration = RollDuration(
-        BOSS_CHASE_MIN_MILLISECONDS,
-        BOSS_CHASE_MAX_MILLISECONDS
-    );
-    enemy->StartPathFinding();
-}
-
-void BossChaseState::Update(Boss* enemy, float deltaTime) {
-    elapsedTime += std::max(0.0f, deltaTime);
-    if (elapsedTime >= chaseDuration) {
-        enemy->ChangeState(enemy->GetIdlingState());
         return;
     }
 
-    if (!enemy->GetTargetTeam() ||
-        !enemy->GetTargetTeam()->GetActivePaladin()) {
-        return;
-    }
-
-    Vector2 ePos = enemy->GetPosition();
-
-    IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
-    std::optional<Vector2> moveTarget =
-        pathAccess.GetNextMoveTarget(*enemy);
-    Vector2 dir = { 0.0f, 0.0f };
-    if (moveTarget) {
-        dir = Vector2Subtract(*moveTarget, ePos);
-        if (Vector2Length(dir) > 0.0f) {
-            dir = Vector2Normalize(dir);
+    if (stage == Stage::MoveToPlayer) {
+        IEnemyPathAccess& pathAccess = enemy->GetPathAccess();
+        std::optional<Vector2> moveTarget =
+            pathAccess.GetNextMoveTarget(*enemy);
+        Vector2 direction = { 0.0f, 0.0f };
+        if (moveTarget) {
+            direction = Vector2Subtract(
+                *moveTarget,
+                enemy->GetPosition()
+            );
+            if (Vector2Length(direction) > 0.0f) {
+                direction = Vector2Normalize(direction);
+            }
+            direction = pathAccess.GetLocalDirection(*enemy, direction);
         }
-        dir = pathAccess.GetLocalDirection(*enemy, dir);
-    }
 
-    EnemyCollision::MoveAgainstWalls(
-        *enemy,
-        Vector2Scale(dir, enemy->GetSpeed() * deltaTime),
-        pathAccess,
-        EnemyWallResponse::Slide
-    );
+        Vector2 velocity = Vector2Scale(
+            direction,
+            enemy->GetSpeed() * enemy->GetIdleMovementSpeedScale()
+        );
+        enemy->SetCurrentVelocity(velocity);
+        EnemyCollision::MoveAgainstWalls(
+            *enemy,
+            Vector2Scale(velocity, safeDeltaTime),
+            pathAccess,
+            EnemyWallResponse::Slide
+        );
 
-    // Handle Attack Cooldown
-    if (enemy->GetAttackCooldown() > 0.0f) {
-        float remainingCooldown = enemy->GetAttackCooldown() - deltaTime;
-        enemy->SetAttackCooldown(remainingCooldown > 0.0f ? remainingCooldown : 0.0f);
-    }
-    
-    // Contact is an attack overlap only; enemies do not physically separate
-    // from or collide with the player.
-    Paladin* activePaladin = enemy->GetTargetTeam()->GetActivePaladin();
-    if (EnemyCollision::CheckPlayerAttackOverlap(*enemy, *activePaladin)) {
-        // Attack if cooldown allows
-        if (enemy->GetAttackCooldown() <= 0.0f) {
+        if (enemy->GetAttackCooldown() > 0.0f) {
+            enemy->SetAttackCooldown(std::max(
+                0.0f,
+                enemy->GetAttackCooldown() - safeDeltaTime
+            ));
+        }
+
+        TeamManager* targetTeam = enemy->GetTargetTeam();
+        Paladin* activePaladin = targetTeam
+            ? targetTeam->GetActivePaladin()
+            : nullptr;
+        if (activePaladin &&
+            EnemyCollision::CheckPlayerAttackOverlap(
+                *enemy,
+                *activePaladin
+            ) && enemy->GetAttackCooldown() <= 0.0f) {
             activePaladin->TakeDamage(enemy->GetDamage());
             enemy->ResetAttackCooldown();
         }
+
+        if (stageTimeRemaining <= 0.0f) {
+            stage = Stage::FinalIdle;
+            stageTimeRemaining = BOSS_FINAL_IDLE_DURATION;
+            enemy->EndPathFinding();
+            enemy->SetCurrentVelocity({ 0.0f, 0.0f });
+        }
+        return;
     }
+
+    enemy->SetCurrentVelocity({ 0.0f, 0.0f });
+    if (stageTimeRemaining > 0.0f) return;
+
+    IEnemyState* nextState = enemy->GetSpellingState();
+    switch (RollBossOffense()) {
+        case BossOffense::Punch:
+            nextState = enemy->GetPunchState();
+            break;
+        case BossOffense::Stomp:
+            nextState = enemy->GetStompingState();
+            break;
+        case BossOffense::Spell:
+        default:
+            break;
+    }
+    enemy->ChangeState(nextState);
 }
 
-void BossChaseState::Exit(Boss* enemy) {
+void BossIdlingState::Exit(Boss* enemy) {
     enemy->EndPathFinding();
+    enemy->SetCurrentVelocity({ 0.0f, 0.0f });
 }
 
 // Boss Spelling State
@@ -244,6 +251,12 @@ void BossPunchState::Update(Boss* enemy, float deltaTime) {
             );
         }
 
+        if (frameIndex == BOSS_PUNCH_PLAY_FRAME_COUNT - 1) {
+            AudioManager::GetInstance().PlaySoundEffect(
+                "boss_fire_punch"
+            );
+        }
+
         if (frameIndex >= BOSS_PUNCH_PLAY_FRAME_COUNT) {
             frameIndex = 0;
             ++completedPunches;
@@ -280,6 +293,7 @@ void BossStompingState::Update(Boss* enemy, float deltaTime) {
         ++frameIndex;
 
         if (frameIndex == BOSS_STOMP_FRAME_COUNT - 1) {
+            AudioManager::GetInstance().PlaySoundEffect("boss_stomping");
             enemy->SpawnStompSmoke();
             enemy->FireStompProjectiles();
         }

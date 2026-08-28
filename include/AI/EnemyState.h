@@ -123,19 +123,14 @@ public:
 
 class BossIdlingState : public ITypedEnemyState<Boss> {
 private:
-    float elapsedTime = 0.0f;
-    float idleDuration = 0.0f;
+    enum class Stage {
+        InitialIdle,
+        MoveToPlayer,
+        FinalIdle
+    };
 
-public:
-    void Enter(Boss* enemy) override;
-    void Update(Boss* enemy, float deltaTime) override;
-    void Exit(Boss* enemy) override;
-};
-
-class BossChaseState : public ITypedEnemyState<Boss> {
-private:
-    float elapsedTime = 0.0f;
-    float chaseDuration = 0.0f;
+    Stage stage = Stage::InitialIdle;
+    float stageTimeRemaining = 0.0f;
 
 public:
     void Enter(Boss* enemy) override;

@@ -924,7 +924,7 @@ void RoomNode::CalculateWalkableGrid(LevelManager* lm) {
     }
 }
 
-DynamicSpawnList LevelManager::GenerateDungeon() {
+DynamicSpawnList LevelManager::GenerateDungeon(int floorNumber) {
     DynamicSpawnList dynamicSpawns;
     printf("GenerateDungeon: Start\n");
     ClearLevel();
@@ -933,7 +933,29 @@ DynamicSpawnList LevelManager::GenerateDungeon() {
     currentlyLockedRoom = nullptr;
 
     printf("GenerateDungeon: Generating map\n");
-    levelMap.Generate(7, 7);
+    constexpr int COMBAT_ROOMS_BY_FLOOR[] = { 3, 5, 6, 8, 10 };
+    int clampedFloor = std::clamp(floorNumber, 1, 5);
+    bool finalFloor = clampedFloor == 5;
+    constexpr int CHEST_ROOM_CHANCE_PERCENT = 45;
+    constexpr int ENHANCE_ROOM_CHANCE_PERCENT = 30;
+    int chestRoomCount = 0;
+    for (int index = 0; index < 2; ++index) {
+        if (GetRandomValue(1, 100) <= CHEST_ROOM_CHANCE_PERCENT) {
+            ++chestRoomCount;
+        }
+    }
+    int enhanceRoomCount = finalFloor ||
+        GetRandomValue(1, 100) <= ENHANCE_ROOM_CHANCE_PERCENT
+        ? 1
+        : 0;
+    levelMap.Generate(
+        7,
+        7,
+        COMBAT_ROOMS_BY_FLOOR[clampedFloor - 1],
+        chestRoomCount,
+        enhanceRoomCount,
+        finalFloor
+    );
     printf("GenerateDungeon: Baking level\n");
     activeRoom = levelMap.BakeLevel();
     printf("GenerateDungeon: Map baked\n");

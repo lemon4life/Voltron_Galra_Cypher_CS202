@@ -450,7 +450,7 @@ void AdminPanel::Update(
         }
     }
 
-    float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
+    float actionButtonWidth = (contentWidth - 16.0f) / 3.0f;
     Rectangle cancelButton = {
         contentX,
         panel.y + ACTION_BUTTON_Y,
@@ -463,12 +463,26 @@ void AdminPanel::Update(
         actionButtonWidth,
         BUTTON_HEIGHT
     };
+    Rectangle skipRoomButton = {
+        contentX + (actionButtonWidth + 8.0f) * 2.0f,
+        panel.y + ACTION_BUTTON_Y,
+        actionButtonWidth,
+        BUTTON_HEIGHT
+    };
     if (WasButtonPressed(cancelButton, mousePosition)) {
         placementArmed = false;
         statusMessage = "Placement cancelled; values are preserved";
     }
     if (WasButtonPressed(deleteAllButton, mousePosition)) {
         DeleteAllEnemies(levelManager);
+    }
+    if (WasButtonPressed(skipRoomButton, mousePosition)) {
+        bool skipped = GameManager::GetInstance()
+            .GetEncounterManager()
+            .SkipCurrentRoom(teamManager, &levelManager);
+        statusMessage = skipped
+            ? "Current room cleared"
+            : "Enter a locked combat room first";
     }
 
     UpdatePropertyEditor(mousePosition);
@@ -711,7 +725,7 @@ void AdminPanel::Draw() const {
         );
     }
 
-    float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
+    float actionButtonWidth = (contentWidth - 16.0f) / 3.0f;
     Rectangle cancelButton = {
         contentX,
         panel.y + ACTION_BUTTON_Y,
@@ -724,8 +738,15 @@ void AdminPanel::Draw() const {
         actionButtonWidth,
         BUTTON_HEIGHT
     };
+    Rectangle skipRoomButton = {
+        contentX + (actionButtonWidth + 8.0f) * 2.0f,
+        panel.y + ACTION_BUTTON_Y,
+        actionButtonWidth,
+        BUTTON_HEIGHT
+    };
     DrawButton(cancelButton, "Cancel placement", mousePosition);
-    DrawButton(deleteAllButton, "Delete all enemies", mousePosition);
+    DrawButton(deleteAllButton, "Delete enemies", mousePosition);
+    DrawButton(skipRoomButton, "Skip room", mousePosition);
 
     DrawTextAdmin(
         statusMessage.c_str(),

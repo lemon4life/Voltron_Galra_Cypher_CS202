@@ -49,6 +49,7 @@ public:
     BossPhase GetPhase() const;
     int GetIdleMinimumMilliseconds() const;
     int GetIdleMaximumMilliseconds() const;
+    float GetIdleMovementSpeedScale() const;
     int GetStompsPerState() const;
     int GetPunchesPerState() const;
     float GetSpellSummonInterval() const;

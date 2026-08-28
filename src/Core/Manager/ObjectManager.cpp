@@ -22,6 +22,17 @@
 namespace {
 constexpr std::size_t MAX_QUINTESSENCE_ORBS = 256;
 constexpr float QUINTESSENCE_ORB_LIFETIME = 30.0f;
+constexpr int MAX_SAFE_SPAWN_CANDIDATES = 32;
+constexpr float SPAWN_BOUNDS_MARGIN = 0.25f;
+
+bool ContainsRectangle(Rectangle outer, Rectangle inner) {
+    return inner.x >= outer.x + SPAWN_BOUNDS_MARGIN &&
+        inner.y >= outer.y + SPAWN_BOUNDS_MARGIN &&
+        inner.x + inner.width <=
+            outer.x + outer.width - SPAWN_BOUNDS_MARGIN &&
+        inner.y + inner.height <=
+            outer.y + outer.height - SPAWN_BOUNDS_MARGIN;
+}
 
 void DrawObjectCollisionDebug(const GameObject& object) {
     Color hitboxColor = PURPLE;
@@ -139,6 +150,124 @@ bool ObjectManager::QueueSpawn(MapObjectId type, Vector2 position) {
     if (!object) return false;
     pendingAddition.push_back(std::move(object));
     return true;
+}
+
+bool ObjectManager::QueueEnemySpawnSafely(
+    MapObjectId type,
+    Vector2 desiredPosition,
+    Rectangle allowedRoomBounds,
+    float correctionRadius
+) {
+    if (!teamManager || !pathFinding || !levelManager ||
+        allowedRoomBounds.width <= 0.0f ||
+        allowedRoomBounds.height <= 0.0f) {
+        return false;
+    }
+
+    std::unique_ptr<GameObject> object = EntityFactory::CreateEntity(
+        type,
+        desiredPosition,
+        teamManager,
+        *this,
+        *pathFinding,
+        *levelManager
+    );
+    Enemy* enemy = dynamic_cast<Enemy*>(object.get());
+    if (!enemy) return false;
+
+    Rectangle levelBounds = levelManager->GetLevelBounds();
+    Paladin* activePlayer = teamManager->GetActivePaladin();
+    int testedCandidates = 0;
+
+    auto tryCandidate = [&](Vector2 candidate) {
+        if (testedCandidates >= MAX_SAFE_SPAWN_CANDIDATES) return false;
+        ++testedCandidates;
+
+        Rectangle footprint = enemy->GetNavigationFootprintAt(candidate);
+        if (!ContainsRectangle(allowedRoomBounds, footprint) ||
+            !ContainsRectangle(levelBounds, footprint) ||
+            levelManager->IsSolidCollision(footprint)) {
+            return false;
+        }
+        if (activePlayer && CheckCollisionRecs(
+                footprint,
+                activePlayer->GetCollisionBox())) {
+            return false;
+        }
+        if (IsDynamicCollisionBlocked(footprint)) return false;
+
+        for (const std::unique_ptr<GameObject>& pending : pendingAddition) {
+            if (pending && CheckCollisionRecs(
+                    footprint,
+                    pending->GetCollisionBox())) {
+                return false;
+            }
+        }
+
+        enemy->SetPosition(candidate);
+        pendingAddition.push_back(std::move(object));
+        return true;
+    };
+
+    if (tryCandidate(desiredPosition)) return true;
+
+    const EnemyCollisionProfile profile = enemy->GetCollisionProfile();
+    const float searchStep = Constants::RENDER_TILE_SIZE * 0.5f;
+    Vector2 desiredFootCenter = {
+        desiredPosition.x + profile.navigationCenterOffset.x,
+        desiredPosition.y + profile.navigationCenterOffset.y
+    };
+    Vector2 snappedFootCenter = {
+        std::round(desiredFootCenter.x / searchStep) * searchStep,
+        std::round(desiredFootCenter.y / searchStep) * searchStep
+    };
+    int maximumRing = std::max(
+        0,
+        static_cast<int>(std::ceil(
+            std::max(0.0f, correctionRadius) / searchStep
+        ))
+    );
+
+    for (int ring = 0;
+         ring <= maximumRing &&
+         testedCandidates < MAX_SAFE_SPAWN_CANDIDATES;
+         ++ring) {
+        for (int offsetY = -ring;
+             offsetY <= ring &&
+             testedCandidates < MAX_SAFE_SPAWN_CANDIDATES;
+             ++offsetY) {
+            for (int offsetX = -ring;
+                 offsetX <= ring &&
+                 testedCandidates < MAX_SAFE_SPAWN_CANDIDATES;
+                 ++offsetX) {
+                if (ring > 0 &&
+                    std::abs(offsetX) != ring &&
+                    std::abs(offsetY) != ring) {
+                    continue;
+                }
+
+                Vector2 candidateFootCenter = {
+                    snappedFootCenter.x + offsetX * searchStep,
+                    snappedFootCenter.y + offsetY * searchStep
+                };
+                Vector2 candidate = {
+                    candidateFootCenter.x -
+                        profile.navigationCenterOffset.x,
+                    candidateFootCenter.y -
+                        profile.navigationCenterOffset.y
+                };
+                float deltaX = candidate.x - desiredPosition.x;
+                float deltaY = candidate.y - desiredPosition.y;
+                if (deltaX * deltaX + deltaY * deltaY >
+                    correctionRadius * correctionRadius) {
+                    continue;
+                }
+                if (tryCandidate(candidate)) return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 void ObjectManager::ProcessPendingAdditions() {
