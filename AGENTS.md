@@ -25,10 +25,10 @@ There is no formal unit test framework currently configured. Treat a clean CMake
 Recent history uses short imperative messages with optional prefixes, for example `feat:`, `fix:`, `chore:`, `config:`, and `clean:`. Keep commits focused on one change. Pull requests should summarize the gameplay/code change, mention affected systems, list manual test steps, and include screenshots or recordings for visible gameplay or UI changes.
 
 
-## Implementation Plans & AI Usage Notes
-Whenever an implementation plan is created, you MUST automatically copy it to the project's physical `implementation_plan/` directory in numbered order (e.g., `plan_9_...`), in addition to creating the standard artifact. You can modify old plan with I tell you to. Additionally, automatically update the AI Usage Note for the corresponding week in the `AI Usage Note/` folder with the prompts used, purpose, and content generated for that feature. Each week X is followed by a file declaration named `AI Usage Notes - Week X.md`
-
-Note that week 7 starts from 20 July, 2026
+## Plans & AI Usage Notes
+Provide requested implementation plans in chat only. Do not create or copy new
+plan files into `implementation_plan/`, and do not update files in
+`AI Usage Note/`. Existing plan and declaration files should remain unchanged.
 
 
 ## Fallback
