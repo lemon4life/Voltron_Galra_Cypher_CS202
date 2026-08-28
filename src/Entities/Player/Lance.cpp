@@ -29,9 +29,9 @@ void Lance::Update(float deltaTime) {
     Paladin::Update(deltaTime);
     
     if (HasPersonalBuff<DualWieldBuff>()) {
-        attackCooldown = 0.1f; // Halved attack cooldown
+        attackCooldown = baseAttackCooldown * 0.5f; // Halved attack cooldown
     } else {
-        attackCooldown = 0.2f; // Normal attack cooldown
+        attackCooldown = baseAttackCooldown; // Normal / upgraded attack cooldown
     }
     
     if (ultimateFlashTimer > 0.0f) {
@@ -91,9 +91,9 @@ void Lance::Draw() {
 }
 
 void Lance::UseSkill() {
-    if (exEnergy < skillCost) return;
+    if (exEnergy < skillCost || isSkillActive) return;
     
-    exEnergy -= skillCost;
+    ActivateSkill(5.0f);
     AudioManager::GetInstance().PlaySoundEffect("fx_lance_skill");
     AudioManager::GetInstance().PlaySoundEffect("vl_lance_skill");
     AddPersonalBuff(std::make_unique<DualWieldBuff>(5.0f));

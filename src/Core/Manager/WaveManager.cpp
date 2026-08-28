@@ -8,6 +8,8 @@
 #include "Core/Manager/AudioManager.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Diagnostics/MemoryDiagnostics.h"
+#include "Core/Manager/ObjectManager.h"
+#include "Entities/Props/Chest.h"
 #include "Core/Level/RoomNode.h"
 #include "raymath.h"
 #include <algorithm>
@@ -39,7 +41,8 @@ WaveManager::WaveManager() {
 void WaveManager::Reset(
     int startingEnemies,
     int startingRangeEnemies,
-    int startingDiverEnemies
+    int startingDiverEnemies,
+    int startingDemonTHAEnemies
 ) {
     currentWave = startingEnemies == 0 ? 0 : 1;
     enemiesToSpawn = startingEnemies;
@@ -48,6 +51,11 @@ void WaveManager::Reset(
         startingDiverEnemies,
         0,
         startingEnemies - rangeEnemiesToSpawn
+    );
+    demonTHAEnemiesToSpawn = std::clamp(
+        startingDemonTHAEnemies,
+        0,
+        startingEnemies - rangeEnemiesToSpawn - diverEnemiesToSpawn
     );
     spawnTimer = 0.0f;
     timeBetweenWaves = 3.0f;
@@ -112,15 +120,26 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
         return;
     }
 
-    // Room just locked â€” initialize waves if we haven't yet
+    // Room just locked — initialize waves if we haven't yet
     if (dungeonTotalWaves == 0) {
-        // Check if this is a boss room
+        // Strict guard check: Verify the locked room is a valid combat room (BATTLE or BOSS)
+        std::shared_ptr<RoomNode> lockedNode = nullptr;
         for (const auto& node : levelManager->GetLevelMap().generatedNodes) {
             if (node->state == RoomState::LOCKED) {
-                isBossRoom = (node->type == RoomType::BOSS);
+                lockedNode = node;
                 break;
             }
         }
+
+        // If the locked room is a CHEST, EVENT, EXIT, SPAWN, or small utility room, do NOT spawn combat waves
+        if (!lockedNode || lockedNode->type == RoomType::CHEST ||
+            lockedNode->type == RoomType::EVENT || lockedNode->type == RoomType::EXIT ||
+            lockedNode->type == RoomType::SPAWN ||
+            (lockedNode->roomSize == 15 && lockedNode->type != RoomType::BOSS)) {
+            return;
+        }
+
+        isBossRoom = (lockedNode->type == RoomType::BOSS);
 
         if (isBossRoom) {
             // Boss room: 1 wave with 1 boss
@@ -129,14 +148,17 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
             enemiesToSpawn = 1;
             rangeEnemiesToSpawn = 0;
             diverEnemiesToSpawn = 0;
+            demonTHAEnemiesToSpawn = 0;
             AudioManager::GetInstance().PlayMusicTrack("bgm_boss_theme", 1.5f);
         } else {
-            // Normal battle room: 3 waves of 1-4 enemies each
+            // Normal battle room: 3 waves of progressive composition
             dungeonTotalWaves = 3;
             dungeonCurrentWave = 1;
-            enemiesToSpawn = 1 + (rand() % 4); // 1-4
-            rangeEnemiesToSpawn = enemiesToSpawn / 3;
-            diverEnemiesToSpawn = enemiesToSpawn / 4;
+            // Wave 1: 2-3 enemies (Chasers and Drones, with a chance of 1 Range)
+            enemiesToSpawn = 2 + (rand() % 2); // 2-3
+            rangeEnemiesToSpawn = (enemiesToSpawn >= 3) ? 1 : 0;
+            diverEnemiesToSpawn = 0;
+            demonTHAEnemiesToSpawn = 0;
         }
 
         currentWave = 1;
@@ -171,12 +193,26 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
         } else if (activeEnemies == 0) {
             // Wave cleared
             if (dungeonCurrentWave >= dungeonTotalWaves) {
-                // All waves done â€” room cleared!
+                // All waves done — room cleared!
                 levelManager->SetActiveRoomState(RoomState::CLEARED);
 
                 if (isBossRoom) {
                     // Boss defeated — room cleared, player can continue
                     AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
+                }
+
+                // Spawn reward chest at active Paladin's position with teleport VFX
+                if (teamManager && teamManager->GetActivePaladin()) {
+                    Vector2 spawnPos = teamManager->GetActivePaladin()->GetPosition();
+                    Texture2D smoke = AssetManager::GetInstance().GetTexture("AppearSmoke");
+                    Texture2D light = AssetManager::GetInstance().GetTexture("AppearLight");
+                    GameManager::GetInstance().AddEffect(spawnPos, smoke, 5, 0.5f);
+                    GameManager::GetInstance().AddEffect(spawnPos, light, 5, 0.5f);
+                    AudioManager::GetInstance().PlaySoundEffect("fx_show_up");
+
+                    GameManager::GetInstance().GetObjectManager().AddObject(
+                        std::make_unique<Chest>(spawnPos, ChestRewardType::Coins)
+                    );
                 }
 
                 // Reset for next room
@@ -196,10 +232,23 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
 
                 if (isBossRoom) {
                     enemiesToSpawn = 1;
+                    rangeEnemiesToSpawn = 0;
+                    diverEnemiesToSpawn = 0;
+                    demonTHAEnemiesToSpawn = 0;
                 } else {
-                    enemiesToSpawn = 1 + (rand() % 4); // 1-4 random
-                    rangeEnemiesToSpawn = enemiesToSpawn / 3;
-                    diverEnemiesToSpawn = enemiesToSpawn / 4;
+                    if (dungeonCurrentWave == 2) {
+                        // Wave 2: 3-4 enemies (mix of Chaser/Drone, 1 Range, 1 Diver, optional 1 DemonTHA)
+                        enemiesToSpawn = 3 + (rand() % 2); // 3-4
+                        rangeEnemiesToSpawn = 1;
+                        diverEnemiesToSpawn = 1;
+                        demonTHAEnemiesToSpawn = (rand() % 2 == 0) ? 1 : 0;
+                    } else {
+                        // Wave 3: 4-5 enemies (heavy combat with DemonTHA, Range, Divers, and Grunts)
+                        enemiesToSpawn = 4 + (rand() % 2); // 4-5
+                        rangeEnemiesToSpawn = 1;
+                        diverEnemiesToSpawn = 1;
+                        demonTHAEnemiesToSpawn = 1 + (rand() % 2); // 1-2 DemonTHA
+                    }
                 }
 
                 timeBetweenWaves = 2.0f;
@@ -226,8 +275,9 @@ void WaveManager::SpawnEnemy(
     Vector2 spawnPos;
     if (!levelManager->GetGuaranteedSpawnPoint(spawnPos)) {
         // No spots left in the room at all
-        if (rangeEnemiesToSpawn > 0) rangeEnemiesToSpawn--;
+        if (demonTHAEnemiesToSpawn > 0) demonTHAEnemiesToSpawn--;
         else if (diverEnemiesToSpawn > 0) diverEnemiesToSpawn--;
+        else if (rangeEnemiesToSpawn > 0) rangeEnemiesToSpawn--;
         enemiesToSpawn--;
         spawnTimer = 0.07f;
         return;
@@ -238,18 +288,20 @@ void WaveManager::SpawnEnemy(
     if (isBossRoom ||
         (!levelManager->IsProceduralDungeon() && currentWave == 5)) {
         spawnType = MapObjectId::Boss;
-    } else if (rangeEnemiesToSpawn > 0) {
-        spawnType = MapObjectId::Range;
+    } else if (demonTHAEnemiesToSpawn > 0) {
+        spawnType = MapObjectId::DemonTHA;
     } else if (diverEnemiesToSpawn > 0) {
         spawnType = MapObjectId::Diver;
-    } else if (!levelManager->IsProceduralDungeon() &&
-               currentWave >= 2 && currentWave <= 4 &&
-               enemiesToSpawn == currentWave) {
+    } else if (rangeEnemiesToSpawn > 0) {
         spawnType = MapObjectId::Range;
-    } else if (!levelManager->IsProceduralDungeon() &&
-               currentWave >= 3 && currentWave <= 4 &&
-               enemiesToSpawn == currentWave - 1) {
-        spawnType = MapObjectId::Diver;
+    } else if (!levelManager->IsProceduralDungeon()) {
+        if (currentWave >= 4 && enemiesToSpawn == currentWave) {
+            spawnType = MapObjectId::DemonTHA;
+        } else if (currentWave >= 3 && enemiesToSpawn == currentWave - 1) {
+            spawnType = MapObjectId::Diver;
+        } else if (currentWave >= 2 && enemiesToSpawn == currentWave - 2) {
+            spawnType = MapObjectId::Range;
+        }
     }
 
     GameObject* newEnemy = GameManager::GetInstance()
@@ -265,13 +317,12 @@ void WaveManager::SpawnEnemy(
             );
         }
 
-        if (spawnType == MapObjectId::Range &&
-            rangeEnemiesToSpawn > 0) {
-            rangeEnemiesToSpawn--;
-        }
-        if (spawnType == MapObjectId::Diver &&
-            diverEnemiesToSpawn > 0) {
+        if (spawnType == MapObjectId::DemonTHA && demonTHAEnemiesToSpawn > 0) {
+            demonTHAEnemiesToSpawn--;
+        } else if (spawnType == MapObjectId::Diver && diverEnemiesToSpawn > 0) {
             diverEnemiesToSpawn--;
+        } else if (spawnType == MapObjectId::Range && rangeEnemiesToSpawn > 0) {
+            rangeEnemiesToSpawn--;
         }
         enemiesToSpawn--;
         spawnTimer = 0.07f;

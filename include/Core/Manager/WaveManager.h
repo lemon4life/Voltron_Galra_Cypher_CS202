@@ -12,6 +12,7 @@ private:
     int enemiesToSpawn;
     int rangeEnemiesToSpawn;
     int diverEnemiesToSpawn;
+    int demonTHAEnemiesToSpawn;
     float spawnTimer;
     float timeBetweenWaves;
     float showWaveTextTimer;
@@ -34,7 +35,8 @@ public:
     void Reset(
         int startingEnemies = 1,
         int startingRangeEnemies = 0,
-        int startingDiverEnemies = 0
+        int startingDiverEnemies = 0,
+        int startingDemonTHAEnemies = 0
     );
     void DrawHUD();
     int GetCurrentWave() const { return currentWave; }

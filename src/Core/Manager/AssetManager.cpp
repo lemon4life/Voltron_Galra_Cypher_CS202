@@ -71,6 +71,28 @@ void AssetManager::LoadCommonAssets() {
     LoadTexture2D("button_pause", "assets/UI/button_pause.png");
     LoadTexture2D("dialogue_panel", "assets/UI/dialogue.png");
     LoadTexture2D("select_arrow", "assets/UI/select_arrow.png");
+
+    // Pots & Pickups
+    LoadTexture2D("pot_hp",    "assets/Objects/pot_hp.png", true);
+    LoadTexture2D("pot_ex",    "assets/Objects/pot_ex.png", true);
+    LoadTexture2D("pot_quint", "assets/Objects/pot_quint.png", true);
+
+    // Chest & Machine
+    LoadTexture2D("chest_bottom", "assets/Objects/chest_bottom.png", true);
+    LoadTexture2D("chest_top",    "assets/Objects/chest_top.png", true);
+    LoadTexture2D("machine",      "assets/Objects/Machine.png", true);
+
+    // Coins
+    LoadTexture2D("coin_world", "assets/Objects/coin.png", true);
+    LoadTexture2D("coin_icon",  "assets/UI/coin.png", true);
+
+    // Minimap Icons & Indicators
+    LoadTexture2D("minimap_current", "assets/UI/minimap/current_room.png", true);
+    LoadTexture2D("minimap_event",   "assets/UI/minimap/event.png", true);
+    LoadTexture2D("minimap_home",    "assets/UI/minimap/home.png", true);
+    LoadTexture2D("minimap_exit",    "assets/UI/minimap/exit.png", true);
+    LoadTexture2D("minimap_boss",    "assets/UI/minimap/boss.png", true);
+    LoadTexture2D("minimap_chest",   "assets/UI/minimap/chest.png", true);
 }
 
 void AssetManager::UnloadAll() {
@@ -189,6 +211,9 @@ void AssetManager::QueueCharacterAssets() {
     add("pot_quint", "assets/Objects/pot_quint.png", true);
     add("tall_object_1_8", "assets/Objects/tall_object_1_8.png", true);
     add("Transfer_gate", "assets/Objects/Transfer_gate.png", true);
+    add("chest_bottom", "assets/Objects/chest_bottom.png", true);
+    add("chest_top", "assets/Objects/chest_top.png", true);
+    add("machine", "assets/Objects/Machine.png", true);
     add("Galra_Floors", "assets/tileset/Galra_Floors.png", true);
     add("Galra_Walls", "assets/tileset/Galra_Walls.png", true);
     

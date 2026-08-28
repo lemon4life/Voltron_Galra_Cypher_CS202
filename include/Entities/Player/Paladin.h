@@ -10,6 +10,7 @@
 #include <string>
 #include <memory>
 #include "Combat/IBuff.h"
+#include "Core/Systems/UpgradeCommands.h"
 
 struct BaseStats {
     static constexpr int HP = 100;
@@ -89,6 +90,12 @@ protected:
     float skillCost = 0.0f;
     Rectangle hudPortraitSlice = {0.0f, 0.0f, 0.0f, 0.0f};
 
+    // Active Skill State & Continuous EX Depletion
+    bool isSkillActive = false;
+    float activeSkillDuration = 0.0f;
+    float activeSkillTimer = 0.0f;
+    float skillInitialEx = 0.0f;
+
     // Ultimate cooldown (separate from EX — gated by Quintessence)
     float ultimateCooldownTimer = 0.0f;
     
@@ -99,7 +106,17 @@ protected:
     // Dash mechanic properties
     float dashCooldown;
     float attackCooldown;
+    float baseAttackCooldown = 0.5f;
     float dashTimer;
+
+    // Unified Paladin Level Progression
+    int paladinLevel = 1;
+
+    // Upgraded Stat Scalars
+    float hpScalar = 1.0f;
+    float attackCooldownScalar = 1.0f;
+    float speedScalar = 1.0f;
+    float damageScalar = 1.0f;
 
     bool isInvincible;
     bool isParrying;
@@ -237,12 +254,42 @@ public:
     float GetDisplayedExEnergy() const { return displayedExEnergy; }
     float GetExEnergy() const { return exEnergy; }
     float GetMaxExEnergy() const { return maxExEnergy; }
-    void AddExEnergy(float amount) {
-        exEnergy += amount;
-        if (exEnergy > maxExEnergy) exEnergy = maxExEnergy;
-    }
+    void AddExEnergy(float amount);
     float GetSkillCost() const { return skillCost; }
     Rectangle GetHudPortraitSlice() const { return hudPortraitSlice; }
+
+    bool IsSkillActive() const { return isSkillActive; }
+    float GetActiveSkillTimer() const { return activeSkillTimer; }
+    float GetActiveSkillDuration() const { return activeSkillDuration; }
+    void ActivateSkill(float duration = 5.0f);
+
+    // Unified Paladin Level Progression
+    static constexpr int MAX_PALADIN_LEVEL = 5;
+    static constexpr int MAX_STAT_LEVEL = 5;
+    int GetPaladinLevel() const { return paladinLevel; }
+    static int GetMaxPaladinLevel() { return MAX_PALADIN_LEVEL; }
+    bool IsMaxLevel() const { return paladinLevel >= MAX_PALADIN_LEVEL; }
+    int GetUpgradeCost() const { return 5 * paladinLevel; }
+    bool CanLevelUp(int currentCoins) const { return !IsMaxLevel() && currentCoins >= GetUpgradeCost(); }
+    bool LevelUp();
+    float GetPaladinProgress() const { return (MAX_PALADIN_LEVEL > 1) ? ((float)(paladinLevel - 1) / (float)(MAX_PALADIN_LEVEL - 1)) : 1.0f; }
+
+    // Compatibility methods
+    int GetStatLevel(StatType stat) const { return paladinLevel; }
+    int GetUpgradeCost(StatType stat) const { return GetUpgradeCost(); }
+    bool IsStatMaxed(StatType stat) const { return IsMaxLevel(); }
+    bool CanAffordUpgrade(StatType stat, int currentCoins) const { return CanLevelUp(currentCoins); }
+    bool CanUpgradeStat(StatType stat) const { return !IsMaxLevel(); }
+    bool UpgradeStat(StatType stat) { return LevelUp(); }
+    bool ExecuteUpgrade(StatType stat) { return LevelUp(); }
+    float GetStatProgress(StatType stat) const { return GetPaladinProgress(); }
+    void RecalculateStats();
+
+    float GetHpScalar() const { return hpScalar; }
+    float GetAttackCooldownScalar() const { return attackCooldownScalar; }
+    float GetSpeedScalar() const { return speedScalar; }
+    float GetDamageScalar() const { return damageScalar; }
+    float GetBaseAttackCooldown() const { return baseAttackCooldown; }
 
     // Ultimate cooldown
     static constexpr float ULTIMATE_COOLDOWN_MAX = 5.0f;

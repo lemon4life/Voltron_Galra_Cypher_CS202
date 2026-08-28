@@ -110,9 +110,9 @@ void Pidge::CatchWeapon() {
 }
 
 void Pidge::UseSkill() {
-    if (exEnergy < skillCost) return;
-    exEnergy -= skillCost;
+    if (exEnergy < skillCost || isSkillActive) return;
     
+    ActivateSkill(7.0f);
     AudioManager::GetInstance().PlaySoundEffect("fx_flash_lighting");
     
     isVenomZoneActive = true;

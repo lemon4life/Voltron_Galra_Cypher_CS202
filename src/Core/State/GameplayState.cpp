@@ -10,6 +10,8 @@
 #include "UI/MinimapRenderer.h"
 #include "UI/UIUtils.h"
 #include "Entities/Props/Pot.h"
+#include "Entities/Props/EnhanceMachine.h"
+#include "Entities/Props/Chest.h"
 #include "raymath.h"
 #include <cmath>
 #include "Core/Manager/AssetManager.h"
@@ -19,6 +21,18 @@ GameplayState::GameplayState(TeamManager* teamManager, LevelManager* levelManage
 }
 
 void GameplayState::Update(float deltaTime) {
+    if (enhanceMenuUI.IsOpen()) {
+        float viewportScale = std::min(
+            (float)GetScreenWidth() / Constants::GAME_WIDTH,
+            (float)GetScreenHeight() / Constants::GAME_HEIGHT
+        );
+        Camera2D uiCamera = UIUtils::CreateCenteredUICamera(viewportScale);
+        Vector2 uiMousePosition = UIUtils::GetVirtualMousePosition(uiCamera);
+
+        enhanceMenuUI.Update(deltaTime, uiMousePosition, *teamManager);
+        return; // Freeze/modal-block gameplay input while enhance screen is open
+    }
+
     UltimateIntroManager::GetInstance().Update(deltaTime);
     if (UltimateIntroManager::GetInstance().IsPlaying()) {
         return; // Freeze gameplay while the cinematic plays
@@ -261,11 +275,84 @@ void GameplayState::Draw() {
     }
     else {
         Paladin* active = teamManager->GetActivePaladin();
-        Pot* nearestPot = GameManager::GetInstance()
-            .GetObjectManager()
-            .FindNearestPickup(active->GetPosition(), 50.0f);
-        
-        if (nearestPot) {
+        ObjectManager& objects = GameManager::GetInstance().GetObjectManager();
+
+        EnhanceMachine* nearestMachine = nullptr;
+        float machineDist = 60.0f;
+        Chest* nearestChest = nullptr;
+        float chestDist = 50.0f;
+
+        for (GameObject* obj : objects.GetInteractables()) {
+            if (!obj) continue;
+            if (auto* machine = dynamic_cast<EnhanceMachine*>(obj)) {
+                float d = Vector2Distance(active->GetPosition(), machine->GetPosition());
+                if (d < machineDist) {
+                    machineDist = d;
+                    nearestMachine = machine;
+                }
+            } else if (auto* chest = dynamic_cast<Chest*>(obj)) {
+                if (!chest->IsOpened()) {
+                    float d = Vector2Distance(active->GetPosition(), chest->GetPosition());
+                    if (d < chestDist) {
+                        chestDist = d;
+                        nearestChest = chest;
+                    }
+                }
+            }
+        }
+
+        Pot* nearestPot = objects.FindNearestPickup(active->GetPosition(), 50.0f);
+        float potDist = nearestPot ? Vector2Distance(active->GetPosition(), nearestPot->GetPosition()) : 9999.0f;
+
+        if (nearestMachine && (machineDist <= potDist) && (machineDist <= (nearestChest ? chestDist : 9999.0f))) {
+            Vector2 screenPos = GetWorldToScreen2D(nearestMachine->GetPosition(), CameraManager::GetInstance().GetRenderCamera());
+            Vector2 uiPos = GetScreenToWorld2D(screenPos, uiCamera);
+            float yOffset = std::sin(GetTime() * 5.0f) * 3.0f;
+            uiPos.y -= 44.0f + yOffset;
+
+            Texture2D selectTex = AssetManager::GetInstance().GetTexture("Select");
+            if (selectTex.id != 0) {
+                Vector2 origin = { selectTex.width / 2.0f, selectTex.height / 2.0f };
+                Rectangle dest = { uiPos.x, uiPos.y, (float)selectTex.width, (float)selectTex.height };
+                DrawTexturePro(selectTex, {0, 0, (float)selectTex.width, (float)selectTex.height}, dest, origin, 0.0f, WHITE);
+            }
+            UIUtils::DrawCenteredText("PixeloidSans", "Enhance Machine", { uiPos.x, uiPos.y - 12.0f }, UIUtils::FontSize::SMALL, RAYWHITE);
+
+            float textWidth = UIUtils::MeasureText("PixeloidSans", "Press F to enhance", UIUtils::FontSize::SMALL).x;
+            Rectangle background = {
+                (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
+                Constants::GAME_HEIGHT - 44.0f,
+                textWidth + 20.0f,
+                28.0f
+            };
+            UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
+            UIUtils::DrawCenteredText("PixeloidSans", "Press F to enhance", { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
+        }
+        else if (nearestChest && (chestDist <= potDist)) {
+            Vector2 screenPos = GetWorldToScreen2D(nearestChest->GetPosition(), CameraManager::GetInstance().GetRenderCamera());
+            Vector2 uiPos = GetScreenToWorld2D(screenPos, uiCamera);
+            float yOffset = std::sin(GetTime() * 5.0f) * 3.0f;
+            uiPos.y -= 25.0f + yOffset;
+
+            Texture2D selectTex = AssetManager::GetInstance().GetTexture("Select");
+            if (selectTex.id != 0) {
+                Vector2 origin = { selectTex.width / 2.0f, selectTex.height / 2.0f };
+                Rectangle dest = { uiPos.x, uiPos.y, (float)selectTex.width, (float)selectTex.height };
+                DrawTexturePro(selectTex, {0, 0, (float)selectTex.width, (float)selectTex.height}, dest, origin, 0.0f, WHITE);
+            }
+            UIUtils::DrawCenteredText("PixeloidSans", "Chest", { uiPos.x, uiPos.y - 12.0f }, UIUtils::FontSize::SMALL, RAYWHITE);
+
+            float textWidth = UIUtils::MeasureText("PixeloidSans", "Press F to open", UIUtils::FontSize::SMALL).x;
+            Rectangle background = {
+                (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
+                Constants::GAME_HEIGHT - 44.0f,
+                textWidth + 20.0f,
+                28.0f
+            };
+            UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
+            UIUtils::DrawCenteredText("PixeloidSans", "Press F to open", { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
+        }
+        else if (nearestPot) {
             std::string name = "Potion";
             if (dynamic_cast<HpPot*>(nearestPot)) name = "HP Potion";
             else if (dynamic_cast<ExPot*>(nearestPot)) name = "EX Potion";
@@ -297,6 +384,11 @@ void GameplayState::Draw() {
     }
 
     UltimateIntroManager::GetInstance().Draw();
+
+    if (enhanceMenuUI.IsOpen()) {
+        Vector2 mouseUI = GetScreenToWorld2D(GetMousePosition(), uiCamera);
+        enhanceMenuUI.Draw(mouseUI, *teamManager);
+    }
 
     if (!Constants::isAutoAimEnabled && InputManager::GetMode() != InputMode::KEYBOARD_ONLY) {
         Vector2 mouseUI = GetScreenToWorld2D(GetMousePosition(), uiCamera);

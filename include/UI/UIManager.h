@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/IObserver.h"
 #include "raylib.h"
+#include <vector>
 
 class TeamManager;
 
@@ -10,6 +11,11 @@ private:
     Texture2D statsShell;
     Texture2D statsShellBack;
 
+    // Observer cached stats from TeamManager
+    std::vector<PlayerStatsSnapshot> cachedPlayerStats;
+    TeamStatsSnapshot cachedTeamStats;
+    bool hasReceivedStats = false;
+
 public:
     UIManager();
     ~UIManager() override;
@@ -18,8 +24,9 @@ public:
     void SetTeamManager(TeamManager* tm) { teamManager = tm; }
     bool IsPauseButtonPressed(Rectangle windowBounds, Vector2 mousePosition) const;
 
-    // Obsolete but kept to fulfill IObserver interface
-    void OnPlayerStatsChanged(int hp, int maxHp, int armor, int maxArmor, bool isLance) override {}
+    // IObserver interface implementation
+    void OnPlayerStatsChanged(const PlayerStatsSnapshot& stats, int slotIndex) override;
+    void OnTeamStatsChanged(const TeamStatsSnapshot& stats) override;
     
     void DrawTeamHUD(
         TeamManager* team,
@@ -29,6 +36,10 @@ public:
     void DrawHUD(
         Rectangle windowBounds,
         Vector2 mousePosition
+    );
+    void DrawCoinHUD(
+        Rectangle bounds,
+        int coins
     );
 
     // --- Core UI Helpers ---

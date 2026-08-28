@@ -29,6 +29,9 @@ private:
     float maxQuintessence = 300.0f;
     bool debugFastFuel = false;
 
+    // Coins Currency
+    int coins = 0;
+
     float timeSinceLastDamage;
     float armorRegenTimer;
 
@@ -82,6 +85,17 @@ public:
     float GetQuintessence() const { return currentQuintessence; }
     float GetDisplayedQuintessence() const { return displayedQuintessence; }
     float GetMaxQuintessence() const { return maxQuintessence; }
+
+    // Coins Currency
+    int GetCoins() const { return coins; }
+    void AddCoins(int amount) { coins += amount; }
+    bool ConsumeCoins(int amount) {
+        if (coins >= amount) {
+            coins -= amount;
+            return true;
+        }
+        return false;
+    }
     
     // Observers might need to know when team state changes
     void NotifyObservers() override;

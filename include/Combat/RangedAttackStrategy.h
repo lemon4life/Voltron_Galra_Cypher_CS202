@@ -23,4 +23,5 @@ public:
     void Attack(Vector2 playerPos) override;
     void Update(float deltaTime) override;
     void Draw(Vector2 playerPos, bool facingLeft) override;
+    void SetDamage(int minDmg, int maxDmg) override { damage = maxDmg; }
 };

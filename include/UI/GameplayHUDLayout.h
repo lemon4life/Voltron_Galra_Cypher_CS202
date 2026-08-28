@@ -21,6 +21,7 @@ struct Result {
     Rectangle teamShellBounds = {};
     Rectangle playerHudBounds = {};
     Rectangle minimapBounds = {};
+    Rectangle coinCounterBounds = {};
 };
 
 inline float GetBaseShellWidth(std::size_t teamSize) {
@@ -39,11 +40,20 @@ inline Result Calculate(Rectangle windowBounds, std::size_t teamSize) {
         MINIMAP_SIZE
     };
 
+    constexpr float COIN_PANEL_WIDTH = 80.0f;
+    constexpr float COIN_PANEL_HEIGHT = 32.0f;
+    result.coinCounterBounds = {
+        result.minimapBounds.x - COIN_PANEL_WIDTH - 10.0f,
+        result.minimapBounds.y,
+        COIN_PANEL_WIDTH,
+        COIN_PANEL_HEIGHT
+    };
+
     float hudLeft = windowBounds.x + EDGE_PADDING;
     float baseHudWidth = PAUSE_BUTTON_WIDTH + result.baseShellWidth;
     float availableHudWidth = std::max(
         0.0f,
-        result.minimapBounds.x - HUD_MINIMAP_GAP - hudLeft
+        result.coinCounterBounds.x - HUD_MINIMAP_GAP - hudLeft
     );
     float fitScale = baseHudWidth > 0.0f
         ? availableHudWidth / baseHudWidth

@@ -17,6 +17,7 @@ enum class RoomType {
     SPAWN,
     BATTLE,
     CHEST,
+    EVENT,
     BOSS,
     EXIT
 };
@@ -50,10 +51,14 @@ struct RoomNode {
           isDiscovered(false), isCleared(false), state(RoomState::IDLE) {
         ++liveCount;
           
-        if (t == RoomType::BOSS) roomSize = 25;
-        else if (t == RoomType::BATTLE) {
-            // Boss rooms are the unique largest room category.
-            roomSize = (GetRandomValue(0, 1) == 0) ? 15 : 20;
+        if (t == RoomType::BOSS) {
+            roomSize = 25;
+        } else if (t == RoomType::BATTLE) {
+            roomSize = 20;
+        } else if (t == RoomType::EVENT || t == RoomType::CHEST || t == RoomType::SPAWN || t == RoomType::EXIT) {
+            roomSize = 15;
+            isCleared = true;
+            state = RoomState::CLEARED;
         } else {
             roomSize = 15;
         }

@@ -126,6 +126,7 @@ void AudioManager::Initialize() {
     LoadSound("fx_ice_hit", "assets/audio/SFX/Character/fx_ice_hit.wav");
     LoadSound("fx_fire", "assets/audio/SFX/Character/fx_fire.wav");
     LoadSound("fx_flash_lighting", "assets/audio/SFX/Character/fx_flash_lighting.wav");
+    LoadSound("fx_coin", "assets/audio/SFX/Item/fx_coin.wav");
 
     LoadMusic("bgm_boss_theme", "assets/audio/BGM/bgm_boss_theme.mp3");
 

@@ -29,6 +29,7 @@ class IGameState;
 class Projectile;
 class Rover;
 class TeamManager;
+enum class PaladinId;
 
 class GameManager {
 private:
@@ -71,6 +72,8 @@ public:
     bool IsPaused() const;
     GameState GetPreviousGameState() const;
     GameState GetRenderState() const;
+    void OpenEnhanceMenu(PaladinId paladinId);
+    bool IsEnhanceMenuOpen() const;
 
     void TriggerHitstop(float duration) { hitstopTimer = duration; }
     float GetHitstopTimer() const { return hitstopTimer; }

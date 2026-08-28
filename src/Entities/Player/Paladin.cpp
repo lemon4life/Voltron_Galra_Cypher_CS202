@@ -34,7 +34,12 @@ Paladin::Paladin(
       displayedExEnergy(0.0f),
       dashCooldown(0.0f),
       attackCooldown(BaseStats::AttackCooldown * definition.attackCooldownScalar),
+      baseAttackCooldown(BaseStats::AttackCooldown * definition.attackCooldownScalar),
       dashTimer(0.0f),
+      hpScalar(1.0f),
+      attackCooldownScalar(1.0f),
+      speedScalar(1.0f),
+      damageScalar(1.0f),
       isInvincible(false),
       isParrying(false),
       parrySuccess(false),
@@ -145,6 +150,18 @@ void Paladin::TickTimers(float deltaTime) {
             it = personalBuffs.erase(it);
         } else {
             ++it;
+        }
+    }
+
+    // Continuous EX Depletion during active skill execution
+    if (isSkillActive) {
+        activeSkillTimer -= deltaTime;
+        float progress = std::max(0.0f, activeSkillTimer / activeSkillDuration);
+        exEnergy = skillInitialEx * progress;
+        if (activeSkillTimer <= 0.0f) {
+            exEnergy = 0.0f;
+            isSkillActive = false;
+            activeSkillTimer = 0.0f;
         }
     }
 
@@ -305,6 +322,10 @@ void Paladin::ResetStats() {
     displayedHp = static_cast<float>(maxHealth);
     exEnergy = 0.0f;
     displayedExEnergy = 0.0f;
+    isSkillActive = false;
+    activeSkillDuration = 0.0f;
+    activeSkillTimer = 0.0f;
+    skillInitialEx = 0.0f;
     dashCooldown = 0.0f;
     dashTimer = 0.0f;
     isInvincible = false;
@@ -325,6 +346,11 @@ void Paladin::ResetStats() {
     texture = GetIdleTexture();
     renderOffsetY = 0.0f;
     ultimateCooldownTimer = 0.0f;
+    paladinLevel = 1;
+    hpScalar = 1.0f;
+    attackCooldownScalar = 1.0f;
+    speedScalar = 1.0f;
+    damageScalar = 1.0f;
     ChangeState(&idleState);
     ResetAnimation();
 }
@@ -483,11 +509,28 @@ void Paladin::UpdateFootsteps(float dt) {
     }
 }
 
-void Paladin::OnHitEnemy(int damage) {
-    exEnergy += (float)damage * 0.15f; // Slower EX generation
+void Paladin::ActivateSkill(float duration) {
+    isSkillActive = true;
+    activeSkillDuration = duration > 0.0f ? duration : 5.0f;
+    activeSkillTimer = activeSkillDuration;
+    skillInitialEx = exEnergy;
+}
+
+void Paladin::AddExEnergy(float amount) {
+    if (isSkillActive) {
+        return; // Completely disable EX gain while skill is active
+    }
+    exEnergy += amount;
     if (exEnergy > maxExEnergy) {
         exEnergy = maxExEnergy;
     }
+}
+
+void Paladin::OnHitEnemy(int damage) {
+    if (isSkillActive) {
+        return; // Completely disable EX gain while skill is active
+    }
+    AddExEnergy((float)damage * 0.15f);
 }
 
 void Paladin::SetParrying(bool parry) {
@@ -556,3 +599,59 @@ bool Paladin::CanParryAttack(Vector2 attackerPos) const {
 }
 
 Texture2D Paladin::GetDownTexture() const { return sprites.down; }
+
+bool Paladin::LevelUp() {
+    if (IsMaxLevel()) return false;
+
+    TeamManager* tm = GameManager::GetInstance().GetTeamManager();
+    int cost = GetUpgradeCost();
+    if (!tm || tm->GetCoins() < cost) return false;
+
+    // Deduct coins from team currency
+    tm->ConsumeCoins(cost);
+
+    // Increment paladin level
+    paladinLevel = std::min(MAX_PALADIN_LEVEL, paladinLevel + 1);
+
+    // Bump all stat scalars simultaneously
+    hpScalar = 1.0f + (paladinLevel - 1) * 0.2f;
+    speedScalar = 1.0f + (paladinLevel - 1) * 0.1f;
+    attackCooldownScalar = 1.0f - (paladinLevel - 1) * 0.05f;
+    damageScalar = 1.0f + (paladinLevel - 1) * 0.15f;
+
+    RecalculateStats();
+    AudioManager::GetInstance().PlaySoundEffect("fx_get_buff");
+    if (teamManager) {
+        teamManager->NotifyObservers();
+    }
+    return true;
+}
+
+void Paladin::RecalculateStats() {
+    const PaladinDefinition& def = PaladinCatalog::Get(paladinId);
+    
+    // 1. Max Health scaling
+    int newMaxHealth = static_cast<int>(BaseStats::HP * def.hpScalar * hpScalar);
+    int healthDiff = newMaxHealth - maxHealth;
+    maxHealth = newMaxHealth;
+    health = std::min(maxHealth, health + std::max(0, healthDiff));
+    ghostHp = static_cast<float>(health);
+    displayedHp = static_cast<float>(health);
+
+    // 2. Speed scaling
+    speed = BaseStats::Speed * def.speedScalar * speedScalar;
+
+    // 3. Attack cooldown scaling
+    baseAttackCooldown = BaseStats::AttackCooldown * def.attackCooldownScalar * attackCooldownScalar;
+    attackCooldown = baseAttackCooldown;
+    if (currentWeapon) {
+        currentWeapon->SetAttackSpeedScalar(attackCooldownScalar);
+    }
+
+    // 4. Weapon Damage scaling
+    int minDmg = static_cast<int>(BaseStats::Damage * def.weapon.minDamageScalar * damageScalar);
+    int maxDmg = static_cast<int>(BaseStats::Damage * def.weapon.maxDamageScalar * damageScalar);
+    if (currentWeapon) {
+        currentWeapon->SetDamage(minDmg, maxDmg);
+    }
+}

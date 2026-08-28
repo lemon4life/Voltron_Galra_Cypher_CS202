@@ -87,6 +87,45 @@ void LevelMap::Generate(int width, int height) {
         if (slot.dx == 1) { slot.neighbor->east = nextNode.get(); nextNode->west = slot.neighbor.get(); }
         if (slot.dx == -1) { slot.neighbor->west = nextNode.get(); nextNode->east = slot.neighbor.get(); }
     }
+
+    // Floor room allocation rule:
+    // Distinctively assign exactly 1 EVENT room (pots) and exactly 1 CHEST room among candidate middle rooms
+    std::vector<std::shared_ptr<RoomNode>> candidateRooms;
+    for (auto& node : generatedNodes) {
+        if (node->type != RoomType::SPAWN && node->type != RoomType::BOSS && node->type != RoomType::EXIT) {
+            candidateRooms.push_back(node);
+        }
+    }
+
+    if (candidateRooms.size() >= 2) {
+        int eventIdx = GetRandomValue(0, (int)candidateRooms.size() - 1);
+        int chestIdx = GetRandomValue(0, (int)candidateRooms.size() - 1);
+        while (chestIdx == eventIdx) {
+            chestIdx = GetRandomValue(0, (int)candidateRooms.size() - 1);
+        }
+
+        for (size_t i = 0; i < candidateRooms.size(); ++i) {
+            if ((int)i == eventIdx) {
+                // Exactly 1 EVENT room (small_01.csv pots layout)
+                candidateRooms[i]->type = RoomType::EVENT;
+                candidateRooms[i]->roomSize = 15;
+                candidateRooms[i]->isCleared = true;
+                candidateRooms[i]->state = RoomState::CLEARED;
+            } else if ((int)i == chestIdx) {
+                // Exactly 1 CHEST room (small room with centered animated chest)
+                candidateRooms[i]->type = RoomType::CHEST;
+                candidateRooms[i]->roomSize = 15;
+                candidateRooms[i]->isCleared = true;
+                candidateRooms[i]->state = RoomState::CLEARED;
+            } else {
+                // Remaining candidate rooms are standard BATTLE combat rooms (20x20)
+                candidateRooms[i]->type = RoomType::BATTLE;
+                candidateRooms[i]->roomSize = 20;
+                candidateRooms[i]->isCleared = false;
+                candidateRooms[i]->state = RoomState::IDLE;
+            }
+        }
+    }
 }
 
 std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
@@ -142,7 +181,9 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
             else if (node->roomSize == 20) sizePrefix = "Medium";
             
             std::vector<std::string> templates;
-            if (std::filesystem::exists("assets/level")) {
+            if (node->roomSize == 15) {
+                templates.push_back("assets/level/Small_01.csv");
+            } else if (std::filesystem::exists("assets/level")) {
                 for (const auto& entry : std::filesystem::directory_iterator("assets/level")) {
                     if (entry.is_regular_file() && entry.path().extension() == ".csv") {
                         std::string filename = entry.path().filename().string();
@@ -202,6 +243,17 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
                                         baked->layer0_tiles[py][px] = 0; // Force floor
                                         baked->layer2_props[py][px] = 0; // Force no props
                                     }
+                                }
+                            }
+                        }
+
+                        // If it is a CHEST or EVENT room, clear layer2_props so only the animated entity is placed (Chest or EnhanceMachine)
+                        if (node->type == RoomType::CHEST || node->type == RoomType::EVENT) {
+                            for (int y = 0; y < currentRoomSize; ++y) {
+                                for (int x = 0; x < currentRoomSize; ++x) {
+                                    int px = startX + offset + x;
+                                    int py = startY + offset + y;
+                                    baked->layer2_props[py][px] = 0;
                                 }
                             }
                         }
