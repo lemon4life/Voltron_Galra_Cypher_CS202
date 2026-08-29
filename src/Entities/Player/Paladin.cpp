@@ -563,6 +563,7 @@ void Paladin::TriggerParrySuccess(GameObject* attacker) {
         }
     }
     parrySuccess = true;
+    AudioManager::GetInstance().PlaySoundEffect("fx_shield_hit");
     Vector2 pPos = GetPosition();
     Vector2 aPos = attacker->GetPosition();
     float angleToAttacker = atan2f(aPos.y - pPos.y, aPos.x - pPos.x) * (180.0f / PI);
