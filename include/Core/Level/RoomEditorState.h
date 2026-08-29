@@ -38,6 +38,7 @@ private:
     float scrollOffset;
     float uiScale;
     bool showGuide;
+    bool waitForPlacementRelease;
     std::string statusMessage;
     std::string currentRoomPath;
     float statusTimer;

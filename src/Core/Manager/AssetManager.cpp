@@ -95,6 +95,53 @@ void AssetManager::LoadCommonAssets() {
     LoadTexture2D("minimap_chest",   "assets/UI/minimap/chest.png", true);
 }
 
+void AssetManager::BeginLoadingQueue() {
+    loadTasks.clear();
+    totalTasks = 0;
+}
+
+void AssetManager::QueueLoadingTask(
+    const std::string& label,
+    std::function<void()> action
+) {
+    loadTasks.push_back({ label, std::move(action) });
+    totalTasks = static_cast<int>(loadTasks.size());
+}
+
+void AssetManager::QueueCommonAssets() {
+    auto add = [this](
+        const std::string& key,
+        const std::string& path,
+        bool pointFilter = false
+    ) {
+        QueueLoadingTask(
+            "Loading texture: " + path,
+            [this, key, path, pointFilter]() {
+                LoadTexture2D(key, path, pointFilter);
+            }
+        );
+    };
+
+    add("stats_checkpoint", "assets/UI/stats_checkpoint.png");
+    add("button_pause", "assets/UI/button_pause.png");
+    add("dialogue_panel", "assets/UI/dialogue.png");
+    add("select_arrow", "assets/UI/select_arrow.png");
+    add("pot_hp", "assets/Objects/pot_hp.png", true);
+    add("pot_ex", "assets/Objects/pot_ex.png", true);
+    add("pot_quint", "assets/Objects/pot_quint.png", true);
+    add("chest_bottom", "assets/Objects/chest_bottom.png", true);
+    add("chest_top", "assets/Objects/chest_top.png", true);
+    add("machine", "assets/Objects/Machine.png", true);
+    add("coin_world", "assets/Objects/coin.png", true);
+    add("coin_icon", "assets/UI/coin.png", true);
+    add("minimap_current", "assets/UI/minimap/current_room.png", true);
+    add("minimap_event", "assets/UI/minimap/event.png", true);
+    add("minimap_home", "assets/UI/minimap/home.png", true);
+    add("minimap_exit", "assets/UI/minimap/exit.png", true);
+    add("minimap_boss", "assets/UI/minimap/boss.png", true);
+    add("minimap_chest", "assets/UI/minimap/chest.png", true);
+}
+
 void AssetManager::UnloadAll() {
     for (auto& pair : texturesByPath) {
         UnloadTexture(pair.second);
@@ -121,16 +168,21 @@ std::size_t AssetManager::GetEstimatedTextureBytes() const {
 }
 
 void AssetManager::QueueCharacterAssets() {
-    loadTasks.clear();
     auto add = [this](const std::string& k, const std::string& p, bool f = false) { 
-        loadTasks.push_back([this, k, p, f](){ LoadTexture2D(k, p, f); }); 
+        QueueLoadingTask(
+            "Loading texture: " + p,
+            [this, k, p, f](){ LoadTexture2D(k, p, f); }
+        );
     };
 
     auto addBilinear = [this](const std::string& k, const std::string& p) { 
-        loadTasks.push_back([this, k, p](){ 
-            Texture2D tex = LoadTexture2D(k, p, false); 
-            SetTextureFilter(tex, TEXTURE_FILTER_BILINEAR);
-        }); 
+        QueueLoadingTask(
+            "Loading texture: " + p,
+            [this, k, p](){ 
+                Texture2D tex = LoadTexture2D(k, p, false); 
+                SetTextureFilter(tex, TEXTURE_FILTER_BILINEAR);
+            }
+        );
     };
 
     // Character Cards
@@ -272,17 +324,17 @@ void AssetManager::QueueCharacterAssets() {
     );
 }
 
-bool AssetManager::UpdateLoading(float& outProgress) {
-    if (totalTasks == 0 && !loadTasks.empty()) {
-        totalTasks = loadTasks.size();
-    }
-    
-    // Process up to 2 tasks per frame
-    for(int i=0; i<2; i++) {
-        if (!loadTasks.empty()) {
-            loadTasks.front()();
-            loadTasks.erase(loadTasks.begin());
-        }
+bool AssetManager::UpdateLoading(
+    float& outProgress,
+    std::string& outCurrentTask
+) {
+    if (!loadTasks.empty()) {
+        LoadingTask task = std::move(loadTasks.front());
+        loadTasks.erase(loadTasks.begin());
+        outCurrentTask = task.label;
+        task.action();
+    } else {
+        outCurrentTask = "Startup complete";
     }
     
     if (totalTasks > 0) {

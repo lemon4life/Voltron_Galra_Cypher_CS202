@@ -29,6 +29,7 @@ private:
     MenuState currentState = MenuState::LOADING;
     float uiAlpha = 0.0f;
     float loadingProgress = 0.0f;
+    std::string loadingStatus = "Preparing startup";
     float transitionTimer = 0.0f;
     bool isReady = false;
     bool quitRequested = false;

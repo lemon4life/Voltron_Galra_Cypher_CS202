@@ -40,6 +40,9 @@ public:
     friend class VictoryState;
 
 private:
+    void InitializeTeamAndUI();
+    void InitializeHubWorld();
+    void FinalizeStartup();
 
     MainMenu mainMenu;
     PauseMenu pauseMenu;

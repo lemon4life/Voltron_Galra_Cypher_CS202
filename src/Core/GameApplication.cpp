@@ -141,22 +141,97 @@ void GameApplication::Initialize() {
     SetExitKey(KEY_NULL);
     MemoryDiagnostics::ResetLog();
 
-    AudioManager::GetInstance().Initialize();
-    GameManager::GetInstance().GetEffectManager().Initialize();
-    DialogueManager::GetInstance().InitializeAssets();
-    AssetManager::GetInstance().LoadGlobalFonts();
-    AssetManager::GetInstance().LoadCommonAssets();
-
-    levelManager.InitializeAssets();  // Must be after InitWindow()
-
+    AssetManager& assets = AssetManager::GetInstance();
+    // Fonts and the menu shell are the minimal bootstrap resources required
+    // to render the real loading screen itself.
+    assets.LoadGlobalFonts();
     mainMenu.Initialize();
-    AssetManager::GetInstance().QueueCharacterAssets();
-
-    roomEditor.Initialize();
-    
-    CameraManager::GetInstance().Initialize();
     GameManager& gameManager = GameManager::GetInstance();
     gameManager.UpdateTargetFPS(Constants::TARGET_FPS);
+
+    assets.BeginLoadingQueue();
+    assets.QueueCommonAssets();
+    assets.QueueCharacterAssets();
+    assets.QueueLoadingTask("Loading audio library", []() {
+        AudioManager::GetInstance().Initialize();
+    });
+    assets.QueueLoadingTask("Initializing visual effects", []() {
+        GameManager::GetInstance().GetEffectManager().Initialize();
+    });
+    assets.QueueLoadingTask("Loading dialogue portraits", []() {
+        DialogueManager::GetInstance().InitializeAssets();
+    });
+    assets.QueueLoadingTask("Initializing map textures", [this]() {
+        levelManager.InitializeAssets();
+    });
+    assets.QueueLoadingTask("Preparing Room Editor", [this]() {
+        roomEditor.Initialize();
+    });
+    assets.QueueLoadingTask("Initializing camera", []() {
+        CameraManager::GetInstance().Initialize();
+    });
+    assets.QueueLoadingTask("Creating player team and HUD", [this]() {
+        InitializeTeamAndUI();
+    });
+    assets.QueueLoadingTask("Loading HUB map", [this]() {
+        InitializeHubWorld();
+    });
+    assets.QueueLoadingTask("Finalizing game systems", [this]() {
+        FinalizeStartup();
+    });
+}
+
+void GameApplication::InitializeTeamAndUI() {
+    GameManager& gameManager = GameManager::GetInstance();
+    gameManager.SetBulletImpactTexture(
+        AssetManager::GetInstance().GetTexture("Lance_Impact")
+    );
+
+    Vector2 startPosition = { 0.0f, 0.0f };
+    auto newTeamManager = std::make_unique<TeamManager>();
+    newTeamManager->AddMember(new Lance(
+        startPosition,
+        AssetManager::GetInstance().GetLanceSprites()
+    ));
+    newTeamManager->AddMember(new Keith(
+        startPosition,
+        AssetManager::GetInstance().GetKeithSprites()
+    ));
+    newTeamManager->AddMember(new Hunk(
+        startPosition,
+        AssetManager::GetInstance().GetHunkSprites()
+    ));
+    newTeamManager->AddMember(new Pidge(
+        startPosition,
+        AssetManager::GetInstance().GetPidgeSprites()
+    ));
+
+    gameManager.SetTeamManager(std::move(newTeamManager));
+    teamManager = gameManager.GetTeamManager();
+    uiManager.Initialize();
+    uiManager.SetTeamManager(teamManager);
+    teamManager->AddObserver(&uiManager);
+    teamManager->RefreshAimStrategies();
+}
+
+void GameApplication::InitializeHubWorld() {
+    if (!teamManager) return;
+    GameManager::GetInstance().LoadLevel(HUB_LEVEL_PATH);
+    teamManager->ResetForNewGame(GetLevelCenter(levelManager));
+    teamManager->NotifyObservers();
+}
+
+void GameApplication::FinalizeStartup() {
+    AudioManager::GetInstance().PlayMusicTrack(
+        "bgm_starter_menu",
+        1.0f
+    );
+    AudioManager::GetInstance().PlaySoundEffect("ui_opening");
+    systemInitialized = true;
+    MemoryDiagnostics::Capture(
+        "startup_assets_and_system_ready",
+        GameManager::GetInstance()
+    );
 }
 
 void GameApplication::Shutdown() {
@@ -305,51 +380,6 @@ void GameApplication::RunLoop() {
         Vector2 modalMousePosition = GetVirtualMousePosition(modalCamera);
 
         GameState state = gameManager.GetState();
-
-        if (state == GameState::MAIN_MENU &&
-            mainMenu.IsReady() &&
-            !systemInitialized) {
-            gameManager.SetBulletImpactTexture(
-                AssetManager::GetInstance().GetTexture("Lance_Impact")
-            );
-
-            Vector2 startPosition = {0.0f, 0.0f};
-            auto newTeamManager = std::make_unique<TeamManager>();
-            newTeamManager->AddMember(new Lance(
-                startPosition,
-                AssetManager::GetInstance().GetLanceSprites()
-            ));
-            newTeamManager->AddMember(new Keith(
-                startPosition,
-                AssetManager::GetInstance().GetKeithSprites()
-            ));
-            newTeamManager->AddMember(new Hunk(
-                startPosition,
-                AssetManager::GetInstance().GetHunkSprites()
-            ));
-            newTeamManager->AddMember(new Pidge(
-                startPosition,
-                AssetManager::GetInstance().GetPidgeSprites()
-            ));
-
-            gameManager.SetTeamManager(std::move(newTeamManager));
-            teamManager = gameManager.GetTeamManager();
-
-            uiManager.Initialize();
-            uiManager.SetTeamManager(teamManager);
-            teamManager->AddObserver(&uiManager);
-            teamManager->RefreshAimStrategies();
-
-            gameManager.LoadLevel(HUB_LEVEL_PATH);
-            teamManager->ResetForNewGame(GetLevelCenter(levelManager));
-            teamManager->NotifyObservers();
-            AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
-            systemInitialized = true;
-            MemoryDiagnostics::Capture(
-                "startup_assets_and_system_ready",
-                gameManager
-            );
-        }
 
         Vector2 mouseWorld = {0.0f, 0.0f};
         if (systemInitialized) {

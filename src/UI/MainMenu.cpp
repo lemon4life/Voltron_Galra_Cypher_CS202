@@ -163,19 +163,14 @@ void MainMenu::Update(float deltaTime) {
     }
 
     if (currentState == MenuState::LOADING) {
-        float actualProgress = 0.0f;
-        bool done = AssetManager::GetInstance().UpdateLoading(actualProgress);
-        
-        // Artificial trailing progress for visual polish (max 33% per second = 3s total load time minimum)
-        loadingProgress = std::min(loadingProgress + (deltaTime * 0.33f), actualProgress);
-        
-        if (done && loadingProgress >= 0.999f) {
-            loadingProgress = 1.0f; // Snap to exactly 100%
-            transitionTimer += deltaTime;
-            if (transitionTimer > 1.5f) { // 1.5s buffer (stays 1s longer than before)
-                currentState = MenuState::TRANSITIONING;
-                transitionTimer = 0.0f;
-            }
+        bool done = AssetManager::GetInstance().UpdateLoading(
+            loadingProgress,
+            loadingStatus
+        );
+        if (done) {
+            loadingProgress = 1.0f;
+            currentState = MenuState::TRANSITIONING;
+            transitionTimer = 0.0f;
         }
     } else if (currentState == MenuState::TRANSITIONING) {
         transitionTimer += deltaTime;
@@ -223,22 +218,22 @@ void MainMenu::Update(float deltaTime) {
 
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                     if (btn.text == "Start Game") {
-                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
+                    AudioManager::GetInstance().PlayRandomClick();
                         pendingAction = MainMenuAction::StartGame;
                     } else if (btn.text == "Continue") {
-                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
+                    AudioManager::GetInstance().PlayRandomClick();
                         pendingAction = MainMenuAction::Continue;
                     } else if (btn.text == "Settings") {
-                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
+                    AudioManager::GetInstance().PlayRandomClick();
                         GameManager::GetInstance().SetState(GameState::SETTINGS);
                     } else if (btn.text == "Room Editor") {
-                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
+                    AudioManager::GetInstance().PlayRandomClick();
                         pendingAction = MainMenuAction::OpenEditor;
                     } else if (btn.text == "Room List") {
-                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
+                    AudioManager::GetInstance().PlayRandomClick();
                         OpenRoomList();
                     } else if (btn.text == "Exit Game") {
-                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
+                    AudioManager::GetInstance().PlayRandomClick();
                         quitRequested = true;
                     }
                 }
@@ -423,8 +418,12 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
     }
     
     if (loadingAlpha > 0.01f) {
-        int barWidth = 600;
-        int barHeight = 6;
+        int barWidth = static_cast<int>(std::clamp(
+            screenWidth * 0.52f,
+            320.0f,
+            760.0f
+        ));
+        int barHeight = std::max(4, static_cast<int>(screenHeight / 120.0f));
         int barX = (screenWidth - barWidth) / 2;
         int barY = screenHeight * 0.75f + loadingSlideY;
         
@@ -435,8 +434,21 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
             Fade(RAYWHITE, loadingAlpha)
         );
         
-        const char* text = TextFormat("LOADING... %d%%", (int)(loadingProgress * 100));
-        UIUtils::DrawCenteredText("PixeloidSans", text, { barX + barWidth / 2.0f, (float)barY - 30.0f + 10.0f }, UIUtils::FontSize::SMALL, Fade(RAYWHITE, loadingAlpha));
+        float statusFontSize = std::clamp(
+            screenHeight / 45.0f,
+            12.0f,
+            22.0f
+        );
+        DrawRoomListText(
+            loadingStatus,
+            {
+                barX + barWidth * 0.5f,
+                static_cast<float>(barY) - 24.0f
+            },
+            statusFontSize,
+            Fade(RAYWHITE, loadingAlpha),
+            true
+        );
     }
 
     // Calculate Logo dynamic position (Lerp from top-center to panel layout)

@@ -48,6 +48,7 @@ RoomEditorState::RoomEditorState()
       scrollOffset(0.0f),
       uiScale(1.0f),
       showGuide(false),
+      waitForPlacementRelease(true),
       statusMessage(""),
       statusTimer(0.0f),
       sidebarBounds({}),
@@ -63,6 +64,7 @@ void RoomEditorState::Initialize() {
     placedObjects.clear();
     scrollOffset = 0.0f;
     currentRoomPath.clear();
+    waitForPlacementRelease = true;
 
     AssetManager& assets = AssetManager::GetInstance();
     brushes.clear();
@@ -165,6 +167,7 @@ bool RoomEditorState::LoadRoom(const std::string& path) {
     currentRoomPath = path;
     currentBrush = BrushType::WALL;
     scrollOffset = 0.0f;
+    waitForPlacementRelease = true;
     statusMessage = "Loaded: " + path;
     statusTimer = 2.0f;
     UpdateResponsiveLayout(true);
@@ -266,6 +269,15 @@ void RoomEditorState::Update(float deltaTime) {
 }
 
 void RoomEditorState::HandleInput() {
+    // Do not treat the Main Menu/Edit button click that opened this state as
+    // a Room Editor placement click. Placement begins only after release.
+    if (waitForPlacementRelease) {
+        if (!IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+            waitForPlacementRelease = false;
+        }
+        return;
+    }
+
     if (showGuide) {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) ||
             IsKeyPressed(KEY_ESCAPE)) {

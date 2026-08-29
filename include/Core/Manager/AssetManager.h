@@ -10,10 +10,15 @@
 
 class AssetManager {
 private:
+    struct LoadingTask {
+        std::string label;
+        std::function<void()> action;
+    };
+
     std::unordered_map<std::string, Texture2D> textures;
     std::unordered_map<std::string, Texture2D> texturesByPath;
     std::unordered_map<std::string, Font> fonts;
-    std::vector<std::function<void()>> loadTasks;
+    std::vector<LoadingTask> loadTasks;
     int totalTasks = 0;
 
     AssetManager() = default;
@@ -43,8 +48,17 @@ public:
     std::size_t GetEstimatedTextureBytes() const;
 
     // Helper to load all character sprites
+    void BeginLoadingQueue();
+    void QueueLoadingTask(
+        const std::string& label,
+        std::function<void()> action
+    );
+    void QueueCommonAssets();
     void QueueCharacterAssets();
-    bool UpdateLoading(float& outProgress);
+    bool UpdateLoading(
+        float& outProgress,
+        std::string& outCurrentTask
+    );
     
     // Quick getters for specific sprite sheets
     CharacterSprites GetLanceSprites();
