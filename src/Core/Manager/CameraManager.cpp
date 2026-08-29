@@ -28,7 +28,11 @@ void CameraManager::UpdateCamera(Vector2 playerPos, Vector2 mouseWorldPos, float
     if (!isHitstop) {
         // Assume GLOBAL_SCALE = 3.0f is passed from somewhere or we define it here.
         // Actually we can just use 3.0f since it's hardcoded for now, or use the extern.
-        camera.zoom = Lerp(camera.zoom, windowScale * hitstopZoom * Constants::GLOBAL_SCALE * 0.75f, 15.0f * deltaTime);
+        camera.zoom = Lerp(
+            camera.zoom,
+            windowScale * hitstopZoom * Constants::GLOBAL_SCALE * 0.75f,
+            std::clamp(15.0f * deltaTime, 0.0f, 1.0f)
+        );
     }
 
     // 3. Aim-Biased Tracking
@@ -47,8 +51,9 @@ void CameraManager::UpdateCamera(Vector2 playerPos, Vector2 mouseWorldPos, float
     // 4. Smooth Interpolation
     if (!isHitstop) {
         // Fast enough to feel responsive, slow enough to be smooth
-        camera.target.x = Lerp(camera.target.x, idealTarget.x, 10.0f * deltaTime);
-        camera.target.y = Lerp(camera.target.y, idealTarget.y, 10.0f * deltaTime);
+        float trackingFactor = std::clamp(10.0f * deltaTime, 0.0f, 1.0f);
+        camera.target.x = Lerp(camera.target.x, idealTarget.x, trackingFactor);
+        camera.target.y = Lerp(camera.target.y, idealTarget.y, trackingFactor);
     }
 
     // 5. World Constraints (Room Clamping)

@@ -4,7 +4,7 @@
 #include <iostream>
 
 AudioManager::AudioManager() {
-    InitAudioDevice(); 
+    InitAudioDevice();
 }
 
 AudioManager::~AudioManager() {
@@ -312,7 +312,7 @@ void AudioManager::PlayMusicTrack(const std::string& name, float fadeTime) {
 }
 
 void AudioManager::UpdateMusicStream() {
-    float dt = GetFrameTime();
+    float dt = std::clamp(GetFrameTime(), 0.0f, 0.05f);
 
     if (currentFadeState == MusicFadeState::FADING_OUT) {
         fadeTimer -= dt;

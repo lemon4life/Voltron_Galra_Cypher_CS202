@@ -53,6 +53,7 @@ FramePerformanceStats& FramePerformanceStats::GetInstance() {
 
 void FramePerformanceStats::Reset() {
     frameTimes.clear();
+    sortedScratch.clear();
     accumulatedTime = 0.0f;
     calculationTimer = 0.0f;
     snapshot = {};
@@ -85,10 +86,14 @@ void FramePerformanceStats::Recalculate(int targetFps) {
         return;
     }
 
-    std::vector<float> sorted(frameTimes.begin(), frameTimes.end());
-    std::sort(sorted.begin(), sorted.end());
-    const float total = std::accumulate(sorted.begin(), sorted.end(), 0.0f);
-    const float average = total / static_cast<float>(sorted.size());
+    sortedScratch.assign(frameTimes.begin(), frameTimes.end());
+    std::sort(sortedScratch.begin(), sortedScratch.end());
+    const float total = std::accumulate(
+        sortedScratch.begin(),
+        sortedScratch.end(),
+        0.0f
+    );
+    const float average = total / static_cast<float>(sortedScratch.size());
     const float targetFrameTime = targetFps > 0
         ? 1.0f / static_cast<float>(targetFps)
         : 0.0f;
@@ -106,18 +111,27 @@ void FramePerformanceStats::Recalculate(int targetFps) {
     }
 
     snapshot.averageFps = FpsFromFrameTime(average);
-    snapshot.lowestFps = FpsFromFrameTime(sorted.back());
-    snapshot.highestFps = FpsFromFrameTime(sorted.front());
-    snapshot.onePercentLowFps = SlowestAverageFps(sorted, 0.01f);
-    snapshot.pointOnePercentLowFps = SlowestAverageFps(sorted, 0.001f);
+    snapshot.lowestFps = FpsFromFrameTime(sortedScratch.back());
+    snapshot.highestFps = FpsFromFrameTime(sortedScratch.front());
+    snapshot.onePercentLowFps = SlowestAverageFps(sortedScratch, 0.01f);
+    snapshot.pointOnePercentLowFps = SlowestAverageFps(
+        sortedScratch,
+        0.001f
+    );
     snapshot.belowTargetPercent = 100.0f * static_cast<float>(belowTarget) /
         static_cast<float>(frameTimes.size());
     snapshot.hitchPercent = 100.0f * static_cast<float>(hitches) /
         static_cast<float>(frameTimes.size());
     snapshot.averageFrameMilliseconds = average * 1000.0f;
-    snapshot.p95FrameMilliseconds = PercentileMilliseconds(sorted, 0.95f);
-    snapshot.p99FrameMilliseconds = PercentileMilliseconds(sorted, 0.99f);
-    snapshot.maximumFrameMilliseconds = sorted.back() * 1000.0f;
+    snapshot.p95FrameMilliseconds = PercentileMilliseconds(
+        sortedScratch,
+        0.95f
+    );
+    snapshot.p99FrameMilliseconds = PercentileMilliseconds(
+        sortedScratch,
+        0.99f
+    );
+    snapshot.maximumFrameMilliseconds = sortedScratch.back() * 1000.0f;
     snapshot.frameTimeDeviationMilliseconds = std::sqrt(
         squaredDeviation / static_cast<float>(frameTimes.size())
     ) * 1000.0f;

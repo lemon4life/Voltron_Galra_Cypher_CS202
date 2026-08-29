@@ -7,33 +7,27 @@
 #include "Core/Manager/InputManager.h"
 #include "Core/Constants.h"
 #include <algorithm>
+#include <cmath>
 
 TeamManager::TeamManager()
     : activeIndex(0),
       sharedArmor(0),
       maxSharedArmor(0),
-      sharedUltimateDecibels(0.0f),
-      timeSinceLastDamage(0.0f),
-      armorRegenTimer(0.0f),
       autoStrategy(std::make_unique<AutoAimStrategy>()),
       mouseStrategy(std::make_unique<MouseAimStrategy>())
 {
 }
 
-TeamManager::~TeamManager() {
-    for (auto* paladin : roster) {
-        delete paladin;
-    }
-    roster.clear();
-    team.clear();
-}
+TeamManager::~TeamManager() = default;
 
-void TeamManager::AddMember(Paladin* paladin) {
-    roster.push_back(paladin);
+void TeamManager::AddMember(std::unique_ptr<Paladin> paladin) {
+    if (!paladin) return;
+    Paladin* member = paladin.get();
+    roster.push_back(std::move(paladin));
     if (team.size() < 3) {
-        team.push_back(paladin);
+        team.push_back(member);
     }
-    paladin->SetTeamManager(this);
+    member->SetTeamManager(this);
 }
 
 void TeamManager::RefreshAimStrategies() {
@@ -46,8 +40,11 @@ void TeamManager::RefreshAimStrategies() {
 }
 
 Paladin* TeamManager::GetActivePaladin() const {
-    if (team.empty()) return nullptr;
-    return team[activeIndex];
+    if (team.empty() || activeIndex < 0 ||
+        activeIndex >= static_cast<int>(team.size())) {
+        return nullptr;
+    }
+    return team[static_cast<std::size_t>(activeIndex)];
 }
 
 void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
@@ -61,14 +58,12 @@ void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
     );
     activeIndex = 0;
     sharedArmor = maxSharedArmor;
-    sharedUltimateDecibels = 0.0f;
     currentQuintessence = 0.0f;
     displayedQuintessence = 0.0f;
     coins = 0;
-    timeSinceLastDamage = 0.0f;
-    armorRegenTimer = 0.0f;
 
-    for (Paladin* paladin : roster) {
+    for (const std::unique_ptr<Paladin>& ownedPaladin : roster) {
+        Paladin* paladin = ownedPaladin.get();
         paladin->SetPosition(spawnPosition);
         paladin->ResetStats();
         paladin->SetAimTarget(spawnPosition);
@@ -111,7 +106,8 @@ bool TeamManager::AssignPaladinToSlot(
         }
     } else {
         Paladin* newPaladin = nullptr;
-        for (auto* p : roster) {
+        for (const std::unique_ptr<Paladin>& ownedPaladin : roster) {
+            Paladin* p = ownedPaladin.get();
             if (p->GetPaladinId() == id) {
                 newPaladin = p;
                 break;
@@ -441,6 +437,7 @@ bool TeamManager::IsTeamDead() const {
 }
 
 void TeamManager::AddQuintessence(float amount) {
+    if (!std::isfinite(amount) || amount <= 0.0f) return;
     if (debugFastFuel) {
         amount *= 20.0f;
     }
@@ -452,6 +449,7 @@ void TeamManager::AddQuintessence(float amount) {
 }
 
 bool TeamManager::ConsumeQuintessence(float amount) {
+    if (!std::isfinite(amount) || amount <= 0.0f) return false;
     if (currentQuintessence < amount) {
         return false;
     }

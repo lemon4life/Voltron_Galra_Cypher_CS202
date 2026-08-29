@@ -14,9 +14,11 @@ void EnemyIdleState::Enter(Enemy* enemy) {}
 
 void EnemyIdleState::Update(Enemy* enemy, float deltaTime) {
     if (!enemy->GetTargetTeam()) return;
+    Paladin* activePaladin = enemy->GetTargetTeam()->GetActivePaladin();
+    if (!activePaladin) return;
 
     Vector2 ePos = enemy->GetPosition();
-    Vector2 pPos = enemy->GetTargetTeam()->GetActivePaladin()->GetPosition();
+    Vector2 pPos = activePaladin->GetPosition();
     
     if (Vector2Distance(ePos, pPos) < spotDistance) {
         enemy->ChangeState(enemy->GetChaseState());

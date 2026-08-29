@@ -4,8 +4,6 @@
 #include "Core/World/ObjectId.h"
 
 #include <unordered_set>
-#include <vector>
-
 class GameObject;
 
 class MeleeAttackStrategy : public IAttackStrategy {
@@ -27,7 +25,7 @@ private:
     float lastCollisionAngleOffset;
     bool lastFacingLeft;
     
-    std::vector<GameObject*> objectsHit; // Track objects hit in the current swing
+    std::unordered_set<ObjectId> objectsHit;
     std::unordered_set<MapObjectHandle> mapObjectsHit;
 
     float GetSignedSwingOffset() const;

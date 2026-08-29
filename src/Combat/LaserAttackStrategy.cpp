@@ -5,7 +5,6 @@
 #include "Core/Manager/AudioManager.h"
 #include "Entities/Enemy.h"
 #include "Entities/Player/Paladin.h"
-#include "Core/Manager/GameManager.h"
 #include "Core/Manager/ParticleManager.h"
 #include <cmath>
 #include <iostream>

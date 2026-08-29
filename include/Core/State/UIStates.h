@@ -18,44 +18,44 @@ private:
 
 class PauseState : public IGameState {
 public:
-    PauseState(PauseMenu* menu, GameApplication* app, std::unique_ptr<IGameState> backgroundState);
+    PauseState(PauseMenu* menu, GameApplication* app, IGameState* backgroundState);
     void Update(float deltaTime) override;
     void Draw() override;
 private:
     PauseMenu* menu;
     GameApplication* app;
-    std::unique_ptr<IGameState> backgroundState; // To draw gameplay behind it
+    IGameState* backgroundState;
 };
 
 class SettingsState : public IGameState {
 public:
-    SettingsState(SettingsMenu* menu, GameApplication* app, std::unique_ptr<IGameState> backgroundState);
+    SettingsState(SettingsMenu* menu, GameApplication* app, IGameState* backgroundState);
     void Update(float deltaTime) override;
     void Draw() override;
 private:
     SettingsMenu* menu;
     GameApplication* app;
-    std::unique_ptr<IGameState> backgroundState;
+    IGameState* backgroundState;
 };
 
 class GameOverState : public IGameState {
 public:
-    GameOverState(GameApplication* app, std::unique_ptr<IGameState> backgroundState);
+    GameOverState(GameApplication* app, IGameState* backgroundState);
     void Update(float deltaTime) override;
     void Draw() override;
 private:
     GameApplication* app;
-    std::unique_ptr<IGameState> backgroundState;
+    IGameState* backgroundState;
 };
 
 class VictoryState : public IGameState {
 public:
-    VictoryState(GameApplication* app, std::unique_ptr<IGameState> backgroundState);
+    VictoryState(GameApplication* app, IGameState* backgroundState);
     void Update(float deltaTime) override;
     void Draw() override;
 private:
     GameApplication* app;
-    std::unique_ptr<IGameState> backgroundState;
+    IGameState* backgroundState;
 };
 
 class RoomEditorStateAdapter : public IGameState {

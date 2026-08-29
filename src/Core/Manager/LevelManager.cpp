@@ -3,7 +3,6 @@
 #include "Core/MapObjectFactory.h"
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/AudioManager.h"
-#include "Core/Manager/AssetManager.h"
 #include "Core/LevelAccess.h"
 #include "Entities/Props/DoorGate.h"
 
@@ -12,6 +11,7 @@
 #include "Core/Utils/MapLoader.h"
 #include "Core/Utils/LineOfSightGeometry.h"
 #include "Core/Level/ProceduralLevelProvider.h"
+#include "Core/Level/VisibleWorld.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -20,6 +20,7 @@
 #include <utility>
 #include <unordered_set>
 #include <limits>
+#include <stdexcept>
 
 namespace {
     constexpr float COLLISION_EDGE_PADDING = 0.001f;
@@ -44,10 +45,16 @@ void LevelManager::InitializeAssets() {
         "Galra_Floors", "assets/tileset/Galra_Floors.png", true);
     wallTileset = assets.LoadTexture2D(
         "Galra_Walls", "assets/tileset/Galra_Walls.png", true);
+    assets.LoadTexture2D(
+        "wallTileset", "assets/tileset/Galra_Walls.png", true);
     prop1Texture = assets.LoadTexture2D(
         "tall_object_1_8", "assets/Objects/tall_object_1_8.png", true);
+    assets.LoadTexture2D(
+        "prop1", "assets/Objects/tall_object_1_8.png", true);
     prop2Texture = assets.LoadTexture2D(
         "object_2", "assets/Objects/object_2.png", true);
+    assets.LoadTexture2D(
+        "prop2", "assets/Objects/object_2.png", true);
     boxTexture = assets.LoadTexture2D(
         "box", "assets/Objects/box.png", true);
     gateTexture = assets.LoadTexture2D(
@@ -119,31 +126,38 @@ DynamicSpawnList LevelManager::LoadLevel(const std::string& filepath) {
     if (filepath.find("Layer 1") == std::string::npos ||
         filepath.size() < 4 ||
         filepath.substr(filepath.size() - 4) != ".csv") {
-        std::cerr << "Level path must reference a Layer 1 CSV: " << filepath << std::endl;
-        return dynamicSpawns;
+        throw std::runtime_error(
+            "Level path must reference a Layer 1 CSV: " + filepath
+        );
     }
 
     if (!MapLoader::ParseCSV(filepath, mapGridLayer1)) {
-        return dynamicSpawns;
+        ClearLevel();
+        throw std::runtime_error("Failed to load required level layer: " + filepath);
     }
 
     std::string layer2Path = filepath;
     layer2Path.replace(layer2Path.find("Layer 1"), 7, "Layer 2");
     if (!MapLoader::ParseCSV(layer2Path, mapGridLayer2)) {
         ClearLevel();
-        return dynamicSpawns;
+        throw std::runtime_error("Failed to load required level layer: " + layer2Path);
     }
 
-    if (mapGridLayer2.size() != mapGridLayer1.size() ||
+    if (mapGridLayer1.empty() || mapGridLayer1.front().empty() ||
+        mapGridLayer2.empty() || mapGridLayer2.front().empty() ||
+        mapGridLayer2.size() != mapGridLayer1.size() ||
         mapGridLayer2.front().size() != mapGridLayer1.front().size()) {
-        std::cerr << "Layer 2 dimensions do not match Layer 1: " << layer2Path << std::endl;
         ClearLevel();
-        return dynamicSpawns;
+        throw std::runtime_error(
+            "Level layers are empty or have mismatched dimensions: " + filepath
+        );
     }
 
     if (!LoadObjectGrid(filepath)) {
         ClearLevel();
-        return dynamicSpawns;
+        throw std::runtime_error(
+            "Invalid Game Objects layer for level: " + filepath
+        );
     }
 
     gridRows = static_cast<int>(mapGridLayer1.size());
@@ -237,7 +251,12 @@ void LevelManager::UpdateLevel(
     }
 
     for (const std::unique_ptr<MapObject>& object : mapObjects) {
-        if (!object) continue;
+        if (!object || !IsWorldRectangleVisible(
+                object->GetCollisionBox(),
+                Constants::RENDER_TILE_SIZE * 4.0f
+            )) {
+            continue;
+        }
         bool wasSolid = object->IsSolid();
         object->Update(deltaTime);
         if (wasSolid != object->IsSolid()) {
@@ -344,7 +363,9 @@ void LevelManager::DrawLevelBase() {
 
     
     for (const std::unique_ptr<MapObject>& object : mapObjects) {
-        if (object) object->DrawBaseLayer();
+        if (object && IsWorldRectangleVisible(object->GetCollisionBox())) {
+            object->DrawBaseLayer();
+        }
     }
 }
 
@@ -354,7 +375,9 @@ void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
     }
 
     for (const std::unique_ptr<MapObject>& object : mapObjects) {
-        if (object) object->AddDepthRenderItems(items);
+        if (object && IsWorldRectangleVisible(object->GetCollisionBox())) {
+            object->AddDepthRenderItems(items);
+        }
     }
 }
 
@@ -375,6 +398,18 @@ void LevelManager::ClearLevel() {
         lineOfSightDynamicBlockers
     );
     decltype(lineOfSightDebugTraces){}.swap(lineOfSightDebugTraces);
+    decltype(lineOfSightVisitedCenterTiles){}.swap(
+        lineOfSightVisitedCenterTiles
+    );
+    decltype(lineOfSightVisitedCandidateTiles){}.swap(
+        lineOfSightVisitedCandidateTiles
+    );
+    decltype(lineOfSightTestedBlockers){}.swap(
+        lineOfSightTestedBlockers
+    );
+    decltype(lineOfSightStaticColliderScratch){}.swap(
+        lineOfSightStaticColliderScratch
+    );
     lineOfSightBlockerIndexValid = false;
     lineOfSightBlockerIndexRoom = nullptr;
     levelWidth = 0.0f;
@@ -655,13 +690,11 @@ bool LevelManager::HasClearLineOfSight(
     int neighborSpan = (int)spanAsFloat;
     EnsureLineOfSightBlockerIndex();
 
-    std::unordered_set<LineOfSightTile, LineOfSightTileHash>
-        visitedCenterTiles;
-    std::unordered_set<LineOfSightTile, LineOfSightTileHash>
-        visitedCandidateTiles;
-    std::unordered_set<const MapObject*> testedMapBlockers;
-    std::vector<Rectangle> staticColliders;
-    staticColliders.reserve(2);
+    lineOfSightVisitedCenterTiles.clear();
+    lineOfSightVisitedCandidateTiles.clear();
+    lineOfSightTestedBlockers.clear();
+    lineOfSightStaticColliderScratch.clear();
+    lineOfSightStaticColliderScratch.reserve(2);
 
     auto testCollider = [&](Rectangle collider) {
         int colliderIndex = -1;
@@ -683,7 +716,9 @@ bool LevelManager::HasClearLineOfSight(
     };
 
     auto visitCenterTile = [&](LineOfSightTile centerTile) {
-        if (!visitedCenterTiles.insert(centerTile).second) return false;
+        if (!lineOfSightVisitedCenterTiles.insert(centerTile).second) {
+            return false;
+        }
         if (recordDebug) {
             debugTrace.ddaTiles.push_back(
                 GetLineOfSightTileBounds(centerTile)
@@ -700,7 +735,7 @@ bool LevelManager::HasClearLineOfSight(
                     centerTile.x + offsetX,
                     centerTile.y + offsetY
                 };
-                if (!visitedCandidateTiles.insert(candidate).second) {
+                if (!lineOfSightVisitedCandidateTiles.insert(candidate).second) {
                     continue;
                 }
 
@@ -717,14 +752,14 @@ bool LevelManager::HasClearLineOfSight(
                     debugTrace.candidateTiles.push_back(candidateBounds);
                 }
 
-                staticColliders.clear();
+                lineOfSightStaticColliderScratch.clear();
                 currentLevelProvider->
                     AppendStaticBlockingCollidersForTile(
                         candidate.x,
                         candidate.y,
-                        staticColliders
+                        lineOfSightStaticColliderScratch
                     );
-                for (Rectangle collider : staticColliders) {
+                for (Rectangle collider : lineOfSightStaticColliderScratch) {
                     if (testCollider(collider)) return true;
                 }
 
@@ -737,7 +772,7 @@ bool LevelManager::HasClearLineOfSight(
                 for (const MapObject* blocker : dynamicEntry->second) {
                     if (!blocker ||
                         !BlocksLineOfSightOrProjectiles(*blocker) ||
-                        !testedMapBlockers.insert(blocker).second) {
+                        !lineOfSightTestedBlockers.insert(blocker).second) {
                         continue;
                     }
                     if (testCollider(blocker->GetCollisionBox())) {
@@ -953,7 +988,8 @@ void LevelManager::ProcessDestroyedMapObjects() {
                     mapObjectGrid[cell.row][cell.column] =
                         MapObjectId::Empty;
                 }
-                navigationChanged = navigationChanged || object->IsSolid();
+                navigationChanged = navigationChanged ||
+                    BlocksLineOfSightOrProjectiles(*object);
                 return true;
             }
         ),

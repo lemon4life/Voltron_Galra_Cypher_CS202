@@ -11,15 +11,20 @@
 #include <iostream>
 #include <cstdlib>
 
+namespace {
+constexpr std::size_t MAX_TOXIC_PARTICLES = 128;
+}
+
 Pidge::Pidge(Vector2 startPos, CharacterSprites sprites)
     : Paladin(startPos, sprites, PaladinCatalog::Get(PaladinId::Pidge)) {
+    toxicParticles.reserve(MAX_TOXIC_PARTICLES);
     introData = {"PIDGE", "ROVER OVERRIDE", GREEN, "Card_Pidge", "pidge_ult_voice"};
     weaponRotation = 0.0f;
     isWeaponThrown = false;
     thrownWeaponId = INVALID_OBJECT_ID;
     
     const WeaponDefinition& weapon = PaladinCatalog::Get(PaladinId::Pidge).weapon;
-    currentWeapon = new RangedAttackStrategy(
+    currentWeapon = std::make_unique<RangedAttackStrategy>(
         sprites.weapon,
         sprites.muzzleFlash,
         sprites.bullet,
@@ -55,7 +60,8 @@ void Pidge::UpdateVenomZone(float deltaTime) {
     
     // Continuously spawn small animated toxic particles
     toxicSpawnTimer += deltaTime;
-    if (toxicSpawnTimer >= 0.08f) {
+    if (toxicSpawnTimer >= 0.08f &&
+        toxicParticles.size() < MAX_TOXIC_PARTICLES) {
         toxicSpawnTimer = 0.0f;
         
         float r = ((float)rand() / (float)RAND_MAX) * zoneRadius * 0.85f;
@@ -79,25 +85,30 @@ void Pidge::UpdateVenomZone(float deltaTime) {
     }
     
     // Update active particles
-    for (auto it = toxicParticles.begin(); it != toxicParticles.end(); ) {
-        it->life -= deltaTime;
-        if (it->life <= 0.0f) {
-            it = toxicParticles.erase(it);
+    std::size_t particleIndex = 0;
+    while (particleIndex < toxicParticles.size()) {
+        ToxicParticle& particle = toxicParticles[particleIndex];
+        particle.life -= deltaTime;
+        if (particle.life <= 0.0f) {
+            particle = std::move(toxicParticles.back());
+            toxicParticles.pop_back();
         } else {
-            it->position.x += it->velocity.x * deltaTime;
-            it->position.y += it->velocity.y * deltaTime;
+            particle.position.x += particle.velocity.x * deltaTime;
+            particle.position.y += particle.velocity.y * deltaTime;
             
             // 3-frame animation cycle
-            it->frameTimer += deltaTime;
-            if (it->frameTimer >= 0.12f) {
-                it->frameTimer -= 0.12f;
-                it->currentFrame = (it->currentFrame + 1) % 3;
+            particle.frameTimer += deltaTime;
+            if (particle.frameTimer >= 0.12f) {
+                particle.frameTimer -= 0.12f;
+                particle.currentFrame = (particle.currentFrame + 1) % 3;
             }
             
-            float progress = it->life / it->maxLife;
-            it->alpha = progress < 0.3f ? (progress / 0.3f) : 1.0f;
+            float progress = particle.life / particle.maxLife;
+            particle.alpha = progress < 0.3f
+                ? (progress / 0.3f)
+                : 1.0f;
             
-            ++it;
+            ++particleIndex;
         }
     }
 }

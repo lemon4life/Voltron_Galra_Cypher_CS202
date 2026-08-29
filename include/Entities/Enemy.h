@@ -162,21 +162,20 @@ public:
     float GetSpeed() const { 
         return statusComponent.HasEffect(EffectType::SLOW) ? speed * 0.5f : speed; 
     }
-    void SetSpeed(float s) { speed = s; }
+    void SetSpeed(float value);
     int GetDamage() const { return damage; }
-    void SetDamage(int value) { damage = value; }
+    void SetDamage(int value);
     float GetAttackCooldown() const { return attackCooldown; }
-    void SetAttackCooldown(float cd) { attackCooldown = cd; }
+    void SetAttackCooldown(float value);
     float GetBaseAttackCooldown() const { return baseAttackCooldown; }
-    void SetBaseAttackCooldown(float cd) { baseAttackCooldown = cd; }
+    void SetBaseAttackCooldown(float value);
     void ResetAttackCooldown();
     float GetDazeDuration() const { return dazeDuration; }
-    void SetDazeDuration(float duration) { dazeDuration = duration; }
+    void SetDazeDuration(float duration);
     bool IsKnockedBack() const { return knockbackVelocity.x != 0.0f || knockbackVelocity.y != 0.0f; }
     Vector2 GetKnockbackVelocity() const { return knockbackVelocity; }
 
     // Scalar scaling for Roguelike progression
-    void ApplyStatMultiplier(float multiplier);
     void ApplyStatMultipliers(
         float healthMultiplier,
         float damageMultiplier,
@@ -191,7 +190,7 @@ public:
         return dazeState ? dazeState->GetRemainingTime() : 0.0f;
     }
     Vector2 GetSize() const { return size; }
-    void SetSize(Vector2 value) { size = value; }
+    void SetSize(Vector2 value);
     Vector2 GetRenderFootPosition() const {
         return {
             position.x + renderFootOffset.x,
@@ -217,9 +216,7 @@ public:
     EnemyCollisionProfile GetCollisionProfile() const {
         return collisionProfile;
     }
-    void SetCollisionProfile(EnemyCollisionProfile profile) {
-        collisionProfile = profile;
-    }
+    void SetCollisionProfile(EnemyCollisionProfile profile);
 
     IEnemyPathAccess& GetPathAccess() const { return pathAccess; }
     void StartPathFinding();

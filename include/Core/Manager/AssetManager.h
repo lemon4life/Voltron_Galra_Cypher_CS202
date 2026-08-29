@@ -1,9 +1,9 @@
 #pragma once
 
 #include "raylib.h"
+#include <deque>
 #include <string>
 #include <unordered_map>
-#include <vector>
 #include <functional>
 #include "Entities/Player/Paladin.h"
 #include "Entities/Enemy.h" // For CharacterSprites
@@ -18,7 +18,7 @@ private:
     std::unordered_map<std::string, Texture2D> textures;
     std::unordered_map<std::string, Texture2D> texturesByPath;
     std::unordered_map<std::string, Font> fonts;
-    std::vector<LoadingTask> loadTasks;
+    std::deque<LoadingTask> loadTasks;
     int totalTasks = 0;
 
     AssetManager() = default;
@@ -39,8 +39,6 @@ public:
     Font GetCustomFont(const std::string& key);
     
     void LoadGlobalFonts();
-    void LoadCommonAssets();
-    
     void UnloadAll();
     std::size_t GetTextureAliasCount() const { return textures.size(); }
     std::size_t GetUniqueTextureCount() const { return texturesByPath.size(); }

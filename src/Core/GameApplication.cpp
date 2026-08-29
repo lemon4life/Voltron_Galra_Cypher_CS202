@@ -23,8 +23,8 @@
 #include "Core/State/UIStates.h"
 
 #include <algorithm>
-#include <limits>
 #include <iostream>
+#include <stdexcept>
 
 namespace {
     constexpr float MAX_MODAL_SCALE = 1.35f;
@@ -32,6 +32,13 @@ namespace {
 
     bool IsPlayableSessionState(GameState state) {
         return state == GameState::HUB || state == GameState::GAMEPLAY;
+    }
+
+    bool IsOverlayState(GameState state) {
+        return state == GameState::PAUSE ||
+            state == GameState::SETTINGS ||
+            state == GameState::GAME_OVER ||
+            state == GameState::VICTORY;
     }
 
     const char* GetSessionMusic(GameState state) {
@@ -48,80 +55,15 @@ namespace {
         };
     }
 
-    Camera2D CreateCenteredUICamera(float scale) {
-        Camera2D camera = {};
-        camera.zoom = scale;
-        camera.offset = {
-            (GetScreenWidth()  - Constants::GAME_WIDTH  * scale) * 0.5f,
-            (GetScreenHeight() - Constants::GAME_HEIGHT * scale) * 0.5f
-        };
-        return camera;
-    }
-
-    Vector2 GetVirtualMousePosition(const Camera2D& camera) {
-        return GetScreenToWorld2D(GetMousePosition(), camera);
-    }
-
-    GameObject* FindNearestHubInteractable(
-        const std::vector<GameObject*>& entities,
-        Vector2 playerPosition
-    ) {
-        GameObject* nearest = nullptr;
-        float nearestDistance = std::numeric_limits<float>::max();
-
-        for (GameObject* entity : entities) {
-            if (!entity) continue;
-
-            bool canInteract = false;
-            if (entity->GetObjectType() == GameObjectType::HubPaladinStand) {
-                HubPaladinStand* stand = static_cast<HubPaladinStand*>(entity);
-                canInteract = stand->IsWithinInteractionRange(playerPosition);
-            } else if (entity->GetObjectType() == GameObjectType::NPC) {
-                canInteract = Vector2Distance(playerPosition, entity->GetPosition()) < 50.0f;
-            }
-
-            if (!canInteract) continue;
-
-            float distance = Vector2Distance(playerPosition, entity->GetPosition());
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearest = entity;
-            }
-        }
-        return nearest;
-    }
-
-    void DrawInteractionPrompt(const std::string& text) {
-        float textWidth = UIUtils::MeasureText("PixeloidSans", text, UIUtils::FontSize::SMALL).x;
-        Rectangle background = {
-            (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
-            Constants::GAME_HEIGHT - 44.0f,
-            textWidth + 20.0f,
-            28.0f
-        };
-        UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
-        UIUtils::DrawCenteredText("PixeloidSans", text, { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
-    }
-
-    void DrawHubInteractionPrompt(GameObject* interactable) {
-        if (!interactable) return;
-
-        std::string text = "Press F to talk";
-        if (interactable->GetObjectType() == GameObjectType::HubPaladinStand) {
-            HubPaladinStand* stand = static_cast<HubPaladinStand*>(interactable);
-            text = std::string("Press F to inspect ") + stand->GetDisplayName();
-        }
-
-        DrawInteractionPrompt(text);
-    }
 }
 
 GameApplication::GameApplication() 
     : levelManager(*GameManager::GetInstance().GetLevelManager()),
-      waveManager(GameManager::GetInstance().GetEncounterManager()),
+      waveManager(GameManager::GetInstance().GetWaveManager()),
       teamManager(nullptr),
       quitRequested(false), 
       systemInitialized(false),
+      shutdownComplete(false),
       hasContinuableSession(false),
       settingsReturnState(GameState::MAIN_MENU),
       continueState(GameState::HUB),
@@ -129,6 +71,11 @@ GameApplication::GameApplication()
 }
 
 GameApplication::~GameApplication() {
+    try {
+        Shutdown();
+    } catch (...) {
+        if (IsWindowReady()) CloseWindow();
+    }
 }
 
 void GameApplication::Initialize() {
@@ -189,19 +136,19 @@ void GameApplication::InitializeTeamAndUI() {
 
     Vector2 startPosition = { 0.0f, 0.0f };
     auto newTeamManager = std::make_unique<TeamManager>();
-    newTeamManager->AddMember(new Lance(
+    newTeamManager->AddMember(std::make_unique<Lance>(
         startPosition,
         AssetManager::GetInstance().GetLanceSprites()
     ));
-    newTeamManager->AddMember(new Keith(
+    newTeamManager->AddMember(std::make_unique<Keith>(
         startPosition,
         AssetManager::GetInstance().GetKeithSprites()
     ));
-    newTeamManager->AddMember(new Hunk(
+    newTeamManager->AddMember(std::make_unique<Hunk>(
         startPosition,
         AssetManager::GetInstance().GetHunkSprites()
     ));
-    newTeamManager->AddMember(new Pidge(
+    newTeamManager->AddMember(std::make_unique<Pidge>(
         startPosition,
         AssetManager::GetInstance().GetPidgeSprites()
     ));
@@ -215,13 +162,24 @@ void GameApplication::InitializeTeamAndUI() {
 }
 
 void GameApplication::InitializeHubWorld() {
-    if (!teamManager) return;
+    if (!teamManager || !teamManager->GetActivePaladin()) {
+        throw std::runtime_error(
+            "Cannot initialize HUB without an active player team"
+        );
+    }
     GameManager::GetInstance().LoadLevel(HUB_LEVEL_PATH);
     teamManager->ResetForNewGame(GetLevelCenter(levelManager));
     teamManager->NotifyObservers();
 }
 
 void GameApplication::FinalizeStartup() {
+    if (!teamManager || !teamManager->GetActivePaladin() ||
+        levelManager.GetLevelWidth() <= 0.0f ||
+        levelManager.GetLevelHeight() <= 0.0f) {
+        throw std::runtime_error(
+            "Game startup completed with an invalid world session"
+        );
+    }
     AudioManager::GetInstance().PlayMusicTrack(
         "bgm_starter_menu",
         1.0f
@@ -235,6 +193,8 @@ void GameApplication::FinalizeStartup() {
 }
 
 void GameApplication::Shutdown() {
+    if (shutdownComplete) return;
+
     GameManager& gameManager = GameManager::GetInstance();
     MemoryDiagnostics::Capture("shutdown_begin", gameManager);
     gameManager.ResetWorld();
@@ -244,7 +204,9 @@ void GameApplication::Shutdown() {
     AssetManager::GetInstance().UnloadAll();
     MemoryDiagnostics::Capture("resources_unloaded", gameManager);
     AudioManager::GetInstance().Shutdown();
-    CloseWindow();
+    if (IsWindowReady()) CloseWindow();
+    systemInitialized = false;
+    shutdownComplete = true;
 }
 
 void GameApplication::StartNewGame() {
@@ -351,9 +313,10 @@ void GameApplication::RunLoop() {
     
     while (!WindowShouldClose() && !quitRequested) {
         InputManager::Update();
-        float deltaTime = GetFrameTime();
+        const float rawDeltaTime = GetFrameTime();
+        const float deltaTime = std::clamp(rawDeltaTime, 0.0f, 0.05f);
         FramePerformanceStats::GetInstance().Update(
-            deltaTime,
+            rawDeltaTime,
             gameManager.GetTargetFPS()
         );
         
@@ -365,19 +328,19 @@ void GameApplication::RunLoop() {
             viewportScale,
             MAX_MODAL_SCALE
         );
-        const Camera2D uiCamera = CreateCenteredUICamera(viewportScale);
-        Vector2 uiMousePosition = GetVirtualMousePosition(uiCamera);
+        const Camera2D uiCamera = UIUtils::CreateCenteredUICamera(viewportScale);
+        Vector2 uiMousePosition = UIUtils::GetVirtualMousePosition(uiCamera);
         Rectangle windowBounds = {
             -uiCamera.offset.x / uiCamera.zoom,
             -uiCamera.offset.y / uiCamera.zoom,
             GetScreenWidth() / uiCamera.zoom,
             GetScreenHeight() / uiCamera.zoom
         };
-        const Camera2D modalCamera = CreateCenteredUICamera(modalScale);
+        const Camera2D modalCamera = UIUtils::CreateCenteredUICamera(modalScale);
 
         AudioManager::GetInstance().UpdateMusicStream();
 
-        Vector2 modalMousePosition = GetVirtualMousePosition(modalCamera);
+        Vector2 modalMousePosition = UIUtils::GetVirtualMousePosition(modalCamera);
 
         GameState state = gameManager.GetState();
 
@@ -428,7 +391,48 @@ void GameApplication::RunLoop() {
         static GameState previousEnumState = static_cast<GameState>(-1);
         if (state != previousEnumState) {
             std::unique_ptr<IGameState> newState;
-            switch(state) {
+            if (state == GameState::SETTINGS &&
+                previousEnumState == GameState::MAIN_MENU) {
+                settingsReturnState = GameState::MAIN_MENU;
+            }
+
+            if (IsOverlayState(state)) {
+                if (!gameManager.HasOverlayBackgroundState()) {
+                    gameManager.PreserveCurrentStateForOverlay(
+                        previousEnumState
+                    );
+                }
+                IGameState* background =
+                    gameManager.GetOverlayBackgroundState();
+                switch (state) {
+                    case GameState::PAUSE:
+                        newState = std::make_unique<PauseState>(
+                            &pauseMenu, this, background
+                        );
+                        break;
+                    case GameState::SETTINGS:
+                        newState = std::make_unique<SettingsState>(
+                            &settingsMenu, this, background
+                        );
+                        break;
+                    case GameState::GAME_OVER:
+                        newState = std::make_unique<GameOverState>(
+                            this, background
+                        );
+                        break;
+                    case GameState::VICTORY:
+                        newState = std::make_unique<VictoryState>(
+                            this, background
+                        );
+                        break;
+                    default:
+                        break;
+                }
+            } else if (gameManager.RestoreOverlayBackgroundState(state)) {
+                // Restore the exact gameplay/menu state hidden by the overlay.
+            } else {
+                gameManager.ClearOverlayBackgroundState();
+                switch(state) {
                 case GameState::HUB:
                     newState = std::make_unique<HubState>(teamManager, &levelManager, &waveManager, &paladinSelectionMenu);
                     break;
@@ -441,20 +445,13 @@ void GameApplication::RunLoop() {
                 case GameState::ROOM_EDITOR:
                     newState = std::make_unique<RoomEditorStateAdapter>(&roomEditor);
                     break;
-                case GameState::PAUSE:
-                    newState = std::make_unique<PauseState>(&pauseMenu, this, gameManager.TakeCurrentStateObj());
+                default:
                     break;
-                case GameState::SETTINGS:
-                    newState = std::make_unique<SettingsState>(&settingsMenu, this, gameManager.TakeCurrentStateObj());
-                    break;
-                case GameState::GAME_OVER:
-                    newState = std::make_unique<GameOverState>(this, gameManager.TakeCurrentStateObj());
-                    break;
-                case GameState::VICTORY:
-                    newState = std::make_unique<VictoryState>(this, gameManager.TakeCurrentStateObj());
-                    break;
+                }
             }
-            gameManager.SetCurrentStateObj(std::move(newState));
+            if (newState) {
+                gameManager.SetCurrentStateObj(std::move(newState));
+            }
             previousEnumState = state;
             MemoryDiagnostics::Capture("state_changed", gameManager);
         }

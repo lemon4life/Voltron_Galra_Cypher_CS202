@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdexcept>
+
 class Enemy;
 
 class IEnemyState {
@@ -19,15 +21,25 @@ public:
     virtual void Exit(TEnemy* enemy) = 0;
 
 private:
+    static TEnemy* RequireTypedEnemy(Enemy* enemy) {
+        TEnemy* typedEnemy = dynamic_cast<TEnemy*>(enemy);
+        if (!typedEnemy) {
+            throw std::logic_error(
+                "Enemy state was applied to an incompatible enemy type"
+            );
+        }
+        return typedEnemy;
+    }
+
     void Enter(Enemy* enemy) final override {
-        Enter(static_cast<TEnemy*>(enemy));
+        Enter(RequireTypedEnemy(enemy));
     }
 
     void Update(Enemy* enemy, float deltaTime) final override {
-        Update(static_cast<TEnemy*>(enemy), deltaTime);
+        Update(RequireTypedEnemy(enemy), deltaTime);
     }
 
     void Exit(Enemy* enemy) final override {
-        Exit(static_cast<TEnemy*>(enemy));
+        Exit(RequireTypedEnemy(enemy));
     }
 };

@@ -400,11 +400,11 @@ void WaveManager::SpawnEnemy(
     GameObject* newEnemy = GameManager::GetInstance()
         .GetObjectManager()
         .Spawn(spawnType, spawnPos);
-    if (newEnemy) {
+    if (Enemy* enemy = dynamic_cast<Enemy*>(newEnemy)) {
         int currentFloor = GameManager::GetInstance().GetCurrentFloor();
         FloorCombatProfile profile = GetFloorCombatProfile(currentFloor);
         if (spawnType != MapObjectId::Boss) {
-            static_cast<Enemy*>(newEnemy)->ApplyStatMultipliers(
+            enemy->ApplyStatMultipliers(
                 profile.healthMultiplier,
                 profile.damageMultiplier,
                 profile.speedMultiplier
@@ -477,16 +477,6 @@ void WaveManager::DrawHUD() {
             UIUtils::DrawText("PixeloidBold", "WAVE CLEARED!", { 180.0f, 240.0f }, static_cast<UIUtils::FontSize>(20), GREEN);
         }
     }
-}
-
-void WaveManager::StartRoomWaves(int totalEnemies) {
-    Reset(totalEnemies, totalEnemies / 3, totalEnemies / 4);
-    timeBetweenWaves = 1.5f;
-    showWaveTextTimer = 2.0f;
-}
-
-bool WaveManager::IsRoomCleared() const {
-    return enemiesToSpawn <= 0 && currentWave > 0;
 }
 
 bool WaveManager::SkipCurrentRoom(

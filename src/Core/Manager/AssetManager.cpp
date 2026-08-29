@@ -1,5 +1,6 @@
 #include "Core/Manager/AssetManager.h"
 #include <iostream>
+#include <stdexcept>
 
 AssetManager& AssetManager::GetInstance() {
     static AssetManager instance;
@@ -19,13 +20,15 @@ Texture2D AssetManager::LoadTexture2D(const std::string& key, const std::string&
 
     Texture2D tex = LoadTexture(path.c_str());
     if (tex.id == 0) {
-        std::cerr << "Failed to load texture: " << path << std::endl;
+        throw std::runtime_error(
+            "Failed to load required texture '" + key + "': " + path
+        );
     } else if (applyPointFilter) {
         SetTextureFilter(tex, TEXTURE_FILTER_POINT);
     }
 
-    textures[key] = tex;
-    texturesByPath[path] = tex;
+    textures.emplace(key, tex);
+    texturesByPath.emplace(path, tex);
     return tex;
 }
 
@@ -34,8 +37,7 @@ Texture2D AssetManager::GetTexture(const std::string& key) {
     if (it != textures.end()) {
         return it->second;
     }
-    // Return empty texture if not found (id = 0)
-    return Texture2D{0};
+    throw std::runtime_error("Required texture key is not loaded: " + key);
 }
 
 Font AssetManager::LoadCustomFont(const std::string& key, const std::string& path, int fontSize) {
@@ -45,7 +47,9 @@ Font AssetManager::LoadCustomFont(const std::string& key, const std::string& pat
     
     Font font = LoadFontEx(path.c_str(), fontSize, 0, 250);
     if (font.texture.id == 0) {
-        std::cerr << "Failed to load font: " << path << std::endl;
+        throw std::runtime_error(
+            "Failed to load required font '" + key + "': " + path
+        );
     }
     
     fonts[key] = font;
@@ -57,42 +61,13 @@ Font AssetManager::GetCustomFont(const std::string& key) {
     if (it != fonts.end()) {
         return it->second;
     }
-    return GetFontDefault();
+    throw std::runtime_error("Required font key is not loaded: " + key);
 }
 
 void AssetManager::LoadGlobalFonts() {
     LoadCustomFont("PixeloidMono", "assets/fonts/PixeloidMono.ttf", 64);
     LoadCustomFont("PixeloidBold", "assets/fonts/PixeloidSans-Bold.ttf", 64);
     LoadCustomFont("PixeloidSans", "assets/fonts/PixeloidSans.ttf", 64);
-}
-
-void AssetManager::LoadCommonAssets() {
-    LoadTexture2D("stats_checkpoint", "assets/UI/stats_checkpoint.png");
-    LoadTexture2D("button_pause", "assets/UI/button_pause.png");
-    LoadTexture2D("dialogue_panel", "assets/UI/dialogue.png");
-    LoadTexture2D("select_arrow", "assets/UI/select_arrow.png");
-
-    // Pots & Pickups
-    LoadTexture2D("pot_hp",    "assets/Objects/pot_hp.png", true);
-    LoadTexture2D("pot_ex",    "assets/Objects/pot_ex.png", true);
-    LoadTexture2D("pot_quint", "assets/Objects/pot_quint.png", true);
-
-    // Chest & Machine
-    LoadTexture2D("chest_bottom", "assets/Objects/chest_bottom.png", true);
-    LoadTexture2D("chest_top",    "assets/Objects/chest_top.png", true);
-    LoadTexture2D("machine",      "assets/Objects/Machine.png", true);
-
-    // Coins
-    LoadTexture2D("coin_world", "assets/Objects/coin.png", true);
-    LoadTexture2D("coin_icon",  "assets/UI/coin.png", true);
-
-    // Minimap Icons & Indicators
-    LoadTexture2D("minimap_current", "assets/UI/minimap/current_room.png", true);
-    LoadTexture2D("minimap_event",   "assets/UI/minimap/event.png", true);
-    LoadTexture2D("minimap_home",    "assets/UI/minimap/home.png", true);
-    LoadTexture2D("minimap_exit",    "assets/UI/minimap/exit.png", true);
-    LoadTexture2D("minimap_boss",    "assets/UI/minimap/boss.png", true);
-    LoadTexture2D("minimap_chest",   "assets/UI/minimap/chest.png", true);
 }
 
 void AssetManager::BeginLoadingQueue() {
@@ -140,6 +115,7 @@ void AssetManager::QueueCommonAssets() {
     add("minimap_exit", "assets/UI/minimap/exit.png", true);
     add("minimap_boss", "assets/UI/minimap/boss.png", true);
     add("minimap_chest", "assets/UI/minimap/chest.png", true);
+    add("doorGate", "assets/tileset/Galra_Door_8.png", true);
 }
 
 void AssetManager::UnloadAll() {
@@ -330,9 +306,16 @@ bool AssetManager::UpdateLoading(
 ) {
     if (!loadTasks.empty()) {
         LoadingTask task = std::move(loadTasks.front());
-        loadTasks.erase(loadTasks.begin());
+        loadTasks.pop_front();
         outCurrentTask = task.label;
-        task.action();
+        try {
+            task.action();
+        } catch (const std::exception& error) {
+            throw std::runtime_error(
+                "Startup task failed (" + task.label + "): " +
+                error.what()
+            );
+        }
     } else {
         outCurrentTask = "Startup complete";
     }

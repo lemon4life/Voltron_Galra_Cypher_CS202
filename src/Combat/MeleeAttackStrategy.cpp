@@ -3,7 +3,6 @@
 #include "Core/Manager/AudioManager.h"
 #include "Entities/Enemy.h"
 #include "Entities/Player/Paladin.h"
-#include "Core/Manager/GameManager.h"
 #include "Core/Manager/ParticleManager.h"
 #include "Core/Utils/LineOfSightGeometry.h"
 #include <algorithm>
@@ -230,8 +229,7 @@ void MeleeAttackStrategy::ProcessBladeCollision(
     const auto& enemies = gameManager.GetObjectManager().GetEnemies();
     for (Enemy* enemy : enemies) {
         if (!enemy || !enemy->IsEnabled() ||
-            std::find(objectsHit.begin(), objectsHit.end(), enemy) !=
-                objectsHit.end() ||
+            objectsHit.find(enemy->GetObjectId()) != objectsHit.end() ||
             !CheckCollisionRecs(broadPhase, enemy->GetBoundingBox()) ||
             !BladeSweepIntersects(bladeSweep, enemy->GetBoundingBox())) {
             continue;
@@ -240,7 +238,7 @@ void MeleeAttackStrategy::ProcessBladeCollision(
         enemy->TakeDamage(damage);
         enemy->ApplyKnockback(aimDir, MELEE_KNOCKBACK_FORCE);
         if (owner) owner->OnHitEnemy(damage);
-        objectsHit.push_back(enemy);
+        objectsHit.insert(enemy->GetObjectId());
         gameManager.AddImpactEffect(enemy->GetPosition());
     }
 

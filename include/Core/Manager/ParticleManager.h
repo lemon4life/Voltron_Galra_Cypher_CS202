@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "Core/Visuals/IParticle.h"
-#include <memory>
+#include "Core/Visuals/DamageTextParticle.h"
 
 class SpriteParticle : public IParticle {
 public:
@@ -41,7 +41,8 @@ public:
 
 class ParticleManager {
 private:
-    std::vector<std::unique_ptr<IParticle>> activeParticles;
+    std::vector<SpriteParticle> activeParticles;
+    std::vector<DamageTextParticle> damageTextParticles;
 
     Shader silhouetteShader; // Replaces sprite RGB with a solid fill color
 
@@ -74,8 +75,12 @@ public:
     void Draw();
 
     void Clear();
-    std::size_t GetActiveCount() const { return activeParticles.size(); }
-    std::size_t GetCapacity() const { return activeParticles.capacity(); }
+    std::size_t GetActiveCount() const {
+        return activeParticles.size() + damageTextParticles.size();
+    }
+    std::size_t GetCapacity() const {
+        return activeParticles.capacity() + damageTextParticles.capacity();
+    }
     
     Shader GetSilhouetteShader() const { return silhouetteShader; }
 

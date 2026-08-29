@@ -51,8 +51,6 @@ public:
     );
     void DrawHUD();
     int GetCurrentWave() const { return currentWave; }
-    void StartRoomWaves(int totalEnemies);
-    bool IsRoomCleared() const;
     bool SkipCurrentRoom(
         TeamManager* teamManager,
         LevelManager* levelManager

@@ -19,9 +19,6 @@ DoorGate::DoorGate(Vector2 pos)
 {
     boundingBox = {pos.x, pos.y, Constants::RENDER_TILE_SIZE, Constants::RENDER_TILE_SIZE};
     tex = AssetManager::GetInstance().GetTexture("doorGate");
-    if (tex.id == 0) {
-        tex = AssetManager::GetInstance().LoadTexture2D("doorGate", "assets/tileset/Galra_Door_8.png", true);
-    }
 }
 
 void DoorGate::SetState(State newState) {

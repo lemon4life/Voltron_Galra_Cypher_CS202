@@ -48,7 +48,7 @@ private:
     float panTimer;
     bool switchedIndex;
 
-    Texture2D logoTex;
+    Texture2D logoTex = {};
     std::vector<MenuButton> buttons;
 
     void RebuildButtons();

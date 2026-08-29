@@ -58,6 +58,7 @@ private:
 
     bool quitRequested;
     bool systemInitialized;
+    bool shutdownComplete;
     bool hasContinuableSession;
     
     GameState settingsReturnState;

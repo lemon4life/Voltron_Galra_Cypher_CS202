@@ -24,7 +24,12 @@ ProceduralLevelProvider::ProceduralLevelProvider(
 
 void ProceduralLevelProvider::DrawBase() {
     if (activeRoom) {
-        TilemapRenderer::DrawRoomBase(*activeRoom, roomOffset, floorTileset, wallTileset, prop1Texture, prop2Texture, boxTexture);
+        TilemapRenderer::DrawRoomBase(
+            *activeRoom,
+            roomOffset,
+            floorTileset,
+            wallTileset
+        );
         
         // Draw EXIT gate if this room is an EXIT room
         for (const auto& node : levelMap.generatedNodes) {
@@ -52,7 +57,12 @@ void ProceduralLevelProvider::DrawBase() {
 
 void ProceduralLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
     if (activeRoom) {
-        TilemapRenderer::GetRoomDepthRenderItems(*activeRoom, roomOffset, wallTileset, prop1Texture, prop2Texture, boxTexture, items);
+        TilemapRenderer::GetRoomDepthRenderItems(
+            *activeRoom,
+            roomOffset,
+            wallTileset,
+            items
+        );
     }
 }
 

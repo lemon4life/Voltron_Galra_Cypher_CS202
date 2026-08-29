@@ -610,7 +610,7 @@ void Boss::FireStompProjectiles() {
                     BOSS_STOMP_PROJECTILE_SPAWN_RADIUS
                 )
             );
-            gameManager.AddProjectile(new DroneBullet(
+            gameManager.AddProjectile(std::make_unique<DroneBullet>(
                 spawnPosition,
                 direction,
                 STOMP_DRONE_BULLET_INITIAL_SPEED * speedScale,
@@ -639,7 +639,7 @@ void Boss::FireStompProjectiles() {
                     BOSS_STOMP_PROJECTILE_SPAWN_RADIUS
                 )
             );
-            gameManager.AddProjectile(new Projectile(
+            gameManager.AddProjectile(std::make_unique<Projectile>(
                 spawnPosition,
                 Vector2Scale(
                     direction,
@@ -688,7 +688,7 @@ void Boss::FirePunchProjectile(
         ? levelManager->GetCurrentRoomBounds()
         : mapBounds;
 
-    gameManager.AddProjectile(new BossFirePunchProjectile(
+    gameManager.AddProjectile(std::make_unique<BossFirePunchProjectile>(
         launchPosition,
         activePaladin->GetPosition(),
         targetTeam,

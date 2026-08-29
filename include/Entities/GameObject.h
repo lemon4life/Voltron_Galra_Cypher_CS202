@@ -3,6 +3,8 @@
 #include "raylib.h"
 
 #include <cstddef>
+#include <cmath>
+#include <stdexcept>
 
 enum class GameObjectType {
     Enemy,
@@ -33,6 +35,11 @@ public:
           objectType(type),
           position(pos),
           boundingBox{pos.x, pos.y, 0.0f, 0.0f} {
+        if (!std::isfinite(pos.x) || !std::isfinite(pos.y)) {
+            throw std::invalid_argument(
+                "Game object position must contain finite coordinates"
+            );
+        }
         ++liveCount;
     }
     virtual ~GameObject() { --liveCount; }
@@ -44,7 +51,14 @@ public:
     ObjectId GetObjectId() const noexcept { return objectId; }
     static std::size_t GetLiveCount() noexcept { return liveCount; }
     Vector2 GetPosition() const { return position; }
-    void SetPosition(Vector2 pos) { position = pos; }
+    void SetPosition(Vector2 pos) {
+        if (!std::isfinite(pos.x) || !std::isfinite(pos.y)) {
+            throw std::invalid_argument(
+                "Game object position must contain finite coordinates"
+            );
+        }
+        position = pos;
+    }
     virtual Rectangle GetBoundingBox() const { return boundingBox; }
     virtual Rectangle GetCollisionBox() const { return GetBoundingBox(); }
     virtual bool IsSolidNavigationObstacle() const { return false; }

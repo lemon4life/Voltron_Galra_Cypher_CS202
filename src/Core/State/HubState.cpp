@@ -162,6 +162,9 @@ void HubState::Draw() {
     GameManager::GetInstance().DrawEffects(true);
 
     std::vector<DepthRenderItem> renderItems;
+    renderItems.reserve(
+        128 + GameManager::GetInstance().GetObjectManager().GetEnemyCount()
+    );
     
     if (teamManager && teamManager->GetActivePaladin()) {
         teamManager->AddDepthRenderItems(renderItems);

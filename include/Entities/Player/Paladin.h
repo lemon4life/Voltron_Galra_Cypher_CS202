@@ -10,7 +10,6 @@
 #include <string>
 #include <memory>
 #include "Combat/IBuff.h"
-#include "Core/Systems/UpgradeCommands.h"
 
 struct BaseStats {
     static constexpr int HP = 100;
@@ -55,7 +54,7 @@ class TeamManager;
 class Paladin : public Character {
 protected:
     IPlayerState* currentState;
-    IAttackStrategy* currentWeapon;
+    std::unique_ptr<IAttackStrategy> currentWeapon;
     
     CharacterSprites sprites;
     TeamManager* teamManager;
@@ -131,7 +130,7 @@ protected:
     float autoParryDurationTimer;
     bool isAutoParry;
     Vector2 aimTarget;
-    class Enemy* lockedEnemy;
+    ObjectId lockedEnemyId = INVALID_OBJECT_ID;
     float currentAimAngle;
     float targetAimAngle;
     
@@ -184,8 +183,8 @@ public:
     void UpdateAim(Vector2 rawMouseWorld);
     Vector2 GetAimTarget() const { return aimTarget; }
     
-    void SetLockedEnemy(class Enemy* target) { lockedEnemy = target; }
-    class Enemy* GetLockedEnemy() const { return lockedEnemy; }
+    void SetLockedEnemy(class Enemy* target);
+    class Enemy* GetLockedEnemy() const;
     
     float GetCurrentAimAngle() const { return currentAimAngle; }
     void SetCurrentAimAngle(float angle) { currentAimAngle = angle; }
@@ -225,11 +224,11 @@ public:
     virtual void ExecuteUltimateAction() = 0;
     
     Vector2 GetWeaponPivot() const;
-    void SetWeapon(IAttackStrategy* weapon) { 
-        currentWeapon = weapon; 
+    void SetWeapon(std::unique_ptr<IAttackStrategy> weapon) {
+        currentWeapon = std::move(weapon);
         if (currentWeapon) currentWeapon->SetOwner(this);
     }
-    IAttackStrategy* GetCurrentWeapon() const { return currentWeapon; }
+    IAttackStrategy* GetCurrentWeapon() const { return currentWeapon.get(); }
     
     virtual void TakeDamage(int amount);
     void OnHitEnemy(int damage);
@@ -265,7 +264,6 @@ public:
 
     // Unified Paladin Level Progression
     static constexpr int MAX_PALADIN_LEVEL = 5;
-    static constexpr int MAX_STAT_LEVEL = 5;
     int GetPaladinLevel() const { return paladinLevel; }
     static int GetMaxPaladinLevel() { return MAX_PALADIN_LEVEL; }
     bool IsMaxLevel() const { return paladinLevel >= MAX_PALADIN_LEVEL; }
@@ -274,15 +272,6 @@ public:
     bool LevelUp();
     float GetPaladinProgress() const { return (MAX_PALADIN_LEVEL > 1) ? ((float)(paladinLevel - 1) / (float)(MAX_PALADIN_LEVEL - 1)) : 1.0f; }
 
-    // Compatibility methods
-    int GetStatLevel(StatType stat) const { return paladinLevel; }
-    int GetUpgradeCost(StatType stat) const { return GetUpgradeCost(); }
-    bool IsStatMaxed(StatType stat) const { return IsMaxLevel(); }
-    bool CanAffordUpgrade(StatType stat, int currentCoins) const { return CanLevelUp(currentCoins); }
-    bool CanUpgradeStat(StatType stat) const { return !IsMaxLevel(); }
-    bool UpgradeStat(StatType stat) { return LevelUp(); }
-    bool ExecuteUpgrade(StatType stat) { return LevelUp(); }
-    float GetStatProgress(StatType stat) const { return GetPaladinProgress(); }
     void RecalculateStats();
 
     float GetHpScalar() const { return hpScalar; }

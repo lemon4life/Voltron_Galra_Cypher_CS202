@@ -21,8 +21,6 @@ public:
         layer2_props.resize(h, std::vector<int>(w, 0));
     }
 
-    // Generate absolute world coordinate bounding boxes for physics
-    std::vector<Rectangle> GenerateWallColliders(Vector2 offsetWorldPos, float tileSize, float scale) const;
 };
 
 class LevelMap {
@@ -45,6 +43,16 @@ public:
 
 class TilemapRenderer {
 public:
-    static void DrawRoomBase(const RoomTemplate& room, Vector2 roomOffsetWorldPos, Texture2D floorTileset, Texture2D wallTileset, Texture2D prop1Texture, Texture2D prop2Texture, Texture2D boxTexture);
-    static void GetRoomDepthRenderItems(const RoomTemplate& room, Vector2 roomOffsetWorldPos, Texture2D wallTileset, Texture2D prop1Texture, Texture2D prop2Texture, Texture2D boxTexture, std::vector<DepthRenderItem>& items);
+    static void DrawRoomBase(
+        const RoomTemplate& room,
+        Vector2 roomOffsetWorldPos,
+        Texture2D floorTileset,
+        Texture2D wallTileset
+    );
+    static void GetRoomDepthRenderItems(
+        const RoomTemplate& room,
+        Vector2 roomOffsetWorldPos,
+        Texture2D wallTileset,
+        std::vector<DepthRenderItem>& items
+    );
 };

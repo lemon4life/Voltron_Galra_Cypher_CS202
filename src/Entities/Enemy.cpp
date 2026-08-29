@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace {
     constexpr float DEBUG_PATH_THICKNESS = 2.0f;
@@ -67,6 +68,11 @@ Enemy::Enemy(
       targetTeam(t), currentState(nullptr), removalAccess(removalAccess),
       pathAccess(pathAccess)
 {
+    if (imaxHealth <= 0 || !std::isfinite(ispeed) || ispeed < 0.0f ||
+        idamage < 0 || !std::isfinite(iattackCooldown) ||
+        iattackCooldown < 0.0f) {
+        throw std::invalid_argument("Enemy constructed with invalid stats");
+    }
     dazeState = std::make_unique<EnemyDazeState>();
 }
 
@@ -99,7 +105,7 @@ void Enemy::SetMaxHealth(int value) {
 }
 
 void Enemy::TakeDamage(int amount) {
-    if (!IsEnabled() || health <= 0) return;
+    if (amount <= 0 || !IsEnabled() || health <= 0) return;
 
     int actualDamage = std::min(health, amount);
     health -= amount;
@@ -309,6 +315,67 @@ void Enemy::StartPathFinding() {
     pathAccess.BeginPathFinding(*this);
 }
 
+void Enemy::SetSpeed(float value) {
+    if (!std::isfinite(value) || value < 0.0f) {
+        throw std::invalid_argument("Enemy speed must be finite and non-negative");
+    }
+    speed = value;
+}
+
+void Enemy::SetDamage(int value) {
+    if (value < 0) {
+        throw std::invalid_argument("Enemy damage must be non-negative");
+    }
+    damage = value;
+}
+
+void Enemy::SetAttackCooldown(float value) {
+    if (!std::isfinite(value) || value < 0.0f) {
+        throw std::invalid_argument(
+            "Enemy cooldown must be finite and non-negative"
+        );
+    }
+    attackCooldown = value;
+}
+
+void Enemy::SetBaseAttackCooldown(float value) {
+    if (!std::isfinite(value) || value < 0.0f) {
+        throw std::invalid_argument(
+            "Enemy base cooldown must be finite and non-negative"
+        );
+    }
+    baseAttackCooldown = value;
+}
+
+void Enemy::SetDazeDuration(float duration) {
+    if (!std::isfinite(duration) || duration < 0.0f) {
+        throw std::invalid_argument(
+            "Enemy daze duration must be finite and non-negative"
+        );
+    }
+    dazeDuration = duration;
+}
+
+void Enemy::SetSize(Vector2 value) {
+    if (!std::isfinite(value.x) || !std::isfinite(value.y) ||
+        value.x <= 0.0f || value.y <= 0.0f) {
+        throw std::invalid_argument("Enemy size must be finite and positive");
+    }
+    size = value;
+}
+
+void Enemy::SetCollisionProfile(EnemyCollisionProfile profile) {
+    if (!std::isfinite(profile.navigationSize.x) ||
+        !std::isfinite(profile.navigationSize.y) ||
+        !std::isfinite(profile.navigationCenterOffset.x) ||
+        !std::isfinite(profile.navigationCenterOffset.y) ||
+        profile.navigationSize.x <= 0.0f ||
+        profile.navigationSize.y <= 0.0f) {
+        throw std::invalid_argument("Invalid enemy collision profile");
+    }
+    collisionProfile = profile;
+}
+
 void Enemy::StartPathFindingTo(Vector2 worldGoal) {
     if (usePathFinding) {
         EndPathFinding();
@@ -350,6 +417,9 @@ void Enemy::ApplyCollisionPush(Vector2 dir, float distance) {
 }
 
 void Enemy::SetKnockbackResistance(float resistance) {
+    if (!std::isfinite(resistance)) {
+        throw std::invalid_argument("Knockback resistance must be finite");
+    }
     knockbackResistance = std::clamp(resistance, 0.0f, 1.0f);
 }
 
@@ -385,8 +455,11 @@ EnemyMoveResult Enemy::UpdateMovement(Vector2 desiredVelocity, float deltaTime, 
     }
 
     float friction = 6.0f;
-    currentVelocity.x += (desiredVelocity.x - currentVelocity.x) * friction * deltaTime;
-    currentVelocity.y += (desiredVelocity.y - currentVelocity.y) * friction * deltaTime;
+    float smoothing = std::clamp(friction * deltaTime, 0.0f, 1.0f);
+    currentVelocity.x +=
+        (desiredVelocity.x - currentVelocity.x) * smoothing;
+    currentVelocity.y +=
+        (desiredVelocity.y - currentVelocity.y) * smoothing;
     
     Vector2 displacement = { currentVelocity.x * deltaTime, currentVelocity.y * deltaTime };
     EnemyMoveResult moveResult = EnemyCollision::MoveAgainstWalls(
@@ -400,19 +473,18 @@ EnemyMoveResult Enemy::UpdateMovement(Vector2 desiredVelocity, float deltaTime, 
     return moveResult;
 }
 
-void Enemy::ApplyStatMultiplier(float multiplier) {
-    maxHealth = (int)(maxHealth * multiplier);
-    health = maxHealth;
-    damage = (int)(damage * multiplier);
-    // Slight speed buff (half of the multiplier scale)
-    speed *= (1.0f + (multiplier - 1.0f) * 0.5f);
-}
-
 void Enemy::ApplyStatMultipliers(
     float healthMultiplier,
     float damageMultiplier,
     float speedMultiplier
 ) {
+    if (!std::isfinite(healthMultiplier) ||
+        !std::isfinite(damageMultiplier) ||
+        !std::isfinite(speedMultiplier) ||
+        healthMultiplier <= 0.0f || damageMultiplier < 0.0f ||
+        speedMultiplier <= 0.0f) {
+        throw std::invalid_argument("Invalid enemy stat multiplier");
+    }
     maxHealth = std::max(1, (int)std::round(
         maxHealth * std::max(0.0f, healthMultiplier)
     ));

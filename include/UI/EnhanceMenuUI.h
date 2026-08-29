@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Entities/Player/PaladinDefinition.h"
-#include "Core/Systems/UpgradeCommands.h"
 #include "raylib.h"
 #include <cstddef>
 #include <string>

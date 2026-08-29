@@ -119,6 +119,9 @@ void GameplayState::Draw() {
     GameManager::GetInstance().DrawEffects(true);
 
     std::vector<DepthRenderItem> renderItems;
+    renderItems.reserve(
+        256 + GameManager::GetInstance().GetObjectManager().GetEnemyCount()
+    );
     
     if (teamManager && teamManager->GetActivePaladin()) {
         teamManager->AddDepthRenderItems(renderItems);

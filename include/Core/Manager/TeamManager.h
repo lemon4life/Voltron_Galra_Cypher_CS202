@@ -15,13 +15,12 @@ class Paladin;
 
 class TeamManager : public ISubject {
 private:
-    std::vector<Paladin*> roster;
+    std::vector<std::unique_ptr<Paladin>> roster;
     std::vector<Paladin*> team;
     int activeIndex;
 
     int sharedArmor;
     int maxSharedArmor;
-    float sharedUltimateDecibels;
 
     // Quintessence — shared team ultimate fuel (separate from per-character EX)
     float currentQuintessence = 0.0f;
@@ -31,9 +30,6 @@ private:
 
     // Coins Currency
     int coins = 0;
-
-    float timeSinceLastDamage;
-    float armorRegenTimer;
 
     std::vector<std::unique_ptr<IBuff>> sharedBuffs;
 
@@ -48,7 +44,7 @@ public:
     TeamManager();
     ~TeamManager();
 
-    void AddMember(Paladin* paladin);
+    void AddMember(std::unique_ptr<Paladin> paladin);
     void Update(float deltaTime);
     void Draw();
     void DrawBuffs(); // Draw shared buffs
@@ -71,9 +67,7 @@ public:
     bool AssignPaladinToSlot(PaladinId id, std::size_t targetIndex);
     Paladin* GetActivePaladin() const;
 
-    int TakeArmorDamage(int amount);
     bool IsTeamDead() const; // Returns remaining damage that penetrates armor
-    void RecordDamageEvent();
     
     int GetSharedArmor() const { return sharedArmor; }
     int GetMaxSharedArmor() const { return maxSharedArmor; }
@@ -88,9 +82,11 @@ public:
 
     // Coins Currency
     int GetCoins() const { return coins; }
-    void AddCoins(int amount) { coins += amount; }
+    void AddCoins(int amount) {
+        if (amount > 0) coins += amount;
+    }
     bool ConsumeCoins(int amount) {
-        if (coins >= amount) {
+        if (amount > 0 && coins >= amount) {
             coins -= amount;
             return true;
         }

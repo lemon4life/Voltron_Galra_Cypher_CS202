@@ -4,6 +4,7 @@
 #include "Core/Manager/ParticleManager.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace {
 constexpr std::size_t MAX_ACTIVE_EFFECTS = 512;
@@ -51,7 +52,13 @@ void EffectManager::AddAnchoredEffect(
     bool drawBehind,
     Color tint
 ) {
-    if (frames <= 0 || lifetime <= 0.0f) return;
+    if (frames <= 0 || !std::isfinite(lifetime) || lifetime <= 0.0f ||
+        !std::isfinite(position.x) || !std::isfinite(position.y) ||
+        texture.id == 0 || texture.width <= 0 || texture.height <= 0 ||
+        texture.width % frames != 0 ||
+        activeEffects.size() >= MAX_ACTIVE_EFFECTS) {
+        return;
+    }
     activeEffects.push_back({
         position,
         lifetime,
@@ -112,23 +119,24 @@ void EffectManager::AddCorpse(
 }
 
 void EffectManager::Update(float deltaTime) {
-    for (auto iterator = activeEffects.begin();
-         iterator != activeEffects.end();) {
-        iterator->lifetime -= deltaTime;
-        if (iterator->lifetime <= 0.0f) {
-            iterator = activeEffects.erase(iterator);
+    for (std::size_t index = 0; index < activeEffects.size();) {
+        ImpactEffect& effect = activeEffects[index];
+        effect.lifetime -= deltaTime;
+        if (effect.lifetime <= 0.0f) {
+            effect = std::move(activeEffects.back());
+            activeEffects.pop_back();
             continue;
         }
 
-        if (iterator->texture.id != 0) {
+        if (effect.texture.id != 0) {
             float progress = 1.0f -
-                iterator->lifetime / iterator->maxLifetime;
-            iterator->currentFrame = std::min(
-                iterator->numFrames - 1,
-                (int)(progress * iterator->numFrames)
+                effect.lifetime / effect.maxLifetime;
+            effect.currentFrame = std::min(
+                effect.numFrames - 1,
+                (int)(progress * effect.numFrames)
             );
         }
-        ++iterator;
+        ++index;
     }
 
     ParticleManager::GetInstance().Update(deltaTime);
@@ -175,7 +183,7 @@ void EffectManager::DrawParticles() const {
 }
 
 void EffectManager::ClearSession() {
-    decltype(activeEffects){}.swap(activeEffects);
+    activeEffects.clear();
     ParticleManager::GetInstance().Clear();
     DecalManager::GetInstance().Clear();
 }

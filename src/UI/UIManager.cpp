@@ -384,18 +384,3 @@ void UIManager::DrawCoinHUD(Rectangle bounds, int coins) {
 void UIManager::DrawModalOverlay() {
     DrawRectangle(-10000, -10000, 20000, 20000, Fade(BLACK, 0.6f));
 }
-
-void UIManager::DrawPopupFrame(Rectangle bounds, const char* title) {
-    // Background and border
-    DrawRectangleRounded(bounds, 0.1f, 16, Fade(DARKGRAY, 0.95f));
-    DrawRectangleRoundedLinesEx(bounds, 0.1f, 16, 2.0f, BLACK);
-
-    // Title area
-    Font fontBold = AssetManager::GetInstance().GetCustomFont("PixeloidBold");
-    Vector2 titleSize = MeasureTextEx(fontBold, title, 24, 1.0f);
-    float titleX = bounds.x + (bounds.width - titleSize.x) / 2;
-    float titleY = bounds.y + 20;
-
-    UIUtils::DrawText("PixeloidBold", title, { titleX, titleY }, static_cast<UIUtils::FontSize>(24), WHITE);
-    DrawLine(bounds.x + 20, bounds.y + 60, bounds.x + bounds.width - 20, bounds.y + 60, GRAY);
-}

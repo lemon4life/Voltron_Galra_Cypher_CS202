@@ -4,6 +4,22 @@
 #include "raymath.h"
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
+
+namespace {
+void ValidateProjectileInputs(
+    Vector2 velocity,
+    float lifetime,
+    int damage,
+    float radius
+) {
+    if (!std::isfinite(velocity.x) || !std::isfinite(velocity.y) ||
+        !std::isfinite(lifetime) || lifetime <= 0.0f ||
+        damage < 0 || !std::isfinite(radius) || radius < 0.0f) {
+        throw std::invalid_argument("Projectile constructed with invalid values");
+    }
+}
+}
 
 Projectile::Projectile(
     Vector2 pos,
@@ -16,6 +32,7 @@ Projectile::Projectile(
     : GameObject(pos, GameObjectType::Projectile),
       velocity(vel), lifetime(life), collisionRadius(std::max(0.0f, radius)),
       active(true), damage(dmg), isEnemyProj(isEnemy) {
+    ValidateProjectileInputs(vel, life, dmg, radius);
     texture.id = 0;
     boundingBox = {
         pos.x - collisionRadius,
@@ -37,6 +54,7 @@ Projectile::Projectile(
     : GameObject(pos, GameObjectType::Projectile),
       velocity(vel), lifetime(life), collisionRadius(std::max(0.0f, radius)),
       active(true), damage(dmg), isEnemyProj(isEnemy), texture(tex) {
+    ValidateProjectileInputs(vel, life, dmg, radius);
     boundingBox = {
         pos.x - collisionRadius,
         pos.y - collisionRadius,
@@ -90,7 +108,6 @@ void Projectile::Update(float deltaTime) {
     }
 }
 
-#include <cmath>
 void Projectile::Draw() {
     if (active) {
         if (texture.id != 0) {
@@ -106,10 +123,24 @@ void Projectile::Draw() {
 }
 
 bool Projectile::HasHitTarget(GameObject* target) const {
-    return std::find(hitTargets.begin(), hitTargets.end(), target) !=
+    if (!target) return false;
+    return std::find(
+        hitTargets.begin(),
+        hitTargets.end(),
+        target->GetObjectId()
+    ) !=
         hitTargets.end();
 }
 
+void Projectile::SetVelocity(Vector2 value) {
+    if (!std::isfinite(value.x) || !std::isfinite(value.y)) {
+        throw std::invalid_argument("Projectile velocity must be finite");
+    }
+    velocity = value;
+}
+
 void Projectile::RecordHit(GameObject* target) {
-    if (target && !HasHitTarget(target)) hitTargets.push_back(target);
+    if (target && !HasHitTarget(target)) {
+        hitTargets.push_back(target->GetObjectId());
+    }
 }

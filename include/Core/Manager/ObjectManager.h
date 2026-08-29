@@ -6,9 +6,11 @@
 #include "Core/World/WorldDefinition.h"
 #include "raylib.h"
 
-#include <deque>
+#include <array>
+#include <algorithm>
 #include <functional>
 #include <memory>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -24,11 +26,25 @@ class Rover;
 class TeamManager;
 
 struct QuintessenceOrb {
+    static constexpr std::size_t HISTORY_CAPACITY = 12;
     Vector2 position = { 0.0f, 0.0f };
     Vector2 velocity = { 0.0f, 0.0f };
     bool isAttracted = false;
     float age = 0.0f;
-    std::deque<Vector2> positionHistory;
+    std::array<Vector2, HISTORY_CAPACITY> positionHistory = {};
+    std::size_t historyStart = 0;
+    std::size_t historyCount = 0;
+
+    void PushHistory(Vector2 point) {
+        historyStart = (historyStart + HISTORY_CAPACITY - 1) %
+            HISTORY_CAPACITY;
+        positionHistory[historyStart] = point;
+        historyCount = std::min(historyCount + 1, HISTORY_CAPACITY);
+    }
+
+    Vector2 HistoryAt(std::size_t index) const {
+        return positionHistory[(historyStart + index) % HISTORY_CAPACITY];
+    }
 };
 
 struct ObjectManagerMemoryStats {
@@ -60,6 +76,10 @@ private:
     std::vector<QuintessenceOrb> orbs;
 
     std::vector<Enemy*> enemyView;
+    std::unordered_map<ObjectId, Enemy*> enemyIndex;
+    std::unordered_map<std::uint64_t, std::vector<Enemy*>>
+        enemySpatialBuckets;
+    std::vector<Enemy*> projectileEnemyScratch;
     std::vector<GameObject*> interactableView;
     std::unordered_set<GameObject*> pendingRemoval;
     std::vector<std::unique_ptr<GameObject>> pendingAddition;
@@ -68,6 +88,7 @@ private:
     std::function<void(float)> hitstopCallback;
 
     void RebuildViews();
+    void RebuildEnemySpatialIndex();
     void RouteObject(std::unique_ptr<GameObject> object);
     void ProcessPendingAdditions();
     void ProcessPendingRemovals();
@@ -114,7 +135,6 @@ public:
     void CommitPendingChanges();
 
     void AddProjectile(std::unique_ptr<Projectile> projectile);
-    void AddProjectile(Projectile* projectile);
     void AddRover(std::unique_ptr<Rover> rover);
     void SpawnQuintessenceOrb(Vector2 position);
 
@@ -130,6 +150,7 @@ public:
     ObjectManagerMemoryStats GetMemoryStats() const;
     GameObject* FindObject(ObjectId id) const;
     Enemy* FindEnemy(ObjectId id) const;
+    void GetEnemiesNear(Rectangle bounds, std::vector<Enemy*>& output) const;
     Pot* FindNearestPickup(Vector2 position, float radius) const;
     bool IsDynamicCollisionBlocked(
         Rectangle bounds,

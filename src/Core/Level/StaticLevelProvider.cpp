@@ -1,4 +1,5 @@
 #include "Core/Level/StaticLevelProvider.h"
+#include "Core/Level/VisibleWorld.h"
 #include <cmath>
 #include <algorithm>
 
@@ -6,7 +7,6 @@ namespace {
     constexpr float COLLISION_EDGE_PADDING = 0.001f;
     constexpr float PARTIAL_WALL_WIDTH = 9.0f;
     constexpr float RIGHT_PARTIAL_WALL_OFFSET = Constants::RENDER_TILE_SIZE - PARTIAL_WALL_WIDTH;
-    constexpr int DRAW_PADDING_TILES = 20;
 }
 
 StaticLevelProvider::StaticLevelProvider(
@@ -25,6 +25,12 @@ int StaticLevelProvider::pos_hash(int x, int y) const {
 }
 
 void StaticLevelProvider::DrawBase() {
+    VisibleTileRange visible = GetVisibleTileRange(
+        { 0.0f, 0.0f },
+        gridCols,
+        gridRows
+    );
+    if (visible.IsEmpty()) return;
     Rectangle wallTopSrc[2] = { {0.1f, 0.1f, 15.8f, 15.8f}, {16.1f, 0.1f, 15.8f, 15.8f} };
     Rectangle wallFrontFaceSrc[2] = { {0.1f, 16.1f, 15.8f, 15.8f}, {16.1f, 16.1f, 15.8f, 15.8f} };
     Rectangle floorSrc[6];
@@ -37,8 +43,8 @@ void StaticLevelProvider::DrawBase() {
         if (currentGrid.empty()) continue;
 
         // Draw Floors pass
-        for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
-            for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
+        for (int r = visible.minimumY; r <= visible.maximumY; ++r) {
+            for (int c = visible.minimumX; c <= visible.maximumX; ++c) {
                 if (r >= 0 && c >= 0 && r < gridRows && c < (int)currentGrid[r].size()) {
                     int tileID = currentGrid[r][c];
                     // Floor tiles: positive IDs that are NOT wall IDs (0, 4-11)
@@ -58,8 +64,8 @@ void StaticLevelProvider::DrawBase() {
         }
         
         // Draw Walls Front Faces pass
-        for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
-            for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
+        for (int r = visible.minimumY; r <= visible.maximumY; ++r) {
+            for (int c = visible.minimumX; c <= visible.maximumX; ++c) {
                 if (r >= 0 && c >= 0 && r < gridRows && c < (int)currentGrid[r].size()) {
                     int tileID = currentGrid[r][c];
                     if (tileID == 0 || (tileID >= 4 && tileID <= 11)) {
@@ -92,12 +98,18 @@ void StaticLevelProvider::DrawBase() {
 }
 
 void StaticLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
+    VisibleTileRange visible = GetVisibleTileRange(
+        { 0.0f, 0.0f },
+        gridCols,
+        gridRows
+    );
+    if (visible.IsEmpty()) return;
     Rectangle wallTopSrc[2] = { {0, 0, 16, 16}, {16, 0, 16, 16} };
     for (int layer = 1; layer <= 2; ++layer) {
         const auto& currentGrid = (layer == 1) ? mapGridLayer1 : mapGridLayer2;
         if (currentGrid.empty()) continue;
-        for (int r = -DRAW_PADDING_TILES; r < gridRows + DRAW_PADDING_TILES; ++r) {
-            for (int c = -DRAW_PADDING_TILES; c < gridCols + DRAW_PADDING_TILES; ++c) {
+        for (int r = visible.minimumY; r <= visible.maximumY; ++r) {
+            for (int c = visible.minimumX; c <= visible.maximumX; ++c) {
                 bool isWall = false;
                 if (r >= 0 && c >= 0 && r < gridRows && c < (int)currentGrid[r].size()) {
                     int tid = currentGrid[r][c];

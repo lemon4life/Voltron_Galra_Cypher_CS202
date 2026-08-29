@@ -17,7 +17,7 @@ Keith::Keith(Vector2 pos, CharacterSprites sprites)
 
     const WeaponDefinition& weapon =
         PaladinCatalog::Get(PaladinId::Keith).weapon;
-    currentWeapon = new MeleeAttackStrategy(
+    currentWeapon = std::make_unique<MeleeAttackStrategy>(
         sprites.weapon,
         AssetManager::GetInstance().GetTexture("Sword_Slash_Small"),
         AssetManager::GetInstance().GetTexture("Sword_Slash_Small"),
@@ -72,7 +72,7 @@ void Keith::ExecuteUltimateAction() {
     if (damage < 250) damage = 250;
     
     Vector2 spawnPos = GetWeaponPivot();
-    auto* proj = new KeithUltiProjectile(
+    auto projectile = std::make_unique<KeithUltiProjectile>(
         spawnPos,
         dir,
         speed,
@@ -83,8 +83,8 @@ void Keith::ExecuteUltimateAction() {
         ultiFireTex,
         fireAnimTex
     );
-    proj->SetOwner(this);
-    GameManager::GetInstance().AddProjectile(proj);
+    projectile->SetOwner(this);
+    GameManager::GetInstance().AddProjectile(std::move(projectile));
 }
 
 // ProcessFireCircle is removed

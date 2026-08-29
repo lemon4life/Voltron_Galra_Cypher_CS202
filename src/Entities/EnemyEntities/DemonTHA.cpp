@@ -311,14 +311,14 @@ bool DemonTHA::TryFireAtActivePlayer() {
     ) / 100.0f;
     direction = Vector2Rotate(direction, spreadDegrees * DEG2RAD);
 
-    auto* projectile = new DemonTHABullet(
+    auto projectile = std::make_unique<DemonTHABullet>(
         pose.shotOriginWorld,
         Vector2Scale(direction, PROJECTILE_SPEED),
         PROJECTILE_LIFETIME,
         GetDamage(),
         sprites.projectile
     );
-    GameManager::GetInstance().AddProjectile(projectile);
+    GameManager::GetInstance().AddProjectile(std::move(projectile));
     AudioManager::GetInstance().PlayRandomLaser();
     return true;
 }

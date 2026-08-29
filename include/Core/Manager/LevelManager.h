@@ -100,6 +100,12 @@ private:
         LineOfSightTileHash
     > lineOfSightDynamicBlockers;
     mutable std::vector<LineOfSightDebugTrace> lineOfSightDebugTraces;
+    mutable std::unordered_set<LineOfSightTile, LineOfSightTileHash>
+        lineOfSightVisitedCenterTiles;
+    mutable std::unordered_set<LineOfSightTile, LineOfSightTileHash>
+        lineOfSightVisitedCandidateTiles;
+    mutable std::unordered_set<const MapObject*> lineOfSightTestedBlockers;
+    mutable std::vector<Rectangle> lineOfSightStaticColliderScratch;
 
     Vector2 GetLineOfSightGridOrigin() const;
     LineOfSightTile WorldToLineOfSightTile(Vector2 position) const;

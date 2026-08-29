@@ -170,7 +170,7 @@ bool Drone::Attack() {
         Vector2 actualSpawn = { spawnPos.x + dir.x * 15.0f, spawnPos.y + dir.y * 15.0f };
         
         // start with high inertia before slowing down to a steady floating speed
-        DroneBullet* bullet = new DroneBullet(
+        auto bullet = std::make_unique<DroneBullet>(
             actualSpawn,
             dir,
             400.0f,
@@ -182,7 +182,7 @@ bool Drone::Attack() {
             tex,
             true
         );
-        GameManager::GetInstance().AddProjectile(bullet);
+        GameManager::GetInstance().AddProjectile(std::move(bullet));
     }
     
     AudioManager::GetInstance().PlayRandomLaser();

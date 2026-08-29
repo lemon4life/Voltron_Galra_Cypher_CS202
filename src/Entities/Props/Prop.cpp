@@ -46,23 +46,9 @@ namespace {
         AssetManager& assets = AssetManager::GetInstance();
         if (type == MapObjectId::Prop1) {
             texture = assets.GetTexture("prop1");
-            if (texture.id == 0) {
-                texture = assets.LoadTexture2D(
-                    "prop1",
-                    "assets/Objects/tall_object_1_8.png",
-                    true
-                );
-            }
             frames = 8;
         } else if (type == MapObjectId::Prop2) {
             texture = assets.GetTexture("prop2");
-            if (texture.id == 0) {
-                texture = assets.LoadTexture2D(
-                    "prop2",
-                    "assets/Objects/object_2.png",
-                    true
-                );
-            }
         } else if (type == MapObjectId::MockWall) {
             texture = assets.GetTexture("wallTileset");
         }
@@ -137,20 +123,11 @@ void Prop::DrawBaseLayer() {
     
     if (mapObjectType == MapObjectId::Prop1) {
         tex = AssetManager::GetInstance().GetTexture("prop1");
-        if (tex.id == 0) {
-            tex = AssetManager::GetInstance().LoadTexture2D("prop1", "assets/Objects/tall_object_1_8.png", true);
-        }
         frames = 8;
     } else if (mapObjectType == MapObjectId::Prop2) {
         tex = AssetManager::GetInstance().GetTexture("prop2");
-        if (tex.id == 0) {
-            tex = AssetManager::GetInstance().LoadTexture2D("prop2", "assets/Objects/object_2.png", true);
-        }
     } else if (mapObjectType == MapObjectId::MockWall) {
         tex = AssetManager::GetInstance().GetTexture("wallTileset");
-        if (tex.id == 0) { // Fallback loading if not in AssetManager
-            tex = AssetManager::GetInstance().LoadTexture2D("wallTileset", "assets/tileset/Galra_Walls.png", true);
-        }
     }
 
     if (tex.id != 0) {
@@ -211,16 +188,12 @@ void Prop::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
             int frames = 1;
             
             if (mapObjectType == MapObjectId::Prop1) {
-                tex = AssetManager::GetInstance().GetTexture("prop1");
-                if (tex.id == 0) {
-                    tex = AssetManager::GetInstance().LoadTexture2D("prop1", "assets/Objects/tall_object_1_8.png", true);
-                }
+                tex = AssetManager::GetInstance().GetTexture(
+                    "prop1"
+                );
                 frames = 8;
             } else if (mapObjectType == MapObjectId::Prop2) {
                 tex = AssetManager::GetInstance().GetTexture("prop2");
-                if (tex.id == 0) {
-                    tex = AssetManager::GetInstance().LoadTexture2D("prop2", "assets/Objects/object_2.png", true);
-                }
             } else if (mapObjectType == MapObjectId::MockWall) {
                 tex = AssetManager::GetInstance().GetTexture("wallTileset");
             }

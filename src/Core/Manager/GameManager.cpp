@@ -12,31 +12,6 @@
 
 #include <algorithm>
 
-namespace {
-void DrawObjectCollisionDebug(const GameObject& object) {
-    Color hitboxColor = PURPLE;
-    Color collisionColor = GOLD;
-    if (object.GetObjectType() == GameObjectType::Player) {
-        hitboxColor = BLUE;
-        collisionColor = GREEN;
-    } else if (object.GetObjectType() == GameObjectType::Enemy) {
-        hitboxColor = RED;
-        collisionColor = ORANGE;
-    }
-
-    DrawRectangleLinesEx(
-        object.GetBoundingBox(),
-        Constants::DEBUG_COLLISION_LINE_THICKNESS * 2.0f,
-        hitboxColor
-    );
-    DrawRectangleLinesEx(
-        object.GetCollisionBox(),
-        Constants::DEBUG_COLLISION_LINE_THICKNESS,
-        collisionColor
-    );
-}
-}
-
 GameManager::GameManager()
     : pathFindingManager(levelManager, objectManager) {
     effectManager.Configure(levelManager);
@@ -103,12 +78,30 @@ IGameState* GameManager::GetCurrentStateObj() const {
     return currentStateObj.get();
 }
 
-std::unique_ptr<IGameState> GameManager::TakeCurrentStateObj() {
-    return std::move(currentStateObj);
+void GameManager::PreserveCurrentStateForOverlay(GameState backgroundState) {
+    if (overlayBackgroundStateObj || !currentStateObj) return;
+    overlayBackgroundGameState = backgroundState;
+    overlayBackgroundStateObj = std::move(currentStateObj);
 }
 
-GameState GameManager::GetRenderState() const {
-    return IsPaused() ? previousGameState : currentState;
+IGameState* GameManager::GetOverlayBackgroundState() const {
+    return overlayBackgroundStateObj.get();
+}
+
+bool GameManager::RestoreOverlayBackgroundState(GameState state) {
+    if (!overlayBackgroundStateObj || state != overlayBackgroundGameState) {
+        return false;
+    }
+    currentStateObj = std::move(overlayBackgroundStateObj);
+    return true;
+}
+
+void GameManager::ClearOverlayBackgroundState() {
+    overlayBackgroundStateObj.reset();
+}
+
+bool GameManager::HasOverlayBackgroundState() const {
+    return static_cast<bool>(overlayBackgroundStateObj);
 }
 
 void GameManager::SetTeamManager(std::unique_ptr<TeamManager> team) {
@@ -153,8 +146,9 @@ void GameManager::ResetWorld() {
     objectManager.Clear();
     effectManager.ClearSession();
     levelManager.ClearLevel();
-    encounterManager.Reset(0, 0, 0);
+    waveManager.Reset(0, 0, 0);
     hitstopTimer = 0.0f;
+    ClearOverlayBackgroundState();
     MemoryDiagnostics::Capture("after_reset_world", *this);
 }
 
@@ -173,8 +167,8 @@ void GameManager::UpdateDynamicEntities(float deltaTime) {
     objectManager.UpdateEntities(deltaTime);
 }
 
-void GameManager::AddProjectile(Projectile* projectile) {
-    objectManager.AddProjectile(projectile);
+void GameManager::AddProjectile(std::unique_ptr<Projectile> projectile) {
+    objectManager.AddProjectile(std::move(projectile));
 }
 
 void GameManager::ClearProjectiles() {
@@ -257,7 +251,17 @@ void GameManager::DrawDebugOverlays(TeamManager* team) const {
     TeamManager* debugTeam = team ? team : teamManager.get();
     if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES && debugTeam) {
         for (const Paladin* paladin : debugTeam->GetTeam()) {
-            if (paladin) DrawObjectCollisionDebug(*paladin);
+            if (!paladin) continue;
+            DrawRectangleLinesEx(
+                paladin->GetBoundingBox(),
+                Constants::DEBUG_COLLISION_LINE_THICKNESS * 2.0f,
+                BLUE
+            );
+            DrawRectangleLinesEx(
+                paladin->GetCollisionBox(),
+                Constants::DEBUG_COLLISION_LINE_THICKNESS,
+                GREEN
+            );
         }
     }
     objectManager.DrawDebugOverlays();

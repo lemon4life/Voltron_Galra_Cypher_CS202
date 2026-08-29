@@ -22,7 +22,7 @@ protected:
     GameObject* owner = nullptr;
     float maxFlyTime = 0.0f;
     float flightTimer = 0.0f;
-    std::vector<GameObject*> hitTargets;
+    std::vector<ObjectId> hitTargets;
     std::vector<MapObjectHandle> hitMapObjects;
 
 public:
@@ -64,7 +64,7 @@ public:
     void SetMaxFlyTime(float time) { maxFlyTime = time; }
     float GetMaxFlyTime() const { return maxFlyTime; }
     float GetFlightTimer() const { return flightTimer; }
-    void SetVelocity(Vector2 v) { velocity = v; }
+    void SetVelocity(Vector2 value);
     void SetFixedRotation(bool fixed, float rot) { fixedRotation = fixed; rotationAngle = rot; }
     bool HasFixedRotation() const { return fixedRotation; }
     float GetRotationAngle() const { return rotationAngle; }

@@ -2,7 +2,7 @@
 
 #include "Core/DepthRenderItem.h"
 #include "Core/Manager/EffectManager.h"
-#include "Core/Manager/EncounterManager.h"
+#include "Core/Manager/WaveManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/ObjectManager.h"
 #include "Core/Manager/PathFindingManager.h"
@@ -36,6 +36,8 @@ private:
     GameState currentState = GameState::MAIN_MENU;
     GameState previousGameState = GameState::MAIN_MENU;
     std::unique_ptr<IGameState> currentStateObj;
+    std::unique_ptr<IGameState> overlayBackgroundStateObj;
+    GameState overlayBackgroundGameState = GameState::MAIN_MENU;
 
     int targetFPS = 0;
     float hitstopTimer = 0.0f;
@@ -47,7 +49,7 @@ private:
     ObjectManager objectManager;
     PathFindingManager pathFindingManager;
     EffectManager effectManager;
-    EncounterManager encounterManager;
+    WaveManager waveManager;
     std::unique_ptr<TeamManager> teamManager;
 
     GameManager();
@@ -66,12 +68,15 @@ public:
     GameState GetState() const;
     void SetCurrentStateObj(std::unique_ptr<IGameState> state);
     IGameState* GetCurrentStateObj() const;
-    std::unique_ptr<IGameState> TakeCurrentStateObj();
+    void PreserveCurrentStateForOverlay(GameState backgroundState);
+    IGameState* GetOverlayBackgroundState() const;
+    bool RestoreOverlayBackgroundState(GameState state);
+    void ClearOverlayBackgroundState();
+    bool HasOverlayBackgroundState() const;
     bool PauseGame();
     bool ResumeGame();
     bool IsPaused() const;
     GameState GetPreviousGameState() const;
-    GameState GetRenderState() const;
     void OpenEnhanceMenu(PaladinId paladinId);
     bool IsEnhanceMenuOpen() const;
 
@@ -105,7 +110,7 @@ public:
     }
     EffectManager& GetEffectManager() { return effectManager; }
     const EffectManager& GetEffectManager() const { return effectManager; }
-    EncounterManager& GetEncounterManager() { return encounterManager; }
+    WaveManager& GetWaveManager() { return waveManager; }
     TeamManager* GetTeamManager() const { return teamManager.get(); }
     void SetTeamManager(std::unique_ptr<TeamManager> team);
 
@@ -122,7 +127,7 @@ public:
     void DrawDebugOverlays(TeamManager* team = nullptr) const;
 
     // Transitional creation adapters used by existing entity code.
-    void AddProjectile(Projectile* projectile);
+    void AddProjectile(std::unique_ptr<Projectile> projectile);
     void ClearProjectiles();
     void UpdateProjectiles(float deltaTime, TeamManager* team = nullptr);
     void AddRover(std::unique_ptr<Rover> rover);

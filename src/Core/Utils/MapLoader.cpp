@@ -2,12 +2,40 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <limits>
+
+namespace {
+bool ParseIntegerCell(const std::string& text, int& value) {
+    if (text.empty()) return false;
+
+    std::size_t parsedCharacters = 0;
+    try {
+        long long parsed = std::stoll(text, &parsedCharacters, 10);
+        if (parsedCharacters != text.size() ||
+            parsed < std::numeric_limits<int>::min() ||
+            parsed > std::numeric_limits<int>::max()) {
+            return false;
+        }
+        value = static_cast<int>(parsed);
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+bool IsKnownObjectId(int value) {
+    return value == static_cast<int>(MapObjectId::Empty) ||
+        (value >= static_cast<int>(MapObjectId::DestructibleBox) &&
+         value <= static_cast<int>(MapObjectId::EnhanceMachine));
+}
+}
 
 bool MapLoader::ParseCSV(const std::string& filepath, std::vector<std::vector<int>>& output) {
     std::ifstream file(filepath);
     if (!file.is_open()) {
         std::cerr << "Failed to open level layer: " << filepath << std::endl;
-        return true;
+        output.clear();
+        return false;
     }
 
     output.clear();
@@ -22,26 +50,26 @@ bool MapLoader::ParseCSV(const std::string& filepath, std::vector<std::vector<in
         std::string cellString;
         std::vector<int> row;
         while (std::getline(rowStream, cellString, ',')) {
-            try {
-                row.push_back(std::stoi(cellString));
-            } catch (...) {
+            int value = 0;
+            if (!ParseIntegerCell(cellString, value)) {
                 std::cerr << "Invalid CSV value in " << filepath << std::endl;
                 output.clear();
-                return true;
+                return false;
             }
+            row.push_back(value);
         }
 
         if (row.empty()) {
             std::cerr << "Empty CSV row in " << filepath << std::endl;
             output.clear();
-            return true;
+            return false;
         }
         if (expectedColumns == 0) {
             expectedColumns = row.size();
         } else if (row.size() != expectedColumns) {
             std::cerr << "Non-rectangular CSV layer: " << filepath << std::endl;
             output.clear();
-            return true;
+            return false;
         }
         output.push_back(std::move(row));
     }
@@ -93,10 +121,17 @@ bool MapLoader::ParseObjectGrid(const std::string& filepath, std::vector<std::ve
                 continue;
             }
 
-            try {
-                output[rowIndex][columnIndex] = static_cast<MapObjectId>(std::stoi(cellString));
-            } catch (...) {
-                output[rowIndex][columnIndex] = MapObjectId::Empty;
+            int objectValue = 0;
+            if (!ParseIntegerCell(cellString, objectValue) ||
+                !IsKnownObjectId(objectValue)) {
+                std::cerr << "Invalid map object id in "
+                          << objectLayerPath << " at row "
+                          << rowIndex + 1 << ", column "
+                          << columnIndex + 1 << std::endl;
+                dimensionsMatch = false;
+            } else {
+                output[rowIndex][columnIndex] =
+                    static_cast<MapObjectId>(objectValue);
             }
             columnIndex++;
         }

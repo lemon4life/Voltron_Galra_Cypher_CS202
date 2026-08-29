@@ -7,6 +7,7 @@
 #include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
 #include "Entities/Projectile.h"
+#include "Entities/Enemy.h"
 
 #include <cmath>
 #include <iostream>
@@ -51,7 +52,7 @@ Paladin::Paladin(
       renderOffsetY(0.0f),
       swapParryWindowTimer(0.0f), autoParryDurationTimer(0.0f), isAutoParry(false),
       aimTarget(pos),
-      lockedEnemy(nullptr),
+      lockedEnemyId(INVALID_OBJECT_ID),
       currentAimAngle(0.0f),
       targetAimAngle(0.0f),
       currentAimVector{1.0f, 0.0f},
@@ -62,12 +63,8 @@ Paladin::Paladin(
 }
 
 Paladin::~Paladin() {
-
     if (currentState) {
         currentState->Exit(this);
-    }
-        if (currentWeapon) {
-        delete currentWeapon;
     }
     for (auto& buff : personalBuffs) {
         buff->OnRemove(this);
@@ -108,6 +105,7 @@ void Paladin::ChangeState(IPlayerState* newState) {
 }
 
 void Paladin::TakeDamage(int amount) {
+    if (amount <= 0) return;
     if (isInvincible || isInvulnerable || Constants::DEBUG_PLAYER_IMMUNITY) return;
     
     int actualDamage = std::min(health, amount);
@@ -128,6 +126,16 @@ void Paladin::TakeDamage(int amount) {
     if (teamManager) {
         teamManager->NotifyObservers(); // Update UI with new HP
     }
+}
+
+void Paladin::SetLockedEnemy(Enemy* target) {
+    lockedEnemyId = target ? target->GetObjectId() : INVALID_OBJECT_ID;
+}
+
+Enemy* Paladin::GetLockedEnemy() const {
+    return GameManager::GetInstance().GetObjectManager().FindEnemy(
+        lockedEnemyId
+    );
 }
 
 void Paladin::UpdateAim(Vector2 rawMouseWorld) {
@@ -191,7 +199,10 @@ void Paladin::AddAttachedEffect(Texture2D tex, int frames, float lifetime) {
 
 Projectile* Paladin::SpawnLinearProjectile(Vector2 dir, float speed, int damage, float maxFlyTime, bool piercing, Texture2D tex, bool fixedRotation) {
     Vector2 vel = Vector2Scale(dir, speed);
-    Projectile* proj = new Projectile(GetWeaponPivot(), vel, 5.0f, damage, tex, false);
+    auto projectile = std::make_unique<Projectile>(
+        GetWeaponPivot(), vel, 5.0f, damage, tex, false
+    );
+    Projectile* proj = projectile.get();
     proj->SetReturning(false);
     proj->SetPiercing(piercing);
     proj->SetMaxFlyTime(maxFlyTime);
@@ -202,7 +213,7 @@ Projectile* Paladin::SpawnLinearProjectile(Vector2 dir, float speed, int damage,
         proj->SetFixedRotation(true, rot);
     }
     
-    GameManager::GetInstance().AddProjectile(proj);
+    GameManager::GetInstance().AddProjectile(std::move(projectile));
     return proj;
 }
 
@@ -338,7 +349,7 @@ void Paladin::ResetStats() {
     swapParryWindowTimer = 0.0f;
     autoParryDurationTimer = 0.0f;
     isAutoParry = false;
-    lockedEnemy = nullptr;
+    lockedEnemyId = INVALID_OBJECT_ID;
     currentAimAngle = 0.0f;
     targetAimAngle = 0.0f;
     currentAimVector = {1.0f, 0.0f};

@@ -90,6 +90,7 @@ private:
     float profilingMillisecondsTotal = 0.0f;
     float profilingMillisecondsMaximum = 0.0f;
     EnemyPathProfilingStats profilingStats;
+    std::vector<Enemy*> nearbyEnemyScratch;
 
     void AddEnemy(Enemy& enemy);
     void AddEnemyTo(Enemy& enemy, Vector2 worldGoal);

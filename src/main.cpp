@@ -8,13 +8,11 @@
 
 int main() {
     std::unique_ptr<GameApplication> app;
-    bool initialized = false;
     bool shutdownStarted = false;
 
     try {
         app = std::make_unique<GameApplication>();
         app->Initialize();
-        initialized = true;
         app->RunLoop();
         shutdownStarted = true;
         app->Shutdown();
@@ -23,13 +21,7 @@ int main() {
         const std::string errorMessage =
             ErrorDialog::GetCurrentExceptionMessage();
 
-        try {
-            ErrorDialog::Show(errorMessage);
-        } catch (...) {
-            std::cerr << "Fatal error: " << errorMessage << '\n';
-        }
-
-        if (app && initialized && !shutdownStarted) {
+        if (app && !shutdownStarted) {
             try {
                 app->Shutdown();
             } catch (...) {
@@ -39,6 +31,14 @@ int main() {
             }
         } else if (IsWindowReady()) {
             CloseWindow();
+        }
+
+        try {
+            ErrorDialog::Show(errorMessage);
+            if (IsWindowReady()) CloseWindow();
+        } catch (...) {
+            std::cerr << "Fatal error: " << errorMessage << '\n';
+            if (IsWindowReady()) CloseWindow();
         }
 
         return EXIT_FAILURE;

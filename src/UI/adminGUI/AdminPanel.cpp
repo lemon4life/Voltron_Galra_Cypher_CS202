@@ -247,11 +247,6 @@ std::size_t AdminPanel::GetSpawnTypeIndex() const {
     }
 }
 
-bool AdminPanel::IsMouseOverPanel() const {
-    return Constants::ENABLE_ADMIN_GUI && open &&
-        IsPointInside(GetPanelBounds(), GetMousePosition());
-}
-
 void AdminPanel::SpawnSelectedType(
     Vector2 worldMousePosition,
     LevelManager& levelManager,
@@ -273,7 +268,11 @@ void AdminPanel::SpawnSelectedType(
         return;
     }
 
-    Enemy* enemy = static_cast<Enemy*>(object);
+    Enemy* enemy = dynamic_cast<Enemy*>(object);
+    if (!enemy) {
+        statusMessage = "Selected object is not an enemy";
+        return;
+    }
     const std::array<float, SPAWN_PROPERTY_COUNT>& values =
         spawnValues[GetSpawnTypeIndex()];
 
@@ -478,7 +477,7 @@ void AdminPanel::Update(
     }
     if (WasButtonPressed(skipRoomButton, mousePosition)) {
         bool skipped = GameManager::GetInstance()
-            .GetEncounterManager()
+            .GetWaveManager()
             .SkipCurrentRoom(teamManager, &levelManager);
         statusMessage = skipped
             ? "Current room cleared"

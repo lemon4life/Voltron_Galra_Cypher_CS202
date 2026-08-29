@@ -1909,7 +1909,16 @@ Vector2 PathFindingManager::GetLocalDirection(
 
     Vector2 separation = { 0.0f, 0.0f };
 
-    for (Enemy* otherEnemy : objectManager.GetEnemies()) {
+    objectManager.GetEnemiesNear(
+        {
+            enemyPosition.x - SEPARATION_RADIUS,
+            enemyPosition.y - SEPARATION_RADIUS,
+            SEPARATION_RADIUS * 2.0f,
+            SEPARATION_RADIUS * 2.0f
+        },
+        nearbyEnemyScratch
+    );
+    for (Enemy* otherEnemy : nearbyEnemyScratch) {
         if (!otherEnemy) continue;
         if (otherEnemy == &enemy ||
             !otherEnemy->IsLocalEnemyAvoidanceEnabled() ||

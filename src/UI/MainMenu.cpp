@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace {
     struct RoomListLayout {
@@ -96,9 +97,12 @@ void MainMenu::LoadCurrentBackground() {
     std::string path = "assets/img/Background/bg_" +
         std::to_string(currentSlideIndex + 1) + ".png";
     backgroundTexture = LoadTexture(path.c_str());
-    if (backgroundTexture.id != 0) {
-        SetTextureFilter(backgroundTexture, TEXTURE_FILTER_BILINEAR);
+    if (backgroundTexture.id == 0) {
+        throw std::runtime_error(
+            "Failed to load required menu background: " + path
+        );
     }
+    SetTextureFilter(backgroundTexture, TEXTURE_FILTER_BILINEAR);
 }
 
 void MainMenu::Initialize() {

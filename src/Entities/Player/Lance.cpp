@@ -2,7 +2,12 @@
 #include "Combat/RangedAttackStrategy.h"
 #include "Entities/Player/PaladinDefinition.h"
 #include "Combat/Buffs.h"
+#include "Core/Manager/AssetManager.h"
 #include "Core/Manager/AudioManager.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/TeamManager.h"
+#include "Core/Manager/UltimateIntroManager.h"
+#include "Entities/Enemy.h"
 
 Lance::Lance(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Lance)),
@@ -12,7 +17,7 @@ Lance::Lance(Vector2 pos, CharacterSprites sprites)
     introData = {"LANCE", "GLACIER PIERCE", BLUE, "Card_Lance", "lance_ult"};
     const WeaponDefinition& weapon =
         PaladinCatalog::Get(PaladinId::Lance).weapon;
-    currentWeapon = new RangedAttackStrategy(
+    currentWeapon = std::make_unique<RangedAttackStrategy>(
         sprites.weapon,
         sprites.muzzleFlash,
         sprites.bullet,
@@ -23,6 +28,10 @@ Lance::Lance(Vector2 pos, CharacterSprites sprites)
     texture = GetIdleTexture();
     skillCost = maxExEnergy * 0.5f;
     hudPortraitSlice = { 92.0f, 71.0f, 194.0f, 84.0f };
+}
+
+bool Lance::IsWeaponVisible() const {
+    return !HasPersonalBuff<DualWieldBuff>();
 }
 
 void Lance::Update(float deltaTime) {
@@ -41,31 +50,34 @@ void Lance::Update(float deltaTime) {
         }
     }
 
-    for (auto it = pendingFreezeTargets.begin(); it != pendingFreezeTargets.end(); ) {
-        it->delay -= deltaTime;
-        if (it->delay <= 0.0f) {
-            if (it->enemy && !it->enemy->IsDead() && it->enemy->IsEnabled()) {
-                it->enemy->GetStatusComponent().AddEffect(EffectType::FREEZE, 5.0f, 0.0f);
-            }
-            it = pendingFreezeTargets.erase(it);
-        } else {
-            ++it;
-        }
-    }
+    UpdatePendingFreezeTargets(deltaTime);
 }
 
 void Lance::UpdateInactive(float deltaTime) {
     Paladin::UpdateInactive(deltaTime);
-    for (auto it = pendingFreezeTargets.begin(); it != pendingFreezeTargets.end(); ) {
+    UpdatePendingFreezeTargets(deltaTime);
+}
+
+void Lance::UpdatePendingFreezeTargets(float deltaTime) {
+    ObjectManager& objects = GameManager::GetInstance().GetObjectManager();
+    for (auto it = pendingFreezeTargets.begin();
+         it != pendingFreezeTargets.end();) {
         it->delay -= deltaTime;
-        if (it->delay <= 0.0f) {
-            if (it->enemy && !it->enemy->IsDead() && it->enemy->IsEnabled()) {
-                it->enemy->GetStatusComponent().AddEffect(EffectType::FREEZE, 5.0f, 0.0f);
-            }
-            it = pendingFreezeTargets.erase(it);
-        } else {
+        if (it->delay > 0.0f) {
             ++it;
+            continue;
         }
+
+        Enemy* enemy = objects.FindEnemy(it->enemyId);
+        if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {
+            AudioManager::GetInstance().PlaySoundEffect("fx_ice_hit");
+            enemy->GetStatusComponent().AddEffect(
+                EffectType::FREEZE,
+                5.0f,
+                0.0f
+            );
+        }
+        it = pendingFreezeTargets.erase(it);
     }
 }
 
@@ -92,12 +104,8 @@ void Lance::Draw() {
     if (!HasPersonalBuff<DualWieldBuff>()) {
         Paladin::Draw();
     } else {
-        // Suppress drawing the single weapon from Paladin::Draw by temporarily unsetting it
-        IAttackStrategy* tempWeapon = currentWeapon;
-        currentWeapon = nullptr;
         Paladin::Draw();
-        currentWeapon = tempWeapon;
-        
+
         if (currentWeapon) {
             Vector2 normal = { -currentAimVector.y, currentAimVector.x };
             // Flatten the vertical orbit so they align more horizontally when aiming left/right
@@ -125,12 +133,6 @@ void Lance::UseSkill() {
     AudioManager::GetInstance().PlaySoundEffect("vl_lance_skill");
     AddPersonalBuff(std::make_unique<DualWieldBuff>(5.0f));
 }
-
-#include "Core/Manager/GameManager.h"
-#include "Entities/Enemy.h"
-
-#include "Core/Manager/UltimateIntroManager.h"
-#include "Core/Manager/TeamManager.h"
 
 void Lance::UseUltimate() {
     // Gate on Quintessence (shared team fuel) + individual cooldown
@@ -163,7 +165,10 @@ void Lance::ExecuteUltimateAction() {
             if (explodeTex.id != 0) {
                 GameManager::GetInstance().AddEffect(enemyPos, explodeTex, 8, animDuration, false);
             }
-            pendingFreezeTargets.push_back({ enemy, freezeDelay });
+            pendingFreezeTargets.push_back({
+                enemy->GetObjectId(),
+                freezeDelay
+            });
         }
     }
 }

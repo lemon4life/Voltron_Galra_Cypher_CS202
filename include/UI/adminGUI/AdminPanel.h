@@ -24,8 +24,6 @@ public:
     void Draw() const;
 
     bool IsOpen() const { return open; }
-    bool IsMouseOverPanel() const;
-
 private:
     static constexpr std::size_t SPAWN_TYPE_COUNT = 5;
     static constexpr std::size_t SPAWN_PROPERTY_COUNT = 14;

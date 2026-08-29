@@ -206,7 +206,7 @@ bool EnemyRangeShootingState::TryFireProjectile(
 
     Vector2 velocity = Vector2Scale(direction, enemy->GetProjectileSpeed());
 
-    Projectile* projectile = new Projectile(
+    auto projectile = std::make_unique<Projectile>(
         projectileOrigin,
         velocity,
         enemy->GetProjectileLifetime(),
@@ -214,7 +214,7 @@ bool EnemyRangeShootingState::TryFireProjectile(
         enemy->GetSprites().projectile,
         true
     );
-    GameManager::GetInstance().AddProjectile(projectile);
+    GameManager::GetInstance().AddProjectile(std::move(projectile));
     enemy->GetKinematics().ApplyRecoil(direction, 15.0f);
     AudioManager::GetInstance().PlayRandomLaser();
     enemy->ResetAttackCooldown();

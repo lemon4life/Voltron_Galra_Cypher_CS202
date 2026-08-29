@@ -1,5 +1,6 @@
 #include "Core/Manager/DecalManager.h"
 #include "Core/Manager/LevelManager.h"
+#include "Core/Level/VisibleWorld.h"
 #include <cmath>
 #include <algorithm>
 
@@ -89,6 +90,13 @@ void DecalManager::Update(
 
 void DecalManager::Draw() {
     for (const auto& corpse : corpses) {
+        Rectangle corpseBounds = {
+            corpse.position.x - corpse.texture.width * 0.5f,
+            corpse.position.y - corpse.texture.height,
+            static_cast<float>(corpse.texture.width),
+            static_cast<float>(corpse.texture.height)
+        };
+        if (!IsWorldRectangleVisible(corpseBounds)) continue;
         Rectangle source = { 0, 0, (float)corpse.texture.width, (float)corpse.texture.height };
         if (corpse.facingLeft) {
             source.width = -source.width;

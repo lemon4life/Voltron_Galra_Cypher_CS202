@@ -12,13 +12,15 @@ public:
     void UseSkill() override;
     void UseUltimate() override;
     void ExecuteUltimateAction() override;
+    bool IsWeaponVisible() const override;
     
 private:
     struct PendingFreezeTarget {
-        Enemy* enemy;
+        ObjectId enemyId = INVALID_OBJECT_ID;
         float delay;
     };
     std::vector<PendingFreezeTarget> pendingFreezeTargets;
+    void UpdatePendingFreezeTargets(float deltaTime);
     
     bool isUltimateFlash;
     float ultimateFlashTimer;

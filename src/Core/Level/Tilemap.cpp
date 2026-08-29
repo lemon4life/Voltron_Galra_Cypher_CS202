@@ -1,5 +1,6 @@
 #include "Core/Level/Tilemap.h"
 #include "Core/Constants.h"
+#include "Core/Level/VisibleWorld.h"
 #include <cmath>
 #include <iostream>
 #include <filesystem>
@@ -8,26 +9,6 @@
 #include <algorithm>
 #include <queue>
 #include <unordered_map>
-
-std::vector<Rectangle> RoomTemplate::GenerateWallColliders(Vector2 offsetWorldPos, float tileSize, float scale) const {
-    std::vector<Rectangle> colliders;
-    float scaledTileSize = tileSize * scale;
-    
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (layer0_tiles[y][x] == 1) { // Only explicit wall tiles (NOT void/2)
-                Rectangle rect = {
-                    offsetWorldPos.x + x * scaledTileSize,
-                    offsetWorldPos.y + y * scaledTileSize,
-                    scaledTileSize,
-                    scaledTileSize
-                };
-                colliders.push_back(rect);
-            }
-        }
-    }
-    return colliders;
-}
 
 void LevelMap::Generate(
     int width,
@@ -662,8 +643,19 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
     return baked;
 }
 
-void TilemapRenderer::DrawRoomBase(const RoomTemplate& room, Vector2 roomOffsetWorldPos, Texture2D floorTileset, Texture2D wallTileset, Texture2D prop1Texture, Texture2D prop2Texture, Texture2D boxTexture) {
+void TilemapRenderer::DrawRoomBase(
+    const RoomTemplate& room,
+    Vector2 roomOffsetWorldPos,
+    Texture2D floorTileset,
+    Texture2D wallTileset
+) {
     float scaledTileSize = Constants::RENDER_TILE_SIZE;
+    VisibleTileRange visible = GetVisibleTileRange(
+        roomOffsetWorldPos,
+        room.width,
+        room.height
+    );
+    if (visible.IsEmpty()) return;
 
     Rectangle wallFrontFaceSrc[2] = { {0.1f, 16.1f, 15.8f, 15.8f}, {16.1f, 16.1f, 15.8f, 15.8f} };
     
@@ -679,10 +671,9 @@ void TilemapRenderer::DrawRoomBase(const RoomTemplate& room, Vector2 roomOffsetW
     };
 
     // Draw Floors
-    for (int y = 0; y < room.height; ++y) {
-        for (int x = 0; x < room.width; ++x) {
+    for (int y = visible.minimumY; y <= visible.maximumY; ++y) {
+        for (int x = visible.minimumX; x <= visible.maximumX; ++x) {
             int tileType = room.layer0_tiles[y][x];
-            int objType = room.layer1_objects[y][x];
             
             if (tileType == 2 || tileType == 1) continue; 
             
@@ -698,10 +689,9 @@ void TilemapRenderer::DrawRoomBase(const RoomTemplate& room, Vector2 roomOffsetW
     }
 
     // Draw Wall Front Faces
-    for (int y = 0; y < room.height; ++y) {
-        for (int x = 0; x < room.width; ++x) {
+    for (int y = visible.minimumY; y <= visible.maximumY; ++y) {
+        for (int x = visible.minimumX; x <= visible.maximumX; ++x) {
             int tileType = room.layer0_tiles[y][x];
-            int objType = room.layer1_objects[y][x];
             
             if (tileType == 1) {
                 int variant = std::abs(hash(x, y)) % 2;
@@ -729,8 +719,19 @@ void TilemapRenderer::DrawRoomBase(const RoomTemplate& room, Vector2 roomOffsetW
     }
 }
 
-void TilemapRenderer::GetRoomDepthRenderItems(const RoomTemplate& room, Vector2 roomOffsetWorldPos, Texture2D wallTileset, Texture2D prop1Texture, Texture2D prop2Texture, Texture2D boxTexture, std::vector<DepthRenderItem>& items) {
+void TilemapRenderer::GetRoomDepthRenderItems(
+    const RoomTemplate& room,
+    Vector2 roomOffsetWorldPos,
+    Texture2D wallTileset,
+    std::vector<DepthRenderItem>& items
+) {
     float scaledTileSize = Constants::RENDER_TILE_SIZE;
+    VisibleTileRange visible = GetVisibleTileRange(
+        roomOffsetWorldPos,
+        room.width,
+        room.height
+    );
+    if (visible.IsEmpty()) return;
     Rectangle wallTopSrc[2] = { {0.1f, 0.1f, 15.8f, 15.8f}, {16.1f, 0.1f, 15.8f, 15.8f} };
 
     auto hash = [](int x, int y) -> int {
@@ -739,10 +740,9 @@ void TilemapRenderer::GetRoomDepthRenderItems(const RoomTemplate& room, Vector2 
         return h ^ (h >> 16);
     };
 
-    for (int y = 0; y < room.height; ++y) {
-        for (int x = 0; x < room.width; ++x) {
+    for (int y = visible.minimumY; y <= visible.maximumY; ++y) {
+        for (int x = visible.minimumX; x <= visible.maximumX; ++x) {
             int tileType = room.layer0_tiles[y][x];
-            int objType = room.layer1_objects[y][x];
             
             if (tileType == 1) {
                 float ySort = std::floor(roomOffsetWorldPos.y + (y + 1) * scaledTileSize);

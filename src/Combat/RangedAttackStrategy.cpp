@@ -26,7 +26,7 @@ void RangedAttackStrategy::Attack(Vector2 playerPos) {
     Vector2 projVelocity = { aimDir.x * 400.0f, aimDir.y * 400.0f };
     // Create projectile originating at barrel tip to prevent wall collision
     Vector2 spawnPos = { playerPos.x + aimDir.x * 15.0f, playerPos.y + aimDir.y * 15.0f };
-    Projectile* p = new Projectile(
+    auto projectile = std::make_unique<Projectile>(
         spawnPos,
         projVelocity,
         2.0f,
@@ -36,7 +36,7 @@ void RangedAttackStrategy::Attack(Vector2 playerPos) {
     
     kinematics.ApplyRecoil(aimDir, recoilStrength);
     muzzleFlashTimer = 0.05f;
-    GameManager::GetInstance().AddProjectile(p);
+    GameManager::GetInstance().AddProjectile(std::move(projectile));
     
     AudioManager::GetInstance().PlayRandomLaserGun();
 }

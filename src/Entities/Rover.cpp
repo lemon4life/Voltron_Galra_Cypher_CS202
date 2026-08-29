@@ -170,9 +170,11 @@ void Rover::Update(float deltaTime) {
             Vector2 vel = Vector2Scale(dir, projectileSpeed);
             
             Texture2D projTex = AssetManager::GetInstance().GetTexture("Rover_bullet");
-            Projectile* p = new Projectile(position, vel, 1.5f, 30, projTex, false);
-            
-            GameManager::GetInstance().AddProjectile(p);
+            GameManager::GetInstance().AddProjectile(
+                std::make_unique<Projectile>(
+                    position, vel, 1.5f, 30, projTex, false
+                )
+            );
             attackCooldown = 1.5f;
         }
     }

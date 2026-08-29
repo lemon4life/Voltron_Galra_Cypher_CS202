@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <deque>
+#include <vector>
 
 struct FramePerformanceSnapshot {
     float currentFps = 0.0f;
@@ -34,6 +35,7 @@ private:
     void Recalculate(int targetFps);
 
     std::deque<float> frameTimes;
+    std::vector<float> sortedScratch;
     float accumulatedTime = 0.0f;
     float calculationTimer = 0.0f;
     FramePerformanceSnapshot snapshot;

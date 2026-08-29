@@ -1,5 +1,6 @@
 #include "Core/Manager/ParticleManager.h"
 #include "raymath.h"
+#include <algorithm>
 #include <cmath>
 
 namespace {
@@ -65,7 +66,9 @@ void SpriteParticle::Update(float deltaTime) {
     position.y += velocity.y * deltaTime;
 
     // Fade alpha linearly as the particle dies
-    float lifeRatio = lifeRemaining / lifeSpan; // 1.0 = fresh, 0.0 = dead
+    float lifeRatio = lifeSpan > 0.0f
+        ? std::clamp(lifeRemaining / lifeSpan, 0.0f, 1.0f)
+        : 0.0f;
     color.a = (unsigned char)(lifeRatio * 255.0f);
 }
 
@@ -113,26 +116,59 @@ bool SpriteParticle::IsDead() const {
 // ─── Emission ────────────────────────────────────────────────────────────────
 
 void ParticleManager::Emit(Vector2 position, Vector2 velocity, Color color, float size, float lifeSpan) {
-    if (activeParticles.size() >= MAX_ACTIVE_PARTICLES) return;
-    activeParticles.push_back(std::make_unique<SpriteParticle>(position, velocity, color, size, lifeSpan));
+    if (activeParticles.size() >= MAX_ACTIVE_PARTICLES ||
+        lifeSpan <= 0.0f || size <= 0.0f) {
+        return;
+    }
+    activeParticles.emplace_back(
+        position,
+        velocity,
+        color,
+        size,
+        lifeSpan
+    );
 }
 
 void ParticleManager::EmitSprite(Vector2 position, Vector2 velocity, Texture2D texture,
                                   Rectangle sourceRect, float rotation, float size,
                                   float lifeSpan, Color tint, bool silhouette) {
-    if (activeParticles.size() >= MAX_ACTIVE_PARTICLES) return;
-    activeParticles.push_back(std::make_unique<SpriteParticle>(position, velocity, tint, size, lifeSpan, texture, sourceRect, rotation, silhouette));
+    if (activeParticles.size() >= MAX_ACTIVE_PARTICLES ||
+        lifeSpan <= 0.0f || size <= 0.0f) {
+        return;
+    }
+    activeParticles.emplace_back(
+        position,
+        velocity,
+        tint,
+        size,
+        lifeSpan,
+        texture,
+        sourceRect,
+        rotation,
+        silhouette
+    );
 }
 
 // ─── Update ──────────────────────────────────────────────────────────────────
 
 void ParticleManager::Update(float deltaTime) {
-    for (auto it = activeParticles.begin(); it != activeParticles.end(); ) {
-        (*it)->Update(deltaTime);
-        if ((*it)->IsDead()) {
-            it = activeParticles.erase(it);
+    for (std::size_t index = 0; index < activeParticles.size();) {
+        activeParticles[index].Update(deltaTime);
+        if (activeParticles[index].IsDead()) {
+            activeParticles[index] = std::move(activeParticles.back());
+            activeParticles.pop_back();
         } else {
-            ++it;
+            ++index;
+        }
+    }
+    for (std::size_t index = 0; index < damageTextParticles.size();) {
+        damageTextParticles[index].Update(deltaTime);
+        if (damageTextParticles[index].IsDead()) {
+            damageTextParticles[index] =
+                std::move(damageTextParticles.back());
+            damageTextParticles.pop_back();
+        } else {
+            ++index;
         }
     }
 }
@@ -140,15 +176,19 @@ void ParticleManager::Update(float deltaTime) {
 // ─── Draw ────────────────────────────────────────────────────────────────────
 
 void ParticleManager::Draw() {
-    for (const auto& p : activeParticles) {
-        p->Draw();
+    for (const SpriteParticle& particle : activeParticles) {
+        particle.Draw();
+    }
+    for (const DamageTextParticle& particle : damageTextParticles) {
+        particle.Draw();
     }
 }
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 
 void ParticleManager::Clear() {
-    decltype(activeParticles){}.swap(activeParticles);
+    activeParticles.clear();
+    damageTextParticles.clear();
 }
 
 // ─── Combat Emitters ─────────────────────────────────────────────────────────
@@ -223,16 +263,13 @@ void ParticleManager::SpawnImpact(Vector2 pos, Vector2 projectileVelocity, Color
     }
 }
 
-#include "Core/Visuals/DamageTextParticle.h"
-
 void ParticleManager::SpawnDamageNumber(Vector2 pos, int damage) {
-    if (activeParticles.size() >= MAX_ACTIVE_PARTICLES) return;
+    if (GetActiveCount() >= MAX_ACTIVE_PARTICLES) return;
     // Generate a random slight upward/outward velocity (less extreme)
     float angle = (float)GetRandomValue(-120, -60) * DEG2RAD;
     float speed = (float)GetRandomValue(50, 100);
     Vector2 vel = { cosf(angle) * speed, sinf(angle) * speed };
     
-    // Create new DamageTextParticle and add it with a shorter lifetime
-    activeParticles.push_back(std::make_unique<DamageTextParticle>(pos, vel, damage, 0.5f));
+    damageTextParticles.emplace_back(pos, vel, damage, 0.5f);
 }
 

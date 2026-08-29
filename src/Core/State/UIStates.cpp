@@ -43,8 +43,8 @@ void MainMenuState::Draw() {
 }
 
 // --- PauseState ---
-PauseState::PauseState(PauseMenu* menu, GameApplication* app, std::unique_ptr<IGameState> backgroundState) 
-    : menu(menu), app(app), backgroundState(std::move(backgroundState)) {}
+PauseState::PauseState(PauseMenu* menu, GameApplication* app, IGameState* backgroundState)
+    : menu(menu), app(app), backgroundState(backgroundState) {}
 
 void PauseState::Update(float deltaTime) {
     float viewportScale = std::min((float)GetScreenWidth() / Constants::GAME_WIDTH, (float)GetScreenHeight() / Constants::GAME_HEIGHT);
@@ -85,8 +85,8 @@ void PauseState::Draw() {
 }
 
 // --- SettingsState ---
-SettingsState::SettingsState(SettingsMenu* menu, GameApplication* app, std::unique_ptr<IGameState> backgroundState)
-    : menu(menu), app(app), backgroundState(std::move(backgroundState)) {}
+SettingsState::SettingsState(SettingsMenu* menu, GameApplication* app, IGameState* backgroundState)
+    : menu(menu), app(app), backgroundState(backgroundState) {}
 
 void SettingsState::Update(float deltaTime) {
     float viewportScale = std::min((float)GetScreenWidth() / Constants::GAME_WIDTH, (float)GetScreenHeight() / Constants::GAME_HEIGHT);
@@ -114,8 +114,8 @@ void SettingsState::Draw() {
 }
 
 // --- GameOverState ---
-GameOverState::GameOverState(GameApplication* app, std::unique_ptr<IGameState> backgroundState)
-    : app(app), backgroundState(std::move(backgroundState)) {}
+GameOverState::GameOverState(GameApplication* app, IGameState* backgroundState)
+    : app(app), backgroundState(backgroundState) {}
 
 void GameOverState::Update(float deltaTime) {
     if (IsKeyPressed(KEY_R)) {
@@ -139,8 +139,8 @@ void GameOverState::Draw() {
 }
 
 // --- VictoryState ---
-VictoryState::VictoryState(GameApplication* app, std::unique_ptr<IGameState> backgroundState)
-    : app(app), backgroundState(std::move(backgroundState)) {}
+VictoryState::VictoryState(GameApplication* app, IGameState* backgroundState)
+    : app(app), backgroundState(backgroundState) {}
 
 void VictoryState::Update(float deltaTime) {
     if (IsKeyPressed(KEY_SPACE)) {

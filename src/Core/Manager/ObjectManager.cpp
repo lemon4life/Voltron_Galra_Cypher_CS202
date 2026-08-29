@@ -7,6 +7,7 @@
 #include "Core/Manager/EffectManager.h"
 #include "Core/Manager/LevelManager.h"
 #include "Core/Manager/TeamManager.h"
+#include "Core/Level/VisibleWorld.h"
 #include "Entities/Enemy.h"
 #include "Entities/GameObject.h"
 #include "Entities/Player/Paladin.h"
@@ -17,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 #include <string>
 
 namespace {
@@ -24,6 +26,12 @@ constexpr std::size_t MAX_QUINTESSENCE_ORBS = 256;
 constexpr float QUINTESSENCE_ORB_LIFETIME = 30.0f;
 constexpr int MAX_SAFE_SPAWN_CANDIDATES = 32;
 constexpr float SPAWN_BOUNDS_MARGIN = 0.25f;
+constexpr float ENEMY_SPATIAL_CELL_SIZE = 64.0f;
+
+std::uint64_t SpatialCellKey(int x, int y) {
+    return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(x)) << 32U) |
+        static_cast<std::uint32_t>(y);
+}
 
 bool ContainsRectangle(Rectangle outer, Rectangle inner) {
     return inner.x >= outer.x + SPAWN_BOUNDS_MARGIN &&
@@ -78,6 +86,7 @@ void ObjectManager::Configure(
 
 void ObjectManager::RebuildViews() {
     enemyView.clear();
+    enemyIndex.clear();
     interactableView.clear();
     enemyView.reserve(enemies.size());
     interactableView.reserve(interactables.size());
@@ -85,24 +94,46 @@ void ObjectManager::RebuildViews() {
     for (const std::unique_ptr<Enemy>& enemy : enemies) {
         if (!enemy) continue;
         enemyView.push_back(enemy.get());
+        enemyIndex.emplace(enemy->GetObjectId(), enemy.get());
     }
     for (const std::unique_ptr<GameObject>& interactable : interactables) {
         if (!interactable) continue;
         interactableView.push_back(interactable.get());
+    }
+    RebuildEnemySpatialIndex();
+}
+
+void ObjectManager::RebuildEnemySpatialIndex() {
+    enemySpatialBuckets.clear();
+    enemySpatialBuckets.reserve(enemyView.size());
+    for (Enemy* enemy : enemyView) {
+        if (!enemy || enemy->IsDead() || !enemy->IsEnabled()) continue;
+        Vector2 position = enemy->GetPosition();
+        int cellX = static_cast<int>(std::floor(
+            position.x / ENEMY_SPATIAL_CELL_SIZE
+        ));
+        int cellY = static_cast<int>(std::floor(
+            position.y / ENEMY_SPATIAL_CELL_SIZE
+        ));
+        enemySpatialBuckets[SpatialCellKey(cellX, cellY)].push_back(enemy);
     }
 }
 
 void ObjectManager::RouteObject(std::unique_ptr<GameObject> object) {
     if (!object) return;
 
-    if (auto* enemy = dynamic_cast<Enemy*>(object.get())) {
-        object.release();
-        enemies.emplace_back(enemy);
+    if (dynamic_cast<Enemy*>(object.get())) {
+        std::unique_ptr<Enemy> ownedEnemy(
+            static_cast<Enemy*>(object.release())
+        );
+        enemies.push_back(std::move(ownedEnemy));
         return;
     }
-    if (auto* pickup = dynamic_cast<Pot*>(object.get())) {
-        object.release();
-        pickups.emplace_back(pickup);
+    if (dynamic_cast<Pot*>(object.get())) {
+        std::unique_ptr<Pot> ownedPickup(
+            static_cast<Pot*>(object.release())
+        );
+        pickups.push_back(std::move(ownedPickup));
         return;
     }
     interactables.push_back(std::move(object));
@@ -120,7 +151,11 @@ void ObjectManager::SpawnAll(const DynamicSpawnList& requests) {
 }
 
 GameObject* ObjectManager::Spawn(MapObjectId type, Vector2 position) {
-    if (!teamManager || !pathFinding || !levelManager) return nullptr;
+    if (!teamManager || !pathFinding || !levelManager) {
+        throw std::logic_error(
+            "ObjectManager::Spawn called before manager configuration"
+        );
+    }
     std::unique_ptr<GameObject> object = EntityFactory::CreateEntity(
         type,
         position,
@@ -129,7 +164,12 @@ GameObject* ObjectManager::Spawn(MapObjectId type, Vector2 position) {
         *pathFinding,
         *levelManager
     );
-    if (!object) return nullptr;
+    if (!object) {
+        throw std::invalid_argument(
+            "ObjectManager::Spawn does not support MapObjectId " +
+            std::to_string(static_cast<int>(type))
+        );
+    }
     GameObject* result = object.get();
     RouteObject(std::move(object));
     RebuildViews();
@@ -137,7 +177,11 @@ GameObject* ObjectManager::Spawn(MapObjectId type, Vector2 position) {
 }
 
 bool ObjectManager::QueueSpawn(MapObjectId type, Vector2 position) {
-    if (!teamManager || !pathFinding || !levelManager) return false;
+    if (!teamManager || !pathFinding || !levelManager) {
+        throw std::logic_error(
+            "ObjectManager::QueueSpawn called before manager configuration"
+        );
+    }
 
     std::unique_ptr<GameObject> object = EntityFactory::CreateEntity(
         type,
@@ -386,6 +430,7 @@ void ObjectManager::UpdateEntities(float deltaTime) {
     }
 
     ProcessPendingAdditions();
+    RebuildEnemySpatialIndex();
 }
 
 void ObjectManager::AddProjectile(
@@ -394,18 +439,16 @@ void ObjectManager::AddProjectile(
     if (projectile) projectiles.push_back(std::move(projectile));
 }
 
-void ObjectManager::AddProjectile(Projectile* projectile) {
-    AddProjectile(std::unique_ptr<Projectile>(projectile));
-}
-
 void ObjectManager::UpdateProjectiles(float deltaTime) {
     if (!levelManager) return;
 
-    for (auto iterator = projectiles.begin(); iterator != projectiles.end();) {
-        Projectile& projectile = **iterator;
+    for (std::size_t projectileIndex = 0;
+         projectileIndex < projectiles.size();) {
+        Projectile& projectile = *projectiles[projectileIndex];
         projectile.Update(deltaTime);
         if (!projectile.IsActive()) {
-            iterator = projectiles.erase(iterator);
+            projectiles[projectileIndex] = std::move(projectiles.back());
+            projectiles.pop_back();
             continue;
         }
 
@@ -448,17 +491,24 @@ void ObjectManager::UpdateProjectiles(float deltaTime) {
         }
 
         if (!projectile.IsEnemyProjectile()) {
-            for (const std::unique_ptr<Enemy>& enemy : enemies) {
-                if (!enemy || !enemy->IsEnabled() || enemy->IsDead()) continue;
+            constexpr float MAXIMUM_ENEMY_EXTENT = 96.0f;
+            Rectangle queryBounds = {
+                projectileBox.x - MAXIMUM_ENEMY_EXTENT,
+                projectileBox.y - MAXIMUM_ENEMY_EXTENT,
+                projectileBox.width + MAXIMUM_ENEMY_EXTENT * 2.0f,
+                projectileBox.height + MAXIMUM_ENEMY_EXTENT * 2.0f
+            };
+            GetEnemiesNear(queryBounds, projectileEnemyScratch);
+            for (Enemy* enemy : projectileEnemyScratch) {
                 if (!CheckCollisionRecs(
                         projectileBox,
                         enemy->GetBoundingBox()) ||
-                    projectile.HasHitTarget(enemy.get())) {
+                    projectile.HasHitTarget(enemy)) {
                     continue;
                 }
 
                 enemy->TakeDamage(projectile.GetDamage());
-                projectile.RecordHit(enemy.get());
+                projectile.RecordHit(enemy);
                 Vector2 knockbackDirection = Vector2Subtract(
                     enemy->GetPosition(),
                     projectile.GetPosition()
@@ -558,9 +608,10 @@ void ObjectManager::UpdateProjectiles(float deltaTime) {
         }
 
         if (!projectile.IsActive()) {
-            iterator = projectiles.erase(iterator);
+            projectiles[projectileIndex] = std::move(projectiles.back());
+            projectiles.pop_back();
         } else {
-            ++iterator;
+            ++projectileIndex;
         }
     }
 }
@@ -592,7 +643,8 @@ void ObjectManager::UpdateAssists(float deltaTime) {
 
 void ObjectManager::SpawnQuintessenceOrb(Vector2 position) {
     if (orbs.size() >= MAX_QUINTESSENCE_ORBS) {
-        orbs.erase(orbs.begin());
+        orbs.front() = std::move(orbs.back());
+        orbs.pop_back();
     }
     QuintessenceOrb orb;
     orb.position = position;
@@ -605,36 +657,36 @@ void ObjectManager::SpawnQuintessenceOrb(Vector2 position) {
 
 void ObjectManager::UpdateOrbs(float deltaTime) {
     Paladin* player = teamManager ? teamManager->GetActivePaladin() : nullptr;
-    for (auto iterator = orbs.begin(); iterator != orbs.end();) {
-        iterator->age += deltaTime;
-        if (iterator->age >= QUINTESSENCE_ORB_LIFETIME) {
-            iterator = orbs.erase(iterator);
+    std::size_t orbIndex = 0;
+    while (orbIndex < orbs.size()) {
+        QuintessenceOrb& orb = orbs[orbIndex];
+        orb.age += deltaTime;
+        if (orb.age >= QUINTESSENCE_ORB_LIFETIME) {
+            orb = std::move(orbs.back());
+            orbs.pop_back();
             continue;
         }
-        if (!iterator->isAttracted) {
-            iterator->velocity.x -= iterator->velocity.x * 4.0f * deltaTime;
-            iterator->velocity.y -= iterator->velocity.y * 4.0f * deltaTime;
+        if (!orb.isAttracted) {
+            orb.velocity.x -= orb.velocity.x * 4.0f * deltaTime;
+            orb.velocity.y -= orb.velocity.y * 4.0f * deltaTime;
         }
-        iterator->position = Vector2Add(
-            iterator->position,
-            Vector2Scale(iterator->velocity, deltaTime)
+        orb.position = Vector2Add(
+            orb.position,
+            Vector2Scale(orb.velocity, deltaTime)
         );
-        iterator->positionHistory.push_front(iterator->position);
-        if (iterator->positionHistory.size() > 12) {
-            iterator->positionHistory.pop_back();
-        }
+        orb.PushHistory(orb.position);
 
         if (player) {
             Vector2 difference = Vector2Subtract(
                 player->GetPosition(),
-                iterator->position
+                orb.position
             );
             float distanceSquared = Vector2LengthSqr(difference);
             if (distanceSquared < 75.0f * 75.0f) {
-                iterator->isAttracted = true;
+                orb.isAttracted = true;
             }
-            if (iterator->isAttracted && distanceSquared > 0.0f) {
-                iterator->velocity = Vector2Scale(
+            if (orb.isAttracted && distanceSquared > 0.0f) {
+                orb.velocity = Vector2Scale(
                     Vector2Normalize(difference),
                     400.0f
                 );
@@ -642,11 +694,12 @@ void ObjectManager::UpdateOrbs(float deltaTime) {
             if (distanceSquared < 20.0f * 20.0f) {
                 teamManager->AddQuintessence(10.0f);
                 AudioManager::GetInstance().PlaySoundEffect("fx_energy");
-                iterator = orbs.erase(iterator);
+                orb = std::move(orbs.back());
+                orbs.pop_back();
                 continue;
             }
         }
-        ++iterator;
+        ++orbIndex;
     }
 }
 
@@ -659,7 +712,10 @@ void ObjectManager::AddDepthRenderItems(
     std::vector<DepthRenderItem>& items
 ) {
     auto appendObject = [&items](GameObject* object) {
-        if (!object) return;
+        if (!object ||
+            !IsWorldRectangleVisible(object->GetBoundingBox())) {
+            return;
+        }
         items.push_back({
             object->GetBoundingBox().y + object->GetBoundingBox().height,
             [object]() { object->Draw(); }
@@ -675,7 +731,10 @@ void ObjectManager::AddDepthRenderItems(
         appendObject(interactable.get());
     }
     for (const std::unique_ptr<Projectile>& projectile : projectiles) {
-        if (!projectile) continue;
+        if (!projectile ||
+            !IsWorldRectangleVisible(projectile->GetBoundingBox())) {
+            continue;
+        }
         Projectile* pointer = projectile.get();
         items.push_back({
             pointer->GetBoundingBox().y + pointer->GetBoundingBox().height,
@@ -683,7 +742,10 @@ void ObjectManager::AddDepthRenderItems(
         });
     }
     for (const std::unique_ptr<Rover>& rover : assists) {
-        if (!rover) continue;
+        if (!rover ||
+            !IsWorldRectangleVisible(rover->GetBoundingBox())) {
+            continue;
+        }
         Rover* pointer = rover.get();
         items.push_back({
             pointer->GetPosition().y,
@@ -696,13 +758,14 @@ void ObjectManager::DrawOrbs() const {
     Texture2D texture = AssetManager::GetInstance().GetTexture("Quint_Orb");
     for (const QuintessenceOrb& orb : orbs) {
         for (std::size_t index = 0;
-             index + 1 < orb.positionHistory.size();
+             index + 1 < orb.historyCount;
              ++index) {
             float progress = 1.0f -
-                (float)index / (float)orb.positionHistory.size();
+                static_cast<float>(index) /
+                    static_cast<float>(orb.historyCount);
             DrawLineEx(
-                orb.positionHistory[index],
-                orb.positionHistory[index + 1],
+                orb.HistoryAt(index),
+                orb.HistoryAt(index + 1),
                 progress * 6.0f,
                 ColorAlpha(SKYBLUE, progress * 0.8f)
             );
@@ -773,10 +836,45 @@ GameObject* ObjectManager::FindObject(ObjectId id) const {
 }
 
 Enemy* ObjectManager::FindEnemy(ObjectId id) const {
-    for (Enemy* enemy : enemyView) {
-        if (enemy && enemy->GetObjectId() == id) return enemy;
+    auto found = enemyIndex.find(id);
+    return found == enemyIndex.end() ? nullptr : found->second;
+}
+
+void ObjectManager::GetEnemiesNear(
+    Rectangle bounds,
+    std::vector<Enemy*>& output
+) const {
+    output.clear();
+    int minimumX = static_cast<int>(std::floor(
+        bounds.x / ENEMY_SPATIAL_CELL_SIZE
+    ));
+    int maximumX = static_cast<int>(std::floor(
+        (bounds.x + bounds.width) / ENEMY_SPATIAL_CELL_SIZE
+    ));
+    int minimumY = static_cast<int>(std::floor(
+        bounds.y / ENEMY_SPATIAL_CELL_SIZE
+    ));
+    int maximumY = static_cast<int>(std::floor(
+        (bounds.y + bounds.height) / ENEMY_SPATIAL_CELL_SIZE
+    ));
+    for (int y = minimumY; y <= maximumY; ++y) {
+        for (int x = minimumX; x <= maximumX; ++x) {
+            auto bucket = enemySpatialBuckets.find(SpatialCellKey(x, y));
+            if (bucket == enemySpatialBuckets.end()) continue;
+            for (Enemy* enemy : bucket->second) {
+                if (!enemy || enemy->IsDead() || !enemy->IsEnabled()) {
+                    continue;
+                }
+                Vector2 position = enemy->GetPosition();
+                if (position.x >= bounds.x &&
+                    position.y >= bounds.y &&
+                    position.x <= bounds.x + bounds.width &&
+                    position.y <= bounds.y + bounds.height) {
+                    output.push_back(enemy);
+                }
+            }
+        }
     }
-    return nullptr;
 }
 
 Pot* ObjectManager::FindNearestPickup(Vector2 position, float radius) const {
