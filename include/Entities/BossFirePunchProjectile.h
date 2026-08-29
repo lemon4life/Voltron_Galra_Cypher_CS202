@@ -13,6 +13,7 @@ private:
     float movementSpeed;
     float maximumTurnRateDegrees;
     float currentAngleDegrees;
+    float remainingLifetime;
     float animationTimer = 0.0f;
     int animationFrame = 0;
 

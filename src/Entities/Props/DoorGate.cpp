@@ -14,7 +14,8 @@ DoorGate::DoorGate(Vector2 pos)
       currentFrame(0),
       animationTimer(0.0f),
       frameDuration(0.05f), // 0.05s per frame
-      totalFrames(8) 
+      totalFrames(8),
+      projectileBarrierActive(false)
 {
     boundingBox = {pos.x, pos.y, Constants::RENDER_TILE_SIZE, Constants::RENDER_TILE_SIZE};
     tex = AssetManager::GetInstance().GetTexture("doorGate");
@@ -66,6 +67,13 @@ void DoorGate::Update(float deltaTime) {
 }
 
 Rectangle DoorGate::GetBoundingBox() const {
+    return boundingBox;
+}
+
+Rectangle DoorGate::GetCollisionBox() const {
+    // The sprite is two tiles tall, but the physical barrier occupies the
+    // generated doorway tile. Keeping this explicit prevents visual height
+    // changes from silently changing gate collision.
     return boundingBox;
 }
 

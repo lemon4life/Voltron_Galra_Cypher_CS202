@@ -5,12 +5,110 @@
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/ParticleManager.h"
+#include "Core/Utils/LineOfSightGeometry.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
+#include <limits>
 #include "Core/Constants.h"
 
 namespace {
     constexpr float MELEE_KNOCKBACK_FORCE = 350.0f;
+    constexpr float MELEE_ATTACK_RANGE = 48.0f;
+    constexpr float MAX_BLADE_SAMPLE_ANGLE = 12.0f;
+
+    struct BladeCapsule {
+        Vector2 start;
+        Vector2 end;
+        float radius;
+    };
+
+    std::vector<BladeCapsule> BuildBladeSweep(
+        Vector2 origin,
+        float startAngleDegrees,
+        float endAngleDegrees,
+        float bladeLength,
+        float bladeRadius
+    ) {
+        float angleDifference = endAngleDegrees - startAngleDegrees;
+        int sampleCount = std::max(
+            1,
+            (int)std::ceil(
+                std::abs(angleDifference) / MAX_BLADE_SAMPLE_ANGLE
+            )
+        );
+        std::vector<BladeCapsule> samples;
+        samples.reserve((std::size_t)sampleCount + 1);
+
+        for (int index = 0; index <= sampleCount; ++index) {
+            float amount = (float)index / (float)sampleCount;
+            float angle = startAngleDegrees + angleDifference * amount;
+            float radians = angle * DEG2RAD;
+            Vector2 direction = { std::cos(radians), std::sin(radians) };
+            samples.push_back({
+                origin,
+                {
+                    origin.x + direction.x * bladeLength,
+                    origin.y + direction.y * bladeLength
+                },
+                bladeRadius
+            });
+        }
+        return samples;
+    }
+
+    Rectangle GetBladeSweepBounds(
+        const std::vector<BladeCapsule>& samples
+    ) {
+        float minimumX = std::numeric_limits<float>::max();
+        float minimumY = std::numeric_limits<float>::max();
+        float maximumX = std::numeric_limits<float>::lowest();
+        float maximumY = std::numeric_limits<float>::lowest();
+
+        for (const BladeCapsule& sample : samples) {
+            minimumX = std::min(
+                minimumX,
+                std::min(sample.start.x, sample.end.x) - sample.radius
+            );
+            minimumY = std::min(
+                minimumY,
+                std::min(sample.start.y, sample.end.y) - sample.radius
+            );
+            maximumX = std::max(
+                maximumX,
+                std::max(sample.start.x, sample.end.x) + sample.radius
+            );
+            maximumY = std::max(
+                maximumY,
+                std::max(sample.start.y, sample.end.y) + sample.radius
+            );
+        }
+
+        return {
+            minimumX,
+            minimumY,
+            maximumX - minimumX,
+            maximumY - minimumY
+        };
+    }
+
+    bool BladeSweepIntersects(
+        const std::vector<BladeCapsule>& samples,
+        Rectangle bounds
+    ) {
+        return std::any_of(
+            samples.begin(),
+            samples.end(),
+            [bounds](const BladeCapsule& sample) {
+                return LineOfSightGeometry::CapsuleIntersectsRectangle(
+                    sample.start,
+                    sample.end,
+                    sample.radius,
+                    bounds
+                );
+            }
+        );
+    }
 }
 
 MeleeAttackStrategy::MeleeAttackStrategy(
@@ -30,7 +128,9 @@ MeleeAttackStrategy::MeleeAttackStrategy(
       inputBuffered(false),
       kinematics(WeaponKinematicsType::Melee),
       lightDamage(lightDamage),
-      heavyDamage(heavyDamage)
+      heavyDamage(heavyDamage),
+      lastCollisionAngleOffset(0.0f),
+      lastFacingLeft(false)
 {
     aimDir = {1.0f, 0.0f};
     aimAngle = 0.0f;
@@ -46,8 +146,10 @@ void MeleeAttackStrategy::Attack(Vector2 playerPos) {
         frameTimer = 0.0f;
         inputBuffered = false;
         objectsHit.clear();
+        mapObjectsHit.clear();
         AudioManager::GetInstance().PlayRandomSwordSlash();
         kinematics.ApplySwing(0.2f, 120.0f, (comboStep == 2));
+        lastCollisionAngleOffset = GetSignedSwingOffset();
     } else if (comboStep == 1 || comboStep == 2) {
         // Buffer the next hit if clicked during the active swing
         if (currentFrame >= 1) {
@@ -67,52 +169,12 @@ void MeleeAttackStrategy::Update(float deltaTime) {
 
         // Process Hitbox Logic ON Impact Frames (frames 1 & 2, since 0-indexed)
         if (currentFrame == 1 || currentFrame == 2) {
-            Vector2 playerPos = lastPlayerPos; // Set from Attack() or Draw()
-            
-            float hitboxWidth = 48.0f;
-            float hitboxHeight = 64.0f;
-            
-            // Spawn AABB attached to Keith's front side
-            float distanceOut = 24.0f;
-            Vector2 hitCenter = { playerPos.x + aimDir.x * distanceOut, playerPos.y + aimDir.y * distanceOut };
-            Rectangle hitbox = { hitCenter.x - hitboxWidth/2.0f, hitCenter.y - hitboxHeight/2.0f, hitboxWidth, hitboxHeight };
-            
-            const auto& enemies = GameManager::GetInstance()
-                .GetObjectManager().GetEnemies();
-            for (Enemy* enemy : enemies) {
-                if (std::find(objectsHit.begin(), objectsHit.end(), enemy)
-                    != objectsHit.end()) {
-                    continue;
-                }
-                if (!CheckCollisionRecs(hitbox, enemy->GetBoundingBox())) {
-                    continue;
-                }
-
-                int damage =
-                    (comboStep == 1) ? lightDamage : heavyDamage;
-                if (!enemy->IsEnabled()) continue;
-                    
-                enemy->TakeDamage(damage);
-                    
-                enemy->ApplyKnockback(aimDir, MELEE_KNOCKBACK_FORCE);
-                if (owner) owner->OnHitEnemy(damage);
-                objectsHit.push_back(enemy);
-                GameManager::GetInstance().AddImpactEffect(
-                    enemy->GetPosition()
-                );
-            }
-
-            MapObject* mapObject = GameManager::GetInstance()
-                .GetLevelManager()
-                ->FindSolidMapObjectCollision(hitbox);
-            if (mapObject) {
-                int damage =
-                    (comboStep == 1) ? lightDamage : heavyDamage;
-                mapObject->TakeDamage(damage);
-                GameManager::GetInstance().AddImpactEffect(
-                    mapObject->GetPosition()
-                );
-            }
+            float currentOffset = GetSignedSwingOffset();
+            ProcessBladeCollision(
+                aimAngle + lastCollisionAngleOffset,
+                aimAngle + currentOffset
+            );
+            lastCollisionAngleOffset = currentOffset;
         }
 
         // Handle animation end & combo transition
@@ -123,8 +185,10 @@ void MeleeAttackStrategy::Update(float deltaTime) {
                 currentFrame = 0;
                 inputBuffered = false;
                 objectsHit.clear();
+                mapObjectsHit.clear();
                 AudioManager::GetInstance().PlayRandomSwordSlash();
                 kinematics.ApplySwing(0.2f, 120.0f, (comboStep == 2));
+                lastCollisionAngleOffset = GetSignedSwingOffset();
             } else {
                 // End combo
                 comboStep = 0;
@@ -135,8 +199,74 @@ void MeleeAttackStrategy::Update(float deltaTime) {
     }
 }
 
+float MeleeAttackStrategy::GetSignedSwingOffset() const {
+    bool facingLeft = aimDir.x < -0.001f
+        ? true
+        : (aimDir.x > 0.001f ? false : lastFacingLeft);
+    return facingLeft
+        ? -kinematics.GetAngleOffset()
+        : kinematics.GetAngleOffset();
+}
+
+void MeleeAttackStrategy::ProcessBladeCollision(
+    float startAngleDegrees,
+    float endAngleDegrees
+) {
+    float bladeLength = MELEE_ATTACK_RANGE;
+    float bladeRadius = weaponTex.id != 0
+        ? std::max(3.0f, (float)weaponTex.height * 0.25f)
+        : 5.0f;
+    std::vector<BladeCapsule> bladeSweep = BuildBladeSweep(
+        lastPlayerPos,
+        startAngleDegrees,
+        endAngleDegrees,
+        bladeLength,
+        bladeRadius
+    );
+    Rectangle broadPhase = GetBladeSweepBounds(bladeSweep);
+    int damage = comboStep == 1 ? lightDamage : heavyDamage;
+
+    GameManager& gameManager = GameManager::GetInstance();
+    const auto& enemies = gameManager.GetObjectManager().GetEnemies();
+    for (Enemy* enemy : enemies) {
+        if (!enemy || !enemy->IsEnabled() ||
+            std::find(objectsHit.begin(), objectsHit.end(), enemy) !=
+                objectsHit.end() ||
+            !CheckCollisionRecs(broadPhase, enemy->GetBoundingBox()) ||
+            !BladeSweepIntersects(bladeSweep, enemy->GetBoundingBox())) {
+            continue;
+        }
+
+        enemy->TakeDamage(damage);
+        enemy->ApplyKnockback(aimDir, MELEE_KNOCKBACK_FORCE);
+        if (owner) owner->OnHitEnemy(damage);
+        objectsHit.push_back(enemy);
+        gameManager.AddImpactEffect(enemy->GetPosition());
+    }
+
+    LevelManager* levelManager = gameManager.GetLevelManager();
+    if (!levelManager) return;
+    for (MapObject* mapObject :
+         levelManager->FindSolidMapObjectCollisions(broadPhase)) {
+        if (!mapObject ||
+            mapObject->GetMapObjectType() != MapObjectId::DestructibleBox ||
+            mapObjectsHit.find(mapObject->GetHandle()) != mapObjectsHit.end() ||
+            !BladeSweepIntersects(
+                bladeSweep,
+                mapObject->GetCollisionBox()
+            )) {
+            continue;
+        }
+
+        mapObject->TakeDamage(damage);
+        mapObjectsHit.insert(mapObject->GetHandle());
+        gameManager.AddImpactEffect(mapObject->GetPosition());
+    }
+}
+
 void MeleeAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
     lastPlayerPos = playerPos;
+    lastFacingLeft = facingLeft;
     float currentAngle = aimAngle + (facingLeft ? -kinematics.GetAngleOffset() : kinematics.GetAngleOffset());
 
     // 1. Draw Weapon

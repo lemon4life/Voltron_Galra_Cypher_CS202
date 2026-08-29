@@ -1636,7 +1636,9 @@ bool PathFindingManager::IsBlocked(Rectangle bounds) const {
 }
 
 Rectangle PathFindingManager::GetLevelBounds() const {
-    return levelManager.GetLevelBounds();
+    // During combat, collision recovery must stay on the room side of a
+    // locked gate instead of selecting a clear point in the corridor.
+    return levelManager.GetCurrentRoomBounds();
 }
 
 std::vector<Vector2> PathFindingManager::GetNavigableTileCentersWithin(

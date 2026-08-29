@@ -6,7 +6,13 @@
 
 class AudioManager {
 private:
+    struct SoundVoicePool {
+        std::vector<Sound> voices;
+        std::size_t nextVoice = 0;
+    };
+
     std::map<std::string, Sound> sounds;
+    std::map<std::string, SoundVoicePool> soundVoicePools;
     std::map<std::string, Music> music;
 
     std::vector<Sound> laserSounds;
@@ -22,6 +28,11 @@ private:
 
     AudioManager(); // Private constructor (Initializes Raylib Audio)
     ~AudioManager(); // Private destructor (Closes Raylib Audio)
+
+    void CreateSoundVoicePool(
+        const std::string& name,
+        std::size_t voiceCount
+    );
 
 public:
     static AudioManager& GetInstance();
@@ -44,6 +55,7 @@ public:
     // Volume Control
     void LoadSound(const std::string& name, const std::string& filepath);
     void PlaySoundEffect(const std::string& name);
+    void PlayPolyphonicSoundEffect(const std::string& name);
     void PlaySoundEffectVolume(const std::string& name, float volumeScale);
     void PlaySoundEffectPitch(const std::string& name, float pitch);
 

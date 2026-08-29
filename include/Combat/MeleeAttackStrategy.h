@@ -1,6 +1,9 @@
 #pragma once
 #include "Combat/IAttackStrategy.h"
 #include "Combat/WeaponKinematics.h"
+#include "Core/World/ObjectId.h"
+
+#include <unordered_set>
 #include <vector>
 
 class GameObject;
@@ -21,8 +24,17 @@ private:
     WeaponKinematics kinematics;  // if player clicks again during active combo
     int lightDamage;
     int heavyDamage;
+    float lastCollisionAngleOffset;
+    bool lastFacingLeft;
     
     std::vector<GameObject*> objectsHit; // Track objects hit in the current swing
+    std::unordered_set<MapObjectHandle> mapObjectsHit;
+
+    float GetSignedSwingOffset() const;
+    void ProcessBladeCollision(
+        float startAngleDegrees,
+        float endAngleDegrees
+    );
 
 public:
     MeleeAttackStrategy(

@@ -234,6 +234,7 @@ void AssetManager::QueueCharacterAssets() {
     // Boss
     add("Boss_Idle", "assets/sprites/Enemy/Boss/Boss-1-idle.png", true);
     add("Boss_Run", "assets/sprites/Enemy/Boss/boss-run-1.png", true);
+    add("Boss_Down", "assets/sprites/Enemy/Boss/Boss-died.png", true);
     add("Boss_Spell", "assets/sprites/Enemy/Boss/boss-spell.png", true);
     add("Boss_Punch_Ready", "assets/sprites/Enemy/Boss/Boss-punch-ready.png", true);
     add("Boss_Punch_Body", "assets/sprites/Enemy/Boss/Boss-punch-body.png", true);

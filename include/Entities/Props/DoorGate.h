@@ -16,9 +16,14 @@ public:
 
     void Update(float deltaTime) override;
     Rectangle GetBoundingBox() const override;
+    Rectangle GetCollisionBox() const override;
 
     void SetState(State newState);
     State GetState() const { return state; }
+    void SetProjectileBarrierActive(bool active) {
+        projectileBarrierActive = active;
+    }
+    bool BlocksProjectiles() const { return projectileBarrierActive; }
     
     // Support for two-pass rendering
     void DrawBaseLayer() override;
@@ -33,4 +38,5 @@ private:
     float animationTimer;
     float frameDuration;
     int totalFrames;
+    bool projectileBarrierActive;
 };

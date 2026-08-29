@@ -252,7 +252,7 @@ void BossPunchState::Update(Boss* enemy, float deltaTime) {
         }
 
         if (frameIndex == BOSS_PUNCH_PLAY_FRAME_COUNT - 1) {
-            AudioManager::GetInstance().PlaySoundEffect(
+            AudioManager::GetInstance().PlayPolyphonicSoundEffect(
                 "boss_fire_punch"
             );
         }

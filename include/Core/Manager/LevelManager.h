@@ -121,12 +121,7 @@ public:
     const LevelMap& GetLevelMap() const { return levelMap; }
     std::shared_ptr<RoomNode> GetCurrentlyLockedRoom() const { return currentlyLockedRoom; }
     RoomState GetActiveRoomState() const { return (currentlyLockedRoom) ? currentlyLockedRoom->state : RoomState::IDLE; }
-    void SetActiveRoomState(RoomState s) {
-        if (currentlyLockedRoom && currentlyLockedRoom->state != s) {
-            currentlyLockedRoom->state = s;
-            MarkNavigationChanged();
-        }
-    }
+    void SetActiveRoomState(RoomState state);
     bool IsProceduralDungeon() const {
         return levelMode == LevelMode::Procedural;
     }
@@ -153,6 +148,10 @@ public:
         Vector2 desiredDisplacement
     ) const;
     MapObject* FindSolidMapObjectCollision(Rectangle box) const;
+    std::vector<MapObject*> FindSolidMapObjectCollisions(
+        Rectangle box
+    ) const;
+    MapObject* FindProjectileMapObjectCollision(Rectangle box) const;
     void ClearLevel();
     MapObject* AddMapObject(std::unique_ptr<MapObject> object);
 

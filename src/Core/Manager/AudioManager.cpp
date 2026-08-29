@@ -17,6 +17,17 @@ void AudioManager::Shutdown() {
         return;
     }
 
+    // Aliases share their sample data with the source sound, so they must be
+    // released before the source sound that owns that data.
+    for (auto& pair : soundVoicePools) {
+        for (Sound& voice : pair.second.voices) {
+            if (!IsSoundValid(voice)) continue;
+            StopSound(voice);
+            UnloadSoundAlias(voice);
+        }
+    }
+    soundVoicePools.clear();
+
     for (auto& pair : sounds) {
         UnloadSound(pair.second);
     }
@@ -97,6 +108,7 @@ void AudioManager::Initialize() {
     LoadSound("drone_dead_0", "assets/audio/SFX/Enemy/drone_dead_0.wav");
     LoadSound("drone_dead_1", "assets/audio/SFX/Enemy/drone_dead_1.wav");
     LoadSound("boss_fire_punch", "assets/audio/SFX/Enemy/boss_fire_punch.mp3");
+    CreateSoundVoicePool("boss_fire_punch", 7);
     LoadSound("boss_stomping", "assets/audio/SFX/Enemy/boss_stomp.mp3");
 
     // SFX - Combat
@@ -199,11 +211,59 @@ void AudioManager::LoadSound(const std::string& name, const std::string& filepat
     }
 }
 
+void AudioManager::CreateSoundVoicePool(
+    const std::string& name,
+    std::size_t voiceCount
+) {
+    auto soundEntry = sounds.find(name);
+    if (soundEntry == sounds.end() ||
+        !IsSoundValid(soundEntry->second) ||
+        voiceCount == 0) {
+        return;
+    }
+
+    SoundVoicePool& pool = soundVoicePools[name];
+    if (!pool.voices.empty()) return;
+
+    pool.voices.reserve(voiceCount);
+    for (std::size_t index = 0; index < voiceCount; ++index) {
+        Sound voice = LoadSoundAlias(soundEntry->second);
+        if (!IsSoundValid(voice)) break;
+        SetSoundVolume(voice, soundEffectsVolume);
+        pool.voices.push_back(voice);
+    }
+}
+
 void AudioManager::PlaySoundEffect(const std::string& name) {
     if (sounds.find(name) != sounds.end()) {
         SetSoundPitch(sounds[name], 1.0f); // Reset pitch in case it was altered
         ::PlaySound(sounds[name]);
     }
+}
+
+void AudioManager::PlayPolyphonicSoundEffect(const std::string& name) {
+    auto poolEntry = soundVoicePools.find(name);
+    if (poolEntry == soundVoicePools.end() ||
+        poolEntry->second.voices.empty()) {
+        PlaySoundEffect(name);
+        return;
+    }
+
+    SoundVoicePool& pool = poolEntry->second;
+    std::size_t selectedVoice = pool.nextVoice % pool.voices.size();
+    for (std::size_t offset = 0; offset < pool.voices.size(); ++offset) {
+        std::size_t candidate = (pool.nextVoice + offset) % pool.voices.size();
+        if (!IsSoundPlaying(pool.voices[candidate])) {
+            selectedVoice = candidate;
+            break;
+        }
+    }
+
+    Sound& voice = pool.voices[selectedVoice];
+    SetSoundPitch(voice, 1.0f);
+    SetSoundVolume(voice, soundEffectsVolume);
+    ::PlaySound(voice);
+    pool.nextVoice = (selectedVoice + 1) % pool.voices.size();
 }
 
 void AudioManager::PlaySoundEffectVolume(const std::string& name, float volumeScale) {
@@ -302,6 +362,11 @@ void AudioManager::SetSoundEffectsVolume(float volume) {
     for (auto& pair : sounds) {
         ::SetSoundVolume(pair.second, soundEffectsVolume);
     }
+    for (auto& pair : soundVoicePools) {
+        for (Sound& voice : pair.second.voices) {
+            ::SetSoundVolume(voice, soundEffectsVolume);
+        }
+    }
     for (Sound& sound : laserSounds) {
         ::SetSoundVolume(sound, soundEffectsVolume);
     }
@@ -336,7 +401,12 @@ float AudioManager::GetMusicVolumeLevel() const {
 }
 
 std::size_t AudioManager::GetSoundCount() const {
-    return sounds.size() + laserSounds.size() + laserGunSounds.size() +
+    std::size_t pooledVoiceCount = 0;
+    for (const auto& pair : soundVoicePools) {
+        pooledVoiceCount += pair.second.voices.size();
+    }
+    return sounds.size() + pooledVoiceCount +
+        laserSounds.size() + laserGunSounds.size() +
         footstepSounds.size() + clickSounds.size() +
         swordSlashSounds.size();
 }

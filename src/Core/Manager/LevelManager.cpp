@@ -25,6 +25,12 @@ namespace {
     constexpr float COLLISION_EDGE_PADDING = 0.001f;
     constexpr float GATE_ESCAPE_STEP = 1.0f;
     constexpr float GATE_ESCAPE_PADDING = 1.0f;
+
+    bool BlocksLineOfSightOrProjectiles(const MapObject& object) {
+        if (object.IsSolid()) return true;
+        const DoorGate* gate = dynamic_cast<const DoorGate*>(&object);
+        return gate && gate->BlocksProjectiles();
+    }
 }
 
 LevelManager::LevelManager()
@@ -180,6 +186,7 @@ void LevelManager::UpdateLevel(
     if (IsProceduralDungeon()) {
         if (currentlyLockedRoom && currentlyLockedRoom->state == RoomState::CLEARED) {
             for (auto* door : currentlyLockedRoom->doors) {
+                door->SetProjectileBarrierActive(false);
                 door->SetState(DoorGate::State::OPENING);
             }
             if (!currentlyLockedRoom->doors.empty()) {
@@ -205,6 +212,7 @@ void LevelManager::UpdateLevel(
                         currentlyLockedRoom = node;
 
                         for (auto* door : node->doors) {
+                            door->SetProjectileBarrierActive(true);
                             door->SetState(DoorGate::State::CLOSING);
                         }
                         if (!node->doors.empty()) {
@@ -451,6 +459,86 @@ MapObject* LevelManager::FindSolidMapObjectCollision(
     return nullptr;
 }
 
+std::vector<MapObject*> LevelManager::FindSolidMapObjectCollisions(
+    Rectangle box
+) const {
+    EnsureLineOfSightBlockerIndex();
+    Vector2 origin = GetLineOfSightGridOrigin();
+    float tileSize = Constants::RENDER_TILE_SIZE;
+    int minimumTileX = (int)std::floor(
+        (box.x - origin.x) / tileSize
+    );
+    int maximumTileX = (int)std::floor(
+        (box.x + box.width - COLLISION_EDGE_PADDING - origin.x) /
+            tileSize
+    );
+    int minimumTileY = (int)std::floor(
+        (box.y - origin.y) / tileSize
+    );
+    int maximumTileY = (int)std::floor(
+        (box.y + box.height - COLLISION_EDGE_PADDING - origin.y) /
+            tileSize
+    );
+
+    std::vector<MapObject*> collisions;
+    std::unordered_set<MapObject*> tested;
+    for (int tileY = minimumTileY; tileY <= maximumTileY; ++tileY) {
+        for (int tileX = minimumTileX; tileX <= maximumTileX; ++tileX) {
+            auto entry = lineOfSightDynamicBlockers.find({ tileX, tileY });
+            if (entry == lineOfSightDynamicBlockers.end()) continue;
+            for (MapObject* object : entry->second) {
+                if (!object || !tested.insert(object).second ||
+                    !object->IsSolid()) {
+                    continue;
+                }
+                if (CheckCollisionRecs(box, object->GetCollisionBox())) {
+                    collisions.push_back(object);
+                }
+            }
+        }
+    }
+    return collisions;
+}
+
+MapObject* LevelManager::FindProjectileMapObjectCollision(
+    Rectangle box
+) const {
+    EnsureLineOfSightBlockerIndex();
+    Vector2 origin = GetLineOfSightGridOrigin();
+    float tileSize = Constants::RENDER_TILE_SIZE;
+    int minimumTileX = (int)std::floor(
+        (box.x - origin.x) / tileSize
+    );
+    int maximumTileX = (int)std::floor(
+        (box.x + box.width - COLLISION_EDGE_PADDING - origin.x) /
+            tileSize
+    );
+    int minimumTileY = (int)std::floor(
+        (box.y - origin.y) / tileSize
+    );
+    int maximumTileY = (int)std::floor(
+        (box.y + box.height - COLLISION_EDGE_PADDING - origin.y) /
+            tileSize
+    );
+    std::unordered_set<MapObject*> tested;
+    for (int tileY = minimumTileY; tileY <= maximumTileY; ++tileY) {
+        for (int tileX = minimumTileX; tileX <= maximumTileX; ++tileX) {
+            auto entry = lineOfSightDynamicBlockers.find({ tileX, tileY });
+            if (entry == lineOfSightDynamicBlockers.end()) continue;
+            for (MapObject* object : entry->second) {
+                if (!object || !tested.insert(object).second ||
+                    !BlocksLineOfSightOrProjectiles(*object)) {
+                    continue;
+                }
+                if (CheckCollisionRecs(box, object->GetCollisionBox())) {
+                    return object;
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+
 Vector2 LevelManager::GetLineOfSightGridOrigin() const {
     return IsProceduralDungeon() && activeRoom
         ? roomOffset
@@ -497,7 +585,7 @@ void LevelManager::EnsureLineOfSightBlockerIndex() const {
     lineOfSightDynamicBlockers.clear();
     float tileSize = Constants::RENDER_TILE_SIZE;
     for (const std::unique_ptr<MapObject>& object : mapObjects) {
-        if (!object || !object->IsSolid()) continue;
+        if (!object || !BlocksLineOfSightOrProjectiles(*object)) continue;
 
         Rectangle bounds = object->GetCollisionBox();
         int minimumTileX = (int)std::floor(
@@ -648,7 +736,7 @@ bool LevelManager::HasClearLineOfSight(
                 }
                 for (const MapObject* blocker : dynamicEntry->second) {
                     if (!blocker ||
-                        !blocker->IsSolid() ||
+                        !BlocksLineOfSightOrProjectiles(*blocker) ||
                         !testedMapBlockers.insert(blocker).second) {
                         continue;
                     }
@@ -806,7 +894,28 @@ void LevelManager::DrawMapCollisionDebug() const {
             Constants::DEBUG_COLLISION_LINE_THICKNESS,
             GOLD
         );
+        const DoorGate* gate = dynamic_cast<const DoorGate*>(object.get());
+        if (gate && gate->BlocksProjectiles()) {
+            DrawRectangleLinesEx(
+                gate->GetCollisionBox(),
+                Constants::DEBUG_COLLISION_LINE_THICKNESS * 2.0f,
+                ORANGE
+            );
+        }
     }
+}
+
+void LevelManager::SetActiveRoomState(RoomState state) {
+    if (!currentlyLockedRoom || currentlyLockedRoom->state == state) return;
+
+    currentlyLockedRoom->state = state;
+    bool projectileBarrierActive = state != RoomState::CLEARED;
+    for (DoorGate* door : currentlyLockedRoom->doors) {
+        if (door) {
+            door->SetProjectileBarrierActive(projectileBarrierActive);
+        }
+    }
+    MarkNavigationChanged();
 }
 
 Vector2 LevelManager::WorldToTile(Vector2 worldPos) const {
@@ -1080,6 +1189,9 @@ DynamicSpawnList LevelManager::GenerateDungeon(int floorNumber) {
                         };
                         auto doorObject = std::make_unique<DoorGate>(worldPos);
                         DoorGate* door = doorObject.get();
+                        door->SetProjectileBarrierActive(
+                            node->state != RoomState::CLEARED
+                        );
                         AddMapObject(std::move(doorObject));
                         node->doors.push_back(door);
                     }
@@ -1089,6 +1201,7 @@ DynamicSpawnList LevelManager::GenerateDungeon(int floorNumber) {
             // Calculate walkable grid for this room now that all entities (props, doors) are spawned
             node->CalculateWalkableGrid(this);
         }
+        MarkNavigationChanged();
     }
 
     printf("GenerateDungeon: Done\n");

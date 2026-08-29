@@ -297,13 +297,17 @@ void ObjectManager::FinalizeEnemyDeath(Enemy& enemy) {
 
     Texture2D downTexture =
         AssetManager::GetInstance().GetTexture("Enemy_Down");
-    if (enemy.GetEnemyType() == EnemyType::DRONE) {
+    Vector2 corpsePosition = enemy.GetPosition();
+    if (enemy.GetEnemyType() == EnemyType::BOSS) {
+        downTexture = AssetManager::GetInstance().GetTexture("Boss_Down");
+        corpsePosition = enemy.GetRenderFootPosition();
+    } else if (enemy.GetEnemyType() == EnemyType::DRONE) {
         downTexture = AssetManager::GetInstance().GetTexture("Drone_down");
     } else if (enemy.GetEnemyType() == EnemyType::DEMON_THA) {
         downTexture = AssetManager::GetInstance().GetTexture("THA_Down");
     }
     effectManager->AddCorpse(
-        enemy.GetPosition(),
+        corpsePosition,
         downTexture,
         enemy.IsFacingLeft(),
         enemy.GetKnockbackVelocity()
@@ -412,7 +416,7 @@ void ObjectManager::UpdateProjectiles(float deltaTime) {
         bool hitEntity = false;
 
         if (!ignoresWorld && !projectile.IsReturning()) {
-            hitMapObject = levelManager->FindSolidMapObjectCollision(
+            hitMapObject = levelManager->FindProjectileMapObjectCollision(
                 projectileBox
             );
             hitWall = levelManager->IsSolidCollision(projectileBox);

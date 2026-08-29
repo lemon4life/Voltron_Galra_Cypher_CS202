@@ -10,6 +10,7 @@ namespace {
     constexpr int FIRE_PUNCH_FRAME_COUNT = 4;
     constexpr float FIRE_PUNCH_FRAME_SIZE = 64.0f;
     constexpr float FIRE_PUNCH_FRAME_DURATION = 0.10f;
+    constexpr float FIRE_PUNCH_MAX_LIFETIME = 3.0f;
     constexpr Vector2 FIRE_PUNCH_DRAW_ORIGIN = { 26.0f, 29.0f };
     constexpr float FIRE_PUNCH_COLLISION_LEFT = 17.0f;
     constexpr float FIRE_PUNCH_COLLISION_TOP = 21.0f;
@@ -78,7 +79,8 @@ BossFirePunchProjectile::BossFirePunchProjectile(
       mapBounds(initialMapBounds),
       movementSpeed(std::max(0.0f, speed)),
       maximumTurnRateDegrees(std::max(0.0f, maximumTurnRate)),
-      currentAngleDegrees(0.0f) {
+      currentAngleDegrees(0.0f),
+      remainingLifetime(FIRE_PUNCH_MAX_LIFETIME) {
     Vector2 initialDirection = {
         initialTargetPosition.x - spawnPosition.x,
         initialTargetPosition.y - spawnPosition.y
@@ -103,6 +105,12 @@ void BossFirePunchProjectile::Update(float deltaTime) {
     if (!IsActive()) return;
 
     float safeDeltaTime = std::max(0.0f, deltaTime);
+    remainingLifetime -= safeDeltaTime;
+    if (remainingLifetime <= 0.0f) {
+        Destroy();
+        return;
+    }
+
     // Steering is intentionally evaluated on every projectile update. The
     // per-second limit is converted to this frame's permitted angle change.
     Paladin* target = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
