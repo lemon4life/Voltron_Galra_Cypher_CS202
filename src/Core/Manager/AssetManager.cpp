@@ -195,6 +195,14 @@ void AssetManager::QueueCharacterAssets() {
     add("Freeze_Big", "assets/sprites/Effects/freeze_big.png", true);
     add("AppearLight", "assets/sprites/Effects/AppearLight.png", true);
     add("AppearSmoke", "assets/sprites/Effects/AppearSmoke.png", true);
+    add("use_skill", "assets/sprites/Effects/use_skill.png", true);
+    add("toxic", "assets/sprites/Effects/toxic.png", true);
+    add("shield", "assets/sprites/Hunk/shield.png", true);
+    add("fire_range", "assets/sprites/Keith/fire_range.png", true);
+    add("ulti_fire", "assets/sprites/Keith/ulti_fire.png", true);
+    add("Ulti_explode", "assets/sprites/Lance/Ulti_explode.png", true);
+    add("skill_explode", "assets/sprites/Pidge/skill_explode.png", true);
+    add("fire_anim", "assets/sprites/Effects/fire_anim.png", true);
 
     // Objects
     add("Quint_Orb", "assets/Objects/quint.png", true);

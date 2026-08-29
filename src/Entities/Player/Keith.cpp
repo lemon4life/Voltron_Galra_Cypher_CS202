@@ -1,5 +1,6 @@
 #include "Entities/Player/Keith.h"
 #include "Core/Manager/AudioManager.h"
+#include "Core/Manager/UltimateIntroManager.h"
 #include "Combat/MeleeAttackStrategy.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/TeamManager.h"
@@ -50,37 +51,40 @@ void Keith::UseUltimate() {
     isUltimateAiming = true;
 }
 
-#include "Core/Manager/UltimateIntroManager.h"
+#include "Entities/Projectiles/KeithUltiProjectile.h"
 
 void Keith::ExecuteUltimateAction() {
     AudioManager::GetInstance().PlaySoundEffect("fx_keith_ult");
     AudioManager::GetInstance().PlaySoundEffect("vl_keith_ult");
-    const std::vector<Enemy*>& enemies = GameManager::GetInstance()
-        .GetObjectManager().GetEnemies();
-    float length = 300.0f;
-    float width = 100.0f;
     
-    for (Enemy* enemy : enemies) {
-        if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {
-            Vector2 pivot = { position.x, position.y + 17.0f };
-            Vector2 offset = Vector2Subtract(enemy->GetPosition(), pivot);
-            
-            // Rotate offset by -currentAimAngle
-            float radAngle = -currentAimAngle;
-            float cosA = cosf(radAngle);
-            float sinA = sinf(radAngle);
-            
-            float localX = offset.x * cosA - offset.y * sinA;
-            float localY = offset.x * sinA + offset.y * cosA;
-            
-            if (localX > 0 && localX < length && localY > -width/2.0f && localY < width/2.0f) {
-                enemy->TakeDamage(100);
-                enemy->GetStatusComponent().AddEffect(EffectType::BURN, 5.0f, 10.0f);
-            }
-        }
-    }
+    Texture2D ultiFireTex = AssetManager::GetInstance().GetTexture("ulti_fire");
+    Texture2D fireAnimTex = AssetManager::GetInstance().GetTexture("fire_anim");
+    Vector2 dir = { cosf(currentAimAngle), sinf(currentAimAngle) };
     
-    ultimateFlashTimer = 0.1f;
+    float speed = 750.0f;
+    float flightTime = 0.65f; // Travels ~500px
+    float lingeringTrailTime = 3.5f;
+    float width = 70.0f;
+    
+    // Significantly scale up base and scalar damage per hit
+    const PaladinDefinition& def = PaladinCatalog::Get(PaladinId::Keith);
+    int damage = static_cast<int>(BaseStats::Damage * def.weapon.maxDamageScalar * damageScalar * 3.5f);
+    if (damage < 250) damage = 250;
+    
+    Vector2 spawnPos = GetWeaponPivot();
+    auto* proj = new KeithUltiProjectile(
+        spawnPos,
+        dir,
+        speed,
+        damage,
+        flightTime,
+        lingeringTrailTime,
+        width,
+        ultiFireTex,
+        fireAnimTex
+    );
+    proj->SetOwner(this);
+    GameManager::GetInstance().AddProjectile(proj);
 }
 
 // ProcessFireCircle is removed
@@ -99,10 +103,6 @@ void Keith::Update(float deltaTime) {
             UltimateIntroManager::GetInstance().PlayIntro(this);
         }
     }
-    
-    if (ultimateFlashTimer > 0.0f) {
-        ultimateFlashTimer -= deltaTime;
-    }
 }
 
 void Keith::UpdateInactive(float deltaTime) {
@@ -113,21 +113,13 @@ void Keith::UpdateInactive(float deltaTime) {
 }
 
 void Keith::Draw() {
-    
     if (isUltimateAiming) {
-        float length = 300.0f;
-        float width = 100.0f;
-        Rectangle ghostRect = { position.x, position.y + 17.0f, length, width };
-        Vector2 origin = { 0.0f, width / 2.0f };
-        DrawRectanglePro(ghostRect, origin, currentAimAngle * RAD2DEG, ColorAlpha(ORANGE, 0.3f));
-    }
-    
-    if (ultimateFlashTimer > 0.0f) {
-        float length = 300.0f;
-        float width = 100.0f;
-        Rectangle flashRect = { position.x, position.y + 17.0f, length, width };
-        Vector2 origin = { 0.0f, width / 2.0f };
-        DrawRectanglePro(flashRect, origin, currentAimAngle * RAD2DEG, ColorAlpha(ORANGE, 0.8f));
+        float length = 500.0f;
+        float width = 70.0f;
+        Vector2 pivot = GetWeaponPivot();
+        Rectangle ghostRect = { pivot.x, pivot.y, length, width };
+        Vector2 origin = { 0.0f, width * 0.5f };
+        DrawRectanglePro(ghostRect, origin, currentAimAngle * RAD2DEG, ColorAlpha(ORANGE, 0.35f));
     }
     
     Paladin::Draw();

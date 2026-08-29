@@ -69,7 +69,7 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
         1.5f,    // hpScalar
         1.15f,   // speedScalar
         100.f,   // maxExEnergy
-        0.8f,    // attackCooldownScalar
+        0.55f,   // attackCooldownScalar (buffed for faster attack cycles)
         {
             "Green Bayard",
             "A grappling katar whose tethered blade pierces targets before returning with zero recoil.",

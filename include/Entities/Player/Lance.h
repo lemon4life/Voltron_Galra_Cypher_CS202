@@ -6,6 +6,7 @@ public:
     Lance(Vector2 pos, CharacterSprites sprites);
     
     void Update(float deltaTime) override;
+    void UpdateInactive(float deltaTime) override;
     void Draw() override;
     void Attack() override;
     void UseSkill() override;
@@ -13,6 +14,11 @@ public:
     void ExecuteUltimateAction() override;
     
 private:
+    struct PendingFreezeTarget {
+        Enemy* enemy;
+        float delay;
+    };
+    std::vector<PendingFreezeTarget> pendingFreezeTargets;
     
     bool isUltimateFlash;
     float ultimateFlashTimer;

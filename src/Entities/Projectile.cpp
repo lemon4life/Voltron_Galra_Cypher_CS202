@@ -65,6 +65,7 @@ void Projectile::Update(float deltaTime) {
             active = false;
         } else {
             float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+            speed = std::max(speed, 1200.0f); // Fast, responsive return velocity
             velocity.x = (toOwner.x / dist) * speed;
             velocity.y = (toOwner.y / dist) * speed;
         }

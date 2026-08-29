@@ -4,7 +4,7 @@
 #include <vector>
 
 class Projectile : public GameObject {
-private:
+protected:
     Vector2 velocity;
     float lifetime;
     float collisionRadius;
@@ -62,6 +62,8 @@ public:
     void SetOwner(GameObject* o) { owner = o; }
     GameObject* GetOwner() const { return owner; }
     void SetMaxFlyTime(float time) { maxFlyTime = time; }
+    float GetMaxFlyTime() const { return maxFlyTime; }
+    float GetFlightTimer() const { return flightTimer; }
     void SetVelocity(Vector2 v) { velocity = v; }
     void SetFixedRotation(bool fixed, float rot) { fixedRotation = fixed; rotationAngle = rot; }
     bool HasFixedRotation() const { return fixedRotation; }

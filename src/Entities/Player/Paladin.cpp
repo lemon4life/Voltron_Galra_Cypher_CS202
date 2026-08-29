@@ -514,6 +514,11 @@ void Paladin::ActivateSkill(float duration) {
     activeSkillDuration = duration > 0.0f ? duration : 5.0f;
     activeSkillTimer = activeSkillDuration;
     skillInitialEx = exEnergy;
+
+    Texture2D useSkillTex = AssetManager::GetInstance().GetTexture("use_skill");
+    if (useSkillTex.id != 0) {
+        AddAttachedEffect(useSkillTex, 8, 0.4f);
+    }
 }
 
 void Paladin::AddExEnergy(float amount) {
