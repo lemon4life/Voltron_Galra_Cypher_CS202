@@ -58,6 +58,20 @@ void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
         return;
     }
 
+    float playerDistance = Vector2Distance(enemyPosition, playerPosition);
+    if (playerDistance < enemy->GetMinimumPlayerDistance()) {
+        Vector2 retreatDirection = NormalizeOrFallback(
+            Vector2Subtract(enemyPosition, playerPosition),
+            { enemy->IsFacingLeft() ? 1.0f : -1.0f, 0.0f }
+        );
+        enemy->UpdateMovement(
+            Vector2Scale(retreatDirection, enemy->GetSpeed()),
+            deltaTime,
+            EnemyWallResponse::Slide
+        );
+        return;
+    }
+
     if (enemy->IsWithinClearDiveRange()) {
         return;
     }
@@ -88,11 +102,19 @@ void EnemyDiverChaseState::Exit(EnemyDiver* enemy) {
 void EnemyDiverReadyState::Enter(EnemyDiver* enemy) {
     enemy->EndPathFinding();
     dTimer = enemy->GetReadyDuration();
+
+    TeamManager* targetTeam = enemy->GetTargetTeam();
+    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
+    Vector2 attackDirection = player
+        ? Vector2Subtract(player->GetPosition(), enemy->GetPosition())
+        : Vector2{ 1.0f, 0.0f };
+    enemy->BeginAttackPreparation(attackDirection);
 }
 
 void EnemyDiverReadyState::Update(EnemyDiver* enemy, float deltaTime) {
     float activeTime = std::min(std::max(deltaTime, 0.0f), dTimer);
     dTimer = std::max(0.0f, dTimer - deltaTime);
+    enemy->AdvanceAttackPreparation(activeTime);
 
     TeamManager* targetTeam = enemy->GetTargetTeam();
     Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
@@ -101,9 +123,8 @@ void EnemyDiverReadyState::Update(EnemyDiver* enemy, float deltaTime) {
         return;
     }
 
-    Vector2 awayDirection = NormalizeOrFallback(
-        Vector2Subtract(enemy->GetPosition(), player->GetPosition()),
-        { 1.0f, 0.0f }
+    Vector2 awayDirection = Vector2Negate(
+        enemy->GetLockedAttackDirection()
     );
 
     EnemyCollision::MoveAgainstWalls(
@@ -119,21 +140,13 @@ void EnemyDiverReadyState::Update(EnemyDiver* enemy, float deltaTime) {
 }
 
 void EnemyDiverReadyState::Exit(EnemyDiver* enemy) {
+    enemy->EndAttackPreparation();
     dTimer = 0.0f;
 }
 
 void EnemyDiverLungingState::Enter(EnemyDiver* enemy) {
     enemy->EndPathFinding();
-
-    TeamManager* targetTeam = enemy->GetTargetTeam();
-    Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
-    Vector2 targetPosition = player
-        ? player->GetPosition()
-        : enemy->GetPosition();
-    lockedDirection = NormalizeOrFallback(
-        Vector2Subtract(targetPosition, enemy->GetPosition()),
-        { 1.0f, 0.0f }
-    );
+    enemy->BeginAttackEffect();
     dTimer = enemy->GetDiveDuration();
     isWaitingToChase = false;
     hasDamagedPlayer = false;
@@ -166,11 +179,12 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
 
     TeamManager* targetTeam = enemy->GetTargetTeam();
     Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
+    Vector2 attackDirection = enemy->GetLockedAttackDirection();
 
     for (int step = 0; step < substepCount; ++step) {
         EnemyMoveResult moveResult = EnemyCollision::MoveAgainstWalls(
             *enemy,
-            Vector2Scale(lockedDirection, substepDistance),
+            Vector2Scale(attackDirection, substepDistance),
             enemy->GetPathAccess(),
             EnemyWallResponse::Stop
         );
@@ -181,10 +195,13 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
         }
 
         if (!hasDamagedPlayer && player &&
-            EnemyCollision::CheckPlayerAttackOverlap(*enemy, *player)) {
+            enemy->DoesAttackHit(player->GetCollisionBox())) {
             hasDamagedPlayer = true;
+            Vector2 attackContact = enemy->GetAttackContactPosition(
+                player->GetCollisionBox()
+            );
 
-            if (EnemyCollision::CheckParry(*enemy, *player)) {
+            if (player->CanParryAttack(attackContact)) {
                 Vector2 playerPosition = player->GetPosition();
                 player->TriggerParrySuccess(enemy);
                 player->IncrementParryCount();
@@ -193,7 +210,7 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
 
                 Vector2 pushDirection = NormalizeOrFallback(
                     Vector2Subtract(enemy->GetPosition(), playerPosition),
-                    Vector2Negate(lockedDirection)
+                    Vector2Negate(attackDirection)
                 );
                 enemy->ApplyCollisionPush(pushDirection, 60.0f);
 
@@ -212,7 +229,7 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
 }
 
 void EnemyDiverLungingState::Exit(EnemyDiver* enemy) {
-    lockedDirection = { 0.0f, 0.0f };
+    enemy->EndAttackEffect();
     isWaitingToChase = false;
     hasDamagedPlayer = false;
     dTimer = 0.0f;
@@ -222,6 +239,7 @@ void EnemyDiverLungingState::BeginRecovery(EnemyDiver* enemy) {
     if (isWaitingToChase) return;
 
     enemy->EndPathFinding();
+    enemy->EndAttackEffect();
     isWaitingToChase = true;
     dTimer = enemy->GetDiveRecoveryDuration();
 }

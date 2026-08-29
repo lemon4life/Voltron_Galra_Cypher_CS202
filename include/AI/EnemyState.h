@@ -83,7 +83,6 @@ public:
 class EnemyDiverLungingState : public ITypedEnemyState<EnemyDiver> {
 private:
     float dTimer = 0.0f;
-    Vector2 lockedDirection = { 0.0f, 0.0f };
     bool isWaitingToChase = false;
     bool hasDamagedPlayer = false;
 

@@ -158,7 +158,7 @@ void EnemyRange::Draw() {
         if (false) {
             float efWidth = sprites.effect.width;
             if (sprites.effect.width > 200) { // Heuristic: it's a spritesheet
-                if (sprites.effect.id == AssetManager::GetInstance().GetTexture("Lance_Stab").id) efWidth /= 4.0f;
+                if (sprites.effect.id == AssetManager::GetInstance().GetTexture("Diver_Attack").id) efWidth /= 4.0f;
                 else if (sprites.effect.id == AssetManager::GetInstance().GetTexture("Sword_Slash_Small").id) efWidth /= 3.0f;
             }
             Rectangle eSrc = { currentEffectFrame * efWidth, 0, efWidth, (float)sprites.effect.height };

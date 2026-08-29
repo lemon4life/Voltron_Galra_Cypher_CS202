@@ -226,7 +226,8 @@ void AssetManager::QueueCharacterAssets() {
     add("Knight_Gun", "assets/sprites/Enemy/Knight_gun.png", true);
     add("Knight_Gun_Bullet", "assets/sprites/Enemy/Knight_gun_bullet.png", true);
     add("Knight_Lance", "assets/sprites/Enemy/Knight_lance.png", true);
-    add("Lance_Stab", "assets/sprites/Effects/Lance_stab_small.png", true);
+    add("Diver_Attack", "assets/sprites/Effects/Lance_stab_small.png", true);
+    add("Diver_Attack_Notification", "assets/sprites/Effects/Diver_attack_noti.png", true);
     add("Knight_Sword", "assets/sprites/Enemy/Knight_sword.png", true);
     add("Sword_Slash_Small", "assets/sprites/Effects/Sword_slash_small.png", true);
     add("Sword_Slash_Big", "assets/sprites/Effects/Sword_slash_big.png", true);
@@ -357,7 +358,7 @@ EnemySprites AssetManager::GetDiverSprites() {
         GetTexture("Knight_Run"),
         GetTexture("Knight_Down"),
         GetTexture("Knight_Lance"),
-        GetTexture("Lance_Stab"),
+        GetTexture("Diver_Attack"),
         {0}
     };
 }

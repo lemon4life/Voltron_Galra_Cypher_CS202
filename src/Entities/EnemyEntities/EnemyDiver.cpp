@@ -4,11 +4,13 @@
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/AssetManager.h"
+#include "Core/Utils/LineOfSightGeometry.h"
 
 #include "raymath.h"
 #include "Core/Constants.h"
 
 #include <algorithm>
+#include <cmath>
 
 
 
@@ -19,14 +21,34 @@ namespace {
     constexpr float DIVER_ATTACK_COOLDOWN = 2.5f;
     constexpr float DIVER_SIGHT_DISTANCE = 40000.0f;
     constexpr float DIVER_OFF_SIGHT_DISTANCE = 40000.0f;
-    constexpr float DIVE_STOP_DISTANCE = 70.f;
+    constexpr float DIVE_STOP_DISTANCE = 85.0f;
+    constexpr float DIVER_MIN_PLAYER_DISTANCE = 55.0f;
+    constexpr float DIVER_LINE_OF_SIGHT_RADIUS = 3.0f;
 
-    constexpr float READY_DURATION = 0.3f;
+    constexpr float READY_DURATION = 1.0f;
+    constexpr float ATTACK_TELEGRAPH_REVEAL_DURATION = 0.7f;
     constexpr float READY_SPEED = 50.0f;
     constexpr float DIVE_SPEED = 300.0f; // DEBUG SLOW
     constexpr float DIVE_DURATION = 0.2f;
     constexpr float DIVE_RECOVERY_DURATION = 0.2f;
     constexpr float DIVER_KNOCKBACK_RESISTANCE = 0.50f;
+
+    constexpr int DIVER_ATTACK_FRAME_COUNT = 4;
+    constexpr float DIVER_ATTACK_FRAME_WIDTH = 96.0f;
+    constexpr float DIVER_ATTACK_FRAME_HEIGHT = 32.0f;
+    constexpr float DIVER_ATTACK_FRAME_DURATION = 0.05f;
+    constexpr float DIVER_ATTACK_SCALE =
+        Constants::GLOBAL_SCALE * 0.7f;
+    // Both 96x32 images share pixel (0, 16) as their fixed world anchor.
+    // The notification's visible area defines the promised attack lane.
+    constexpr Vector2 DIVER_ATTACK_SPRITE_ANCHOR = { 0.0f, 16.0f };
+    constexpr float DIVER_ATTACK_VISIBLE_END_X = 95.0f;
+    constexpr float DIVER_ATTACK_VISIBLE_HEIGHT = 15.0f;
+    constexpr float DIVER_ATTACK_REACH =
+        DIVER_ATTACK_VISIBLE_END_X * DIVER_ATTACK_SCALE;
+    constexpr float DIVER_ATTACK_RADIUS =
+        DIVER_ATTACK_VISIBLE_HEIGHT * DIVER_ATTACK_SCALE * 0.5f;
+    constexpr float DIVER_ATTACK_TELEGRAPH_OPACITY = 0.70f;
 
     constexpr Vector2 DIVER_SIZE = { 24.0f, 24.0f };
     constexpr Vector2 DIVER_RENDER_FOOT_OFFSET = { 0.0f, 16.0f };
@@ -66,6 +88,9 @@ EnemyDiver::EnemyDiver(
     SetKnockbackResistance(DIVER_KNOCKBACK_RESISTANCE);
 
     SetEnemySprites(AssetManager::GetInstance().GetDiverSprites());
+    attackNotification = AssetManager::GetInstance().GetTexture(
+        "Diver_Attack_Notification"
+    );
     ChangeState(GetIdleState());
 }
 
@@ -91,19 +116,31 @@ void EnemyDiver::Update(float deltaTime) {
     
     if (currentState) {
         currentState->Update(this, deltaTime);
-    kinematics.Update(deltaTime);
     }
+    kinematics.Update(deltaTime);
     
     if (health <= 0) return;
 
     UpdateMovementAnimationFlag(updateStartPosition);
 
     if (targetTeam && targetTeam->GetActivePaladin()) {
-        Vector2 targetPos = targetTeam->GetActivePaladin()->GetPosition();
-        facingLeft = targetPos.x < position.x;
-        
-        Vector2 aimDir = Vector2Subtract(targetPos, position);
-        weaponAngle = atan2f(aimDir.y, aimDir.x) * RAD2DEG;
+        bool useLockedAttackDirection =
+            currentState == readyState.get() ||
+            currentState == lungingState.get();
+        Vector2 aimDirection = useLockedAttackDirection
+            ? lockedAttackDirection
+            : Vector2Subtract(
+                targetTeam->GetActivePaladin()->GetPosition(),
+                position
+            );
+        if (Vector2Length(aimDirection) > 0.0f) {
+            aimDirection = Vector2Normalize(aimDirection);
+        } else {
+            aimDirection = { facingLeft ? -1.0f : 1.0f, 0.0f };
+        }
+        facingLeft = aimDirection.x < 0.0f;
+
+        weaponAngle = atan2f(aimDirection.y, aimDirection.x) * RAD2DEG;
         if (facingLeft) weaponAngle += 180.0f; // Adjust because we flip the sprite
     }
     
@@ -117,34 +154,15 @@ void EnemyDiver::Update(float deltaTime) {
         currentRunFrame = 0;
     }
     
-    if (currentState == lungingState.get()) {
-        if (!playingEffect) {
-            playingEffect = true;
-            effectTimer = 0.0f;
-            currentEffectFrame = 0;
-            Vector2 thrustDir = { cosf(weaponAngle * DEG2RAD), sinf(weaponAngle * DEG2RAD) };
-            if (facingLeft) thrustDir = { -thrustDir.x, -thrustDir.y };
-            kinematics.ApplyThrust(thrustDir, 0.2f);
-            
-            float tipOffset = sprites.weapon.width * 0.8f;
-            float radAngle = weaponAngle * DEG2RAD;
-            if (facingLeft) radAngle += PI;
-            staticEffectPos = {
-                position.x + cosf(radAngle) * tipOffset,
-                position.y + 5.0f + sinf(radAngle) * tipOffset
-            };
-        }
-    } else {
-        playingEffect = false;
-    }
-    
     if (playingEffect) {
         effectTimer += deltaTime;
-        if (effectTimer >= 0.05f) {
+        while (effectTimer >= DIVER_ATTACK_FRAME_DURATION) {
+            effectTimer -= DIVER_ATTACK_FRAME_DURATION;
             currentEffectFrame++;
-            effectTimer = 0.0f;
-            if (currentEffectFrame >= 4) {
-                currentEffectFrame = 3;
+            if (currentEffectFrame >= DIVER_ATTACK_FRAME_COUNT) {
+                currentEffectFrame = DIVER_ATTACK_FRAME_COUNT - 1;
+                effectTimer = 0.0f;
+                break;
             }
         }
     }
@@ -197,20 +215,89 @@ void EnemyDiver::Draw() {
         
         DrawTexturePro(sprites.weapon, wSrc, wDest, wOrigin, weaponAngle, tint);
         
-        if (playingEffect && sprites.effect.id != 0) {
-            float efWidth = sprites.effect.width;
-            efWidth /= 4.0f;
-            Rectangle eSrc = { currentEffectFrame * efWidth, 0, efWidth, (float)sprites.effect.height };
-            if (facingLeft) eSrc.width = -eSrc.width;
-            
-            Vector2 tipPos = staticEffectPos;
-            
-            float scale = Constants::GLOBAL_SCALE;
-            Rectangle eDest = { tipPos.x, tipPos.y, efWidth * scale, (float)sprites.effect.height * scale };
-            Vector2 eOrigin = { 0.0f, (sprites.effect.height * scale) / 2.0f };
-            if (facingLeft) eOrigin.x = efWidth * scale;
-            
-            DrawTexturePro(sprites.effect, eSrc, eDest, eOrigin, weaponAngle, tint);
+    }
+
+    float attackAngle = std::atan2(
+        lockedAttackDirection.y,
+        lockedAttackDirection.x
+    ) * RAD2DEG;
+    if (attackTelegraphActive && attackNotification.id != 0) {
+        float revealProgress = std::clamp(
+            attackTelegraphElapsed / ATTACK_TELEGRAPH_REVEAL_DURATION,
+            0.0f,
+            1.0f
+        );
+        float revealedSourceWidth = DIVER_ATTACK_FRAME_WIDTH * revealProgress;
+        if (revealedSourceWidth > 0.0f) {
+            Rectangle source = {
+                0.0f,
+                0.0f,
+                revealedSourceWidth,
+                DIVER_ATTACK_FRAME_HEIGHT
+            };
+            Rectangle destination = {
+                attackEffectStart.x,
+                attackEffectStart.y,
+                revealedSourceWidth * DIVER_ATTACK_SCALE,
+                DIVER_ATTACK_FRAME_HEIGHT * DIVER_ATTACK_SCALE
+            };
+            DrawTexturePro(
+                attackNotification,
+                source,
+                destination,
+                {
+                    DIVER_ATTACK_SPRITE_ANCHOR.x * DIVER_ATTACK_SCALE,
+                    DIVER_ATTACK_SPRITE_ANCHOR.y * DIVER_ATTACK_SCALE
+                },
+                attackAngle,
+                ColorAlpha(RED, DIVER_ATTACK_TELEGRAPH_OPACITY)
+            );
+        }
+    }
+
+    if (playingEffect && sprites.effect.id != 0) {
+        Rectangle source = {
+            currentEffectFrame * DIVER_ATTACK_FRAME_WIDTH,
+            0.0f,
+            DIVER_ATTACK_FRAME_WIDTH,
+            DIVER_ATTACK_FRAME_HEIGHT
+        };
+        Rectangle destination = {
+            attackEffectStart.x,
+            attackEffectStart.y,
+            DIVER_ATTACK_FRAME_WIDTH * DIVER_ATTACK_SCALE,
+            DIVER_ATTACK_FRAME_HEIGHT * DIVER_ATTACK_SCALE
+        };
+        DrawTexturePro(
+            sprites.effect,
+            source,
+            destination,
+            {
+                DIVER_ATTACK_SPRITE_ANCHOR.x * DIVER_ATTACK_SCALE,
+                DIVER_ATTACK_SPRITE_ANCHOR.y * DIVER_ATTACK_SCALE
+            },
+            attackAngle,
+            tint
+        );
+
+        if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
+            Vector2 attackEnd = GetAttackEffectEnd();
+            DrawLineEx(
+                attackEffectStart,
+                attackEnd,
+                DIVER_ATTACK_RADIUS * 2.0f,
+                Fade(RED, 0.35f)
+            );
+            DrawCircleV(
+                attackEffectStart,
+                DIVER_ATTACK_RADIUS,
+                Fade(RED, 0.35f)
+            );
+            DrawCircleV(
+                attackEnd,
+                DIVER_ATTACK_RADIUS,
+                Fade(RED, 0.35f)
+            );
         }
     }
 
@@ -277,10 +364,98 @@ float EnemyDiver::GetDiveStopDistance() const {
     return DIVE_STOP_DISTANCE;
 }
 
+float EnemyDiver::GetMinimumPlayerDistance() const {
+    return DIVER_MIN_PLAYER_DISTANCE;
+}
+
 float EnemyDiver::GetDiveRecoveryDuration() const {
     return DIVE_RECOVERY_DURATION;
 }
 
 float EnemyDiver::GetCollisionClearanceRadius() const {
-    return std::max(size.x, size.y) / 2.0f;
+    return DIVER_LINE_OF_SIGHT_RADIUS;
+}
+
+Vector2 EnemyDiver::CalculateAttackEffectOrigin() const {
+    return position;
+}
+
+Vector2 EnemyDiver::GetAttackEffectEnd() const {
+    return attackEffectEnd;
+}
+
+void EnemyDiver::BeginAttackPreparation(Vector2 direction) {
+    if (Vector2Length(direction) > 0.0f) {
+        lockedAttackDirection = Vector2Normalize(direction);
+    } else {
+        lockedAttackDirection = { facingLeft ? -1.0f : 1.0f, 0.0f };
+    }
+    // Pixel (0,16) of both effect sprites is fixed at the Diver's center
+    // before the Diver starts backing up.
+    // Charging and lunging movement must never move this warning or hitbox.
+    attackEffectStart = CalculateAttackEffectOrigin();
+    attackEffectEnd = {
+        attackEffectStart.x +
+            lockedAttackDirection.x * DIVER_ATTACK_REACH,
+        attackEffectStart.y +
+            lockedAttackDirection.y * DIVER_ATTACK_REACH
+    };
+    attackTelegraphElapsed = 0.0f;
+    attackTelegraphActive = true;
+    playingEffect = false;
+}
+
+void EnemyDiver::AdvanceAttackPreparation(float deltaTime) {
+    attackTelegraphElapsed += std::max(0.0f, deltaTime);
+}
+
+void EnemyDiver::EndAttackPreparation() {
+    attackTelegraphActive = false;
+}
+
+void EnemyDiver::BeginAttackEffect() {
+    EndAttackPreparation();
+    playingEffect = true;
+    effectTimer = 0.0f;
+    currentEffectFrame = 0;
+    kinematics.ApplyThrust(lockedAttackDirection, DIVE_DURATION);
+}
+
+void EnemyDiver::EndAttackEffect() {
+    playingEffect = false;
+    effectTimer = 0.0f;
+    currentEffectFrame = 0;
+}
+
+bool EnemyDiver::DoesAttackHit(Rectangle targetBounds) const {
+    if (!playingEffect) return false;
+    return LineOfSightGeometry::CapsuleIntersectsRectangle(
+        attackEffectStart,
+        GetAttackEffectEnd(),
+        DIVER_ATTACK_RADIUS,
+        targetBounds
+    );
+}
+
+Vector2 EnemyDiver::GetAttackContactPosition(
+    Rectangle targetBounds
+) const {
+    Vector2 targetCenter = {
+        targetBounds.x + targetBounds.width * 0.5f,
+        targetBounds.y + targetBounds.height * 0.5f
+    };
+    Vector2 attackEnd = GetAttackEffectEnd();
+    Vector2 attackSegment = Vector2Subtract(attackEnd, attackEffectStart);
+    float segmentLengthSquared = Vector2LengthSqr(attackSegment);
+    if (segmentLengthSquared <= 0.0f) return attackEffectStart;
+
+    float projection = Vector2DotProduct(
+        Vector2Subtract(targetCenter, attackEffectStart),
+        attackSegment
+    ) / segmentLengthSquared;
+    projection = std::clamp(projection, 0.0f, 1.0f);
+    return Vector2Add(
+        attackEffectStart,
+        Vector2Scale(attackSegment, projection)
+    );
 }

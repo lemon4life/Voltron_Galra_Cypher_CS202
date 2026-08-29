@@ -110,6 +110,8 @@ void AudioManager::Initialize() {
     LoadSound("boss_fire_punch", "assets/audio/SFX/Enemy/boss_fire_punch.mp3");
     CreateSoundVoicePool("boss_fire_punch", 7);
     LoadSound("boss_stomping", "assets/audio/SFX/Enemy/boss_stomp.mp3");
+    LoadSound("enemy_spawn", "assets/audio/SFX/Enemy/spawn.mp3");
+    CreateSoundVoicePool("enemy_spawn", 12);
 
     // SFX - Combat
     LoadSound("fx_laser_bullet", "assets/audio/SFX/Combat/fx_laser_bullet.wav");

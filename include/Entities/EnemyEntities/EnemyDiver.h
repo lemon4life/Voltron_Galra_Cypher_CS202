@@ -13,7 +13,15 @@ private:
     std::unique_ptr<EnemyDiverReadyState> readyState;
     std::unique_ptr<EnemyDiverLungingState> lungingState;
     ILevelLineOfSightQuery& lineOfSightQuery;
-    Vector2 staticEffectPos;
+    Texture2D attackNotification = {};
+    Vector2 attackEffectStart = { 0.0f, 0.0f };
+    Vector2 attackEffectEnd = { 0.0f, 0.0f };
+    Vector2 lockedAttackDirection = { 1.0f, 0.0f };
+    float attackTelegraphElapsed = 0.0f;
+    bool attackTelegraphActive = false;
+
+    Vector2 CalculateAttackEffectOrigin() const;
+    Vector2 GetAttackEffectEnd() const;
 
 public:
     EnemyDiver(
@@ -39,9 +47,20 @@ public:
     float GetReadySpeed() const;
     float GetDiveDuration() const;
     float GetDiveStopDistance() const;
+    float GetMinimumPlayerDistance() const;
     float GetDiveSpeed() const;
     float GetDiveRecoveryDuration() const;
     float GetCollisionClearanceRadius() const;
+    void BeginAttackPreparation(Vector2 direction);
+    void AdvanceAttackPreparation(float deltaTime);
+    void EndAttackPreparation();
+    void BeginAttackEffect();
+    void EndAttackEffect();
+    Vector2 GetLockedAttackDirection() const {
+        return lockedAttackDirection;
+    }
+    bool DoesAttackHit(Rectangle targetBounds) const;
+    Vector2 GetAttackContactPosition(Rectangle targetBounds) const;
     const ILevelLineOfSightQuery& GetLineOfSightQuery() const { return lineOfSightQuery; }
 
 };

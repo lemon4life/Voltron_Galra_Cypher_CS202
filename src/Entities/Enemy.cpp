@@ -121,6 +121,7 @@ void Enemy::TakeDamage(int amount) {
 
 void Enemy::BeginSpawnSequence() {
     EndPathFinding();
+    AudioManager::GetInstance().PlayPolyphonicSoundEffect("enemy_spawn");
     spawnSequenceActive = true;
     spawnSequenceElapsed = 0.0f;
     spawnEffectTexture = AssetManager::GetInstance().GetTexture(
