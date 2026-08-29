@@ -40,6 +40,33 @@ void Lance::Update(float deltaTime) {
             isUltimateFlash = false;
         }
     }
+
+    for (auto it = pendingFreezeTargets.begin(); it != pendingFreezeTargets.end(); ) {
+        it->delay -= deltaTime;
+        if (it->delay <= 0.0f) {
+            if (it->enemy && !it->enemy->IsDead() && it->enemy->IsEnabled()) {
+                it->enemy->GetStatusComponent().AddEffect(EffectType::FREEZE, 5.0f, 0.0f);
+            }
+            it = pendingFreezeTargets.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void Lance::UpdateInactive(float deltaTime) {
+    Paladin::UpdateInactive(deltaTime);
+    for (auto it = pendingFreezeTargets.begin(); it != pendingFreezeTargets.end(); ) {
+        it->delay -= deltaTime;
+        if (it->delay <= 0.0f) {
+            if (it->enemy && !it->enemy->IsDead() && it->enemy->IsEnabled()) {
+                it->enemy->GetStatusComponent().AddEffect(EffectType::FREEZE, 5.0f, 0.0f);
+            }
+            it = pendingFreezeTargets.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 void Lance::Attack() {
@@ -121,11 +148,22 @@ void Lance::ExecuteUltimateAction() {
     AudioManager::GetInstance().PlaySoundEffect("fx_lance_ult");
     AudioManager::GetInstance().PlaySoundEffect("fx_ice_explode");
     
+    Texture2D explodeTex = AssetManager::GetInstance().GetTexture("Ulti_explode");
     const std::vector<Enemy*>& enemies = GameManager::GetInstance()
         .GetObjectManager().GetEnemies();
+    
+    // 8-frame Ulti_explode over 0.48s (0.06s per frame).
+    // Frame 0: 0.00s, Frame 1: 0.06s, Frame 2 (3rd frame): 0.12s
+    float animDuration = 0.48f;
+    float freezeDelay = (animDuration / 8.0f) * 2.0f;
+    
     for (Enemy* enemy : enemies) {
         if (enemy && !enemy->IsDead() && enemy->IsEnabled()) {
-            enemy->GetStatusComponent().AddEffect(EffectType::FREEZE, 5.0f, 0.0f);
+            Vector2 enemyPos = enemy->GetPosition();
+            if (explodeTex.id != 0) {
+                GameManager::GetInstance().AddEffect(enemyPos, explodeTex, 8, animDuration, false);
+            }
+            pendingFreezeTargets.push_back({ enemy, freezeDelay });
         }
     }
 }
