@@ -32,6 +32,46 @@ namespace {
                 BOX_BODY_BOTTOM * scale
         };
     }
+
+    void GetMapObjectFrameSize(
+        MapObjectId type,
+        float& width,
+        float& height
+    ) {
+        width = Constants::RENDER_TILE_SIZE;
+        height = Constants::RENDER_TILE_SIZE;
+
+        Texture2D texture = {};
+        int frames = 1;
+        AssetManager& assets = AssetManager::GetInstance();
+        if (type == MapObjectId::Prop1) {
+            texture = assets.GetTexture("prop1");
+            if (texture.id == 0) {
+                texture = assets.LoadTexture2D(
+                    "prop1",
+                    "assets/Objects/tall_object_1_8.png",
+                    true
+                );
+            }
+            frames = 8;
+        } else if (type == MapObjectId::Prop2) {
+            texture = assets.GetTexture("prop2");
+            if (texture.id == 0) {
+                texture = assets.LoadTexture2D(
+                    "prop2",
+                    "assets/Objects/object_2.png",
+                    true
+                );
+            }
+        } else if (type == MapObjectId::MockWall) {
+            texture = assets.GetTexture("wallTileset");
+        }
+
+        if (texture.id != 0) {
+            width = static_cast<float>(texture.width) / frames;
+            height = static_cast<float>(texture.height);
+        }
+    }
 }
 
 Prop::Prop(
@@ -68,7 +108,7 @@ void Prop::DrawBaseLayer() {
         if (tex.id == 0) return;
 
         float scale = GetBoxWorldScale();
-        Vector2 topLeft = GetBoxSpriteTopLeft(position);
+        Rectangle spriteBounds = GetDestructibleBoxSpriteBounds(position);
         Rectangle source = {
             0.0f,
             BOX_SHADOW_TOP,
@@ -76,8 +116,8 @@ void Prop::DrawBaseLayer() {
             BOX_SHADOW_HEIGHT
         };
         Rectangle destination = {
-            topLeft.x,
-            topLeft.y + BOX_SHADOW_TOP * scale,
+            spriteBounds.x,
+            spriteBounds.y + BOX_SHADOW_TOP * scale,
             BOX_SPRITE_WIDTH * scale,
             BOX_SHADOW_HEIGHT * scale
         };
@@ -116,13 +156,18 @@ void Prop::DrawBaseLayer() {
     if (tex.id != 0) {
         float frameWidth = (float)tex.width / frames;
         float frameHeight = (float)tex.height;
-        
         float splitY = frameHeight * 0.5f;
         Rectangle src = {currentFrame * frameWidth, splitY, frameWidth, frameHeight - splitY};
-        Rectangle bounds = GetBoundingBox();
-        float visualHeight = bounds.height / 0.75f;
-        float destHeight = visualHeight * 0.5f;
-        Rectangle dest = {bounds.x, bounds.y + bounds.height - destHeight, bounds.width, destHeight};
+        Rectangle spriteBounds = GetMapObjectSpriteBounds(
+            position,
+            mapObjectType
+        );
+        Rectangle dest = {
+            spriteBounds.x,
+            spriteBounds.y + spriteBounds.height * 0.5f,
+            spriteBounds.width,
+            spriteBounds.height * 0.5f
+        };
         DrawTexturePro(tex, src, dest, {0,0}, 0.0f, WHITE);
     }
 }
@@ -137,7 +182,8 @@ void Prop::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
                 if (boxTexture.id == 0) return;
 
                 float scale = GetBoxWorldScale();
-                Vector2 topLeft = GetBoxSpriteTopLeft(position);
+                Rectangle spriteBounds =
+                    GetDestructibleBoxSpriteBounds(position);
                 Rectangle source = {
                     0.0f,
                     0.0f,
@@ -145,8 +191,8 @@ void Prop::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
                     BOX_BODY_BOTTOM
                 };
                 Rectangle destination = {
-                    topLeft.x,
-                    topLeft.y,
+                    spriteBounds.x,
+                    spriteBounds.y,
                     BOX_SPRITE_WIDTH * scale,
                     BOX_BODY_BOTTOM * scale
                 };
@@ -185,12 +231,16 @@ void Prop::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
                 float splitY = frameHeight * 0.5f;
 
                 Rectangle src = {currentFrame * frameWidth, 0.0f, frameWidth, splitY};
-                
-                Rectangle bounds = GetBoundingBox();
-                float visualHeight = bounds.height / 0.75f;
-                float destHeight = visualHeight * 0.5f;
-                // Top half is directly above the bottom half
-                Rectangle dest = {bounds.x, bounds.y + bounds.height - visualHeight, bounds.width, destHeight};
+                Rectangle spriteBounds = GetMapObjectSpriteBounds(
+                    position,
+                    mapObjectType
+                );
+                Rectangle dest = {
+                    spriteBounds.x,
+                    spriteBounds.y,
+                    spriteBounds.width,
+                    spriteBounds.height * 0.5f
+                };
                 
                 DrawTexturePro(tex, src, dest, {0,0}, 0.0f, WHITE);
             }
@@ -199,66 +249,11 @@ void Prop::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
 }
 
 Rectangle Prop::GetBoundingBox() const {
-    if (mapObjectType == MapObjectId::DestructibleBox) {
-        float scale = GetBoxWorldScale();
-        Vector2 topLeft = GetBoxSpriteTopLeft(position);
-        return {
-            topLeft.x + BOX_HITBOX_X * scale,
-            topLeft.y + BOX_HITBOX_Y * scale,
-            BOX_HITBOX_WIDTH * scale,
-            BOX_HITBOX_HEIGHT * scale
-        };
-    }
-
-    // Dynamically calculate bounding box from texture width (since base is width x width)
-    Texture2D tex;
-    int frames = 1;
-    if (mapObjectType == MapObjectId::Prop1) {
-        tex = AssetManager::GetInstance().GetTexture("prop1");
-        if (tex.id == 0) {
-            tex = AssetManager::GetInstance().LoadTexture2D("prop1", "assets/Objects/tall_object_1_8.png", true);
-        }
-        frames = 8;
-    } else if (mapObjectType == MapObjectId::Prop2) {
-        tex = AssetManager::GetInstance().GetTexture("prop2");
-        if (tex.id == 0) {
-            tex = AssetManager::GetInstance().LoadTexture2D("prop2", "assets/Objects/object_2.png", true);
-        }
-    } else if (mapObjectType == MapObjectId::MockWall) {
-        tex = AssetManager::GetInstance().GetTexture("wallTileset");
-    }
-
-    float widthWorld = Constants::RENDER_TILE_SIZE; // Default fallback 32
-    float heightWorld = Constants::RENDER_TILE_SIZE;
-    if (tex.id != 0) {
-        widthWorld = (float)tex.width / frames;
-        heightWorld = (float)tex.height;
-    }
-
-    float collisionHeight = heightWorld * 0.75f;
-
-    // Centered horizontally, bottom aligns with the Y axis 
-    return {
-        position.x - widthWorld / 2.0f,
-        position.y - collisionHeight / 2.0f,
-        widthWorld,
-        collisionHeight
-    };
+    return GetMapObjectBoundingBox(position, mapObjectType);
 }
 
 Rectangle Prop::GetCollisionBox() const {
-    if (mapObjectType != MapObjectId::DestructibleBox) {
-        return GetBoundingBox();
-    }
-
-    float scale = GetBoxWorldScale();
-    Vector2 topLeft = GetBoxSpriteTopLeft(position);
-    return {
-        topLeft.x,
-        topLeft.y + BOX_COLLISION_Y * scale,
-        BOX_COLLISION_WIDTH * scale,
-        BOX_COLLISION_HEIGHT * scale
-    };
+    return GetMapObjectCollisionBox(position, mapObjectType);
 }
 
 void Prop::TakeDamage(int amount) {
@@ -273,6 +268,96 @@ void Prop::TakeDamage(int amount) {
         destructionQueued = true;
         AudioManager::GetInstance().PlaySoundEffect("fx_box_destroy");
     }
+}
+
+Rectangle Prop::GetDestructibleBoxSpriteBounds(Vector2 tileCenter) {
+    float scale = GetBoxWorldScale();
+    Vector2 topLeft = GetBoxSpriteTopLeft(tileCenter);
+    return {
+        topLeft.x,
+        topLeft.y,
+        BOX_SPRITE_WIDTH * scale,
+        (BOX_BODY_BOTTOM + BOX_SHADOW_HEIGHT) * scale
+    };
+}
+
+Rectangle Prop::GetDestructibleBoxBoundingBox(Vector2 tileCenter) {
+    float scale = GetBoxWorldScale();
+    Rectangle spriteBounds = GetDestructibleBoxSpriteBounds(tileCenter);
+    return {
+        spriteBounds.x + BOX_HITBOX_X * scale,
+        spriteBounds.y + BOX_HITBOX_Y * scale,
+        BOX_HITBOX_WIDTH * scale,
+        BOX_HITBOX_HEIGHT * scale
+    };
+}
+
+Rectangle Prop::GetDestructibleBoxCollisionBox(Vector2 tileCenter) {
+    float scale = GetBoxWorldScale();
+    Rectangle spriteBounds = GetDestructibleBoxSpriteBounds(tileCenter);
+    return {
+        spriteBounds.x,
+        spriteBounds.y + BOX_COLLISION_Y * scale,
+        BOX_COLLISION_WIDTH * scale,
+        BOX_COLLISION_HEIGHT * scale
+    };
+}
+
+Rectangle Prop::GetMapObjectSpriteBounds(
+    Vector2 tileCenter,
+    MapObjectId type
+) {
+    if (type == MapObjectId::DestructibleBox) {
+        return GetDestructibleBoxSpriteBounds(tileCenter);
+    }
+
+    float width = Constants::RENDER_TILE_SIZE;
+    float height = Constants::RENDER_TILE_SIZE;
+    GetMapObjectFrameSize(type, width, height);
+
+    float bottom = tileCenter.y + height * 0.375f;
+    if (type == MapObjectId::Prop2) {
+        // Object's last sprite row sits on the bottom row of its host tile.
+        bottom = tileCenter.y + Constants::RENDER_TILE_SIZE * 0.5f;
+    }
+    return {
+        tileCenter.x - width * 0.5f,
+        bottom - height,
+        width,
+        height
+    };
+}
+
+Rectangle Prop::GetMapObjectBoundingBox(
+    Vector2 tileCenter,
+    MapObjectId type
+) {
+    if (type == MapObjectId::DestructibleBox) {
+        return GetDestructibleBoxBoundingBox(tileCenter);
+    }
+
+    Rectangle spriteBounds = GetMapObjectSpriteBounds(tileCenter, type);
+    float collisionHeight = spriteBounds.height * 0.75f;
+    if (type == MapObjectId::Prop1) {
+        // Tall Object uses only the lowest two tiles for damage/collision.
+        collisionHeight = Constants::RENDER_TILE_SIZE * 2.0f;
+    }
+    return {
+        spriteBounds.x,
+        spriteBounds.y + spriteBounds.height - collisionHeight,
+        spriteBounds.width,
+        collisionHeight
+    };
+}
+
+Rectangle Prop::GetMapObjectCollisionBox(
+    Vector2 tileCenter,
+    MapObjectId type
+) {
+    if (type == MapObjectId::DestructibleBox) {
+        return GetDestructibleBoxCollisionBox(tileCenter);
+    }
+    return GetMapObjectBoundingBox(tileCenter, type);
 }
 
 bool Prop::IsSolid() const {

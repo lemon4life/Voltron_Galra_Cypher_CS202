@@ -8,6 +8,79 @@
 #include <algorithm>
 #include <cmath>
 
+namespace {
+    struct RoomListLayout {
+        Rectangle panel;
+        Rectangle list;
+        Rectangle backButton;
+        Rectangle editButton;
+        Rectangle deleteButton;
+        float scale;
+        float rowHeight;
+    };
+
+    RoomListLayout GetRoomListLayout(int screenWidth, int screenHeight) {
+        float scale = std::clamp(
+            std::min(screenWidth / 1280.0f, screenHeight / 720.0f),
+            0.7f,
+            1.5f
+        );
+        float panelWidth = std::min(
+            760.0f * scale,
+            screenWidth - 40.0f * scale
+        );
+        float panelHeight = std::min(
+            560.0f * scale,
+            screenHeight - 40.0f * scale
+        );
+        Rectangle panel = {
+            (screenWidth - panelWidth) * 0.5f,
+            (screenHeight - panelHeight) * 0.5f,
+            panelWidth,
+            panelHeight
+        };
+        float padding = 24.0f * scale;
+        float headerHeight = 70.0f * scale;
+        float footerHeight = 82.0f * scale;
+        Rectangle list = {
+            panel.x + padding,
+            panel.y + headerHeight,
+            panel.width - padding * 2.0f,
+            panel.height - headerHeight - footerHeight
+        };
+        float gap = 12.0f * scale;
+        float buttonWidth = (list.width - gap * 2.0f) / 3.0f;
+        float buttonHeight = 42.0f * scale;
+        float buttonY = panel.y + panel.height -
+            padding - buttonHeight;
+        return {
+            panel,
+            list,
+            { list.x, buttonY, buttonWidth, buttonHeight },
+            { list.x + buttonWidth + gap, buttonY, buttonWidth, buttonHeight },
+            { list.x + (buttonWidth + gap) * 2.0f, buttonY, buttonWidth, buttonHeight },
+            scale,
+            44.0f * scale
+        };
+    }
+
+    void DrawRoomListText(
+        const std::string& text,
+        Vector2 position,
+        float fontSize,
+        Color color,
+        bool centered = false
+    ) {
+        Font font = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
+        Vector2 size = MeasureTextEx(font, text.c_str(), fontSize, 1.0f);
+        if (centered) {
+            position.x -= size.x * 0.5f;
+            position.y -= size.y * 0.5f;
+        }
+        DrawTextEx(font, text.c_str(), position, fontSize, 1.0f, color);
+    }
+}
+
 MainMenu::MainMenu() : currentSlideIndex(0), slideTimer(0.0f), panTimer(0.0f), switchedIndex(false) {
     logoTex.id = 0;
 }
@@ -57,6 +130,7 @@ void MainMenu::RebuildButtons() {
     titles.push_back("Start Game");
     titles.push_back("Settings");
     titles.push_back("Room Editor");
+    titles.push_back("Room List");
     titles.push_back("About us");
     titles.push_back("Exit Game");
 
@@ -119,6 +193,11 @@ void MainMenu::Update(float deltaTime) {
     } else if (currentState == MenuState::ACTIVE) {
         uiAlpha = 1.0f;
 
+        if (roomListOpen) {
+            UpdateRoomList();
+            return;
+        }
+
         if (IsKeyPressed(KEY_ENTER)) {
             AudioManager::GetInstance().PlayRandomClick();
             pendingAction = continueAvailable
@@ -155,6 +234,9 @@ void MainMenu::Update(float deltaTime) {
                     } else if (btn.text == "Room Editor") {
                         AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
                         pendingAction = MainMenuAction::OpenEditor;
+                    } else if (btn.text == "Room List") {
+                        AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
+                        OpenRoomList();
                     } else if (btn.text == "Exit Game") {
                         AudioManager::GetInstance().PlaySoundEffect("sfx_ui_select");
                         quitRequested = true;
@@ -183,6 +265,99 @@ MainMenuAction MainMenu::ConsumeAction() {
     MainMenuAction action = pendingAction;
     pendingAction = MainMenuAction::None;
     return action;
+}
+
+std::string MainMenu::ConsumeSelectedRoomPath() {
+    std::string path = selectedRoomPath;
+    selectedRoomPath.clear();
+    return path;
+}
+
+void MainMenu::OpenRoomList() {
+    roomListOpen = true;
+    roomListScroll = 0.0f;
+    RefreshRoomList();
+}
+
+void MainMenu::RefreshRoomList() {
+    std::string previousSelection;
+    if (selectedRoomIndex >= 0 &&
+        selectedRoomIndex < static_cast<int>(savedRooms.size())) {
+        previousSelection = savedRooms[selectedRoomIndex].path;
+    }
+
+    savedRooms = LevelIO::ListSavedRooms();
+    selectedRoomIndex = -1;
+    for (std::size_t index = 0; index < savedRooms.size(); ++index) {
+        if (savedRooms[index].path == previousSelection) {
+            selectedRoomIndex = static_cast<int>(index);
+            break;
+        }
+    }
+    if (selectedRoomIndex < 0 && !savedRooms.empty()) {
+        selectedRoomIndex = 0;
+    }
+}
+
+void MainMenu::UpdateRoomList() {
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        roomListOpen = false;
+        return;
+    }
+
+    RoomListLayout layout = GetRoomListLayout(
+        GetScreenWidth(),
+        GetScreenHeight()
+    );
+    Vector2 mouse = GetMousePosition();
+    float contentHeight = savedRooms.size() * layout.rowHeight;
+    float minimumScroll = std::min(0.0f, layout.list.height - contentHeight);
+    if (CheckCollisionPointRec(mouse, layout.list)) {
+        roomListScroll = std::clamp(
+            roomListScroll + GetMouseWheelMove() * 30.0f * layout.scale,
+            minimumScroll,
+            0.0f
+        );
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            float localY = mouse.y - layout.list.y - roomListScroll;
+            int index = static_cast<int>(std::floor(
+                localY / layout.rowHeight
+            ));
+            if (index >= 0 && index < static_cast<int>(savedRooms.size())) {
+                selectedRoomIndex = index;
+            }
+        }
+    }
+
+    if (!IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) return;
+    if (CheckCollisionPointRec(mouse, layout.backButton)) {
+        AudioManager::GetInstance().PlayRandomClick();
+        roomListOpen = false;
+        return;
+    }
+    if (CheckCollisionPointRec(mouse, layout.editButton) &&
+        selectedRoomIndex >= 0 &&
+        selectedRoomIndex < static_cast<int>(savedRooms.size())) {
+        AudioManager::GetInstance().PlayRandomClick();
+        selectedRoomPath = savedRooms[selectedRoomIndex].path;
+        pendingAction = MainMenuAction::OpenSavedRoomEditor;
+        roomListOpen = false;
+        return;
+    }
+    if (CheckCollisionPointRec(mouse, layout.deleteButton) &&
+        selectedRoomIndex >= 0 &&
+        selectedRoomIndex < static_cast<int>(savedRooms.size())) {
+        AudioManager::GetInstance().PlayRandomClick();
+        LevelIO::DeleteSavedRoom(savedRooms[selectedRoomIndex].path);
+        RefreshRoomList();
+        contentHeight = savedRooms.size() * layout.rowHeight;
+        minimumScroll = std::min(0.0f, layout.list.height - contentHeight);
+        roomListScroll = std::clamp(
+            roomListScroll,
+            minimumScroll,
+            0.0f
+        );
+    }
 }
 
 void MainMenu::SetContinueAvailable(bool available) {
@@ -333,5 +508,117 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
         Rectangle dest = { currentLogoX, currentLogoY, currentLogoWidth, currentLogoHeight };
         Rectangle src = { 0.0f, 0.0f, (float)logoTex.width, (float)logoTex.height };
         DrawTexturePro(logoTex, src, dest, {0,0}, 0.0f, WHITE);
+    }
+
+    if (roomListOpen) {
+        DrawRoomList(screenWidth, screenHeight);
+    }
+}
+
+void MainMenu::DrawRoomList(int screenWidth, int screenHeight) {
+    RoomListLayout layout = GetRoomListLayout(screenWidth, screenHeight);
+    DrawRectangle(
+        0,
+        0,
+        screenWidth,
+        screenHeight,
+        ColorAlpha(BLACK, 0.78f)
+    );
+    DrawRectangleRec(layout.panel, Color{ 26, 31, 40, 250 });
+    DrawRectangleLinesEx(layout.panel, 2.0f * layout.scale, LIGHTGRAY);
+    DrawRoomListText(
+        "SAVED ROOMS",
+        {
+            layout.panel.x + layout.panel.width * 0.5f,
+            layout.panel.y + 34.0f * layout.scale
+        },
+        28.0f * layout.scale,
+        WHITE,
+        true
+    );
+
+    DrawRectangleRec(layout.list, Color{ 12, 16, 23, 230 });
+    BeginScissorMode(
+        static_cast<int>(layout.list.x),
+        static_cast<int>(layout.list.y),
+        static_cast<int>(layout.list.width),
+        static_cast<int>(layout.list.height)
+    );
+    if (savedRooms.empty()) {
+        DrawRoomListText(
+            "No saved rooms",
+            {
+                layout.list.x + layout.list.width * 0.5f,
+                layout.list.y + layout.list.height * 0.5f
+            },
+            18.0f * layout.scale,
+            GRAY,
+            true
+        );
+    } else {
+        Vector2 mouse = GetMousePosition();
+        for (std::size_t index = 0; index < savedRooms.size(); ++index) {
+            Rectangle row = {
+                layout.list.x + 4.0f * layout.scale,
+                layout.list.y + roomListScroll +
+                    index * layout.rowHeight,
+                layout.list.width - 8.0f * layout.scale,
+                layout.rowHeight - 4.0f * layout.scale
+            };
+            bool selected = selectedRoomIndex == static_cast<int>(index);
+            bool hovered = CheckCollisionPointRec(mouse, row) &&
+                CheckCollisionPointRec(mouse, layout.list);
+            Color rowColor = selected
+                ? Color{ 58, 104, 145, 255 }
+                : Color{ 48, 54, 65, 245 };
+            if (hovered) rowColor = ColorBrightness(rowColor, 0.18f);
+            DrawRectangleRec(row, rowColor);
+            DrawRectangleLinesEx(row, 1.0f, selected ? SKYBLUE : DARKGRAY);
+
+            DrawRoomListText(
+                savedRooms[index].name,
+                {
+                    row.x + 14.0f * layout.scale,
+                    row.y + row.height * 0.5f
+                },
+                16.0f * layout.scale,
+                WHITE,
+                false
+            );
+        }
+    }
+    EndScissorMode();
+
+    struct ModalButton {
+        Rectangle bounds;
+        const char* label;
+        Color color;
+        bool enabled;
+    };
+    bool hasSelection = selectedRoomIndex >= 0 &&
+        selectedRoomIndex < static_cast<int>(savedRooms.size());
+    ModalButton buttons[] = {
+        { layout.backButton, "BACK", Color{ 115, 122, 134, 255 }, true },
+        { layout.editButton, "EDIT", GREEN, hasSelection },
+        { layout.deleteButton, "DELETE", RED, hasSelection }
+    };
+    Vector2 mouse = GetMousePosition();
+    for (const ModalButton& button : buttons) {
+        Color color = button.enabled ? button.color : DARKGRAY;
+        if (button.enabled && CheckCollisionPointRec(mouse, button.bounds)) {
+            color = ColorBrightness(color, 0.18f);
+        }
+        DrawRectangleRec(button.bounds, color);
+        DrawRectangleLinesEx(button.bounds, 1.0f * layout.scale, BLACK);
+        DrawRoomListText(
+            button.label,
+            {
+                button.bounds.x + button.bounds.width * 0.5f,
+                button.bounds.y + button.bounds.height * 0.5f
+            },
+            16.0f * layout.scale,
+            button.enabled ? WHITE : GRAY,
+            true
+        );
     }
 }

@@ -1,467 +1,1246 @@
 #include "Core/Level/RoomEditorState.h"
-#include "Core/Manager/GameManager.h"
-#include "UI/UIUtils.h"
+
+#include "Core/Constants.h"
 #include "Core/Manager/AssetManager.h"
+#include "Core/Manager/GameManager.h"
+#include "Entities/Props/Prop.h"
+#include "UI/UIUtils.h"
+
 #include "raymath.h"
+
 #include <algorithm>
-#include <iostream>
+#include <cmath>
 
-RoomEditorState::RoomEditorState() {
-    currentRoomSize = RoomSize::SMALL;
-    currentBrush = BrushType::WALL;
-    camera = { 0 };
+namespace {
+    constexpr float BASE_SCREEN_WIDTH = 1280.0f;
+    constexpr float BASE_SCREEN_HEIGHT = 720.0f;
+    constexpr float PREVIEW_OPACITY = 0.70f;
+    constexpr float RECTANGLE_EPSILON = 0.01f;
+
+    int StableTileHash(int x, int y) {
+        unsigned int hash =
+            static_cast<unsigned int>(x * 374761393 ^ y * 668265263);
+        hash = (hash ^ (hash >> 13)) * 1274126177;
+        return static_cast<int>(hash ^ (hash >> 16));
+    }
+
+    bool ContainsRectangle(Rectangle outer, Rectangle inner) {
+        return inner.x >= outer.x - RECTANGLE_EPSILON &&
+            inner.y >= outer.y - RECTANGLE_EPSILON &&
+            inner.x + inner.width <=
+                outer.x + outer.width + RECTANGLE_EPSILON &&
+            inner.y + inner.height <=
+                outer.y + outer.height + RECTANGLE_EPSILON;
+    }
+
+    bool RectanglesOverlap(Rectangle first, Rectangle second) {
+        return first.x < second.x + second.width - RECTANGLE_EPSILON &&
+            first.x + first.width > second.x + RECTANGLE_EPSILON &&
+            first.y < second.y + second.height - RECTANGLE_EPSILON &&
+            first.y + first.height > second.y + RECTANGLE_EPSILON;
+    }
+}
+
+RoomEditorState::RoomEditorState()
+    : camera({}),
+      currentRoomSize(RoomSize::SMALL),
+      currentBrush(BrushType::WALL),
+      scrollOffset(0.0f),
+      uiScale(1.0f),
+      showGuide(false),
+      statusMessage(""),
+      statusTimer(0.0f),
+      sidebarBounds({}),
+      paletteBounds({}),
+      lastScreenWidth(0),
+      lastScreenHeight(0) {
     camera.zoom = 1.0f;
-    camera.offset = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
-    sidebarBounds = { 0, 0, 250, (float)GetScreenHeight() };
-    scrollOffset = 0.0f;
-    showGuide = false;
-    statusMessage = "";
-    statusTimer = 0.0f;
 }
 
-RoomEditorState::~RoomEditorState() {
-}
+RoomEditorState::~RoomEditorState() = default;
 
 void RoomEditorState::Initialize() {
     placedObjects.clear();
-    camera.target = { 0.0f, 0.0f };
-    
+    scrollOffset = 0.0f;
+    currentRoomPath.clear();
+
+    AssetManager& assets = AssetManager::GetInstance();
     brushes.clear();
-    brushes.push_back({ static_cast<int>(BrushType::WALL), "Wall", AssetManager::GetInstance().LoadTexture2D("Galra_Walls", "assets/tileset/Galra_Walls.png", true), "TILES", "32x32", {0, 0, 16, 16} });
-    brushes.push_back({ static_cast<int>(BrushType::FLOOR), "Floor", AssetManager::GetInstance().LoadTexture2D("Galra_Floors", "assets/tileset/Galra_Floors.png", true), "TILES", "32x32", {0, 0, 16, 16} });
-    
-    brushes.push_back({ static_cast<int>(BrushType::BOX), "Box", AssetManager::GetInstance().LoadTexture2D("box", "assets/Objects/box.png", true), "OBJECTS", "16x32", {0, 0, 16, 32} });
-    brushes.push_back({ static_cast<int>(BrushType::OBJECT_2), "Object 2", AssetManager::GetInstance().LoadTexture2D("object_2", "assets/Objects/object_2.png", true), "OBJECTS", "16x32", {0, 0, 16, 32} });
-    brushes.push_back({ static_cast<int>(BrushType::POT_HP), "Pot HP", AssetManager::GetInstance().LoadTexture2D("pot_hp", "assets/Objects/pot_hp.png", true), "OBJECTS", "16x16", {0, 0, 12, 16} });
-    brushes.push_back({ static_cast<int>(BrushType::POT_EX), "Pot EX", AssetManager::GetInstance().LoadTexture2D("pot_ex", "assets/Objects/pot_ex.png", true), "OBJECTS", "16x16", {0, 0, 12, 16} });
-    brushes.push_back({ static_cast<int>(BrushType::POT_QUINT), "Pot Quint", AssetManager::GetInstance().LoadTexture2D("pot_quint", "assets/Objects/pot_quint.png", true), "OBJECTS", "16x16", {0, 0, 12, 16} });
-    brushes.push_back({ static_cast<int>(BrushType::TALL_OBJECT), "Tall Object", AssetManager::GetInstance().LoadTexture2D("tall_object_1_8", "assets/Objects/tall_object_1_8.png", true), "OBJECTS", "32x64", {0, 0, 32, 64} });
-    
+    brushes.push_back({
+        static_cast<int>(BrushType::ERASER),
+        "Eraser",
+        {},
+        "TOOLS",
+        "Remove",
+        {}
+    });
+    brushes.push_back({
+        static_cast<int>(BrushType::WALL),
+        "Wall",
+        assets.LoadTexture2D(
+            "Galra_Walls",
+            "assets/tileset/Galra_Walls.png",
+            true
+        ),
+        "TILES",
+        "16x16",
+        { 0.0f, 0.0f, 16.0f, 16.0f }
+    });
+    brushes.push_back({
+        static_cast<int>(BrushType::BOX),
+        "Box",
+        assets.LoadTexture2D("box", "assets/Objects/box.png", true),
+        "MAP OBJECTS",
+        "16x32",
+        { 0.0f, 0.0f, 16.0f, 32.0f }
+    });
+    brushes.push_back({
+        static_cast<int>(BrushType::OBJECT_2),
+        "Object",
+        assets.LoadTexture2D(
+            "object_2",
+            "assets/Objects/object_2.png",
+            true
+        ),
+        "MAP OBJECTS",
+        "16x32",
+        { 0.0f, 0.0f, 16.0f, 32.0f }
+    });
+    brushes.push_back({
+        static_cast<int>(BrushType::POT_HP),
+        "Pot HP",
+        assets.LoadTexture2D("pot_hp", "assets/Objects/pot_hp.png", true),
+        "MAP OBJECTS",
+        "9x13",
+        { 0.0f, 0.0f, 9.0f, 13.0f }
+    });
+    brushes.push_back({
+        static_cast<int>(BrushType::POT_EX),
+        "Pot EX",
+        assets.LoadTexture2D("pot_ex", "assets/Objects/pot_ex.png", true),
+        "MAP OBJECTS",
+        "9x13",
+        { 0.0f, 0.0f, 9.0f, 13.0f }
+    });
+    brushes.push_back({
+        static_cast<int>(BrushType::POT_QUINT),
+        "Pot Quint",
+        assets.LoadTexture2D(
+            "pot_quint",
+            "assets/Objects/pot_quint.png",
+            true
+        ),
+        "MAP OBJECTS",
+        "9x13",
+        { 0.0f, 0.0f, 9.0f, 13.0f }
+    });
+    brushes.push_back({
+        static_cast<int>(BrushType::TALL_OBJECT),
+        "Tall Object",
+        assets.LoadTexture2D(
+            "tall_object_1_8",
+            "assets/Objects/tall_object_1_8.png",
+            true
+        ),
+        "MAP OBJECTS",
+        "32x64",
+        { 0.0f, 0.0f, 32.0f, 64.0f }
+    });
+
+    currentBrush = BrushType::WALL;
+    UpdateResponsiveLayout(true);
+}
+
+bool RoomEditorState::LoadRoom(const std::string& path) {
+    RoomSize loadedSize = RoomSize::SMALL;
+    std::vector<PlaceableObject> loadedObjects;
+    if (!LevelIO::LoadRoomFromCSV(path, loadedSize, loadedObjects)) {
+        statusMessage = "Failed to load room";
+        statusTimer = 3.0f;
+        return false;
+    }
+
+    currentRoomSize = loadedSize;
+    placedObjects = std::move(loadedObjects);
+    currentRoomPath = path;
+    currentBrush = BrushType::WALL;
+    scrollOffset = 0.0f;
+    statusMessage = "Loaded: " + path;
+    statusTimer = 2.0f;
+    UpdateResponsiveLayout(true);
+    return true;
 }
 
 Vector2 RoomEditorState::GetRoomDimensions(RoomSize size) const {
     switch (size) {
-        case RoomSize::SMALL: return { 15.0f * GRID_SIZE, 15.0f * GRID_SIZE };
-        case RoomSize::MEDIUM: return { 20.0f * GRID_SIZE, 20.0f * GRID_SIZE };
-        case RoomSize::LARGE: return { 25.0f * GRID_SIZE, 25.0f * GRID_SIZE };
+        case RoomSize::SMALL:
+            return { 15.0f * GRID_SIZE, 15.0f * GRID_SIZE };
+        case RoomSize::MEDIUM:
+            return { 20.0f * GRID_SIZE, 20.0f * GRID_SIZE };
+        case RoomSize::LARGE:
+            return { 25.0f * GRID_SIZE, 25.0f * GRID_SIZE };
     }
     return { 15.0f * GRID_SIZE, 15.0f * GRID_SIZE };
 }
 
+void RoomEditorState::UpdateResponsiveLayout(bool centerCamera) {
+    int screenWidth = std::max(1, GetScreenWidth());
+    int screenHeight = std::max(1, GetScreenHeight());
+    bool screenChanged =
+        screenWidth != lastScreenWidth || screenHeight != lastScreenHeight;
+
+    uiScale = std::clamp(
+        std::min(
+            static_cast<float>(screenWidth) / BASE_SCREEN_WIDTH,
+            static_cast<float>(screenHeight) / BASE_SCREEN_HEIGHT
+        ),
+        0.65f,
+        1.5f
+    );
+
+    float maximumSidebarWidth = screenWidth * 0.38f;
+    float sidebarWidth = std::clamp(
+        250.0f * uiScale,
+        190.0f,
+        std::min(360.0f, maximumSidebarWidth)
+    );
+    sidebarBounds = {
+        0.0f,
+        0.0f,
+        sidebarWidth,
+        static_cast<float>(screenHeight)
+    };
+
+    float paletteTop = 210.0f * uiScale;
+    float bottomControlsHeight = 130.0f * uiScale;
+    paletteBounds = {
+        0.0f,
+        paletteTop,
+        sidebarBounds.width,
+        std::max(
+            0.0f,
+            sidebarBounds.height - paletteTop - bottomControlsHeight
+        )
+    };
+
+    lastScreenWidth = screenWidth;
+    lastScreenHeight = screenHeight;
+    if (centerCamera || screenChanged) {
+        CenterCameraOnRoom();
+    }
+}
+
+void RoomEditorState::CenterCameraOnRoom() {
+    Vector2 roomSize = GetRoomDimensions(currentRoomSize);
+    float canvasWidth = std::max(
+        1.0f,
+        static_cast<float>(GetScreenWidth()) - sidebarBounds.width
+    );
+    float canvasHeight = std::max(1.0f, static_cast<float>(GetScreenHeight()));
+    float padding = 48.0f * uiScale;
+    float availableWidth = std::max(1.0f, canvasWidth - padding * 2.0f);
+    float availableHeight = std::max(1.0f, canvasHeight - padding * 2.0f);
+
+    camera.target = { roomSize.x * 0.5f, roomSize.y * 0.5f };
+    camera.offset = {
+        sidebarBounds.width + canvasWidth * 0.5f,
+        canvasHeight * 0.5f
+    };
+    camera.zoom = std::clamp(
+        std::min(
+            availableWidth / roomSize.x,
+            availableHeight / roomSize.y
+        ),
+        0.25f,
+        3.0f
+    );
+}
+
 void RoomEditorState::Update(float deltaTime) {
     if (statusTimer > 0.0f) {
-        statusTimer -= deltaTime;
+        statusTimer = std::max(0.0f, statusTimer - deltaTime);
     }
-    
-    // Update sidebar bounds in case of resize
-    sidebarBounds = { 0, 0, 250, (float)GetScreenHeight() };
-    
+
+    UpdateResponsiveLayout(false);
     HandleInput();
 }
 
 void RoomEditorState::HandleInput() {
     if (showGuide) {
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_ESCAPE)) {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) ||
+            IsKeyPressed(KEY_ESCAPE)) {
             showGuide = false;
         }
-        return; // Block other inputs while guide is open
+        return;
     }
 
-    Vector2 mousePos = GetMousePosition();
+    Vector2 mousePosition = GetMousePosition();
     float wheel = GetMouseWheelMove();
 
-    if (CheckCollisionPointRec(mousePos, sidebarBounds)) {
-        if (wheel != 0) {
-            scrollOffset += wheel * 30.0f;
-            if (scrollOffset > 0) scrollOffset = 0;
-            // rough clamp for bottom
-            float maxScroll = -((float)brushes.size() * 50.0f);
-            if (scrollOffset < maxScroll) scrollOffset = maxScroll;
+    if (CheckCollisionPointRec(mousePosition, sidebarBounds)) {
+        if (wheel != 0.0f &&
+            CheckCollisionPointRec(mousePosition, paletteBounds)) {
+            int categoryCount = 0;
+            std::string lastCategory;
+            for (const EditorBrush& brush : brushes) {
+                if (brush.category != lastCategory) {
+                    lastCategory = brush.category;
+                    categoryCount++;
+                }
+            }
+            float contentHeight =
+                brushes.size() * 50.0f * uiScale +
+                categoryCount * 35.0f * uiScale;
+            float minimumScroll = std::min(
+                0.0f,
+                paletteBounds.height - contentHeight - 10.0f * uiScale
+            );
+            scrollOffset = std::clamp(
+                scrollOffset + wheel * 30.0f * uiScale,
+                minimumScroll,
+                0.0f
+            );
         }
-    } else {
-        // Camera Panning with Middle Mouse or WASD
-        float panSpeed = 400.0f * GetFrameTime() / camera.zoom;
-        
-        if (IsKeyDown(KEY_W)) camera.target.y -= panSpeed;
-        if (IsKeyDown(KEY_S)) camera.target.y += panSpeed;
-        if (IsKeyDown(KEY_A)) camera.target.x -= panSpeed;
-        if (IsKeyDown(KEY_D)) camera.target.x += panSpeed;
-        
-        if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
-            Vector2 delta = GetMouseDelta();
-            delta = Vector2Scale(delta, -1.0f / camera.zoom);
-            camera.target = Vector2Add(camera.target, delta);
+        return;
+    }
+
+    float panSpeed = 400.0f * GetFrameTime() / camera.zoom;
+    if (IsKeyDown(KEY_W)) camera.target.y -= panSpeed;
+    if (IsKeyDown(KEY_S)) camera.target.y += panSpeed;
+    if (IsKeyDown(KEY_A)) camera.target.x -= panSpeed;
+    if (IsKeyDown(KEY_D)) camera.target.x += panSpeed;
+
+    if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
+        Vector2 delta = Vector2Scale(GetMouseDelta(), -1.0f / camera.zoom);
+        camera.target = Vector2Add(camera.target, delta);
+    }
+
+    if (wheel != 0.0f) {
+        Vector2 worldBeforeZoom = GetScreenToWorld2D(mousePosition, camera);
+        float scaleFactor = 1.0f + 0.25f * std::fabs(wheel);
+        if (wheel < 0.0f) scaleFactor = 1.0f / scaleFactor;
+        camera.zoom = std::clamp(
+            camera.zoom * scaleFactor,
+            0.25f,
+            3.0f
+        );
+        Vector2 worldAfterZoom = GetScreenToWorld2D(mousePosition, camera);
+        camera.target = Vector2Add(
+            camera.target,
+            Vector2Subtract(worldBeforeZoom, worldAfterZoom)
+        );
+    }
+
+    Vector2 worldPosition = GetScreenToWorld2D(mousePosition, camera);
+    int gridX = static_cast<int>(std::floor(worldPosition.x / GRID_SIZE));
+    int gridY = static_cast<int>(std::floor(worldPosition.y / GRID_SIZE));
+
+    if (currentBrush == BrushType::ERASER) {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            int hoveredIndex = GetHoveredObjectIndex(worldPosition);
+            if (hoveredIndex >= 0) {
+                placedObjects.erase(placedObjects.begin() + hoveredIndex);
+            }
         }
-        
-        // Zooming
-        if (wheel != 0) {
-            Vector2 mouseWorldPos = GetScreenToWorld2D(mousePos, camera);
-            camera.offset = GetMousePosition();
-            camera.target = mouseWorldPos;
-            
-            float scaleFactor = 1.0f + (0.25f * fabsf(wheel));
-            if (wheel < 0) scaleFactor = 1.0f / scaleFactor;
-            camera.zoom = Clamp(camera.zoom * scaleFactor, 0.25f, 3.0f);
+        return;
+    }
+
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
+        currentBrush != BrushType::NONE) {
+        PlaceObject(gridX, gridY);
+    } else if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+        EraseObject(gridX, gridY);
+    }
+}
+
+const EditorBrush* RoomEditorState::GetBrush(int objectID) const {
+    auto match = std::find_if(
+        brushes.begin(),
+        brushes.end(),
+        [objectID](const EditorBrush& brush) {
+            return brush.objectID == objectID;
         }
-        
-        // Placement / Eraser
-        Vector2 worldPos = GetScreenToWorld2D(mousePos, camera);
-        int gridX = (int)floor(worldPos.x / GRID_SIZE);
-        int gridY = (int)floor(worldPos.y / GRID_SIZE);
-        
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && currentBrush != BrushType::NONE) {
-            PlaceObject(gridX, gridY);
-        } else if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
-            EraseObject(gridX, gridY);
+    );
+    return match == brushes.end() ? nullptr : &(*match);
+}
+
+Rectangle RoomEditorState::GetPlacementSpriteBounds(
+    const EditorBrush& brush,
+    int gridX,
+    int gridY
+) const {
+    Rectangle cell = {
+        static_cast<float>(gridX * GRID_SIZE),
+        static_cast<float>(gridY * GRID_SIZE),
+        static_cast<float>(GRID_SIZE),
+        static_cast<float>(GRID_SIZE)
+    };
+    Vector2 tileCenter = {
+        cell.x + cell.width * 0.5f,
+        cell.y + cell.height * 0.5f
+    };
+
+    if (brush.objectID == static_cast<int>(BrushType::WALL)) {
+        return { cell.x, cell.y, cell.width, cell.height * 2.0f };
+    }
+    if (brush.objectID == static_cast<int>(BrushType::BOX)) {
+        return Prop::GetDestructibleBoxSpriteBounds(tileCenter);
+    }
+    if (brush.objectID == static_cast<int>(BrushType::OBJECT_2)) {
+        return Prop::GetMapObjectSpriteBounds(
+            tileCenter,
+            MapObjectId::Prop2
+        );
+    }
+    if (brush.objectID == static_cast<int>(BrushType::TALL_OBJECT)) {
+        return Prop::GetMapObjectSpriteBounds(
+            tileCenter,
+            MapObjectId::Prop1
+        );
+    }
+
+    return {
+        tileCenter.x - brush.sourceRect.width * 0.5f,
+        tileCenter.y - brush.sourceRect.height * 0.5f,
+        brush.sourceRect.width,
+        brush.sourceRect.height
+    };
+}
+
+Rectangle RoomEditorState::GetPlacementHitbox(
+    const EditorBrush& brush,
+    int gridX,
+    int gridY
+) const {
+    Vector2 tileCenter = {
+        gridX * GRID_SIZE + GRID_SIZE * 0.5f,
+        gridY * GRID_SIZE + GRID_SIZE * 0.5f
+    };
+    if (brush.objectID == static_cast<int>(BrushType::BOX)) {
+        return Prop::GetDestructibleBoxBoundingBox(tileCenter);
+    }
+    if (brush.objectID == static_cast<int>(BrushType::OBJECT_2)) {
+        return Prop::GetMapObjectBoundingBox(tileCenter, MapObjectId::Prop2);
+    }
+    if (brush.objectID == static_cast<int>(BrushType::TALL_OBJECT)) {
+        return Prop::GetMapObjectBoundingBox(tileCenter, MapObjectId::Prop1);
+    }
+    return GetPlacementCollisionBox(brush, gridX, gridY);
+}
+
+Rectangle RoomEditorState::GetPlacementCollisionBox(
+    const EditorBrush& brush,
+    int gridX,
+    int gridY
+) const {
+    Rectangle cell = {
+        static_cast<float>(gridX * GRID_SIZE),
+        static_cast<float>(gridY * GRID_SIZE),
+        static_cast<float>(GRID_SIZE),
+        static_cast<float>(GRID_SIZE)
+    };
+    Vector2 tileCenter = {
+        cell.x + cell.width * 0.5f,
+        cell.y + cell.height * 0.5f
+    };
+
+    if (brush.objectID == static_cast<int>(BrushType::WALL)) {
+        return cell;
+    }
+    if (brush.objectID == static_cast<int>(BrushType::BOX)) {
+        return Prop::GetDestructibleBoxCollisionBox(tileCenter);
+    }
+    if (brush.objectID == static_cast<int>(BrushType::OBJECT_2)) {
+        return Prop::GetMapObjectCollisionBox(tileCenter, MapObjectId::Prop2);
+    }
+    if (brush.objectID == static_cast<int>(BrushType::TALL_OBJECT)) {
+        return Prop::GetMapObjectCollisionBox(tileCenter, MapObjectId::Prop1);
+    }
+
+    return GetPlacementSpriteBounds(brush, gridX, gridY);
+}
+
+bool RoomEditorState::CanPlaceObject(int gridX, int gridY) const {
+    const EditorBrush* brush = GetBrush(static_cast<int>(currentBrush));
+    if (!brush) return false;
+
+    Vector2 roomSize = GetRoomDimensions(currentRoomSize);
+    Rectangle interiorBounds = {
+        static_cast<float>(GRID_SIZE),
+        static_cast<float>(GRID_SIZE),
+        roomSize.x - GRID_SIZE * 2.0f,
+        roomSize.y - GRID_SIZE * 2.0f
+    };
+    Rectangle roomBounds = { 0.0f, 0.0f, roomSize.x, roomSize.y };
+    Rectangle candidate = GetPlacementCollisionBox(*brush, gridX, gridY);
+    Rectangle candidateSprite = GetPlacementSpriteBounds(
+        *brush,
+        gridX,
+        gridY
+    );
+    if (!ContainsRectangle(interiorBounds, candidate) ||
+        !ContainsRectangle(roomBounds, candidateSprite)) {
+        return false;
+    }
+
+    for (const PlaceableObject& object : placedObjects) {
+        const EditorBrush* placedBrush = GetBrush(object.objectID);
+        if (!placedBrush) continue;
+        Rectangle occupied = GetPlacementCollisionBox(
+            *placedBrush,
+            object.gridX,
+            object.gridY
+        );
+        if (RectanglesOverlap(candidate, occupied)) return false;
+    }
+    return true;
+}
+
+int RoomEditorState::GetHoveredObjectIndex(Vector2 worldPosition) const {
+    int hoveredIndex = -1;
+    float hoveredDepth = -INFINITY;
+    for (std::size_t index = 0; index < placedObjects.size(); ++index) {
+        const PlaceableObject& object = placedObjects[index];
+        const EditorBrush* brush = GetBrush(object.objectID);
+        if (!brush) continue;
+
+        Rectangle spriteBounds = GetPlacementSpriteBounds(
+            *brush,
+            object.gridX,
+            object.gridY
+        );
+        if (!CheckCollisionPointRec(worldPosition, spriteBounds)) continue;
+
+        Rectangle depthBounds = GetPlacementHitbox(
+            *brush,
+            object.gridX,
+            object.gridY
+        );
+        float depth = depthBounds.y + depthBounds.height;
+        if (hoveredIndex < 0 || depth >= hoveredDepth) {
+            hoveredIndex = static_cast<int>(index);
+            hoveredDepth = depth;
         }
     }
+    return hoveredIndex;
 }
 
 void RoomEditorState::PlaceObject(int gridX, int gridY) {
-    EraseObject(gridX, gridY); // Ensure no duplicate on same cell
-    PlaceableObject obj;
-    obj.objectID = static_cast<int>(currentBrush);
-    obj.gridX = gridX;
-    obj.gridY = gridY;
-    placedObjects.push_back(obj);
+    if (!CanPlaceObject(gridX, gridY)) return;
+    placedObjects.push_back({
+        static_cast<int>(currentBrush),
+        gridX,
+        gridY
+    });
 }
 
 void RoomEditorState::EraseObject(int gridX, int gridY) {
-    placedObjects.erase(std::remove_if(placedObjects.begin(), placedObjects.end(),
-        [gridX, gridY](const PlaceableObject& obj) {
-            return obj.gridX == gridX && obj.gridY == gridY;
-        }), placedObjects.end());
+    placedObjects.erase(
+        std::remove_if(
+            placedObjects.begin(),
+            placedObjects.end(),
+            [gridX, gridY](const PlaceableObject& object) {
+                return object.gridX == gridX && object.gridY == gridY;
+            }
+        ),
+        placedObjects.end()
+    );
 }
 
 void RoomEditorState::Draw() {
     ClearBackground(DARKGRAY);
-    
+
     Camera2D renderCamera = camera;
     renderCamera.target.x = std::floor(renderCamera.target.x);
     renderCamera.target.y = std::floor(renderCamera.target.y);
     renderCamera.offset.x = std::floor(renderCamera.offset.x);
     renderCamera.offset.y = std::floor(renderCamera.offset.y);
-    
+
     BeginMode2D(renderCamera);
-    
     DrawRoomShell();
     DrawPlacedObjects();
     DrawGridOverlay();
-    
-    // Draw boundary box
-    Vector2 bounds = GetRoomDimensions(currentRoomSize);
-    DrawRectangleLinesEx({0, 0, bounds.x, bounds.y}, 2.0f, RED);
-    
-    // Draw hover cursor
-    Vector2 mousePos = GetMousePosition();
-    if (!CheckCollisionPointRec(mousePos, sidebarBounds)) {
-        Vector2 worldPos = GetScreenToWorld2D(mousePos, camera);
-        int gridX = (int)floor(worldPos.x / GRID_SIZE);
-        int gridY = (int)floor(worldPos.y / GRID_SIZE);
-        DrawRectangleLines(gridX * GRID_SIZE, gridY * GRID_SIZE, GRID_SIZE, GRID_SIZE, YELLOW);
-    }
-    
+    DrawPlacementPreview();
+
+    Vector2 roomSize = GetRoomDimensions(currentRoomSize);
+    DrawRectangleLinesEx(
+        { 0.0f, 0.0f, roomSize.x, roomSize.y },
+        1.0f,
+        RED
+    );
     EndMode2D();
-    
+
     DrawUI();
-    
-    if (showGuide) {
-        DrawGuidePanel();
-    }
+    if (showGuide) DrawGuidePanel();
 }
 
 void RoomEditorState::DrawRoomShell() {
     Vector2 bounds = GetRoomDimensions(currentRoomSize);
-    Texture2D floorTex = AssetManager::GetInstance().GetTexture("Galra_Floors");
-    Texture2D wallTex = AssetManager::GetInstance().GetTexture("Galra_Walls");
-    
-    Rectangle wallTopSrc[2] = { {0.1f, 0.1f, 15.8f, 15.8f}, {16.1f, 0.1f, 15.8f, 15.8f} };
-    Rectangle wallFrontFaceSrc[2] = { {0.1f, 16.1f, 15.8f, 15.8f}, {16.1f, 16.1f, 15.8f, 15.8f} };
-    Rectangle floorSrc[6];
-    for(int i = 0; i < 6; ++i) {
-        floorSrc[i] = { (float)(i * 16) + 0.1f, 0.1f, 15.8f, 15.8f };
-    }
-    
-    auto hash = [](int x, int y) -> int {
-        unsigned int h = (unsigned int)(x * 374761393 ^ y * 668265263);
-        h = (h ^ (h >> 13)) * 1274126177;
-        return h ^ (h >> 16);
+    Texture2D floorTexture =
+        AssetManager::GetInstance().GetTexture("Galra_Floors");
+    Texture2D wallTexture =
+        AssetManager::GetInstance().GetTexture("Galra_Walls");
+
+    Rectangle wallTopSource[2] = {
+        { 0.1f, 0.1f, 15.8f, 15.8f },
+        { 16.1f, 0.1f, 15.8f, 15.8f }
     };
-    
-    // Draw floors (base)
-    for (int x = 0; x < bounds.x; x += GRID_SIZE) {
-        for (int y = 0; y < bounds.y; y += GRID_SIZE) {
-            if (x == 0 || x >= bounds.x - GRID_SIZE || y == 0 || y >= bounds.y - GRID_SIZE) continue;
-            int variant = std::abs(hash(x, y)) % 6;
-            Rectangle dest = { (float)x, (float)y, (float)GRID_SIZE, (float)GRID_SIZE };
-            DrawTexturePro(floorTex, floorSrc[variant], dest, {0,0}, 0.0f, WHITE);
+    Rectangle wallFaceSource[2] = {
+        { 0.1f, 16.1f, 15.8f, 15.8f },
+        { 16.1f, 16.1f, 15.8f, 15.8f }
+    };
+    Rectangle floorSource[6];
+    for (int index = 0; index < 6; ++index) {
+        floorSource[index] = {
+            index * 16.0f + 0.1f,
+            0.1f,
+            15.8f,
+            15.8f
+        };
+    }
+
+    for (int x = 0; x < static_cast<int>(bounds.x); x += GRID_SIZE) {
+        for (int y = 0; y < static_cast<int>(bounds.y); y += GRID_SIZE) {
+            bool perimeter =
+                x == 0 || y == 0 ||
+                x >= bounds.x - GRID_SIZE ||
+                y >= bounds.y - GRID_SIZE;
+            if (perimeter) continue;
+            int variant = std::abs(StableTileHash(x, y)) % 6;
+            DrawTexturePro(
+                floorTexture,
+                floorSource[variant],
+                {
+                    static_cast<float>(x),
+                    static_cast<float>(y),
+                    static_cast<float>(GRID_SIZE),
+                    static_cast<float>(GRID_SIZE)
+                },
+                { 0.0f, 0.0f },
+                0.0f,
+                WHITE
+            );
         }
     }
-    
-    // Draw walls (perimeter)
-    for (int x = 0; x < bounds.x; x += GRID_SIZE) {
-        for (int y = 0; y < bounds.y; y += GRID_SIZE) {
-            if (x == 0 || x >= bounds.x - GRID_SIZE || y == 0 || y >= bounds.y - GRID_SIZE) {
-                int variant = std::abs(hash(x, y)) % 2;
-                
-                // If it's the bottom edge (not counting corners if we want them to fall off, but we'll just check if below is floor)
-                // Since this is perimeter, below perimeter is void. But we draw front face if there's no wall below.
-                bool isFloorBelow = false;
-                if (y + GRID_SIZE < bounds.y) {
-                    if (x > 0 && x < bounds.x - GRID_SIZE) isFloorBelow = true;
-                } else {
-                    isFloorBelow = true; // Bottom most edge will show front face
-                }
-                
-                if (isFloorBelow) {
-                    Rectangle destFace = { (float)x, (float)y + GRID_SIZE, (float)GRID_SIZE, (float)GRID_SIZE };
-                    DrawTexturePro(wallTex, wallFrontFaceSrc[variant], destFace, {0,0}, 0.0f, WHITE);
-                }
-                
-                Rectangle destTop = { (float)x, (float)y, (float)GRID_SIZE, (float)GRID_SIZE };
-                DrawTexturePro(wallTex, wallTopSrc[variant], destTop, {0,0}, 0.0f, WHITE);
-            }
+
+    for (int x = 0; x < static_cast<int>(bounds.x); x += GRID_SIZE) {
+        for (int y = 0; y < static_cast<int>(bounds.y); y += GRID_SIZE) {
+            bool perimeter =
+                x == 0 || y == 0 ||
+                x >= bounds.x - GRID_SIZE ||
+                y >= bounds.y - GRID_SIZE;
+            if (!perimeter) continue;
+
+            int variant = std::abs(StableTileHash(x, y)) % 2;
+            DrawTexturePro(
+                wallTexture,
+                wallFaceSource[variant],
+                {
+                    static_cast<float>(x),
+                    static_cast<float>(y + GRID_SIZE),
+                    static_cast<float>(GRID_SIZE),
+                    static_cast<float>(GRID_SIZE)
+                },
+                { 0.0f, 0.0f },
+                0.0f,
+                WHITE
+            );
+            DrawTexturePro(
+                wallTexture,
+                wallTopSource[variant],
+                {
+                    static_cast<float>(x),
+                    static_cast<float>(y),
+                    static_cast<float>(GRID_SIZE),
+                    static_cast<float>(GRID_SIZE)
+                },
+                { 0.0f, 0.0f },
+                0.0f,
+                WHITE
+            );
         }
     }
 }
 
 void RoomEditorState::DrawGridOverlay() {
     Vector2 bounds = GetRoomDimensions(currentRoomSize);
-    for (int x = 0; x <= bounds.x; x += GRID_SIZE) {
-        DrawLine(x, 0, x, bounds.y, ColorAlpha(WHITE, 0.15f));
+    for (int x = 0; x <= static_cast<int>(bounds.x); x += GRID_SIZE) {
+        DrawLine(
+            x,
+            0,
+            x,
+            static_cast<int>(bounds.y),
+            ColorAlpha(WHITE, 0.15f)
+        );
     }
-    for (int y = 0; y <= bounds.y; y += GRID_SIZE) {
-        DrawLine(0, y, bounds.x, y, ColorAlpha(WHITE, 0.15f));
+    for (int y = 0; y <= static_cast<int>(bounds.y); y += GRID_SIZE) {
+        DrawLine(
+            0,
+            y,
+            static_cast<int>(bounds.x),
+            y,
+            ColorAlpha(WHITE, 0.15f)
+        );
+    }
+
+    if (!Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) return;
+    for (int x = 0; x < static_cast<int>(bounds.x); x += GRID_SIZE) {
+        for (int y = 0; y < static_cast<int>(bounds.y); y += GRID_SIZE) {
+            bool perimeter =
+                x == 0 || y == 0 ||
+                x >= bounds.x - GRID_SIZE ||
+                y >= bounds.y - GRID_SIZE;
+            if (!perimeter) continue;
+            DrawRectangleLinesEx(
+                {
+                    static_cast<float>(x),
+                    static_cast<float>(y),
+                    static_cast<float>(GRID_SIZE),
+                    static_cast<float>(GRID_SIZE)
+                },
+                Constants::DEBUG_COLLISION_LINE_THICKNESS,
+                GOLD
+            );
+        }
     }
 }
 
-void RoomEditorState::DrawPlacedObjects() {
-    auto hash = [](int x, int y) -> int {
-        unsigned int h = (unsigned int)(x * 374761393 ^ y * 668265263);
-        h = (h ^ (h >> 13)) * 1274126177;
-        return h ^ (h >> 16);
-    };
-    
-    Rectangle wallTopSrc[2] = { {0, 0, 16, 16}, {16, 0, 16, 16} };
-    Rectangle wallFrontFaceSrc[2] = { {0, 16, 16, 16}, {16, 16, 16, 16} };
-    Rectangle floorSrc[6];
-    for(int i = 0; i < 6; ++i) {
-        floorSrc[i] = { (float)(i * 16), 0.0f, 16.0f, 16.0f };
+void RoomEditorState::DrawBrush(
+    const EditorBrush& brush,
+    int gridX,
+    int gridY,
+    Color tint
+) const {
+    if (brush.texture.id == 0) return;
+
+    if (brush.objectID == static_cast<int>(BrushType::WALL)) {
+        int variant = std::abs(StableTileHash(gridX, gridY)) % 2;
+        Rectangle topSource = {
+            variant * 16.0f,
+            0.0f,
+            16.0f,
+            16.0f
+        };
+        Rectangle faceSource = {
+            variant * 16.0f,
+            16.0f,
+            16.0f,
+            16.0f
+        };
+        float x = static_cast<float>(gridX * GRID_SIZE);
+        float y = static_cast<float>(gridY * GRID_SIZE);
+        DrawTexturePro(
+            brush.texture,
+            faceSource,
+            { x, y + GRID_SIZE, static_cast<float>(GRID_SIZE), static_cast<float>(GRID_SIZE) },
+            { 0.0f, 0.0f },
+            0.0f,
+            tint
+        );
+        DrawTexturePro(
+            brush.texture,
+            topSource,
+            { x, y, static_cast<float>(GRID_SIZE), static_cast<float>(GRID_SIZE) },
+            { 0.0f, 0.0f },
+            0.0f,
+            tint
+        );
+        return;
     }
 
-    for (const auto& obj : placedObjects) {
-        const EditorBrush* activeBrush = nullptr;
-        for (const auto& brush : brushes) {
-            if (brush.objectID == obj.objectID) {
-                activeBrush = &brush;
-                break;
-            }
+    Rectangle destination = GetPlacementSpriteBounds(
+        brush,
+        gridX,
+        gridY
+    );
+    DrawTexturePro(
+        brush.texture,
+        brush.sourceRect,
+        destination,
+        { 0.0f, 0.0f },
+        0.0f,
+        tint
+    );
+}
+
+void RoomEditorState::DrawPlacementCollisionDebug(
+    const EditorBrush& brush,
+    int gridX,
+    int gridY
+) const {
+    DrawRectangleLinesEx(
+        GetPlacementHitbox(brush, gridX, gridY),
+        Constants::DEBUG_COLLISION_LINE_THICKNESS * 2.0f,
+        PURPLE
+    );
+    DrawRectangleLinesEx(
+        GetPlacementCollisionBox(brush, gridX, gridY),
+        Constants::DEBUG_COLLISION_LINE_THICKNESS,
+        GOLD
+    );
+}
+
+void RoomEditorState::DrawPlacedObjects() {
+    Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), camera);
+    int hoveredIndex = currentBrush == BrushType::ERASER
+        ? GetHoveredObjectIndex(mouseWorld)
+        : -1;
+
+    auto drawObject = [this, hoveredIndex](
+        const PlaceableObject& object,
+        int objectIndex
+    ) {
+        const EditorBrush* brush = GetBrush(object.objectID);
+        if (!brush) {
+            DrawRectangleRec(
+                {
+                    static_cast<float>(object.gridX * GRID_SIZE),
+                    static_cast<float>(object.gridY * GRID_SIZE),
+                    static_cast<float>(GRID_SIZE),
+                    static_cast<float>(GRID_SIZE)
+                },
+                MAGENTA
+            );
+            return;
         }
-        
-        if (activeBrush && activeBrush->texture.id != 0) {
-            float destX = obj.gridX * GRID_SIZE;
-            float destY = obj.gridY * GRID_SIZE;
-            
-            if (obj.objectID == static_cast<int>(BrushType::WALL)) {
-                int variant = std::abs(hash(obj.gridX, obj.gridY)) % 2;
-                
-                // Simple logic: if placed wall, draw front face at y+1
-                Rectangle destFace = { destX, destY + GRID_SIZE, (float)GRID_SIZE, (float)GRID_SIZE };
-                DrawTexturePro(activeBrush->texture, wallFrontFaceSrc[variant], destFace, {0,0}, 0.0f, WHITE);
-                
-                Rectangle destTop = { destX, destY, (float)GRID_SIZE, (float)GRID_SIZE };
-                DrawTexturePro(activeBrush->texture, wallTopSrc[variant], destTop, {0,0}, 0.0f, WHITE);
-            } else if (obj.objectID == static_cast<int>(BrushType::FLOOR)) {
-                int variant = std::abs(hash(obj.gridX, obj.gridY)) % 6;
-                Rectangle dest = { destX, destY, (float)GRID_SIZE, (float)GRID_SIZE };
-                DrawTexturePro(activeBrush->texture, floorSrc[variant], dest, {0,0}, 0.0f, WHITE);
-            } else {
-                // Objects, use their source rect but scale to GRID_SIZE based on their grid width/height
-                // The object's anchor is the tile it's placed on (bottom-left)
-                float gridWidth = activeBrush->sourceRect.width / 16.0f;
-                float gridHeight = activeBrush->sourceRect.height / 16.0f;
-                
-                // Center smaller objects
-                float offsetX = 0.0f;
-                float offsetY = 0.0f;
-                if (activeBrush->sourceRect.width < 16.0f) {
-                    offsetX = (16.0f - activeBrush->sourceRect.width) / 16.0f * (GRID_SIZE / 2.0f);
-                }
-                
-                Rectangle dest = { 
-                    destX + offsetX, 
-                    destY - (gridHeight - 1.0f) * GRID_SIZE + offsetY, 
-                    gridWidth * GRID_SIZE, 
-                    gridHeight * GRID_SIZE 
-                };
-                DrawTexturePro(activeBrush->texture, activeBrush->sourceRect, dest, {0,0}, 0.0f, WHITE);
-            }
-        } else {
-            Rectangle dest = { (float)obj.gridX * GRID_SIZE, (float)obj.gridY * GRID_SIZE, (float)GRID_SIZE, (float)GRID_SIZE };
-            DrawRectangleRec(dest, MAGENTA);
-            DrawRectangleLinesEx(dest, 1.0f, BLACK);
+
+        Color tint = objectIndex == hoveredIndex
+            ? ColorAlpha(RED, PREVIEW_OPACITY)
+            : WHITE;
+        DrawBrush(*brush, object.gridX, object.gridY, tint);
+        if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
+            DrawPlacementCollisionDebug(*brush, object.gridX, object.gridY);
         }
+    };
+
+    // Walls and objects share the editor depth queue. Higher map positions
+    // render first, independent of placement order.
+    std::vector<std::size_t> sortedObjects;
+    sortedObjects.reserve(placedObjects.size());
+    for (std::size_t index = 0; index < placedObjects.size(); ++index) {
+        sortedObjects.push_back(index);
     }
+    std::stable_sort(
+        sortedObjects.begin(),
+        sortedObjects.end(),
+        [this](std::size_t firstIndex, std::size_t secondIndex) {
+            const PlaceableObject& first = placedObjects[firstIndex];
+            const PlaceableObject& second = placedObjects[secondIndex];
+            const EditorBrush* firstBrush = GetBrush(first.objectID);
+            const EditorBrush* secondBrush = GetBrush(second.objectID);
+            if (!firstBrush || !secondBrush) {
+                return first.gridY < second.gridY;
+            }
+            Rectangle firstBounds = GetPlacementHitbox(
+                *firstBrush,
+                first.gridX,
+                first.gridY
+            );
+            Rectangle secondBounds = GetPlacementHitbox(
+                *secondBrush,
+                second.gridX,
+                second.gridY
+            );
+            float firstDepth = firstBounds.y + firstBounds.height;
+            float secondDepth = secondBounds.y + secondBounds.height;
+            if (std::fabs(firstDepth - secondDepth) > RECTANGLE_EPSILON) {
+                return firstDepth < secondDepth;
+            }
+            return first.gridX < second.gridX;
+        }
+    );
+    for (std::size_t index : sortedObjects) {
+        drawObject(placedObjects[index], static_cast<int>(index));
+    }
+}
+
+void RoomEditorState::DrawPlacementPreview() {
+    Vector2 mousePosition = GetMousePosition();
+    if (CheckCollisionPointRec(mousePosition, sidebarBounds)) return;
+    if (currentBrush == BrushType::ERASER) return;
+
+    const EditorBrush* brush = GetBrush(static_cast<int>(currentBrush));
+    if (!brush) return;
+
+    Vector2 worldPosition = GetScreenToWorld2D(mousePosition, camera);
+    int gridX = static_cast<int>(std::floor(worldPosition.x / GRID_SIZE));
+    int gridY = static_cast<int>(std::floor(worldPosition.y / GRID_SIZE));
+    bool valid = CanPlaceObject(gridX, gridY);
+    Color previewTint = valid
+        ? ColorAlpha(WHITE, PREVIEW_OPACITY)
+        : ColorAlpha(RED, PREVIEW_OPACITY);
+
+    DrawBrush(*brush, gridX, gridY, previewTint);
+    DrawRectangleLinesEx(
+        GetPlacementCollisionBox(*brush, gridX, gridY),
+        1.0f,
+        valid ? GREEN : RED
+    );
+    if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
+        DrawPlacementCollisionDebug(*brush, gridX, gridY);
+    }
+}
+
+void RoomEditorState::DrawEditorText(
+    const std::string& text,
+    Vector2 position,
+    float baseSize,
+    Color color,
+    bool centered
+) const {
+    Font font = AssetManager::GetInstance().GetCustomFont("PixeloidSans");
+    float fontSize = std::max(10.0f, baseSize * uiScale);
+    Vector2 textSize = MeasureTextEx(font, text.c_str(), fontSize, 1.0f);
+    if (centered) {
+        position.x -= textSize.x * 0.5f;
+        position.y -= textSize.y * 0.5f;
+    }
+    DrawTextEx(font, text.c_str(), position, fontSize, 1.0f, color);
 }
 
 void RoomEditorState::DrawUI() {
     UIUtils::DrawPanel(sidebarBounds, Color{ 20, 20, 20, 240 });
-    
-    float startY = 20.0f;
-    UIUtils::DrawCenteredText("PixeloidSans", "ROOM EDITOR", { sidebarBounds.width / 2.0f, startY }, UIUtils::FontSize::HEADER, WHITE);
-    
-    // Guide Button
-    Rectangle guideBtn = { sidebarBounds.width - 40, 10, 30, 30 };
+
+    float padding = 20.0f * uiScale;
+    float titleY = 20.0f * uiScale;
+    DrawEditorText(
+        "ROOM EDITOR",
+        { sidebarBounds.width * 0.5f, titleY },
+        28.0f,
+        WHITE,
+        true
+    );
+
+    Rectangle guideButton = {
+        sidebarBounds.width - 40.0f * uiScale,
+        10.0f * uiScale,
+        30.0f * uiScale,
+        30.0f * uiScale
+    };
     Color guideColor = ORANGE;
-    if (UIUtils::IsHovered(guideBtn)) {
+    if (UIUtils::IsHovered(guideButton)) {
         guideColor = Fade(guideColor, 0.8f);
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            showGuide = true;
-        }
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) showGuide = true;
     }
-    DrawRectangleRec(guideBtn, guideColor);
-    DrawRectangleLinesEx(guideBtn, 1.0f, BLACK);
-    UIUtils::DrawCenteredText("PixeloidSans", "?", { guideBtn.x + guideBtn.width / 2.0f, guideBtn.y + guideBtn.height / 2.0f }, UIUtils::FontSize::HEADER, WHITE);
-    
-    startY += 50.0f;
-    
-    // Size Selection
-    const char* sizes[] = { "SMALL", "MEDIUM", "LARGE" };
-    for (int i = 0; i < 3; i++) {
-        Rectangle btn = { 20, startY, sidebarBounds.width - 40, 30 };
-        bool isSelected = static_cast<int>(currentRoomSize) == i;
-        Color btnColor = isSelected ? ORANGE : LIGHTGRAY;
-        
-        if (UIUtils::IsHovered(btn)) {
-            btnColor = Fade(btnColor, 0.8f);
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                currentRoomSize = static_cast<RoomSize>(i);
-                Initialize(); // Reset room
+    DrawRectangleRec(guideButton, guideColor);
+    DrawRectangleLinesEx(guideButton, std::max(1.0f, uiScale), BLACK);
+    DrawEditorText(
+        "?",
+        {
+            guideButton.x + guideButton.width * 0.5f,
+            guideButton.y + guideButton.height * 0.5f
+        },
+        22.0f,
+        WHITE,
+        true
+    );
+
+    float buttonY = 70.0f * uiScale;
+    float sizeButtonHeight = 30.0f * uiScale;
+    float sizeButtonStep = 40.0f * uiScale;
+    const char* sizeLabels[] = { "SMALL", "MEDIUM", "LARGE" };
+    for (int index = 0; index < 3; ++index) {
+        Rectangle button = {
+            padding,
+            buttonY,
+            sidebarBounds.width - padding * 2.0f,
+            sizeButtonHeight
+        };
+        bool selected = static_cast<int>(currentRoomSize) == index;
+        Color buttonColor = selected ? ORANGE : LIGHTGRAY;
+        if (UIUtils::IsHovered(button)) {
+            buttonColor = Fade(buttonColor, 0.8f);
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !selected) {
+                currentRoomSize = static_cast<RoomSize>(index);
+                placedObjects.clear();
+                currentRoomPath.clear();
+                scrollOffset = 0.0f;
+                CenterCameraOnRoom();
             }
         }
-        DrawRectangleRec(btn, btnColor);
-        DrawRectangleLinesEx(btn, 1.0f, BLACK);
-        UIUtils::DrawCenteredText("PixeloidSans", sizes[i], { btn.x + btn.width / 2.0f, btn.y + btn.height / 2.0f }, UIUtils::FontSize::SMALL, BLACK);
-        startY += 40.0f;
+        DrawRectangleRec(button, buttonColor);
+        DrawRectangleLinesEx(button, std::max(1.0f, uiScale), BLACK);
+        DrawEditorText(
+            sizeLabels[index],
+            {
+                button.x + button.width * 0.5f,
+                button.y + button.height * 0.5f
+            },
+            14.0f,
+            BLACK,
+            true
+        );
+        buttonY += sizeButtonStep;
     }
-    
-    startY += 20.0f;
-    
-    // Bottom Buttons (Fixed at bottom)
-    float bottomY = sidebarBounds.height - 110.0f;
-    
-    Rectangle exitBtn = { 20, bottomY, sidebarBounds.width - 40, 40 };
+
+    float bottomButtonHeight = 40.0f * uiScale;
+    float bottomGap = 10.0f * uiScale;
+    float bottomMargin = 20.0f * uiScale;
+    float exitY = sidebarBounds.height -
+        bottomMargin - bottomButtonHeight * 2.0f - bottomGap;
+
+    Rectangle exitButton = {
+        padding,
+        exitY,
+        sidebarBounds.width - padding * 2.0f,
+        bottomButtonHeight
+    };
     Color exitColor = RED;
-    if (UIUtils::IsHovered(exitBtn)) {
+    if (UIUtils::IsHovered(exitButton)) {
         exitColor = Fade(exitColor, 0.8f);
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             GameManager::GetInstance().SetState(GameState::MAIN_MENU);
         }
     }
-    DrawRectangleRec(exitBtn, exitColor);
-    DrawRectangleLinesEx(exitBtn, 1.0f, BLACK);
-    UIUtils::DrawCenteredText("PixeloidSans", "EXIT", { exitBtn.x + exitBtn.width / 2.0f, exitBtn.y + exitBtn.height / 2.0f }, UIUtils::FontSize::SMALL, WHITE);
+    DrawRectangleRec(exitButton, exitColor);
+    DrawRectangleLinesEx(exitButton, std::max(1.0f, uiScale), BLACK);
+    DrawEditorText(
+        "EXIT",
+        {
+            exitButton.x + exitButton.width * 0.5f,
+            exitButton.y + exitButton.height * 0.5f
+        },
+        14.0f,
+        WHITE,
+        true
+    );
 
-    bottomY += 50.0f;
-    
-    Rectangle saveBtn = { 20, bottomY, sidebarBounds.width - 40, 40 };
+    Rectangle saveButton = {
+        padding,
+        exitY + bottomButtonHeight + bottomGap,
+        sidebarBounds.width - padding * 2.0f,
+        bottomButtonHeight
+    };
     Color saveColor = SKYBLUE;
-    if (UIUtils::IsHovered(saveBtn)) {
+    if (UIUtils::IsHovered(saveButton)) {
         saveColor = Fade(saveColor, 0.8f);
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            std::string path = LevelIO::SaveRoomToCSV(currentRoomSize, placedObjects);
-            if (!path.empty()) {
-                statusMessage = "Export Successful: " + path;
-            } else {
-                statusMessage = "Export Failed!";
-            }
+            std::string path = LevelIO::SaveRoomToCSV(
+                currentRoomSize,
+                placedObjects,
+                currentRoomPath
+            );
+            statusMessage = path.empty()
+                ? "Export Failed!"
+                : "Export Successful: " + path;
+            if (!path.empty()) currentRoomPath = path;
             statusTimer = 3.0f;
         }
     }
-    DrawRectangleRec(saveBtn, saveColor);
-    DrawRectangleLinesEx(saveBtn, 1.0f, BLACK);
-    UIUtils::DrawCenteredText("PixeloidSans", "SAVE CSV", { saveBtn.x + saveBtn.width / 2.0f, saveBtn.y + saveBtn.height / 2.0f }, UIUtils::FontSize::SMALL, BLACK);
-    
-    // Palette - Scissor Mode
-    float panelHeight = sidebarBounds.height - 130.0f - startY; 
-    BeginScissorMode(0, startY, sidebarBounds.width, panelHeight);
-    
-    float scrollY = startY + scrollOffset;
-    std::string currentCategory = "";
-    
-    for (size_t i = 0; i < this->brushes.size(); i++) {
-        const auto& brush = this->brushes[i];
-        
-        if (brush.category != currentCategory) {
-            currentCategory = brush.category;
-            scrollY += 10.0f;
-            UIUtils::DrawCenteredText("PixeloidSans", currentCategory, { sidebarBounds.width / 2.0f, scrollY }, UIUtils::FontSize::SMALL, ORANGE);
-            scrollY += 25.0f;
+    DrawRectangleRec(saveButton, saveColor);
+    DrawRectangleLinesEx(saveButton, std::max(1.0f, uiScale), BLACK);
+    DrawEditorText(
+        "SAVE CSV",
+        {
+            saveButton.x + saveButton.width * 0.5f,
+            saveButton.y + saveButton.height * 0.5f
+        },
+        14.0f,
+        BLACK,
+        true
+    );
+
+    BeginScissorMode(
+        static_cast<int>(paletteBounds.x),
+        static_cast<int>(paletteBounds.y),
+        static_cast<int>(paletteBounds.width),
+        static_cast<int>(paletteBounds.height)
+    );
+    float paletteY = paletteBounds.y + scrollOffset;
+    std::string category;
+    for (const EditorBrush& brush : brushes) {
+        if (brush.category != category) {
+            category = brush.category;
+            paletteY += 10.0f * uiScale;
+            DrawEditorText(
+                category,
+                { sidebarBounds.width * 0.5f, paletteY },
+                14.0f,
+                ORANGE,
+                true
+            );
+            paletteY += 25.0f * uiScale;
         }
-        
-        Rectangle btn = { 20, scrollY, sidebarBounds.width - 40, 45 };
-        bool isSelected = static_cast<int>(currentBrush) == brush.objectID;
-        Color btnColor = isSelected ? GREEN : LIGHTGRAY;
-        
-        if (UIUtils::IsHovered(btn) && CheckCollisionPointRec(GetMousePosition(), {0, startY, sidebarBounds.width, panelHeight})) {
-            btnColor = Fade(btnColor, 0.8f);
+
+        Rectangle button = {
+            padding,
+            paletteY,
+            sidebarBounds.width - padding * 2.0f,
+            45.0f * uiScale
+        };
+        bool selected =
+            static_cast<int>(currentBrush) == brush.objectID;
+        Color buttonColor = selected ? GREEN : LIGHTGRAY;
+        bool inPalette = CheckCollisionPointRec(
+            GetMousePosition(),
+            paletteBounds
+        );
+        if (inPalette && UIUtils::IsHovered(button)) {
+            buttonColor = Fade(buttonColor, 0.8f);
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                 currentBrush = static_cast<BrushType>(brush.objectID);
             }
         }
-        DrawRectangleRec(btn, btnColor);
-        DrawRectangleLinesEx(btn, 1.0f, BLACK);
-        
-        if (brush.texture.id != 0) {
-            Rectangle src = brush.sourceRect;
-            float scaleX = 35.0f / src.width;
-            float scaleY = 35.0f / src.height;
-            float scale = std::min(scaleX, scaleY);
-            
-            Rectangle dest = { 
-                btn.x + 5 + (35.0f - src.width * scale) / 2.0f, 
-                btn.y + 5 + (35.0f - src.height * scale) / 2.0f, 
-                src.width * scale, 
-                src.height * scale 
+        DrawRectangleRec(button, buttonColor);
+        DrawRectangleLinesEx(button, std::max(1.0f, uiScale), BLACK);
+
+        float iconArea = 35.0f * uiScale;
+        if (brush.texture.id != 0 &&
+            brush.sourceRect.width > 0.0f &&
+            brush.sourceRect.height > 0.0f) {
+            float iconScale = std::min(
+                iconArea / brush.sourceRect.width,
+                iconArea / brush.sourceRect.height
+            );
+            Rectangle iconDestination = {
+                button.x + 5.0f * uiScale +
+                    (iconArea - brush.sourceRect.width * iconScale) * 0.5f,
+                button.y + 5.0f * uiScale +
+                    (iconArea - brush.sourceRect.height * iconScale) * 0.5f,
+                brush.sourceRect.width * iconScale,
+                brush.sourceRect.height * iconScale
             };
-            DrawTexturePro(brush.texture, src, dest, {0,0}, 0.0f, WHITE);
+            DrawTexturePro(
+                brush.texture,
+                brush.sourceRect,
+                iconDestination,
+                { 0.0f, 0.0f },
+                0.0f,
+                WHITE
+            );
+        } else {
+            DrawEditorText(
+                "X",
+                {
+                    button.x + 5.0f * uiScale + iconArea * 0.5f,
+                    button.y + 5.0f * uiScale + iconArea * 0.5f
+                },
+                20.0f,
+                RED,
+                true
+            );
         }
-        
-        UIUtils::DrawText("PixeloidSans", brush.name, { btn.x + 45, btn.y + 10 }, UIUtils::FontSize::SMALL, BLACK);
-        UIUtils::DrawText("PixeloidSans", brush.sizeLabel, { btn.x + 45, btn.y + 25 }, UIUtils::FontSize::SMALL, DARKGRAY);
-        scrollY += 50.0f;
+        DrawEditorText(
+            brush.name,
+            {
+                button.x + 45.0f * uiScale,
+                button.y + 7.0f * uiScale
+            },
+            13.0f,
+            BLACK
+        );
+        DrawEditorText(
+            brush.sizeLabel,
+            {
+                button.x + 45.0f * uiScale,
+                button.y + 25.0f * uiScale
+            },
+            11.0f,
+            DARKGRAY
+        );
+        paletteY += 50.0f * uiScale;
     }
-    
     EndScissorMode();
-    
-    // Draw status message
+
     if (statusTimer > 0.0f) {
-        Color msgColor = (statusMessage.find("Successful") != std::string::npos) ? GREEN : RED;
-        UIUtils::DrawCenteredText("PixeloidSans", statusMessage, { sidebarBounds.width + (GetScreenWidth() - sidebarBounds.width) / 2.0f, 40.0f }, UIUtils::FontSize::HEADER, msgColor);
+        Color messageColor =
+            statusMessage.find("Successful") != std::string::npos
+            ? GREEN
+            : RED;
+        float canvasCenterX = sidebarBounds.width +
+            (GetScreenWidth() - sidebarBounds.width) * 0.5f;
+        DrawEditorText(
+            statusMessage,
+            { canvasCenterX, 36.0f * uiScale },
+            22.0f,
+            messageColor,
+            true
+        );
     }
 }
 
 void RoomEditorState::DrawGuidePanel() {
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), ColorAlpha(BLACK, 0.8f));
-    
-    Rectangle panel = { GetScreenWidth() / 2.0f - 250, GetScreenHeight() / 2.0f - 200, 500, 400 };
+    DrawRectangle(
+        0,
+        0,
+        GetScreenWidth(),
+        GetScreenHeight(),
+        ColorAlpha(BLACK, 0.8f)
+    );
+
+    float panelWidth = std::min(
+        500.0f * uiScale,
+        GetScreenWidth() - 40.0f * uiScale
+    );
+    float panelHeight = std::min(
+        400.0f * uiScale,
+        GetScreenHeight() - 40.0f * uiScale
+    );
+    Rectangle panel = {
+        (GetScreenWidth() - panelWidth) * 0.5f,
+        (GetScreenHeight() - panelHeight) * 0.5f,
+        panelWidth,
+        panelHeight
+    };
     DrawRectangleRec(panel, DARKGRAY);
-    DrawRectangleLinesEx(panel, 2.0f, ORANGE);
-    
-    float startY = panel.y + 30.0f;
-    UIUtils::DrawCenteredText("PixeloidSans", "ROOM EDITOR GUIDE", { panel.x + panel.width / 2.0f, startY }, UIUtils::FontSize::HEADER, ORANGE);
-    
-    startY += 60.0f;
-    UIUtils::DrawText("PixeloidSans", "- Pan Camera: W/A/S/D or Hold Middle Mouse", { panel.x + 40, startY }, UIUtils::FontSize::SMALL, WHITE);
-    startY += 40.0f;
-    UIUtils::DrawText("PixeloidSans", "- Zoom: Mouse Wheel (when outside sidebar)", { panel.x + 40, startY }, UIUtils::FontSize::SMALL, WHITE);
-    startY += 40.0f;
-    UIUtils::DrawText("PixeloidSans", "- Place Object: Left Click", { panel.x + 40, startY }, UIUtils::FontSize::SMALL, WHITE);
-    startY += 40.0f;
-    UIUtils::DrawText("PixeloidSans", "- Erase Object: Right Click", { panel.x + 40, startY }, UIUtils::FontSize::SMALL, WHITE);
-    startY += 40.0f;
-    UIUtils::DrawText("PixeloidSans", "- Scroll Palette: Mouse Wheel (hover sidebar)", { panel.x + 40, startY }, UIUtils::FontSize::SMALL, WHITE);
-    
-    startY += 80.0f;
-    UIUtils::DrawCenteredText("PixeloidSans", "Click anywhere to close", { panel.x + panel.width / 2.0f, startY }, UIUtils::FontSize::SMALL, GRAY);
+    DrawRectangleLinesEx(panel, 2.0f * uiScale, ORANGE);
+
+    float centerX = panel.x + panel.width * 0.5f;
+    float contentY = panel.y + 30.0f * uiScale;
+    DrawEditorText(
+        "ROOM EDITOR GUIDE",
+        { centerX, contentY },
+        26.0f,
+        ORANGE,
+        true
+    );
+
+    contentY += 55.0f * uiScale;
+    float left = panel.x + 35.0f * uiScale;
+    float lineStep = 38.0f * uiScale;
+    DrawEditorText(
+        "- Pan Camera: W/A/S/D or Middle Mouse",
+        { left, contentY },
+        14.0f,
+        WHITE
+    );
+    contentY += lineStep;
+    DrawEditorText(
+        "- Zoom: Mouse Wheel outside sidebar",
+        { left, contentY },
+        14.0f,
+        WHITE
+    );
+    contentY += lineStep;
+    DrawEditorText(
+        "- Place Wall/Object: Left Click",
+        { left, contentY },
+        14.0f,
+        WHITE
+    );
+    contentY += lineStep;
+    DrawEditorText(
+        "- Erase Object: Right Click",
+        { left, contentY },
+        14.0f,
+        WHITE
+    );
+    contentY += lineStep;
+    DrawEditorText(
+        "- Scroll Palette: Wheel over palette",
+        { left, contentY },
+        14.0f,
+        WHITE
+    );
+
+    DrawEditorText(
+        "Click anywhere to close",
+        {
+            centerX,
+            panel.y + panel.height - 30.0f * uiScale
+        },
+        13.0f,
+        GRAY,
+        true
+    );
 }

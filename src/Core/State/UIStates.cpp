@@ -23,7 +23,13 @@ void MainMenuState::Update(float deltaTime) {
     } else if (menuAction == MainMenuAction::Continue && app->hasContinuableSession) {
         app->ContinueSuspendedSession();
     } else if (menuAction == MainMenuAction::OpenEditor) {
+        app->roomEditor.Initialize();
         GameManager::GetInstance().SetState(GameState::ROOM_EDITOR);
+    } else if (menuAction == MainMenuAction::OpenSavedRoomEditor) {
+        std::string roomPath = menu->ConsumeSelectedRoomPath();
+        if (!roomPath.empty() && app->roomEditor.LoadRoom(roomPath)) {
+            GameManager::GetInstance().SetState(GameState::ROOM_EDITOR);
+        }
     }
     
     if (app->systemInitialized && IsKeyPressed(KEY_R)) {

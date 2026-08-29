@@ -316,9 +316,7 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
             else if (node->roomSize == 20) sizePrefix = "Medium";
             
             std::vector<std::string> templates;
-            if (node->roomSize == 15) {
-                templates.push_back("assets/level/Small_01.csv");
-            } else if (std::filesystem::exists("assets/level")) {
+            if (std::filesystem::exists("assets/level")) {
                 for (const auto& entry : std::filesystem::directory_iterator("assets/level")) {
                     if (entry.is_regular_file() && entry.path().extension() == ".csv") {
                         std::string filename = entry.path().filename().string();

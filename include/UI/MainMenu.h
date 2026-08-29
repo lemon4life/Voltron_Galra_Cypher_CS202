@@ -1,6 +1,7 @@
 #pragma once
 
 #include "raylib.h"
+#include "Core/Level/LevelIO.h"
 
 #include <string>
 #include <vector>
@@ -15,7 +16,13 @@ struct MenuButton {
 
 
 enum class MenuState { LOADING, TRANSITIONING, ACTIVE };
-enum class MainMenuAction { None, StartGame, Continue, OpenEditor };
+enum class MainMenuAction {
+    None,
+    StartGame,
+    Continue,
+    OpenEditor,
+    OpenSavedRoomEditor
+};
 
 class MainMenu {
 private:
@@ -26,7 +33,12 @@ private:
     bool isReady = false;
     bool quitRequested = false;
     bool continueAvailable = false;
+    bool roomListOpen = false;
     MainMenuAction pendingAction = MainMenuAction::None;
+    std::vector<SavedRoomInfo> savedRooms;
+    int selectedRoomIndex = -1;
+    float roomListScroll = 0.0f;
+    std::string selectedRoomPath;
 
     Texture2D backgroundTexture = {};
     static constexpr int BACKGROUND_COUNT = 9;
@@ -40,6 +52,10 @@ private:
 
     void RebuildButtons();
     void LoadCurrentBackground();
+    void OpenRoomList();
+    void RefreshRoomList();
+    void UpdateRoomList();
+    void DrawRoomList(int screenWidth, int screenHeight);
     
     // Lerping parameters
     float baseScale = 1.0f;
@@ -59,6 +75,7 @@ public:
     MenuState GetState() const { return currentState; }
     bool ConsumeQuitRequest();
     MainMenuAction ConsumeAction();
+    std::string ConsumeSelectedRoomPath();
     void SetContinueAvailable(bool available);
     void Draw(int screenWidth, int screenHeight);
 };

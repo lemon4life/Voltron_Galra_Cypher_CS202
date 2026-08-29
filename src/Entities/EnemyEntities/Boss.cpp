@@ -30,7 +30,7 @@ namespace {
     constexpr int BOSS_PHASE_ONE_PUNCHES = 4;
     constexpr int BOSS_PHASE_TWO_PUNCHES = 7;
     constexpr int BOSS_PHASE_THREE_PUNCHES = 10;
-    constexpr float BOSS_NORMAL_SPELL_SUMMON_INTERVAL = 0.5f;
+    constexpr float BOSS_NORMAL_SPELL_SUMMON_INTERVAL = 0.f;
     constexpr float BOSS_PHASE_THREE_SPELL_SUMMON_INTERVAL = 0.2f;
     constexpr int BOSS_PHASE_ONE_SUMMON_CHANCE_PERCENT = 50;
     constexpr int BOSS_HARDER_PHASE_SUMMON_CHANCE_PERCENT = 70;
