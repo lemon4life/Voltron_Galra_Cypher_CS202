@@ -190,14 +190,28 @@ void BossSpellingState::Enter(Boss* enemy) {
         BOSS_SPELL_MAX_MILLISECONDS
     );
     nextSummonCheck = enemy->GetSpellSummonInterval();
+    cloneSummonRetryTimer = 0.0f;
     demonsSummoned = 0;
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
     enemy->ResetAnimationCycle();
+    enemy->TrySummonPendingPhaseClones();
+    if (enemy->HasPendingPhaseCloneSummons()) {
+        cloneSummonRetryTimer = 0.5f;
+    }
 }
 
 void BossSpellingState::Update(Boss* enemy, float deltaTime) {
-    elapsedTime += std::max(0.0f, deltaTime);
+    float safeDeltaTime = std::max(0.0f, deltaTime);
+    elapsedTime += safeDeltaTime;
+
+    if (enemy->HasPendingPhaseCloneSummons()) {
+        cloneSummonRetryTimer -= safeDeltaTime;
+        if (cloneSummonRetryTimer <= 0.0f) {
+            enemy->TrySummonPendingPhaseClones();
+            cloneSummonRetryTimer = 0.5f;
+        }
+    }
 
     while (nextSummonCheck <= spellDuration &&
            elapsedTime >= nextSummonCheck) {
@@ -205,7 +219,10 @@ void BossSpellingState::Update(Boss* enemy, float deltaTime) {
             enemy->GetSpellSummonChancePercent()) {
             enemy->TrySummonRandomEnemy(demonsSummoned);
         }
-        nextSummonCheck += enemy->GetSpellSummonInterval();
+        nextSummonCheck += std::max(
+            0.01f,
+            enemy->GetSpellSummonInterval()
+        );
     }
 
     if (elapsedTime >= spellDuration) {

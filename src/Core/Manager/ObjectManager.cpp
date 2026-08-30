@@ -200,7 +200,8 @@ bool ObjectManager::QueueEnemySpawnSafely(
     MapObjectId type,
     Vector2 desiredPosition,
     Rectangle allowedRoomBounds,
-    float correctionRadius
+    float correctionRadius,
+    const std::function<void(Enemy&)>& configureEnemy
 ) {
     if (!teamManager || !pathFinding || !levelManager ||
         allowedRoomBounds.width <= 0.0f ||
@@ -218,6 +219,7 @@ bool ObjectManager::QueueEnemySpawnSafely(
     );
     Enemy* enemy = dynamic_cast<Enemy*>(object.get());
     if (!enemy) return false;
+    if (configureEnemy) configureEnemy(*enemy);
 
     Rectangle levelBounds = levelManager->GetLevelBounds();
     Paladin* activePlayer = teamManager->GetActivePaladin();

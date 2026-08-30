@@ -158,7 +158,7 @@ void VictoryState::Draw() {
 
     BeginMode2D(uiCamera);
     UIManager::DrawModalOverlay();
-    UIUtils::DrawCenteredText("PixeloidSansBold", "MISSION COMPLETE", { Constants::GAME_WIDTH * 0.5f, Constants::GAME_HEIGHT * 0.4f }, UIUtils::FontSize::TITLE, GOLD);
+    UIUtils::DrawCenteredText("PixeloidBold", "MISSION COMPLETE", { Constants::GAME_WIDTH * 0.5f, Constants::GAME_HEIGHT * 0.4f }, UIUtils::FontSize::TITLE, GOLD);
     UIUtils::DrawCenteredText("PixeloidSans", "Press SPACE to Return", { Constants::GAME_WIDTH * 0.5f, Constants::GAME_HEIGHT * 0.5f }, UIUtils::FontSize::BODY, RAYWHITE);
     EndMode2D();
 }

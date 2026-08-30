@@ -23,7 +23,19 @@ private:
     Texture2D stompDroneBulletTexture = { 0 };
     Texture2D stompKnightBulletTexture = { 0 };
 
+    bool phaseLocked = false;
+    BossPhase lockedPhase = BossPhase::Phase1;
+    bool cloneBoss = false;
+    bool phaseTwoTransitionTriggered = false;
+    bool phaseThreeTransitionTriggered = false;
+    bool phaseOneClonePending = false;
+    bool phaseTwoClonePending = false;
+
     Vector2 GetStompFootWorldPosition() const;
+    void EvaluatePhaseTransitions();
+    void RestartOrEnterSpellingState();
+    bool TrySummonBossClone(int cloneHealth, BossPhase clonePhase);
+    Color GetBodyTint() const;
 
 public:
     Boss(
@@ -36,6 +48,7 @@ public:
 
     void Update(float deltaTime) override;
     void Draw() override;
+    void TakeDamage(int amount) override;
 
     BossIdlingState* GetIdlingState() {
         return static_cast<BossIdlingState*>(idleState.get());
@@ -46,7 +59,16 @@ public:
     bool IsSpelling() const { return currentState == spellingState.get(); }
     bool IsPunching() const { return currentState == punchState.get(); }
     bool IsStomping() const { return currentState == stompingState.get(); }
+    bool IsInOffensiveState() const {
+        return IsSpelling() || IsPunching() || IsStomping();
+    }
+    bool IsClone() const { return cloneBoss; }
     BossPhase GetPhase() const;
+    void ConfigureAsClone(int cloneHealth, BossPhase clonePhase);
+    bool HasPendingPhaseCloneSummons() const {
+        return phaseOneClonePending || phaseTwoClonePending;
+    }
+    void TrySummonPendingPhaseClones();
     int GetIdleMinimumMilliseconds() const;
     int GetIdleMaximumMilliseconds() const;
     float GetIdleMovementSpeedScale() const;

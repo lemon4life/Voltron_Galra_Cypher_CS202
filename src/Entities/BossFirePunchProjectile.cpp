@@ -69,7 +69,7 @@ BossFirePunchProjectile::BossFirePunchProjectile(
     : Projectile(
           spawnPosition,
           { 0.0f, 0.0f },
-          0.0f,
+          FIRE_PUNCH_MAX_LIFETIME,
           damage,
           true
       ),
@@ -79,8 +79,7 @@ BossFirePunchProjectile::BossFirePunchProjectile(
       mapBounds(initialMapBounds),
       movementSpeed(std::max(0.0f, speed)),
       maximumTurnRateDegrees(std::max(0.0f, maximumTurnRate)),
-      currentAngleDegrees(0.0f),
-      remainingLifetime(FIRE_PUNCH_MAX_LIFETIME) {
+      currentAngleDegrees(0.0f) {
     Vector2 initialDirection = {
         initialTargetPosition.x - spawnPosition.x,
         initialTargetPosition.y - spawnPosition.y
@@ -105,8 +104,8 @@ void BossFirePunchProjectile::Update(float deltaTime) {
     if (!IsActive()) return;
 
     float safeDeltaTime = std::max(0.0f, deltaTime);
-    remainingLifetime -= safeDeltaTime;
-    if (remainingLifetime <= 0.0f) {
+    lifetime -= safeDeltaTime;
+    if (lifetime <= 0.0f) {
         Destroy();
         return;
     }

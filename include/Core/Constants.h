@@ -14,7 +14,7 @@ namespace Constants {
     inline bool isAutoAimEnabled = true;
 
     // Debug Configurations
-    inline bool ENABLE_ADMIN_GUI = false;
+    inline bool ENABLE_ADMIN_GUI = true;
     inline bool DEBUG_DRAW_ENTITY_COLLISION_BOXES = false;
     inline bool DEBUG_DRAW_ENEMY_PATHS = false;
     inline bool DEBUG_DRAW_LINE_OF_SIGHT = false;

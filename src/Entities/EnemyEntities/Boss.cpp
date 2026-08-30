@@ -16,9 +16,13 @@
 #include <cmath>
 
 namespace {
-    constexpr int BOSS_MAX_HEALTH = 2000;
-    constexpr int BOSS_PHASE_ONE_MIN_HEALTH = 1500;
-    constexpr int BOSS_PHASE_TWO_MIN_HEALTH = 1000;
+    constexpr int BOSS_MAX_HEALTH = 3000;
+    constexpr int BOSS_PHASE_TWO_MAX_HEALTH = 2000;
+    constexpr int BOSS_PHASE_THREE_MAX_HEALTH = 1000;
+    constexpr float BOSS_PHASE_TWO_IDLE_DAMAGE_SCALE = 0.80f;
+    constexpr float BOSS_PHASE_THREE_IDLE_DAMAGE_SCALE = 0.60f;
+    constexpr int BOSS_PHASE_TWO_CLONE_HEALTH = 700;
+    constexpr int BOSS_PHASE_THREE_CLONE_HEALTH = 1200;
     constexpr int BOSS_BASE_IDLE_MIN_MILLISECONDS = 2000;
     constexpr int BOSS_BASE_IDLE_MAX_MILLISECONDS = 3000;
     constexpr float BOSS_PHASE_TWO_IDLE_DURATION_SCALE = 0.70f;
@@ -30,7 +34,7 @@ namespace {
     constexpr int BOSS_PHASE_ONE_PUNCHES = 4;
     constexpr int BOSS_PHASE_TWO_PUNCHES = 7;
     constexpr int BOSS_PHASE_THREE_PUNCHES = 10;
-    constexpr float BOSS_NORMAL_SPELL_SUMMON_INTERVAL = 0.f;
+    constexpr float BOSS_NORMAL_SPELL_SUMMON_INTERVAL = 0.5f;
     constexpr float BOSS_PHASE_THREE_SPELL_SUMMON_INTERVAL = 0.2f;
     constexpr int BOSS_PHASE_ONE_SUMMON_CHANCE_PERCENT = 50;
     constexpr int BOSS_HARDER_PHASE_SUMMON_CHANCE_PERCENT = 70;
@@ -98,6 +102,28 @@ namespace {
     constexpr int BOSS_SUMMON_MAX_RADIUS_TENTHS = 960;
     constexpr float BOSS_SUMMON_CORRECTION_RADIUS =
         Constants::RENDER_TILE_SIZE * 3.0f;
+    constexpr float BOSS_CLONE_SUMMON_CORRECTION_RADIUS =
+        Constants::RENDER_TILE_SIZE * 6.0f;
+    constexpr Color BOSS_PHASE_TWO_TINT = { 255, 215, 215, 255 };
+    constexpr Color BOSS_PHASE_THREE_TINT = { 255, 165, 165, 255 };
+    constexpr Color BOSS_CLONE_TINT = { 145, 190, 255, 255 };
+
+    Color MultiplyColor(Color first, Color second) {
+        return {
+            static_cast<unsigned char>(
+                static_cast<unsigned int>(first.r) * second.r / 255U
+            ),
+            static_cast<unsigned char>(
+                static_cast<unsigned int>(first.g) * second.g / 255U
+            ),
+            static_cast<unsigned char>(
+                static_cast<unsigned int>(first.b) * second.b / 255U
+            ),
+            static_cast<unsigned char>(
+                static_cast<unsigned int>(first.a) * second.a / 255U
+            )
+        };
+    }
 
     struct BossPunchHandPose {
         Vector2 anchorWorld;
@@ -261,6 +287,8 @@ void Boss::Update(float deltaTime) {
         UpdateMovementAnimationFlag(updateStartPosition);
         return;
     }
+
+    EvaluatePhaseTransitions();
     
     if (currentState) {
         currentState->Update(this, deltaTime);
@@ -306,7 +334,10 @@ void Boss::Draw() {
         std::round(position.x),
         std::round(position.y)
     };
-    Color tint = statusComponent.GetStatusTint();
+    Color tint = MultiplyColor(
+        statusComponent.GetStatusTint(),
+        GetBodyTint()
+    );
 
     auto DrawBossBodyFrame = [&](Texture2D texture,
                                  int frameIndex,
@@ -441,9 +472,138 @@ void Boss::Draw() {
 }
 
 BossPhase Boss::GetPhase() const {
-    if (health >= BOSS_PHASE_ONE_MIN_HEALTH) return BossPhase::Phase1;
-    if (health >= BOSS_PHASE_TWO_MIN_HEALTH) return BossPhase::Phase2;
+    if (phaseLocked) return lockedPhase;
+    if (health > BOSS_PHASE_TWO_MAX_HEALTH) return BossPhase::Phase1;
+    if (health > BOSS_PHASE_THREE_MAX_HEALTH) return BossPhase::Phase2;
     return BossPhase::Phase3;
+}
+
+void Boss::TakeDamage(int amount) {
+    if (amount <= 0 || health <= 0) return;
+
+    float damageScale = 1.0f;
+    if (!IsInOffensiveState()) {
+        if (GetPhase() == BossPhase::Phase2) {
+            damageScale = BOSS_PHASE_TWO_IDLE_DAMAGE_SCALE;
+        } else if (GetPhase() == BossPhase::Phase3) {
+            damageScale = BOSS_PHASE_THREE_IDLE_DAMAGE_SCALE;
+        }
+    }
+
+    int scaledDamage = std::max(
+        1,
+        static_cast<int>(std::lround(amount * damageScale))
+    );
+    Enemy::TakeDamage(scaledDamage);
+    if (health > 0) EvaluatePhaseTransitions();
+}
+
+void Boss::ConfigureAsClone(int cloneHealth, BossPhase clonePhase) {
+    phaseLocked = true;
+    lockedPhase = clonePhase;
+    cloneBoss = true;
+    phaseTwoTransitionTriggered = true;
+    phaseThreeTransitionTriggered = true;
+    phaseOneClonePending = false;
+    phaseTwoClonePending = false;
+    SetMaxHealth(std::max(1, cloneHealth));
+    SetHealth(GetMaxHealth());
+}
+
+void Boss::EvaluatePhaseTransitions() {
+    if (phaseLocked || health <= 0) return;
+
+    BossPhase phase = GetPhase();
+    bool enteredNewPhase = false;
+    if (phase != BossPhase::Phase1 && !phaseTwoTransitionTriggered) {
+        phaseTwoTransitionTriggered = true;
+        phaseOneClonePending = true;
+        enteredNewPhase = true;
+    }
+    if (phase == BossPhase::Phase3 && !phaseThreeTransitionTriggered) {
+        phaseThreeTransitionTriggered = true;
+        phaseTwoClonePending = true;
+        enteredNewPhase = true;
+    }
+
+    if (enteredNewPhase) RestartOrEnterSpellingState();
+}
+
+void Boss::RestartOrEnterSpellingState() {
+    if (IsSpelling()) {
+        spellingState->Exit(this);
+        spellingState->Enter(this);
+        return;
+    }
+    ChangeState(GetSpellingState());
+}
+
+Color Boss::GetBodyTint() const {
+    if (cloneBoss) return BOSS_CLONE_TINT;
+
+    switch (GetPhase()) {
+        case BossPhase::Phase2:
+            return BOSS_PHASE_TWO_TINT;
+        case BossPhase::Phase3:
+            return BOSS_PHASE_THREE_TINT;
+        case BossPhase::Phase1:
+        default:
+            return WHITE;
+    }
+}
+
+bool Boss::TrySummonBossClone(int cloneHealth, BossPhase clonePhase) {
+    LevelManager* levelManager =
+        GameManager::GetInstance().GetLevelManager();
+    if (!levelManager || !targetTeam) return false;
+
+    std::shared_ptr<RoomNode> lockedRoom =
+        levelManager->GetCurrentlyLockedRoom();
+    if (!lockedRoom || lockedRoom->type != RoomType::BOSS ||
+        lockedRoom->state != RoomState::LOCKED) {
+        return false;
+    }
+
+    float angle = static_cast<float>(GetRandomValue(0, 359)) * DEG2RAD;
+    float radius = static_cast<float>(GetRandomValue(
+        BOSS_SUMMON_MIN_RADIUS_TENTHS,
+        BOSS_SUMMON_MAX_RADIUS_TENTHS
+    )) / 10.0f;
+    Vector2 desiredPosition = {
+        position.x + std::cos(angle) * radius,
+        position.y + std::sin(angle) * radius
+    };
+
+    return GameManager::GetInstance()
+        .GetObjectManager()
+        .QueueEnemySpawnSafely(
+            MapObjectId::Boss,
+            desiredPosition,
+            lockedRoom->GetWorldBounds(),
+            BOSS_CLONE_SUMMON_CORRECTION_RADIUS,
+            [cloneHealth, clonePhase](Enemy& enemy) {
+                Boss* clone = dynamic_cast<Boss*>(&enemy);
+                if (clone) {
+                    clone->ConfigureAsClone(cloneHealth, clonePhase);
+                }
+            }
+        );
+}
+
+void Boss::TrySummonPendingPhaseClones() {
+    if (phaseOneClonePending && TrySummonBossClone(
+            BOSS_PHASE_TWO_CLONE_HEALTH,
+            BossPhase::Phase1
+        )) {
+        phaseOneClonePending = false;
+    }
+
+    if (phaseTwoClonePending && TrySummonBossClone(
+            BOSS_PHASE_THREE_CLONE_HEALTH,
+            BossPhase::Phase2
+        )) {
+        phaseTwoClonePending = false;
+    }
 }
 
 int Boss::GetIdleMinimumMilliseconds() const {

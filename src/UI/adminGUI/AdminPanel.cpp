@@ -55,9 +55,11 @@ constexpr std::size_t SPAWN_ROW_COUNT =
     (SPAWN_TYPES.size() + SPAWN_COLUMN_COUNT - 1) / SPAWN_COLUMN_COUNT;
 constexpr float ACTION_BUTTON_Y = SPAWN_BUTTON_START_Y +
     (float)SPAWN_ROW_COUNT * (BUTTON_HEIGHT + SPAWN_BUTTON_GAP_Y) + 2.0f;
-constexpr float STATUS_TEXT_Y = ACTION_BUTTON_Y + 46.0f;
-constexpr float PROPERTY_HEADING_Y = ACTION_BUTTON_Y + 68.0f;
-constexpr float PROPERTY_START_Y = ACTION_BUTTON_Y + 89.0f;
+constexpr float ACTION_ROW_GAP = 6.0f;
+constexpr float STATUS_TEXT_Y = ACTION_BUTTON_Y +
+    BUTTON_HEIGHT * 2.0f + ACTION_ROW_GAP + 8.0f;
+constexpr float PROPERTY_HEADING_Y = STATUS_TEXT_Y + 22.0f;
+constexpr float PROPERTY_START_Y = PROPERTY_HEADING_Y + 21.0f;
 
 enum class EnemyProperty {
     Health,
@@ -203,7 +205,7 @@ void DrawToggleRow(
 }
 
 AdminPanel::AdminPanel()
-    : open(Constants::ENABLE_ADMIN_GUI),
+    : open(false),
       placementArmed(false),
       spawnType(MapObjectId::Chaser),
       spawnValues(DEFAULT_SPAWN_VALUES),
@@ -449,7 +451,7 @@ void AdminPanel::Update(
         }
     }
 
-    float actionButtonWidth = (contentWidth - 16.0f) / 3.0f;
+    float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
     Rectangle cancelButton = {
         contentX,
         panel.y + ACTION_BUTTON_Y,
@@ -463,8 +465,14 @@ void AdminPanel::Update(
         BUTTON_HEIGHT
     };
     Rectangle skipRoomButton = {
-        contentX + (actionButtonWidth + 8.0f) * 2.0f,
-        panel.y + ACTION_BUTTON_Y,
+        contentX,
+        panel.y + ACTION_BUTTON_Y + BUTTON_HEIGHT + ACTION_ROW_GAP,
+        actionButtonWidth,
+        BUTTON_HEIGHT
+    };
+    Rectangle skipFloorButton = {
+        contentX + actionButtonWidth + 8.0f,
+        panel.y + ACTION_BUTTON_Y + BUTTON_HEIGHT + ACTION_ROW_GAP,
         actionButtonWidth,
         BUTTON_HEIGHT
     };
@@ -482,6 +490,26 @@ void AdminPanel::Update(
         statusMessage = skipped
             ? "Current room cleared"
             : "Enter a locked combat room first";
+    }
+    if (WasButtonPressed(skipFloorButton, mousePosition)) {
+        if (gameState != GameState::GAMEPLAY) {
+            statusMessage = "Skip floor is available during gameplay only";
+        } else {
+            GameManager& gameManager = GameManager::GetInstance();
+            placementArmed = false;
+            gameManager.AdvanceFloorCount();
+            gameManager.ClearProjectiles();
+
+            if (gameManager.GetCurrentFloor() > GameManager::MAX_FLOORS) {
+                gameManager.SetState(GameState::VICTORY);
+                statusMessage = "Final floor skipped; victory triggered";
+            } else {
+                gameManager.GenerateDungeon();
+                gameManager.GetWaveManager().Reset(0, 0, 0);
+                statusMessage = std::string("Teleported to floor ") +
+                    std::to_string(gameManager.GetCurrentFloor());
+            }
+        }
     }
 
     UpdatePropertyEditor(mousePosition);
@@ -724,7 +752,7 @@ void AdminPanel::Draw() const {
         );
     }
 
-    float actionButtonWidth = (contentWidth - 16.0f) / 3.0f;
+    float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
     Rectangle cancelButton = {
         contentX,
         panel.y + ACTION_BUTTON_Y,
@@ -738,14 +766,21 @@ void AdminPanel::Draw() const {
         BUTTON_HEIGHT
     };
     Rectangle skipRoomButton = {
-        contentX + (actionButtonWidth + 8.0f) * 2.0f,
-        panel.y + ACTION_BUTTON_Y,
+        contentX,
+        panel.y + ACTION_BUTTON_Y + BUTTON_HEIGHT + ACTION_ROW_GAP,
+        actionButtonWidth,
+        BUTTON_HEIGHT
+    };
+    Rectangle skipFloorButton = {
+        contentX + actionButtonWidth + 8.0f,
+        panel.y + ACTION_BUTTON_Y + BUTTON_HEIGHT + ACTION_ROW_GAP,
         actionButtonWidth,
         BUTTON_HEIGHT
     };
     DrawButton(cancelButton, "Cancel placement", mousePosition);
     DrawButton(deleteAllButton, "Delete enemies", mousePosition);
     DrawButton(skipRoomButton, "Skip room", mousePosition);
+    DrawButton(skipFloorButton, "Skip floor", mousePosition);
 
     DrawTextAdmin(
         statusMessage.c_str(),

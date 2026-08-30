@@ -142,6 +142,7 @@ private:
     float elapsedTime = 0.0f;
     float spellDuration = 0.0f;
     float nextSummonCheck = 0.0f;
+    float cloneSummonRetryTimer = 0.0f;
     int demonsSummoned = 0;
 
 public:

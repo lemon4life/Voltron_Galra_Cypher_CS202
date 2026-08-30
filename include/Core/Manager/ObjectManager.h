@@ -119,7 +119,8 @@ public:
         MapObjectId type,
         Vector2 desiredPosition,
         Rectangle allowedRoomBounds,
-        float correctionRadius
+        float correctionRadius,
+        const std::function<void(Enemy&)>& configureEnemy = {}
     );
     void AddObject(std::unique_ptr<GameObject> object);
     void QueueRemoval(GameObject* object) override;
