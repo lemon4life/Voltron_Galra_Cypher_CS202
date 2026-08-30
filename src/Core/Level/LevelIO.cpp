@@ -12,6 +12,7 @@ namespace fs = std::filesystem;
 namespace {
     const fs::path ROOM_DIRECTORY = "assets/level";
 
+    /// Returns the current size prefix.
     std::string GetSizePrefix(RoomSize size) {
         switch (size) {
             case RoomSize::SMALL: return "Small";
@@ -21,6 +22,7 @@ namespace {
         return "Small";
     }
 
+    /// Returns the current room tile size.
     int GetRoomTileSize(RoomSize size) {
         switch (size) {
             case RoomSize::SMALL: return 15;
@@ -30,6 +32,7 @@ namespace {
         return 15;
     }
 
+    /// Attempts to get room size.
     bool TryGetRoomSize(const fs::path& path, RoomSize& size) {
         std::string filename = path.filename().string();
         if (filename.rfind("Small_", 0) == 0) {
@@ -47,6 +50,7 @@ namespace {
         return false;
     }
 
+    /// Reports whether the managed room path condition is satisfied.
     bool IsManagedRoomPath(const fs::path& path, bool mustExist) {
         if (path.extension() != ".csv") return false;
 
@@ -63,6 +67,7 @@ namespace {
     }
 }
 
+/// Writes the current room template to its managed CSV path and returns the saved path.
 std::string LevelIO::SaveRoomToCSV(
     RoomSize size,
     const std::vector<PlaceableObject>& objects,
@@ -109,6 +114,7 @@ std::string LevelIO::SaveRoomToCSV(
     return outputPath.generic_string();
 }
 
+/// Lists valid room-template files from the editor's managed save directory.
 std::vector<SavedRoomInfo> LevelIO::ListSavedRooms() {
     std::vector<SavedRoomInfo> rooms;
     std::error_code error;
@@ -139,6 +145,7 @@ std::vector<SavedRoomInfo> LevelIO::ListSavedRooms() {
     return rooms;
 }
 
+/// Validates and loads a saved room template without accepting out-of-bounds placements.
 bool LevelIO::LoadRoomFromCSV(
     const std::string& path,
     RoomSize& size,
@@ -184,6 +191,7 @@ bool LevelIO::LoadRoomFromCSV(
     return true;
 }
 
+/// Deletes saved room.
 bool LevelIO::DeleteSavedRoom(const std::string& path) {
     if (!IsManagedRoomPath(path, true)) return false;
     std::error_code error;

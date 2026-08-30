@@ -6,6 +6,7 @@
 #include <cmath>
 #include <utility>
 
+/// Creates a GUISlider instance from the supplied configuration.
 GUISlider::GUISlider(Rectangle trackBounds, std::string label, float initialValue)
     : trackBounds(trackBounds),
       label(std::move(label)),
@@ -14,6 +15,7 @@ GUISlider::GUISlider(Rectangle trackBounds, std::string label, float initialValu
     SetValue(initialValue);
 }
 
+/// Advances this component's state for the current frame.
 bool GUISlider::Update(Vector2 mousePosition) {
     const Rectangle interactionBounds = {
         trackBounds.x - 8.0f,
@@ -39,6 +41,7 @@ bool GUISlider::Update(Vector2 mousePosition) {
     return std::fabs(oldValue - value) > 0.0001f;
 }
 
+/// Renders this component using its current state and visual resources.
 void GUISlider::Draw() const {
     constexpr float labelFontSize = 18.0f;
     const int percentage = static_cast<int>(value * 100.0f + 0.5f);
@@ -68,10 +71,12 @@ void GUISlider::Draw() const {
                     Color{90, 95, 108, 255});
 }
 
+/// Updates the stored value.
 void GUISlider::SetValue(float newValue) {
     value = std::clamp(newValue, 0.0f, 1.0f);
 }
 
+/// Returns the current value.
 float GUISlider::GetValue() const {
     return value;
 }

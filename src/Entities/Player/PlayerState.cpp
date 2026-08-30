@@ -7,12 +7,14 @@
 #include <cstdio>
 
 // --- PlayerIdleState ---
+/// Prepares this state when it becomes active.
 void PlayerIdleState::Enter(Paladin* player) {
     player->SetTexture(player->GetIdleTexture());
     player->SetNumFrames(4); // Sprite sheet has 4 frames
     player->ResetAnimation();
 }
 
+/// Advances this component's state for the current frame.
 void PlayerIdleState::Update(Paladin* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
     if (GameManager::GetInstance().GetState() == GameState::GAMEPLAY) {
@@ -50,11 +52,13 @@ void PlayerIdleState::Update(Paladin* player, float deltaTime) {
     player->UpdateAnimation(deltaTime);
 }
 
+/// Cleans up this state before control moves elsewhere.
 void PlayerIdleState::Exit(Paladin* player) {
     // Nothing specific needed
 }
 
 // --- PlayerRunState ---
+/// Prepares this state when it becomes active.
 void PlayerRunState::Enter(Paladin* player) {
     player->ResetParryCount();
     player->SetTexture(player->GetRunTexture());
@@ -62,6 +66,7 @@ void PlayerRunState::Enter(Paladin* player) {
     player->ResetAnimation();
 }
 
+/// Advances this component's state for the current frame.
 void PlayerRunState::Update(Paladin* player, float deltaTime) {
     // Check for Attack Input ('J' or Left Mouse Button)
     if (GameManager::GetInstance().GetState() == GameState::GAMEPLAY) {
@@ -115,11 +120,13 @@ void PlayerRunState::Update(Paladin* player, float deltaTime) {
     player->UpdateAnimation(deltaTime);
 }
 
+/// Cleans up this state before control moves elsewhere.
 void PlayerRunState::Exit(Paladin* player) {
     // Nothing specific needed
 }
 
 // --- PlayerParryState ---
+/// Prepares this state when it becomes active.
 void PlayerParryState::Enter(Paladin* player) {
     player->SetTexture(player->GetParryTexture());
     player->SetNumFrames(1);
@@ -127,6 +134,7 @@ void PlayerParryState::Enter(Paladin* player) {
     player->SetParrying(true);
 }
 
+/// Advances this component's state for the current frame.
 void PlayerParryState::Update(Paladin* player, float deltaTime) {
     if (player->IsAutoParrying()) {
         player->DecrementAutoParryDuration(deltaTime);
@@ -147,6 +155,7 @@ void PlayerParryState::Update(Paladin* player, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void PlayerParryState::Exit(Paladin* player) {
     player->SetParrying(false);
     player->SetAutoParry(false);
@@ -155,6 +164,7 @@ void PlayerParryState::Exit(Paladin* player) {
 // ----------------------------------------------------
 // PlayerDownState
 // ----------------------------------------------------
+/// Prepares this state when it becomes active.
 void PlayerDownState::Enter(Paladin* player) {
     player->SetTexture(player->GetDownTexture());
     player->SetNumFrames(1);
@@ -163,6 +173,7 @@ void PlayerDownState::Enter(Paladin* player) {
     initialY = player->GetPosition().y;
 }
 
+/// Advances this component's state for the current frame.
 void PlayerDownState::Update(Paladin* player, float deltaTime) {
     if (bounceTimer > 0.0f) {
         bounceTimer -= deltaTime;
@@ -190,6 +201,7 @@ void PlayerDownState::Update(Paladin* player, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void PlayerDownState::Exit(Paladin* player) {
     // Reset to initial Y if needed, though they shouldn't exit until reset anyway
 }

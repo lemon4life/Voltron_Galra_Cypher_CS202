@@ -45,12 +45,14 @@ namespace {
         { BossOffense::Stomp, 33 }
     }};
 
+    /// Returns the current stomp frame duration.
     float GetStompFrameDuration(int frameIndex) {
         return frameIndex < 2
             ? BOSS_STOMP_SLOW_FRAME_DURATION
             : BOSS_STOMP_FAST_FRAME_DURATION;
     }
 
+    /// Chooses a random duration inside the supplied state timing range.
     float RollDuration(int minimumMilliseconds, int maximumMilliseconds) {
         return (float)GetRandomValue(
             minimumMilliseconds,
@@ -58,6 +60,7 @@ namespace {
         ) / 1000.0f;
     }
 
+    /// Selects the boss's next offensive state from its configured probability weights.
     BossOffense RollBossOffense() {
         int roll = GetRandomValue(1, 100);
         int cumulativeProbability = 0;
@@ -74,6 +77,7 @@ namespace {
 
 // Boss Idling State
 
+/// Prepares this state when it becomes active.
 void BossIdlingState::Enter(Boss* enemy) {
     stage = Stage::InitialIdle;
     stageTimeRemaining = RollDuration(
@@ -84,6 +88,7 @@ void BossIdlingState::Enter(Boss* enemy) {
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
 }
 
+/// Advances this component's state for the current frame.
 void BossIdlingState::Update(Boss* enemy, float deltaTime) {
     float safeDeltaTime = std::max(0.0f, deltaTime);
     stageTimeRemaining -= safeDeltaTime;
@@ -176,6 +181,7 @@ void BossIdlingState::Update(Boss* enemy, float deltaTime) {
     enemy->ChangeState(nextState);
 }
 
+/// Cleans up this state before control moves elsewhere.
 void BossIdlingState::Exit(Boss* enemy) {
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
@@ -183,6 +189,7 @@ void BossIdlingState::Exit(Boss* enemy) {
 
 // Boss Spelling State
 
+/// Prepares this state when it becomes active.
 void BossSpellingState::Enter(Boss* enemy) {
     elapsedTime = 0.0f;
     spellDuration = RollDuration(
@@ -201,6 +208,7 @@ void BossSpellingState::Enter(Boss* enemy) {
     }
 }
 
+/// Advances this component's state for the current frame.
 void BossSpellingState::Update(Boss* enemy, float deltaTime) {
     float safeDeltaTime = std::max(0.0f, deltaTime);
     elapsedTime += safeDeltaTime;
@@ -230,12 +238,14 @@ void BossSpellingState::Update(Boss* enemy, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void BossSpellingState::Exit(Boss* enemy) {
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
 }
 
 // Boss Punch State (animation test only; no hitbox or damage yet)
 
+/// Prepares this state when it becomes active.
 void BossPunchState::Enter(Boss* enemy) {
     phase = Phase::Ready;
     frameTimer = 0.0f;
@@ -246,6 +256,7 @@ void BossPunchState::Enter(Boss* enemy) {
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
 }
 
+/// Advances this component's state for the current frame.
 void BossPunchState::Update(Boss* enemy, float deltaTime) {
     frameTimer += std::max(0.0f, deltaTime);
 
@@ -285,6 +296,7 @@ void BossPunchState::Update(Boss* enemy, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void BossPunchState::Exit(Boss* enemy) {
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
     enemy->ResetAnimationCycle();
@@ -292,6 +304,7 @@ void BossPunchState::Exit(Boss* enemy) {
 
 // Boss Stomping State
 
+/// Prepares this state when it becomes active.
 void BossStompingState::Enter(Boss* enemy) {
     frameTimer = 0.0f;
     frameIndex = 0;
@@ -302,6 +315,7 @@ void BossStompingState::Enter(Boss* enemy) {
     enemy->ResetAnimationCycle();
 }
 
+/// Advances this component's state for the current frame.
 void BossStompingState::Update(Boss* enemy, float deltaTime) {
     frameTimer += std::max(0.0f, deltaTime);
 
@@ -326,6 +340,7 @@ void BossStompingState::Update(Boss* enemy, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void BossStompingState::Exit(Boss* enemy) {
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
     enemy->ResetAnimationCycle();

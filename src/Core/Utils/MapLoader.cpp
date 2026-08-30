@@ -5,6 +5,7 @@
 #include <limits>
 
 namespace {
+/// Parses integer cell.
 bool ParseIntegerCell(const std::string& text, int& value) {
     if (text.empty()) return false;
 
@@ -23,6 +24,7 @@ bool ParseIntegerCell(const std::string& text, int& value) {
     }
 }
 
+/// Reports whether the known object id condition is satisfied.
 bool IsKnownObjectId(int value) {
     return value == static_cast<int>(MapObjectId::Empty) ||
         (value >= static_cast<int>(MapObjectId::DestructibleBox) &&
@@ -30,6 +32,7 @@ bool IsKnownObjectId(int value) {
 }
 }
 
+/// Parses csv.
 bool MapLoader::ParseCSV(const std::string& filepath, std::vector<std::vector<int>>& output) {
     std::ifstream file(filepath);
     if (!file.is_open()) {
@@ -77,6 +80,7 @@ bool MapLoader::ParseCSV(const std::string& filepath, std::vector<std::vector<in
     return !output.empty();
 }
 
+/// Parses object grid.
 bool MapLoader::ParseObjectGrid(const std::string& filepath, std::vector<std::vector<MapObjectId>>& output, const std::vector<std::vector<int>>& referenceLayer) {
     output.clear();
     output.reserve(referenceLayer.size());

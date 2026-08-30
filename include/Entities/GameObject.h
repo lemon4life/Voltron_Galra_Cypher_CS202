@@ -30,6 +30,7 @@ protected:
     Rectangle boundingBox;
 
 public:
+    /// Creates a GameObject instance from the supplied configuration.
     GameObject(Vector2 pos, GameObjectType type)
         : objectId(nextObjectId++),
           objectType(type),
@@ -42,15 +43,23 @@ public:
         }
         ++liveCount;
     }
+    /// Releases resources owned by this GameObject instance.
     virtual ~GameObject() { --liveCount; }
 
+    /// Advances this component's state for the current frame.
     virtual void Update(float deltaTime) = 0;
+    /// Renders this component using its current state and visual resources.
     virtual void Draw() = 0;
 
+    /// Returns the current object type.
     GameObjectType GetObjectType() const noexcept { return objectType; }
+    /// Returns the current object id.
     ObjectId GetObjectId() const noexcept { return objectId; }
+    /// Returns the current live count.
     static std::size_t GetLiveCount() noexcept { return liveCount; }
+    /// Returns the current position.
     Vector2 GetPosition() const { return position; }
+    /// Updates the stored position.
     void SetPosition(Vector2 pos) {
         if (!std::isfinite(pos.x) || !std::isfinite(pos.y)) {
             throw std::invalid_argument(
@@ -59,7 +68,10 @@ public:
         }
         position = pos;
     }
+    /// Returns the current bounding box.
     virtual Rectangle GetBoundingBox() const { return boundingBox; }
+    /// Returns the current collision box.
     virtual Rectangle GetCollisionBox() const { return GetBoundingBox(); }
+    /// Reports whether the solid navigation obstacle condition is satisfied.
     virtual bool IsSolidNavigationObstacle() const { return false; }
 };

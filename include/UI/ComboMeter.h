@@ -12,10 +12,15 @@ class ComboMeter {
     float popScale = 1.0f;
 
 public:
+    /// Adds damage.
     void AddDamage(int amount);
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime);
+    /// Renders this component using its current state and visual resources.
     void Draw(Vector2 basePosition);
     
+    /// Returns the current accumulated damage.
     int GetAccumulatedDamage() const { return accumulatedDamage; }
+    /// Restores this component to its initial runtime state.
     void Reset();
 };

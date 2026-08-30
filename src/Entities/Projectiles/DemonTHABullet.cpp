@@ -7,6 +7,7 @@ namespace {
     constexpr float COLLISION_HALF_SIZE = COLLISION_SIZE * 0.5f;
 }
 
+/// Creates a DemonTHABullet instance from the supplied configuration.
 DemonTHABullet::DemonTHABullet(
     Vector2 startPosition,
     Vector2 initialVelocity,
@@ -26,12 +27,14 @@ DemonTHABullet::DemonTHABullet(
     UpdateSweptCollisionBox(startPosition);
 }
 
+/// Advances this component's state for the current frame.
 void DemonTHABullet::Update(float deltaTime) {
     Vector2 previousPosition = position;
     Projectile::Update(deltaTime);
     UpdateSweptCollisionBox(previousPosition);
 }
 
+/// Updates swept collision box.
 void DemonTHABullet::UpdateSweptCollisionBox(
     Vector2 previousPosition
 ) {

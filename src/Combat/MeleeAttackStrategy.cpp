@@ -22,6 +22,7 @@ namespace {
         float radius;
     };
 
+    /// Builds blade sweep.
     std::vector<BladeCapsule> BuildBladeSweep(
         Vector2 origin,
         float startAngleDegrees,
@@ -56,6 +57,7 @@ namespace {
         return samples;
     }
 
+    /// Returns the current blade sweep bounds.
     Rectangle GetBladeSweepBounds(
         const std::vector<BladeCapsule>& samples
     ) {
@@ -91,6 +93,7 @@ namespace {
         };
     }
 
+    /// Implements the blade sweep intersects behavior for this component.
     bool BladeSweepIntersects(
         const std::vector<BladeCapsule>& samples,
         Rectangle bounds
@@ -110,6 +113,7 @@ namespace {
     }
 }
 
+/// Creates a MeleeAttackStrategy instance from the supplied configuration.
 MeleeAttackStrategy::MeleeAttackStrategy(
     Texture2D weapon,
     Texture2D att1,
@@ -136,6 +140,7 @@ MeleeAttackStrategy::MeleeAttackStrategy(
     timePerFrame = 0.05f; // Fast melee swing (4 frames = 0.2s total)
 }
 
+/// Starts this attack behavior when its current conditions allow it.
 void MeleeAttackStrategy::Attack(Vector2 playerPos) {
     lastPlayerPos = playerPos;
     if (comboStep == 0) {
@@ -157,6 +162,7 @@ void MeleeAttackStrategy::Attack(Vector2 playerPos) {
     }
 }
 
+/// Advances this component's state for the current frame.
 void MeleeAttackStrategy::Update(float deltaTime) {
     kinematics.Update(deltaTime);
     if (comboStep == 0) return;
@@ -198,6 +204,7 @@ void MeleeAttackStrategy::Update(float deltaTime) {
     }
 }
 
+/// Returns the current signed swing offset.
 float MeleeAttackStrategy::GetSignedSwingOffset() const {
     bool facingLeft = aimDir.x < -0.001f
         ? true
@@ -207,6 +214,7 @@ float MeleeAttackStrategy::GetSignedSwingOffset() const {
         : kinematics.GetAngleOffset();
 }
 
+/// Processes blade collision.
 void MeleeAttackStrategy::ProcessBladeCollision(
     float startAngleDegrees,
     float endAngleDegrees
@@ -262,6 +270,7 @@ void MeleeAttackStrategy::ProcessBladeCollision(
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void MeleeAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
     lastPlayerPos = playerPos;
     lastFacingLeft = facingLeft;

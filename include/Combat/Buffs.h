@@ -15,13 +15,16 @@ private:
     static constexpr float TRANSITION_DURATION = 0.2f;
 
 public:
+    /// Creates a AegisShieldBuff instance from the supplied configuration.
     AegisShieldBuff(float duration) 
         : timer(duration), maxDuration(duration), rotationAngle(0.0f) {}
 
+    /// Handles the apply event.
     void OnApply(Paladin* target) override {
         if (target) target->SetInvulnerable(true);
     }
 
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime, Paladin* activePaladin) override {
         timer -= deltaTime;
         rotationAngle += ROTATE_SPEED * deltaTime;
@@ -32,14 +35,17 @@ public:
         }
     }
 
+    /// Handles the remove event.
     void OnRemove(Paladin* target) override {
         if (target) target->SetInvulnerable(false);
     }
 
+    /// Reports whether the finished condition is satisfied.
     bool IsFinished() const override {
         return timer <= 0.0f;
     }
 
+    /// Renders this component using its current state and visual resources.
     void Draw(Paladin* activePaladin) override {
         if (!activePaladin) return;
 
@@ -81,9 +87,11 @@ private:
     static constexpr float SKILL_RADIUS = 100.0f;
 
 public:
+    /// Creates a FireCircleBuff instance from the supplied configuration.
     FireCircleBuff(float duration) 
         : timer(duration), maxDuration(duration), tickTimer(0.0f), rotationAngle(0.0f) {}
 
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime, Paladin* activePaladin) override {
         if (!activePaladin) return;
 
@@ -112,10 +120,12 @@ public:
         }
     }
 
+    /// Reports whether the finished condition is satisfied.
     bool IsFinished() const override {
         return timer <= 0.0f;
     }
 
+    /// Renders this component using its current state and visual resources.
     void Draw(Paladin* activePaladin) override {
         if (!activePaladin) return;
 
@@ -150,12 +160,15 @@ class DualWieldBuff : public IBuff {
 private:
     float timer;
 public:
+    /// Creates a DualWieldBuff instance from the supplied configuration.
     DualWieldBuff(float duration) : timer(duration) {}
 
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime, Paladin* activePaladin) override {
         timer -= deltaTime;
     }
 
+    /// Reports whether the finished condition is satisfied.
     bool IsFinished() const override {
         return timer <= 0.0f;
     }

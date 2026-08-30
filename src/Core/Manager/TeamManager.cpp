@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 
+/// Creates a TeamManager instance from the supplied configuration.
 TeamManager::TeamManager()
     : activeIndex(0),
       sharedArmor(0),
@@ -18,8 +19,10 @@ TeamManager::TeamManager()
 {
 }
 
+/// Releases resources owned by this TeamManager instance.
 TeamManager::~TeamManager() = default;
 
+/// Adds member.
 void TeamManager::AddMember(std::unique_ptr<Paladin> paladin) {
     if (!paladin) return;
     Paladin* member = paladin.get();
@@ -30,6 +33,7 @@ void TeamManager::AddMember(std::unique_ptr<Paladin> paladin) {
     member->SetTeamManager(this);
 }
 
+/// Refreshes aim strategies.
 void TeamManager::RefreshAimStrategies() {
     bool useAuto = Constants::isAutoAimEnabled ||
                    InputManager::GetMode() == InputMode::KEYBOARD_ONLY;
@@ -39,6 +43,7 @@ void TeamManager::RefreshAimStrategies() {
     }
 }
 
+/// Returns the current active paladin.
 Paladin* TeamManager::GetActivePaladin() const {
     if (team.empty() || activeIndex < 0 ||
         activeIndex >= static_cast<int>(team.size())) {
@@ -47,6 +52,7 @@ Paladin* TeamManager::GetActivePaladin() const {
     return team[static_cast<std::size_t>(activeIndex)];
 }
 
+/// Resets for new game.
 void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
     std::sort(
         team.begin(),
@@ -74,6 +80,7 @@ void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
     NotifyObservers();
 }
 
+/// Searches for member index.
 int TeamManager::FindMemberIndex(PaladinId id) const {
     for (std::size_t index = 0; index < team.size(); ++index) {
         if (team[index] && team[index]->GetPaladinId() == id) {
@@ -83,6 +90,7 @@ int TeamManager::FindMemberIndex(PaladinId id) const {
     return -1;
 }
 
+/// Assigns paladin to slot.
 bool TeamManager::AssignPaladinToSlot(
     PaladinId id,
     std::size_t targetIndex
@@ -125,6 +133,7 @@ bool TeamManager::AssignPaladinToSlot(
     return true;
 }
 
+/// Adds depth render items.
 void TeamManager::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
     if (team.empty()) return;
     
@@ -185,12 +194,14 @@ void TeamManager::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
     }
 }
 
+/// Starts spawn animation.
 void TeamManager::StartSpawnAnimation() {
     isSpawning = true;
     spawnAnimTimer = 0.0f;
     AudioManager::GetInstance().PlaySoundEffect("fx_show_up");
 }
 
+/// Swaps character.
 void TeamManager::SwapCharacter() {
     if (team.size() <= 1) return;
     
@@ -237,6 +248,7 @@ void TeamManager::SwapCharacter() {
     NotifyObservers();
 }
 
+/// Swaps character to index.
 void TeamManager::SwapCharacterToIndex(int targetIndex) {
     if (team.size() <= 1) return;
     if (targetIndex < 0 || targetIndex >= team.size()) return;
@@ -276,6 +288,7 @@ void TeamManager::SwapCharacterToIndex(int targetIndex) {
     NotifyObservers();
 }
 
+/// Swaps due to death.
 void TeamManager::SwapDueToDeath() {
     if (team.size() <= 1) return;
     
@@ -314,6 +327,9 @@ void TeamManager::SwapDueToDeath() {
 }
 
 #include "raymath.h"
+/// Updates team-wide input and shared status while only the selected Paladin
+/// receives active movement/combat updates. Benched members still advance their
+/// inactive state and Ultimate cooldowns so swapping preserves consistent timing.
 void TeamManager::Update(float deltaTime) {
     if (team.empty()) return;
 
@@ -369,6 +385,7 @@ void TeamManager::Update(float deltaTime) {
     NotifyObservers();
 }
 
+/// Renders this component using its current state and visual resources.
 void TeamManager::Draw() {
     if (team.empty()) return;
     
@@ -381,6 +398,7 @@ void TeamManager::Draw() {
     active->Draw();
 }
 
+/// Renders buffs.
 void TeamManager::DrawBuffs() {
     Paladin* active = GetActivePaladin();
     for (auto& buff : sharedBuffs) {
@@ -388,6 +406,7 @@ void TeamManager::DrawBuffs() {
     }
 }
 
+/// Notifies observers.
 void TeamManager::NotifyObservers() {
     if (team.empty()) return;
     
@@ -429,6 +448,7 @@ void TeamManager::NotifyObservers() {
     }
 }
 
+/// Reports whether the team dead condition is satisfied.
 bool TeamManager::IsTeamDead() const {
     for (auto* paladin : team) {
         if (paladin->GetHealth() > 0) return false;
@@ -436,6 +456,7 @@ bool TeamManager::IsTeamDead() const {
     return true;
 }
 
+/// Adds quintessence.
 void TeamManager::AddQuintessence(float amount) {
     if (!std::isfinite(amount) || amount <= 0.0f) return;
     if (debugFastFuel) {
@@ -448,6 +469,7 @@ void TeamManager::AddQuintessence(float amount) {
     NotifyObservers();
 }
 
+/// Consumes and returns quintessence.
 bool TeamManager::ConsumeQuintessence(float amount) {
     if (!std::isfinite(amount) || amount <= 0.0f) return false;
     if (currentQuintessence < amount) {

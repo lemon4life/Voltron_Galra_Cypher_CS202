@@ -28,10 +28,13 @@ private:
 
     std::vector<FireTrailNode> fireNodes;
 
+    /// Spawns trail nodes.
     void SpawnTrailNodes(float fromDist, float toDist);
+    /// Updates trail.
     void UpdateTrail(float deltaTime);
 
 public:
+    /// Creates a KeithUltiProjectile instance from the supplied configuration.
     KeithUltiProjectile(
         Vector2 startPos,
         Vector2 dir,
@@ -44,7 +47,10 @@ public:
         Texture2D fireTexture
     );
 
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
+    /// Reports whether this projectile intentionally passes through world blockers.
     bool IgnoresWorldCollision() const override { return true; }
 };

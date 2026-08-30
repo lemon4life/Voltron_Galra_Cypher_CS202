@@ -9,6 +9,7 @@ constexpr std::size_t MAX_CORPSE_DECALS = 128;
 constexpr float CORPSE_DECAL_LIFETIME = 45.0f;
 }
 
+/// Adds corpse.
 void DecalManager::AddCorpse(Vector2 pos, Texture2D tex, bool facingLeft, Vector2 slideVel) {
     if (corpses.size() >= MAX_CORPSE_DECALS) {
         corpses.erase(corpses.begin());
@@ -24,10 +25,12 @@ void DecalManager::AddCorpse(Vector2 pos, Texture2D tex, bool facingLeft, Vector
     corpses.push_back(corpse);
 }
 
+/// Removes all runtime entries owned by this component and resets transient state.
 void DecalManager::Clear() {
     decltype(corpses){}.swap(corpses);
 }
 
+/// Advances this component's state for the current frame.
 void DecalManager::Update(
     float deltaTime,
     const LevelManager* levelManager
@@ -88,6 +91,7 @@ void DecalManager::Update(
     );
 }
 
+/// Renders this component using its current state and visual resources.
 void DecalManager::Draw() {
     for (const auto& corpse : corpses) {
         Rectangle corpseBounds = {

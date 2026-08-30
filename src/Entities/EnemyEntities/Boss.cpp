@@ -108,6 +108,7 @@ namespace {
     constexpr Color BOSS_PHASE_THREE_TINT = { 255, 165, 165, 255 };
     constexpr Color BOSS_CLONE_TINT = { 145, 190, 255, 255 };
 
+    /// Combines two color tints by multiplying their normalized channels.
     Color MultiplyColor(Color first, Color second) {
         return {
             static_cast<unsigned char>(
@@ -131,6 +132,7 @@ namespace {
         float angleDegrees;
     };
 
+    /// Calculates punch hand pose.
     BossPunchHandPose CalculatePunchHandPose(
         Vector2 bossPosition,
         bool flipSprite,
@@ -176,6 +178,7 @@ namespace {
         };
     }
 
+    /// Rotates the boss punch attachment offset to match its facing direction.
     Vector2 RotatePunchOffset(Vector2 offset, float angleDegrees) {
         float angleRadians = angleDegrees * DEG2RAD;
         float cosine = std::cos(angleRadians);
@@ -186,6 +189,7 @@ namespace {
         };
     }
 
+    /// Calculates fire punch launch position.
     Vector2 CalculateFirePunchLaunchPosition(
         const BossPunchHandPose& handPose,
         bool flipSprite
@@ -212,6 +216,7 @@ namespace {
     }
 }
 
+/// Creates a Boss instance from the supplied configuration.
 Boss::Boss(
     Vector2 pos,
     TeamManager* targetTeam,
@@ -268,6 +273,7 @@ Boss::Boss(
     ChangeState(GetIdlingState());
 }
 
+/// Releases resources owned by this Boss instance.
 Boss::~Boss() {
     if (currentState) {
         currentState->Exit(this);
@@ -275,6 +281,9 @@ Boss::~Boss() {
     currentState = nullptr;
 }
 
+/// Advances spawn/death handling, phase transitions, active AI state, status
+/// effects, and movement animation. State objects own offense-specific timing;
+/// Boss keeps the shared phase and visual bookkeeping consistent around them.
 void Boss::Update(float deltaTime) {
     Vector2 updateStartPosition = position;
     if (UpdateSpawnSequence(deltaTime)) {
@@ -323,6 +332,7 @@ void Boss::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void Boss::Draw() {
     if (!ShouldDrawDuringSpawn()) {
         DrawSpawnEffect();
@@ -471,6 +481,7 @@ void Boss::Draw() {
     DrawSpawnEffect();
 }
 
+/// Returns the current phase.
 BossPhase Boss::GetPhase() const {
     if (phaseLocked) return lockedPhase;
     if (health > BOSS_PHASE_TWO_MAX_HEALTH) return BossPhase::Phase1;
@@ -478,6 +489,7 @@ BossPhase Boss::GetPhase() const {
     return BossPhase::Phase3;
 }
 
+/// Applies incoming damage after this object handles defenses and state-specific rules.
 void Boss::TakeDamage(int amount) {
     if (amount <= 0 || health <= 0) return;
 
@@ -498,6 +510,7 @@ void Boss::TakeDamage(int amount) {
     if (health > 0) EvaluatePhaseTransitions();
 }
 
+/// Configures as clone.
 void Boss::ConfigureAsClone(int cloneHealth, BossPhase clonePhase) {
     phaseLocked = true;
     lockedPhase = clonePhase;
@@ -510,6 +523,7 @@ void Boss::ConfigureAsClone(int cloneHealth, BossPhase clonePhase) {
     SetHealth(GetMaxHealth());
 }
 
+/// Detects boss health thresholds and starts each one-time phase transition.
 void Boss::EvaluatePhaseTransitions() {
     if (phaseLocked || health <= 0) return;
 
@@ -529,6 +543,7 @@ void Boss::EvaluatePhaseTransitions() {
     if (enteredNewPhase) RestartOrEnterSpellingState();
 }
 
+/// Restarts the current spell cycle or enters the spell state for a forced phase transition.
 void Boss::RestartOrEnterSpellingState() {
     if (IsSpelling()) {
         spellingState->Exit(this);
@@ -538,6 +553,7 @@ void Boss::RestartOrEnterSpellingState() {
     ChangeState(GetSpellingState());
 }
 
+/// Returns the current body tint.
 Color Boss::GetBodyTint() const {
     if (cloneBoss) return BOSS_CLONE_TINT;
 
@@ -552,6 +568,7 @@ Color Boss::GetBodyTint() const {
     }
 }
 
+/// Attempts to summon boss clone.
 bool Boss::TrySummonBossClone(int cloneHealth, BossPhase clonePhase) {
     LevelManager* levelManager =
         GameManager::GetInstance().GetLevelManager();
@@ -590,6 +607,7 @@ bool Boss::TrySummonBossClone(int cloneHealth, BossPhase clonePhase) {
         );
 }
 
+/// Attempts to summon pending phase clones.
 void Boss::TrySummonPendingPhaseClones() {
     if (phaseOneClonePending && TrySummonBossClone(
             BOSS_PHASE_TWO_CLONE_HEALTH,
@@ -606,6 +624,7 @@ void Boss::TrySummonPendingPhaseClones() {
     }
 }
 
+/// Returns the current idle minimum milliseconds.
 int Boss::GetIdleMinimumMilliseconds() const {
     float scale = 1.0f;
     if (GetPhase() == BossPhase::Phase2) {
@@ -616,6 +635,7 @@ int Boss::GetIdleMinimumMilliseconds() const {
     return (int)(BOSS_BASE_IDLE_MIN_MILLISECONDS * scale);
 }
 
+/// Returns the current idle maximum milliseconds.
 int Boss::GetIdleMaximumMilliseconds() const {
     float scale = 1.0f;
     if (GetPhase() == BossPhase::Phase2) {
@@ -626,6 +646,7 @@ int Boss::GetIdleMaximumMilliseconds() const {
     return (int)(BOSS_BASE_IDLE_MAX_MILLISECONDS * scale);
 }
 
+/// Returns the current idle movement speed scale.
 float Boss::GetIdleMovementSpeedScale() const {
     switch (GetPhase()) {
         case BossPhase::Phase2:
@@ -638,12 +659,14 @@ float Boss::GetIdleMovementSpeedScale() const {
     }
 }
 
+/// Returns the current stomps per state.
 int Boss::GetStompsPerState() const {
     return GetPhase() == BossPhase::Phase1
         ? BOSS_PHASE_ONE_STOMPS
         : BOSS_HARDER_PHASE_STOMPS;
 }
 
+/// Returns the current punches per state.
 int Boss::GetPunchesPerState() const {
     switch (GetPhase()) {
         case BossPhase::Phase1:
@@ -656,18 +679,21 @@ int Boss::GetPunchesPerState() const {
     }
 }
 
+/// Returns the current spell summon interval.
 float Boss::GetSpellSummonInterval() const {
     return GetPhase() == BossPhase::Phase3
         ? BOSS_PHASE_THREE_SPELL_SUMMON_INTERVAL
         : BOSS_NORMAL_SPELL_SUMMON_INTERVAL;
 }
 
+/// Returns the current spell summon chance percent.
 int Boss::GetSpellSummonChancePercent() const {
     return GetPhase() == BossPhase::Phase1
         ? BOSS_PHASE_ONE_SUMMON_CHANCE_PERCENT
         : BOSS_HARDER_PHASE_SUMMON_CHANCE_PERCENT;
 }
 
+/// Attempts to summon random enemy.
 bool Boss::TrySummonRandomEnemy(int& demonsSummonedThisSpell) {
     LevelManager* levelManager =
         GameManager::GetInstance().GetLevelManager();
@@ -722,6 +748,7 @@ bool Boss::TrySummonRandomEnemy(int& demonsSummonedThisSpell) {
     return false;
 }
 
+/// Returns the current stomp foot world position.
 Vector2 Boss::GetStompFootWorldPosition() const {
     Vector2 bodyDrawPosition = {
         std::round(position.x),
@@ -736,6 +763,7 @@ Vector2 Boss::GetStompFootWorldPosition() const {
     };
 }
 
+/// Spawns stomp smoke.
 void Boss::SpawnStompSmoke() {
     if (stompSmokeTexture.id == 0) return;
 
@@ -749,6 +777,7 @@ void Boss::SpawnStompSmoke() {
     );
 }
 
+/// Emits the circular projectile patterns associated with a completed boss stomp.
 void Boss::FireStompProjectiles() {
     Vector2 origin = GetStompFootWorldPosition();
     GameManager& gameManager = GameManager::GetInstance();
@@ -815,6 +844,7 @@ void Boss::FireStompProjectiles() {
     }
 }
 
+/// Creates one homing fire-punch projectile from the animated hand's muzzle position.
 void Boss::FirePunchProjectile(
     float bulletSpeed,
     float changeAngleDegreesPerSecond
@@ -861,6 +891,7 @@ void Boss::FirePunchProjectile(
     ));
 }
 
+/// Resets animation cycle.
 void Boss::ResetAnimationCycle() {
     currentRunFrame = 0;
     runFrameTime = 0.0f;

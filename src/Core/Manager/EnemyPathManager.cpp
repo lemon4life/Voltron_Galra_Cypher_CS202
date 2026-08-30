@@ -41,6 +41,7 @@ struct NavigationCacheKey {
 };
 
 struct NavigationCacheKeyHash {
+    /// Implements operator for this type.
     std::size_t operator()(const NavigationCacheKey& key) const {
         std::size_t value = 0;
         auto combine = [&value](int component) {
@@ -116,6 +117,7 @@ struct EnemyNavigationCacheStore {
         NavigationCacheKeyHash
     > flowFields;
 
+    /// Ensures revision.
     void EnsureRevision(std::uint64_t revision) {
         if (navigationRevision == revision) return;
         navigationRevision = revision;
@@ -152,6 +154,7 @@ namespace {
     };
 
     struct TileHash {
+        /// Implements operator for this type.
         std::size_t operator()(const Tile& tile) const {
             std::size_t xHash = std::hash<int>()(tile.x);
             std::size_t yHash = std::hash<int>()(tile.y);
@@ -166,6 +169,7 @@ namespace {
     };
 
     struct CompareAStarNode {
+        /// Implements operator for this type.
         bool operator()(const AStarNode& first, const AStarNode& second) const {
             return first.fCost > second.fCost;
         }
@@ -192,16 +196,19 @@ namespace {
         int expandedCells = 0;
     };
 
+    /// Implements the distance squared behavior for this component.
     float DistanceSquared(Vector2 first, Vector2 second) {
         float dx = first.x - second.x;
         float dy = first.y - second.y;
         return dx * dx + dy * dy;
     }
 
+    /// Implements the almost same position behavior for this component.
     bool AlmostSamePosition(Vector2 first, Vector2 second) {
         return DistanceSquared(first, second) < POSITION_EPSILON_SQUARED;
     }
 
+    /// Closes st point on rectangle.
     Vector2 ClosestPointOnRectangle(Vector2 point, Rectangle rectangle) {
         return {
             std::clamp(
@@ -217,6 +224,7 @@ namespace {
         };
     }
 
+    /// Implements the connection length behavior for this component.
     float ConnectionLength(Vector2 start, const std::vector<Vector2>& points) {
         float length = 0.0f;
         Vector2 previous = start;
@@ -227,6 +235,7 @@ namespace {
         return length;
     }
 
+    /// Implements the heuristic behavior for this component.
     float Heuristic(Tile start, Tile goal) {
         int dx = std::abs(start.x - goal.x);
         int dy = std::abs(start.y - goal.y);
@@ -235,6 +244,7 @@ namespace {
         return (float)straightSteps + DIAGONAL_COST * (float)diagonalSteps;
     }
 
+    /// Implements the heuristic to goals behavior for this component.
     float HeuristicToGoals(Tile tile, const std::vector<GoalAnchor>& goals) {
         float best = std::numeric_limits<float>::max();
         for (const GoalAnchor& goal : goals) {
@@ -243,6 +253,7 @@ namespace {
         return best;
     }
 
+    /// Reports whether the inner rectangle fits completely inside the outer rectangle.
     bool ContainsRectangle(Rectangle outer, Rectangle inner) {
         constexpr float EDGE_PADDING = 0.001f;
         return inner.x >= outer.x - EDGE_PADDING &&
@@ -251,6 +262,7 @@ namespace {
             inner.y + inner.height <= outer.y + outer.height + EDGE_PADDING;
     }
 
+    /// Implements the navigation center at entity position behavior for this component.
     Vector2 NavigationCenterAtEntityPosition(
         const Enemy& enemy,
         Vector2 entityPosition
@@ -259,6 +271,7 @@ namespace {
         return Vector2Add(entityPosition, offset);
     }
 
+    /// Calculates and returns entity position at navigation center.
     Vector2 EntityPositionAtNavigationCenter(
         const Enemy& enemy,
         Vector2 navigationCenter
@@ -267,6 +280,7 @@ namespace {
         return Vector2Subtract(navigationCenter, offset);
     }
 
+    /// Calculates and returns navigation footprint at center.
     Rectangle NavigationFootprintAtCenter(
         const Enemy& enemy,
         Vector2 navigationCenter
@@ -280,6 +294,7 @@ namespace {
         };
     }
 
+    /// Reports whether the body clear at navigation center condition is satisfied.
     bool IsBodyClearAtNavigationCenter(
         const LevelManager& levelManager,
         const Enemy& enemy,
@@ -294,6 +309,7 @@ namespace {
             !levelManager.IsSolidCollision(footprint);
     }
 
+    /// Reports whether the navigation path clear condition is satisfied.
     bool IsNavigationPathClear(
         const LevelManager& levelManager,
         const Enemy& enemy,
@@ -322,6 +338,7 @@ namespace {
         return true;
     }
 
+    /// Reports whether the body clear at world position condition is satisfied.
     bool IsBodyClearAtWorldPosition(
         const LevelManager& levelManager,
         const Enemy& enemy,
@@ -336,6 +353,7 @@ namespace {
         );
     }
 
+    /// Reports whether the body path clear condition is satisfied.
     bool IsBodyPathClear(
         const LevelManager& levelManager,
         const Enemy& enemy,
@@ -352,6 +370,7 @@ namespace {
         );
     }
 
+    /// Implements the connect positions behavior for this component.
     std::optional<std::vector<Vector2>> ConnectPositions(
         const LevelManager& levelManager,
         const Enemy& enemy,
@@ -416,6 +435,7 @@ namespace {
 
     class SearchCollisionCache {
     public:
+        /// Creates a SearchCollisionCache instance from the supplied configuration.
         SearchCollisionCache(
             LevelManager& levelManager,
             Enemy& enemy,
@@ -477,6 +497,7 @@ namespace {
             grid = &existing->second;
         }
 
+        /// Reports whether the tile clear condition is satisfied.
         bool IsTileClear(Tile tile) {
             int index = GetIndex(tile);
             if (index < 0) return false;
@@ -493,6 +514,7 @@ namespace {
             return clear;
         }
 
+        /// Reports whether the edge clear condition is satisfied.
         bool IsEdgeClear(Tile current, Tile neighbor) {
             int currentIndex = GetIndex(current);
             int neighborIndex = GetIndex(neighbor);
@@ -519,10 +541,12 @@ namespace {
             return clear;
         }
 
+        /// Returns the current key.
         const NavigationCacheKey& GetKey() const {
             return key;
         }
 
+        /// Returns the current index.
         int GetIndex(Tile tile) const {
             int localX = tile.x - grid->minimumTileX;
             int localY = tile.y - grid->minimumTileY;
@@ -533,6 +557,7 @@ namespace {
             return localY * grid->tileWidth + localX;
         }
 
+        /// Returns the current tile.
         Tile GetTile(int index) const {
             if (index < 0 || index >= GetCellCount()) return { 0, 0 };
             return {
@@ -541,15 +566,18 @@ namespace {
             };
         }
 
+        /// Returns the current cell count.
         int GetCellCount() const {
             return grid->tileWidth * grid->tileHeight;
         }
 
     private:
+        /// Implements the quantize behavior for this component.
         static int Quantize(float value) {
             return (int)std::lround(value * 1000.0f);
         }
 
+        /// Implements the direction index behavior for this component.
         static int DirectionIndex(int dx, int dy) {
             constexpr std::array<Tile, 8> DIRECTIONS = {
                 Tile{ 1, 0 }, Tile{ -1, 0 }, Tile{ 0, 1 }, Tile{ 0, -1 },
@@ -563,6 +591,7 @@ namespace {
             return -1;
         }
 
+        /// Calculates edge clear.
         bool CalculateEdgeClear(Tile current, Tile neighbor) {
             if (!IsTileClear(neighbor)) return false;
 
@@ -591,11 +620,13 @@ namespace {
         NavigationGridCache* grid = nullptr;
     };
 
+    /// Implements the world tile behavior for this component.
     Tile WorldTile(const LevelManager& levelManager, Vector2 position) {
         Vector2 tile = levelManager.WorldToTile(position);
         return { (int)tile.x, (int)tile.y };
     }
 
+    /// Implements the nearby tiles behavior for this component.
     std::vector<Tile> NearbyTiles(Tile center) {
         std::vector<Tile> tiles;
         tiles.reserve(9);
@@ -607,6 +638,7 @@ namespace {
         return tiles;
     }
 
+    /// Searches for start connection.
     std::optional<PositionConnection> FindStartConnection(
         LevelManager& levelManager,
         Enemy& enemy,
@@ -721,6 +753,7 @@ namespace {
         return best;
     }
 
+    /// Plays er collision tile.
     Tile PlayerCollisionTile(
         const LevelManager& levelManager,
         const Paladin& target
@@ -733,6 +766,7 @@ namespace {
         return WorldTile(levelManager, collisionCenter);
     }
 
+    /// Implements the generate goal candidates behavior for this component.
     std::vector<Vector2> GenerateGoalCandidates(
         const LevelManager& levelManager,
         const Paladin& target
@@ -757,6 +791,7 @@ namespace {
         return candidates;
     }
 
+    /// Implements the same rectangle behavior for this component.
     bool SameRectangle(Rectangle first, Rectangle second) {
         return std::abs(first.x - second.x) < 0.001f &&
             std::abs(first.y - second.y) < 0.001f &&
@@ -764,6 +799,7 @@ namespace {
             std::abs(first.height - second.height) < 0.001f;
     }
 
+    /// Returns the current shared goal candidates.
     const std::vector<EnemyPathDebugPoint>& GetSharedGoalCandidates(
         LevelManager& levelManager,
         const Paladin& target,
@@ -855,6 +891,7 @@ namespace {
         return store.sharedGoals;
     }
 
+    /// Builds goal anchors.
     std::vector<GoalAnchor> BuildGoalAnchors(
         LevelManager& levelManager,
         Enemy& enemy,
@@ -899,6 +936,7 @@ namespace {
         return anchors;
     }
 
+    /// Searches for goal at tile.
     const GoalAnchor* FindGoalAtTile(
         Tile tile,
         const std::vector<GoalAnchor>& goals
@@ -919,6 +957,7 @@ namespace {
     };
 
     struct CompareFlowQueueNode {
+        /// Implements operator for this type.
         bool operator()(
             const FlowQueueNode& first,
             const FlowQueueNode& second
@@ -927,6 +966,7 @@ namespace {
         }
     };
 
+    /// Builds flow field.
     FlowFieldData BuildFlowField(
         LevelManager& levelManager,
         Enemy& representative,
@@ -1046,6 +1086,7 @@ namespace {
         return field;
     }
 
+    /// Searches for best flow start connection.
     std::optional<PositionConnection> FindBestFlowStartConnection(
         LevelManager& levelManager,
         Enemy& enemy,
@@ -1148,6 +1189,7 @@ namespace {
         return best;
     }
 
+    /// Implements the condense waypoints behavior for this component.
     std::vector<Vector2> CondenseWaypoints(
         const LevelManager& levelManager,
         const Enemy& enemy,
@@ -1199,6 +1241,7 @@ namespace {
         return condensed;
     }
 
+    /// Implements the convert navigation waypoints to entity positions behavior for this component.
     std::vector<Vector2> ConvertNavigationWaypointsToEntityPositions(
         const Enemy& enemy,
         const std::vector<Vector2>& navigationWaypoints
@@ -1214,6 +1257,7 @@ namespace {
         return entityWaypoints;
     }
 
+    /// Searches for path from flow field.
     PathSearchResult FindPathFromFlowField(
         LevelManager& levelManager,
         Enemy& enemy,
@@ -1344,6 +1388,7 @@ namespace {
         return result;
     }
 
+    /// Searches for path to candidates.
     PathSearchResult FindPathToCandidates(
         LevelManager& levelManager,
         Enemy& enemy,
@@ -1537,6 +1582,7 @@ namespace {
         return result;
     }
 
+    /// Searches for path to player.
     PathSearchResult FindPathToPlayer(
         LevelManager& levelManager,
         Enemy& enemy,
@@ -1562,6 +1608,7 @@ namespace {
         );
     }
 
+    /// Searches for path to explicit goal.
     PathSearchResult FindPathToExplicitGoal(
         LevelManager& levelManager,
         Enemy& enemy,
@@ -1586,6 +1633,7 @@ namespace {
         );
     }
 
+    /// Reports whether this component has reached waypoint.
     bool HasReachedWaypoint(const Enemy& enemy, Vector2 waypoint) {
         Rectangle body = enemy.GetCollisionBox();
         float reachDistance = std::max(
@@ -1596,6 +1644,7 @@ namespace {
             reachDistance * reachDistance;
     }
 
+    /// Implements the pop reached targets behavior for this component.
     void PopReachedTargets(Enemy& enemy) {
         while (enemy.HasTargetPosition() &&
                HasReachedWaypoint(enemy, enemy.FirstTargetPosition())) {
@@ -1604,6 +1653,7 @@ namespace {
     }
 }
 
+/// Creates a PathFindingManager instance from the supplied configuration.
 PathFindingManager::PathFindingManager(
     LevelManager& levelManager,
     ObjectManager& objectManager
@@ -1614,12 +1664,15 @@ PathFindingManager::PathFindingManager(
           std::make_unique<EnemyNavigationCacheStore>()) {
 }
 
+/// Releases resources owned by this PathFindingManager instance.
 PathFindingManager::~PathFindingManager() = default;
 
+/// Begins path finding.
 void PathFindingManager::BeginPathFinding(Enemy& enemy) {
     AddEnemy(enemy);
 }
 
+/// Begins path finding to.
 void PathFindingManager::BeginPathFindingTo(
     Enemy& enemy,
     Vector2 worldGoal
@@ -1627,20 +1680,24 @@ void PathFindingManager::BeginPathFindingTo(
     AddEnemyTo(enemy, worldGoal);
 }
 
+/// Finishes path finding.
 void PathFindingManager::EndPathFinding(Enemy& enemy) {
     RemoveEnemy(enemy);
 }
 
+/// Reports whether the blocked condition is satisfied.
 bool PathFindingManager::IsBlocked(Rectangle bounds) const {
     return levelManager.IsSolidCollision(bounds);
 }
 
+/// Returns the current level bounds.
 Rectangle PathFindingManager::GetLevelBounds() const {
     // During combat, collision recovery must stay on the room side of a
     // locked gate instead of selecting a clear point in the corridor.
     return levelManager.GetCurrentRoomBounds();
 }
 
+/// Returns the current navigable tile centers within.
 std::vector<Vector2> PathFindingManager::GetNavigableTileCentersWithin(
     const Enemy& enemy,
     Vector2 origin,
@@ -1719,6 +1776,7 @@ std::vector<Vector2> PathFindingManager::GetNavigableTileCentersWithin(
     return candidates;
 }
 
+/// Removes enemy.
 void PathFindingManager::RemoveEnemy(Enemy& enemy) {
     ObjectId enemyId = enemy.GetObjectId();
     enemies.erase(
@@ -1733,6 +1791,7 @@ void PathFindingManager::RemoveEnemy(Enemy& enemy) {
     searchCredits = std::min(searchCredits, (float)enemies.size());
 }
 
+/// Adds enemy.
 void PathFindingManager::AddEnemy(Enemy& enemy) {
     ObjectId enemyId = enemy.GetObjectId();
     if (std::find(enemies.begin(), enemies.end(), enemyId) == enemies.end()) {
@@ -1742,6 +1801,7 @@ void PathFindingManager::AddEnemy(Enemy& enemy) {
     }
 }
 
+/// Removes all runtime entries owned by this component and resets transient state.
 void PathFindingManager::Clear() {
     decltype(enemies){}.swap(enemies);
     decltype(pathRecords){}.swap(pathRecords);
@@ -1762,6 +1822,7 @@ void PathFindingManager::Clear() {
     );
 }
 
+/// Returns the current memory stats.
 PathFindingMemoryStats PathFindingManager::GetMemoryStats() const {
     PathFindingMemoryStats stats;
     stats.enemies = enemies.size();
@@ -1784,6 +1845,7 @@ PathFindingMemoryStats PathFindingManager::GetMemoryStats() const {
     return stats;
 }
 
+/// Adds enemy to.
 void PathFindingManager::AddEnemyTo(Enemy& enemy, Vector2 worldGoal) {
     AddEnemy(enemy);
     PathRecord& record = pathRecords[enemy.GetObjectId()];
@@ -1800,6 +1862,9 @@ void PathFindingManager::AddEnemyTo(Enemy& enemy, Vector2 worldGoal) {
     enemy.SetPathStatus(EnemyPathStatus::Pending);
 }
 
+/// Removes reached waypoints and returns the next safe entity-space target.
+/// A waypoint invalidated by changed map collision clears the route and requests
+/// a repath instead of allowing the enemy to move through the new blocker.
 std::optional<Vector2> PathFindingManager::GetNextMoveTarget(
     Enemy& enemy
 ) {
@@ -1836,6 +1901,9 @@ std::optional<Vector2> PathFindingManager::GetNextMoveTarget(
     return targetPosition;
 }
 
+/// Applies short-range steering to a direction supplied by global pathfinding.
+/// Walls always win; enemy separation is blended only when side clearance exists,
+/// allowing narrow corridors to ignore crowds without entering map geometry.
 Vector2 PathFindingManager::GetLocalDirection(
     Enemy& enemy,
     Vector2 desiredDirection
@@ -1966,6 +2034,9 @@ Vector2 PathFindingManager::GetLocalDirection(
     return candidateDirection;
 }
 
+/// Services registered enemies under a per-frame search budget.
+/// Shared player goals use cached navigation/flow-field data, while explicit
+/// destinations (such as Drone patrol tiles) retain bounded A* path records.
 void PathFindingManager::Update(float deltaTime) {
     profilingStats.flowFieldBuildsThisFrame = 0;
     profilingStats.searchesThisFrame = 0;

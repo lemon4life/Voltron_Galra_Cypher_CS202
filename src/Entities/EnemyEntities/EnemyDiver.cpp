@@ -58,6 +58,7 @@ namespace {
     };
 }
 
+/// Creates a EnemyDiver instance from the supplied configuration.
 EnemyDiver::EnemyDiver(
     Vector2 position,
     TeamManager* targetTeam,
@@ -94,6 +95,7 @@ EnemyDiver::EnemyDiver(
     ChangeState(GetIdleState());
 }
 
+/// Releases resources owned by this EnemyDiver instance.
 EnemyDiver::~EnemyDiver() {
     if (currentState) {
         currentState->Exit(this);
@@ -101,6 +103,7 @@ EnemyDiver::~EnemyDiver() {
     currentState = nullptr;
 }
 
+/// Advances this component's state for the current frame.
 void EnemyDiver::Update(float deltaTime) {
     Vector2 updateStartPosition = position;
     if (UpdateSpawnSequence(deltaTime)) {
@@ -168,6 +171,7 @@ void EnemyDiver::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void EnemyDiver::Draw() {
     if (!ShouldDrawDuringSpawn()) {
         DrawSpawnEffect();
@@ -313,18 +317,22 @@ void EnemyDiver::Draw() {
 }
 
 
+/// Returns the current ready state.
 EnemyDiverReadyState* EnemyDiver::GetReadyState() {
     return readyState.get();
 }
 
+/// Returns the current lunging state.
 EnemyDiverLungingState* EnemyDiver::GetLungingState() {
     return lungingState.get();
 }
 
+/// Reports whether this component can perform enter ready state.
 bool EnemyDiver::CanEnterReadyState() const {
     return attackCooldown <= 0.0f && IsWithinClearDiveRange();
 }
 
+/// Reports whether the within clear dive range condition is satisfied.
 bool EnemyDiver::IsWithinClearDiveRange() const {
     Paladin* target = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     if (!target) return false;
@@ -340,50 +348,62 @@ bool EnemyDiver::IsWithinClearDiveRange() const {
     );
 }
 
+/// Reports whether the beyond disengage distance condition is satisfied.
 bool EnemyDiver::IsBeyondDisengageDistance(Vector2 targetPosition) const {
     return Vector2Distance(position, targetPosition) > DIVER_OFF_SIGHT_DISTANCE;
 }
 
+/// Returns the current ready duration.
 float EnemyDiver::GetReadyDuration() const {
     return READY_DURATION;
 }
 
+/// Returns the current ready speed.
 float EnemyDiver::GetReadySpeed() const {
     return READY_SPEED;
 }
 
+/// Returns the current dive duration.
 float EnemyDiver::GetDiveDuration() const {
     return DIVE_DURATION;
 }
 
+/// Returns the current dive speed.
 float EnemyDiver::GetDiveSpeed() const {
     return DIVE_SPEED;
 }
 
+/// Returns the current dive stop distance.
 float EnemyDiver::GetDiveStopDistance() const {
     return DIVE_STOP_DISTANCE;
 }
 
+/// Returns the current minimum player distance.
 float EnemyDiver::GetMinimumPlayerDistance() const {
     return DIVER_MIN_PLAYER_DISTANCE;
 }
 
+/// Returns the current dive recovery duration.
 float EnemyDiver::GetDiveRecoveryDuration() const {
     return DIVE_RECOVERY_DURATION;
 }
 
+/// Returns the current collision clearance radius.
 float EnemyDiver::GetCollisionClearanceRadius() const {
     return DIVER_LINE_OF_SIGHT_RADIUS;
 }
 
+/// Calculates attack effect origin.
 Vector2 EnemyDiver::CalculateAttackEffectOrigin() const {
     return position;
 }
 
+/// Returns the current attack effect end.
 Vector2 EnemyDiver::GetAttackEffectEnd() const {
     return attackEffectEnd;
 }
 
+/// Begins attack preparation.
 void EnemyDiver::BeginAttackPreparation(Vector2 direction) {
     if (Vector2Length(direction) > 0.0f) {
         lockedAttackDirection = Vector2Normalize(direction);
@@ -405,14 +425,17 @@ void EnemyDiver::BeginAttackPreparation(Vector2 direction) {
     playingEffect = false;
 }
 
+/// Advances attack preparation.
 void EnemyDiver::AdvanceAttackPreparation(float deltaTime) {
     attackTelegraphElapsed += std::max(0.0f, deltaTime);
 }
 
+/// Finishes attack preparation.
 void EnemyDiver::EndAttackPreparation() {
     attackTelegraphActive = false;
 }
 
+/// Begins attack effect.
 void EnemyDiver::BeginAttackEffect() {
     EndAttackPreparation();
     playingEffect = true;
@@ -421,12 +444,14 @@ void EnemyDiver::BeginAttackEffect() {
     kinematics.ApplyThrust(lockedAttackDirection, DIVE_DURATION);
 }
 
+/// Finishes attack effect.
 void EnemyDiver::EndAttackEffect() {
     playingEffect = false;
     effectTimer = 0.0f;
     currentEffectFrame = 0;
 }
 
+/// Implements the does attack hit behavior for this component.
 bool EnemyDiver::DoesAttackHit(Rectangle targetBounds) const {
     if (!playingEffect) return false;
     return LineOfSightGeometry::CapsuleIntersectsRectangle(
@@ -437,6 +462,7 @@ bool EnemyDiver::DoesAttackHit(Rectangle targetBounds) const {
     );
 }
 
+/// Returns the current attack contact position.
 Vector2 EnemyDiver::GetAttackContactPosition(
     Rectangle targetBounds
 ) const {

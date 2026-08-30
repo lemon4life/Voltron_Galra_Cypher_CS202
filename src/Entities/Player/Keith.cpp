@@ -10,6 +10,7 @@
 #include "raymath.h"
 #include "Combat/Buffs.h"
 
+/// Creates a Keith instance from the supplied configuration.
 Keith::Keith(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Keith))
 {
@@ -30,6 +31,7 @@ Keith::Keith(Vector2 pos, CharacterSprites sprites)
     hudPortraitSlice = { 228.0f, 59.0f, 194.0f, 84.0f };
 }
 
+/// Activates skill.
 void Keith::UseSkill() {
     if (exEnergy < skillCost || isSkillActive) {
         return; 
@@ -42,6 +44,7 @@ void Keith::UseSkill() {
     AudioManager::GetInstance().PlaySoundEffect("fx_fire");
 }
 
+/// Activates ultimate.
 void Keith::UseUltimate() {
     // Gate on Quintessence (shared team fuel) + individual cooldown
     if (ultimateCooldownTimer > 0.0f) return;
@@ -53,6 +56,7 @@ void Keith::UseUltimate() {
 
 #include "Entities/Projectiles/KeithUltiProjectile.h"
 
+/// Executes the gameplay effect after the Ultimate introduction finishes.
 void Keith::ExecuteUltimateAction() {
     AudioManager::GetInstance().PlaySoundEffect("fx_keith_ult");
     AudioManager::GetInstance().PlaySoundEffect("vl_keith_ult");
@@ -89,6 +93,7 @@ void Keith::ExecuteUltimateAction() {
 
 // ProcessFireCircle is removed
 
+/// Advances this component's state for the current frame.
 void Keith::Update(float deltaTime) {
     Paladin::Update(deltaTime);
     
@@ -105,6 +110,7 @@ void Keith::Update(float deltaTime) {
     }
 }
 
+/// Updates inactive.
 void Keith::UpdateInactive(float deltaTime) {
     Paladin::UpdateInactive(deltaTime);
     if (skillCooldownTimer > 0.0f) {
@@ -112,6 +118,7 @@ void Keith::UpdateInactive(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void Keith::Draw() {
     if (isUltimateAiming) {
         float length = 500.0f;
@@ -125,6 +132,7 @@ void Keith::Draw() {
     Paladin::Draw();
 }
 
+/// Renders inactive.
 void Keith::DrawInactive() {
     Paladin::DrawInactive();
 }

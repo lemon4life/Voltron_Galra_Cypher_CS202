@@ -9,6 +9,7 @@
 #include "raymath.h"
 #include <algorithm>
 
+/// Creates a Chest instance from the supplied configuration.
 Chest::Chest(Vector2 pos, ChestRewardType reward)
     : GameObject(pos, GameObjectType::Prop),
       rewardType(reward) {
@@ -18,6 +19,7 @@ Chest::Chest(Vector2 pos, ChestRewardType reward)
     boundingBox = { pos.x - 10.0f, pos.y - 16.0f, 20.0f, 16.0f };
 }
 
+/// Advances this component's state for the current frame.
 void Chest::Update(float deltaTime) {
     // 1. Proximity Trigger: Check if player is near (< 40px)
     if (!isOpened && !isOpening) {
@@ -74,6 +76,7 @@ void Chest::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void Chest::Draw() {
     if (chestBottom.id == 0 || chestTop.id == 0) {
         // Fallback placeholder

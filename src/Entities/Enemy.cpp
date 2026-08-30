@@ -29,6 +29,7 @@ namespace {
     constexpr float SPAWN_POST_EFFECT_DELAY = 1.0f;
 }
 
+/// Creates a Enemy instance from the supplied configuration.
 Enemy::Enemy(
     Vector2 pos,
     TeamManager* t,
@@ -48,6 +49,7 @@ Enemy::Enemy(
 }
 
 
+/// Creates a Enemy instance from the supplied configuration.
 Enemy::Enemy(
     Vector2 pos,
     TeamManager* t,
@@ -76,10 +78,12 @@ Enemy::Enemy(
     dazeState = std::make_unique<EnemyDazeState>();
 }
 
+/// Releases resources owned by this Enemy instance.
 Enemy::~Enemy() {
     EndPathFinding();
 }
 
+/// Leaves the current state, switches ownership, and enters the replacement state.
 void Enemy::ChangeState(IEnemyState* newState) {
     if (!newState || currentState == newState) return;
 
@@ -91,19 +95,23 @@ void Enemy::ChangeState(IEnemyState* newState) {
     currentState->Enter(this);
 }
 
+/// Resets attack cooldown.
 void Enemy::ResetAttackCooldown() {
     attackCooldown = baseAttackCooldown;
 }
 
+/// Updates the stored health.
 void Enemy::SetHealth(int value) {
     health = std::clamp(value, 0, maxHealth);
 }
 
+/// Updates the stored max health.
 void Enemy::SetMaxHealth(int value) {
     maxHealth = std::max(1, value);
     health = std::min(health, maxHealth);
 }
 
+/// Applies incoming damage after this object handles defenses and state-specific rules.
 void Enemy::TakeDamage(int amount) {
     if (amount <= 0 || !IsEnabled() || health <= 0) return;
 
@@ -125,6 +133,7 @@ void Enemy::TakeDamage(int amount) {
     }
 }
 
+/// Begins spawn sequence.
 void Enemy::BeginSpawnSequence() {
     EndPathFinding();
     AudioManager::GetInstance().PlayPolyphonicSoundEffect("enemy_spawn");
@@ -138,6 +147,7 @@ void Enemy::BeginSpawnSequence() {
     movedThisFrame = false;
 }
 
+/// Updates spawn sequence.
 bool Enemy::UpdateSpawnSequence(float deltaTime) {
     if (!spawnSequenceActive) return false;
 
@@ -156,6 +166,7 @@ bool Enemy::UpdateSpawnSequence(float deltaTime) {
     return true;
 }
 
+/// Reports whether this component should perform draw during spawn.
 bool Enemy::ShouldDrawDuringSpawn() const {
     if (!spawnSequenceActive) return true;
 
@@ -163,6 +174,7 @@ bool Enemy::ShouldDrawDuringSpawn() const {
         SPAWN_BODY_VISIBLE_FRAME * SPAWN_EFFECT_FRAME_DURATION;
 }
 
+/// Renders spawn effect.
 void Enemy::DrawSpawnEffect() const {
     constexpr float EFFECT_DURATION =
         SPAWN_EFFECT_FRAME_COUNT * SPAWN_EFFECT_FRAME_DURATION;
@@ -202,14 +214,17 @@ void Enemy::DrawSpawnEffect() const {
     );
 }
 
+/// Returns the current bounding box.
 Rectangle Enemy::GetBoundingBox() const {
     return { position.x - size.x/2.f, position.y - size.y/2.f, size.x, size.y };
 }
 
+/// Returns the current collision box.
 Rectangle Enemy::GetCollisionBox() const {
     return GetNavigationFootprintAt(position);
 }
 
+/// Returns the current navigation footprint at.
 Rectangle Enemy::GetNavigationFootprintAt(Vector2 entityPosition) const {
     return {
         entityPosition.x + collisionProfile.navigationCenterOffset.x -
@@ -221,6 +236,7 @@ Rectangle Enemy::GetNavigationFootprintAt(Vector2 entityPosition) const {
     };
 }
 
+/// Returns the current contact attack box at.
 Rectangle Enemy::GetContactAttackBoxAt(Vector2 entityPosition) const {
     return {
         entityPosition.x - size.x / 2.0f,
@@ -230,6 +246,7 @@ Rectangle Enemy::GetContactAttackBoxAt(Vector2 entityPosition) const {
     };
 }
 
+/// Renders path debug.
 void Enemy::DrawPathDebug() const {
     if (!Constants::DEBUG_DRAW_ENEMY_PATHS || health <= 0) {
         return;
@@ -307,6 +324,7 @@ void Enemy::DrawPathDebug() const {
     }
 }
 
+/// Starts path finding.
 void Enemy::StartPathFinding() {
     if (usePathFinding) return;
 
@@ -315,6 +333,7 @@ void Enemy::StartPathFinding() {
     pathAccess.BeginPathFinding(*this);
 }
 
+/// Updates the stored speed.
 void Enemy::SetSpeed(float value) {
     if (!std::isfinite(value) || value < 0.0f) {
         throw std::invalid_argument("Enemy speed must be finite and non-negative");
@@ -322,6 +341,7 @@ void Enemy::SetSpeed(float value) {
     speed = value;
 }
 
+/// Updates the stored damage.
 void Enemy::SetDamage(int value) {
     if (value < 0) {
         throw std::invalid_argument("Enemy damage must be non-negative");
@@ -329,6 +349,7 @@ void Enemy::SetDamage(int value) {
     damage = value;
 }
 
+/// Updates the stored attack cooldown.
 void Enemy::SetAttackCooldown(float value) {
     if (!std::isfinite(value) || value < 0.0f) {
         throw std::invalid_argument(
@@ -338,6 +359,7 @@ void Enemy::SetAttackCooldown(float value) {
     attackCooldown = value;
 }
 
+/// Updates the stored base attack cooldown.
 void Enemy::SetBaseAttackCooldown(float value) {
     if (!std::isfinite(value) || value < 0.0f) {
         throw std::invalid_argument(
@@ -347,6 +369,7 @@ void Enemy::SetBaseAttackCooldown(float value) {
     baseAttackCooldown = value;
 }
 
+/// Updates the stored daze duration.
 void Enemy::SetDazeDuration(float duration) {
     if (!std::isfinite(duration) || duration < 0.0f) {
         throw std::invalid_argument(
@@ -356,6 +379,7 @@ void Enemy::SetDazeDuration(float duration) {
     dazeDuration = duration;
 }
 
+/// Updates the stored size.
 void Enemy::SetSize(Vector2 value) {
     if (!std::isfinite(value.x) || !std::isfinite(value.y) ||
         value.x <= 0.0f || value.y <= 0.0f) {
@@ -364,6 +388,7 @@ void Enemy::SetSize(Vector2 value) {
     size = value;
 }
 
+/// Updates the stored collision profile.
 void Enemy::SetCollisionProfile(EnemyCollisionProfile profile) {
     if (!std::isfinite(profile.navigationSize.x) ||
         !std::isfinite(profile.navigationSize.y) ||
@@ -376,6 +401,7 @@ void Enemy::SetCollisionProfile(EnemyCollisionProfile profile) {
     collisionProfile = profile;
 }
 
+/// Starts path finding to.
 void Enemy::StartPathFindingTo(Vector2 worldGoal) {
     if (usePathFinding) {
         EndPathFinding();
@@ -386,6 +412,7 @@ void Enemy::StartPathFindingTo(Vector2 worldGoal) {
     pathAccess.BeginPathFindingTo(*this, worldGoal);
 }
 
+/// Finishes path finding.
 void Enemy::EndPathFinding() {
     if (!usePathFinding) return;
 
@@ -395,6 +422,7 @@ void Enemy::EndPathFinding() {
     pathStatus = EnemyPathStatus::Pending;
 }
 
+/// Applies knockback.
 void Enemy::ApplyKnockback(Vector2 dir, float force) {
     float resistedForce = std::max(0.0f, force) * GetKnockbackMultiplier();
     if (resistedForce <= 0.0f) return;
@@ -403,6 +431,7 @@ void Enemy::ApplyKnockback(Vector2 dir, float force) {
     knockbackVelocity.y += dir.y * resistedForce;
 }
 
+/// Applies collision push.
 void Enemy::ApplyCollisionPush(Vector2 dir, float distance) {
     float resistedDistance = std::max(0.0f, distance) *
         GetKnockbackMultiplier();
@@ -416,6 +445,7 @@ void Enemy::ApplyCollisionPush(Vector2 dir, float distance) {
     );
 }
 
+/// Updates the stored knockback resistance.
 void Enemy::SetKnockbackResistance(float resistance) {
     if (!std::isfinite(resistance)) {
         throw std::invalid_argument("Knockback resistance must be finite");
@@ -423,6 +453,7 @@ void Enemy::SetKnockbackResistance(float resistance) {
     knockbackResistance = std::clamp(resistance, 0.0f, 1.0f);
 }
 
+/// Updates knockback.
 void Enemy::UpdateKnockback(float deltaTime) {
     if (Vector2Length(knockbackVelocity) > 5.0f) {
         knockbackVelocity.x -= knockbackVelocity.x * 15.0f * deltaTime;
@@ -448,6 +479,7 @@ void Enemy::UpdateKnockback(float deltaTime) {
 }
 
 
+/// Updates movement.
 EnemyMoveResult Enemy::UpdateMovement(Vector2 desiredVelocity, float deltaTime, EnemyWallResponse response) {
     if (statusComponent.HasEffect(EffectType::SLOW)) {
         desiredVelocity.x *= 0.5f;
@@ -473,6 +505,7 @@ EnemyMoveResult Enemy::UpdateMovement(Vector2 desiredVelocity, float deltaTime, 
     return moveResult;
 }
 
+/// Applies stat multipliers.
 void Enemy::ApplyStatMultipliers(
     float healthMultiplier,
     float damageMultiplier,

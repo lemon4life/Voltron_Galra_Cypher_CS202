@@ -12,6 +12,7 @@
 #include <cmath>
 #include <iostream>
 
+/// Creates a Paladin instance from the supplied configuration.
 Paladin::Paladin(
     Vector2 pos,
     CharacterSprites sprites,
@@ -62,6 +63,7 @@ Paladin::Paladin(
     currentState->Enter(this);
 }
 
+/// Releases resources owned by this Paladin instance.
 Paladin::~Paladin() {
     if (currentState) {
         currentState->Exit(this);
@@ -72,6 +74,7 @@ Paladin::~Paladin() {
     personalBuffs.clear();
 }
 
+/// Returns the current weapon pivot.
 Vector2 Paladin::GetWeaponPivot() const {
     Vector2 pivot = position; // Position is the center of the 32x32 sprite
     
@@ -90,12 +93,14 @@ Vector2 Paladin::GetWeaponPivot() const {
     return pivot;
 }
 
+/// Starts this attack behavior when its current conditions allow it.
 void Paladin::Attack() {
         if (currentWeapon) {
         currentWeapon->Attack(GetWeaponPivot());
     }
 }
 
+/// Leaves the current state, switches ownership, and enters the replacement state.
 void Paladin::ChangeState(IPlayerState* newState) {
     if (currentState != newState) {
         if (currentState) currentState->Exit(this);
@@ -104,6 +109,7 @@ void Paladin::ChangeState(IPlayerState* newState) {
     }
 }
 
+/// Applies incoming damage after this object handles defenses and state-specific rules.
 void Paladin::TakeDamage(int amount) {
     if (amount <= 0) return;
     if (isInvincible || isInvulnerable || Constants::DEBUG_PLAYER_IMMUNITY) return;
@@ -128,16 +134,19 @@ void Paladin::TakeDamage(int amount) {
     }
 }
 
+/// Updates the stored locked enemy.
 void Paladin::SetLockedEnemy(Enemy* target) {
     lockedEnemyId = target ? target->GetObjectId() : INVALID_OBJECT_ID;
 }
 
+/// Returns the current locked enemy.
 Enemy* Paladin::GetLockedEnemy() const {
     return GameManager::GetInstance().GetObjectManager().FindEnemy(
         lockedEnemyId
     );
 }
 
+/// Updates aim.
 void Paladin::UpdateAim(Vector2 rawMouseWorld) {
     if (Constants::isAutoAimEnabled) {
         Vector2 aimVec = GetCurrentAimVector();
@@ -147,6 +156,7 @@ void Paladin::UpdateAim(Vector2 rawMouseWorld) {
     }
 }
 
+/// Advances timers.
 void Paladin::TickTimers(float deltaTime) {
     if (dashCooldown > 0.0f) dashCooldown -= deltaTime;
     
@@ -187,6 +197,7 @@ void Paladin::TickTimers(float deltaTime) {
     }
 }
 
+/// Adds attached effect.
 void Paladin::AddAttachedEffect(Texture2D tex, int frames, float lifetime) {
     AttachedEffect effect;
     effect.texture = tex;
@@ -197,6 +208,7 @@ void Paladin::AddAttachedEffect(Texture2D tex, int frames, float lifetime) {
     attachedEffects.push_back(effect);
 }
 
+/// Spawns linear projectile.
 Projectile* Paladin::SpawnLinearProjectile(Vector2 dir, float speed, int damage, float maxFlyTime, bool piercing, Texture2D tex, bool fixedRotation) {
     Vector2 vel = Vector2Scale(dir, speed);
     auto projectile = std::make_unique<Projectile>(
@@ -218,6 +230,7 @@ Projectile* Paladin::SpawnLinearProjectile(Vector2 dir, float speed, int damage,
 }
 
 #include "raymath.h"
+/// Advances this component's state for the current frame.
 void Paladin::Update(float deltaTime) {
     TickTimers(deltaTime);
 
@@ -319,14 +332,17 @@ void Paladin::Update(float deltaTime) {
     }
 }
 
+/// Updates inactive.
 void Paladin::UpdateInactive(float deltaTime) {
     TickTimers(deltaTime);
 }
 
+/// Renders inactive.
 void Paladin::DrawInactive() {
     // If you want any visual effect for inactive characters (like particle trails), it could go here
 }
 
+/// Resets stats.
 void Paladin::ResetStats() {
     health = maxHealth;
     ghostHp = maxHealth;
@@ -366,12 +382,14 @@ void Paladin::ResetStats() {
     ResetAnimation();
 }
 
+/// Returns the current bounding box.
 Rectangle Paladin::GetBoundingBox() const {
     // Inset one pixel on each side and two pixels from the top while
     // preserving the original bottom edge at position.y + 12.
     return { position.x - 7.0f, position.y - 10.0f, 14.0f, 22.0f };
 }
 
+/// Returns the current collision box.
 Rectangle Paladin::GetCollisionBox() const {
     constexpr float HORIZONTAL_INSET = 1.0f;
     return {
@@ -382,6 +400,7 @@ Rectangle Paladin::GetCollisionBox() const {
     };
 }
 
+/// Moves against level.
 Vector2 Paladin::MoveAgainstLevel(Vector2 desiredDisplacement) {
     LevelManager* levelManager =
         GameManager::GetInstance().GetLevelManager();
@@ -400,6 +419,7 @@ Vector2 Paladin::MoveAgainstLevel(Vector2 desiredDisplacement) {
     return appliedDisplacement;
 }
 
+/// Checks collision.
 bool Paladin::CheckCollision(const std::vector<GameObject*>& entities) const {
     Rectangle pBox = GetBoundingBox();
     for (auto* entity : entities) {
@@ -410,6 +430,7 @@ bool Paladin::CheckCollision(const std::vector<GameObject*>& entities) const {
     return false;
 }
 
+/// Updates animation.
 void Paladin::UpdateAnimation(float deltaTime) {
     frameTimer += deltaTime;
     if (frameTimer >= frameDuration) {
@@ -418,6 +439,7 @@ void Paladin::UpdateAnimation(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void Paladin::Draw() {
     for (auto& buff : personalBuffs) {
         buff->Draw(this);
@@ -489,22 +511,27 @@ void Paladin::Draw() {
     }
 }
 
+/// Returns the current idle texture.
 Texture2D Paladin::GetIdleTexture() const {
     return sprites.idle;
 }
 
+/// Returns the current run texture.
 Texture2D Paladin::GetRunTexture() const {
     return sprites.run;
 }
+/// Returns the current dash front texture.
 Texture2D Paladin::GetDashFrontTexture() const {
     return sprites.dashFront;
 }
 
+/// Returns the current dash back texture.
 Texture2D Paladin::GetDashBackTexture() const {
     return sprites.dashBack;
 }
 
 
+/// Updates footsteps.
 void Paladin::UpdateFootsteps(float dt) {
     footstepTimer += dt;
     if (footstepTimer >= 0.6f) {
@@ -520,6 +547,7 @@ void Paladin::UpdateFootsteps(float dt) {
     }
 }
 
+/// Activates skill.
 void Paladin::ActivateSkill(float duration) {
     isSkillActive = true;
     activeSkillDuration = duration > 0.0f ? duration : 5.0f;
@@ -532,6 +560,7 @@ void Paladin::ActivateSkill(float duration) {
     }
 }
 
+/// Adds ex energy.
 void Paladin::AddExEnergy(float amount) {
     if (isSkillActive) {
         return; // Completely disable EX gain while skill is active
@@ -542,6 +571,7 @@ void Paladin::AddExEnergy(float amount) {
     }
 }
 
+/// Handles the hit enemy event.
 void Paladin::OnHitEnemy(int damage) {
     if (isSkillActive) {
         return; // Completely disable EX gain while skill is active
@@ -549,11 +579,13 @@ void Paladin::OnHitEnemy(int damage) {
     AddExEnergy((float)damage * 0.15f);
 }
 
+/// Updates the stored parrying.
 void Paladin::SetParrying(bool parry) {
     isParrying = parry;
     if (!parry) parrySuccess = false;
 }
 
+/// Triggers parry success.
 void Paladin::TriggerParrySuccess(GameObject* attacker) {
     if (swapParryWindowTimer > 0.0f || isAutoParry) {
         isAutoParry = true;
@@ -586,15 +618,18 @@ void Paladin::TriggerParrySuccess(GameObject* attacker) {
     ApplyKnockback(dir, 800.0f); // Fast initial impulse
 }
 
+/// Applies knockback.
 void Paladin::ApplyKnockback(Vector2 dir, float force) {
     knockbackVelocity.x += dir.x * force;
     knockbackVelocity.y += dir.y * force;
 }
 
+/// Returns the current parry texture.
 Texture2D Paladin::GetParryTexture() const {
     return sprites.parry;
 }
 
+/// Reports whether this component can perform parry attack.
 bool Paladin::CanParryAttack(Vector2 attackerPos) const {
     if (swapParryWindowTimer > 0.0f) return true; // Omnidirectional perfect parry window on swap
     if (!isParrying) return false;
@@ -615,8 +650,10 @@ bool Paladin::CanParryAttack(Vector2 attackerPos) const {
     return dot > 0.0f; // 180-degree frontal block cone
 }
 
+/// Returns the current down texture.
 Texture2D Paladin::GetDownTexture() const { return sprites.down; }
 
+/// Implements the level up behavior for this component.
 bool Paladin::LevelUp() {
     if (IsMaxLevel()) return false;
 
@@ -644,6 +681,7 @@ bool Paladin::LevelUp() {
     return true;
 }
 
+/// Recalculates stats.
 void Paladin::RecalculateStats() {
     const PaladinDefinition& def = PaladinCatalog::Get(paladinId);
     

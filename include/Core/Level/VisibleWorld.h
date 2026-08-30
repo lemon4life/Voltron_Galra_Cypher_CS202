@@ -13,11 +13,13 @@ struct VisibleTileRange {
     int minimumY = 0;
     int maximumY = -1;
 
+    /// Reports whether the empty condition is satisfied.
     bool IsEmpty() const {
         return maximumX < minimumX || maximumY < minimumY;
     }
 };
 
+/// Returns the current visible world bounds.
 inline Rectangle GetVisibleWorldBounds(float padding = 0.0f) {
     Camera2D camera = CameraManager::GetInstance().GetRenderCamera();
     Vector2 first = GetScreenToWorld2D({ 0.0f, 0.0f }, camera);
@@ -40,6 +42,7 @@ inline Rectangle GetVisibleWorldBounds(float padding = 0.0f) {
     };
 }
 
+/// Returns the current visible tile range.
 inline VisibleTileRange GetVisibleTileRange(
     Vector2 worldOffset,
     int width,
@@ -83,6 +86,7 @@ inline VisibleTileRange GetVisibleTileRange(
     return range;
 }
 
+/// Reports whether the world rectangle visible condition is satisfied.
 inline bool IsWorldRectangleVisible(
     Rectangle bounds,
     float padding = Constants::RENDER_TILE_SIZE * 2.0f

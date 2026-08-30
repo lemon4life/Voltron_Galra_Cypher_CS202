@@ -10,6 +10,7 @@
 #include <cmath>
 #include <iostream>
 
+/// Creates a Rover instance from the supplied configuration.
 Rover::Rover(Vector2 startPos, Paladin* owner, TeamManager* team)
     : GameObject(startPos, GameObjectType::NPC),
       owner(owner), teamManager(team), health(150), maxHealth(150), fireCooldown(0.5f), fireTimer(0.0f), projectileSpeed(300.0f), aggroRange(300.0f),
@@ -22,6 +23,7 @@ Rover::Rover(Vector2 startPos, Paladin* owner, TeamManager* team)
     sprite = AssetManager::GetInstance().GetTexture("Rover");
 }
 
+/// Implements the heal behavior for this component.
 void Rover::Heal() {
     health = maxHealth;
     isHealing = true;
@@ -29,6 +31,7 @@ void Rover::Heal() {
     healFrameTimer = 0.0f;
 }
 
+/// Advances this component's state for the current frame.
 void Rover::Update(float deltaTime) {
     if (health <= 0 && !isFlyingOut) {
         isFlyingOut = true;
@@ -180,6 +183,7 @@ void Rover::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void Rover::Draw() {
     if (IsDead()) return;
     
@@ -232,6 +236,7 @@ void Rover::Draw() {
     DrawRectangle(barX, barY, fillWidth, barHeight, GREEN);
 }
 
+/// Applies incoming damage after this object handles defenses and state-specific rules.
 void Rover::TakeDamage(int damage) {
     if (IsDead()) return;
     

@@ -8,6 +8,7 @@
 namespace {
     constexpr float GEOMETRY_EPSILON = 0.000001f;
 
+    /// Converts a rectangle with negative dimensions into normalized bounds.
     Rectangle NormalizeRectangle(Rectangle rectangle) {
         if (rectangle.width < 0.0f) {
             rectangle.x += rectangle.width;
@@ -20,10 +21,12 @@ namespace {
         return rectangle;
     }
 
+    /// Reports whether the finite condition is satisfied.
     bool IsFinite(Vector2 point) {
         return std::isfinite(point.x) && std::isfinite(point.y);
     }
 
+    /// Reports whether the finite condition is satisfied.
     bool IsFinite(Rectangle rectangle) {
         return std::isfinite(rectangle.x) &&
             std::isfinite(rectangle.y) &&
@@ -31,6 +34,7 @@ namespace {
             std::isfinite(rectangle.height);
     }
 
+    /// Returns squared distance from a point to the nearest point on a rectangle.
     float PointToRectangleDistanceSquared(
         Vector2 point,
         Rectangle rectangle
@@ -50,6 +54,7 @@ namespace {
         return deltaX * deltaX + deltaY * deltaY;
     }
 
+    /// Returns squared distance from a point to the nearest point on a segment.
     float PointToSegmentDistanceSquared(
         Vector2 point,
         Vector2 start,
@@ -76,6 +81,7 @@ namespace {
         return deltaX * deltaX + deltaY * deltaY;
     }
 
+    /// Reports whether a line segment intersects an axis-aligned rectangle.
     bool SegmentIntersectsRectangle(
         Vector2 start,
         Vector2 end,
@@ -115,6 +121,7 @@ namespace {
     }
 }
 
+/// Tests the swept circular path against an axis-aligned blocking rectangle.
 bool LineOfSightGeometry::CapsuleIntersectsRectangle(
     Vector2 start,
     Vector2 end,

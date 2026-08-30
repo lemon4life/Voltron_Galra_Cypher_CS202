@@ -7,6 +7,7 @@ namespace {
     constexpr float COLLISION_EDGE_PADDING = 0.001f;
 }
 
+/// Creates a ProceduralLevelProvider instance from the supplied configuration.
 ProceduralLevelProvider::ProceduralLevelProvider(
     std::shared_ptr<RoomTemplate>& activeRoom,
     Vector2& roomOffset,
@@ -22,6 +23,7 @@ ProceduralLevelProvider::ProceduralLevelProvider(
     prop1Texture(prop1Texture), prop2Texture(prop2Texture),
     boxTexture(boxTexture), gateTexture(gateTexture), levelMap(levelMap) {}
 
+/// Renders base.
 void ProceduralLevelProvider::DrawBase() {
     if (activeRoom) {
         TilemapRenderer::DrawRoomBase(
@@ -55,6 +57,7 @@ void ProceduralLevelProvider::DrawBase() {
     }
 }
 
+/// Returns the current depth render items.
 void ProceduralLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
     if (activeRoom) {
         TilemapRenderer::GetRoomDepthRenderItems(
@@ -66,6 +69,7 @@ void ProceduralLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& 
     }
 }
 
+/// Reports whether the solid collision condition is satisfied.
 bool ProceduralLevelProvider::IsSolidCollision(Rectangle box) const {
     if (!activeRoom) return false;
 
@@ -102,6 +106,7 @@ bool ProceduralLevelProvider::IsSolidCollision(Rectangle box) const {
     return false;
 }
 
+/// Appends static blocking colliders for tile.
 void ProceduralLevelProvider::AppendStaticBlockingCollidersForTile(
     int tileX,
     int tileY,

@@ -27,6 +27,7 @@ namespace {
     };
 }
 
+/// Creates a EnemyRange instance from the supplied configuration.
 EnemyRange::EnemyRange(
     Vector2 position,
     TeamManager* targetTeam,
@@ -59,6 +60,7 @@ EnemyRange::EnemyRange(
     ChangeState(GetIdleState());
 }
 
+/// Releases resources owned by this EnemyRange instance.
 EnemyRange::~EnemyRange() {
     if (currentState) {
         currentState->Exit(this);
@@ -66,6 +68,7 @@ EnemyRange::~EnemyRange() {
     currentState = nullptr;
 }
 
+/// Advances this component's state for the current frame.
 void EnemyRange::Update(float deltaTime) {
     Vector2 updateStartPosition = position;
     if (UpdateSpawnSequence(deltaTime)) {
@@ -108,6 +111,7 @@ void EnemyRange::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void EnemyRange::Draw() {
     if (!ShouldDrawDuringSpawn()) {
         DrawSpawnEffect();
@@ -192,26 +196,32 @@ void EnemyRange::Draw() {
 }
 
 
+/// Returns the current shooting state.
 EnemyRangeShootingState* EnemyRange::GetShootingState() {
     return shootingState.get();
 }
 
+/// Reports whether the within shooting distance condition is satisfied.
 bool EnemyRange::IsWithinShootingDistance(Vector2 targetPosition) const {
     return Vector2Distance(position, targetPosition) <= RANGE_SHOOTING_DISTANCE;
 }
 
+/// Reports whether the beyond disengage distance condition is satisfied.
 bool EnemyRange::IsBeyondDisengageDistance(Vector2 targetPosition) const {
     return Vector2Distance(position, targetPosition) > RANGE_DISENGAGE_DISTANCE;
 }
 
+/// Returns the current projectile speed.
 float EnemyRange::GetProjectileSpeed() const {
     return RANGE_PROJECTILE_SPEED;
 }
 
+/// Returns the current projectile lifetime.
 float EnemyRange::GetProjectileLifetime() const {
     return RANGE_PROJECTILE_LIFETIME;
 }
 
+/// Returns the current projectile radius.
 float EnemyRange::GetProjectileRadius() const {
     return RANGE_PROJECTILE_RADIUS;
 }

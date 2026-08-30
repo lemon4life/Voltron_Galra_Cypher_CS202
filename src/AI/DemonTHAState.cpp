@@ -19,6 +19,7 @@ namespace {
     constexpr int AGGRO_CYCLE_COUNT = 3;
     constexpr float MIN_DIRECTION_LENGTH = 0.001f;
 
+    /// Returns a random real-time duration inside the supplied range.
     float RandomSeconds(int minimumMilliseconds, int maximumMilliseconds) {
         return (float)GetRandomValue(
             minimumMilliseconds,
@@ -26,6 +27,7 @@ namespace {
         ) / 1000.0f;
     }
 
+    /// Randomizes candidate order so repeated searches do not favor the same destination.
     void ShuffleCandidates(std::vector<Vector2>& candidates) {
         for (std::size_t index = candidates.size(); index > 1; --index) {
             int swapIndex = GetRandomValue(0, (int)index - 1);
@@ -34,6 +36,7 @@ namespace {
     }
 }
 
+/// Prepares this state when it becomes active.
 void DemonTHAWanderIdleState::Enter(DemonTHA* enemy) {
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
@@ -51,6 +54,7 @@ void DemonTHAWanderIdleState::Enter(DemonTHA* enemy) {
     );
 }
 
+/// Advances this component's state for the current frame.
 void DemonTHAWanderIdleState::Update(
     DemonTHA* enemy,
     float deltaTime
@@ -67,9 +71,11 @@ void DemonTHAWanderIdleState::Update(
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void DemonTHAWanderIdleState::Exit(DemonTHA*) {
 }
 
+/// Builds candidates.
 void DemonTHAWanderMoveState::BuildCandidates(DemonTHA* enemy) {
     std::vector<Vector2> allCandidates =
         enemy->GetPathAccess().GetNavigableTileCentersWithin(
@@ -97,6 +103,7 @@ void DemonTHAWanderMoveState::BuildCandidates(DemonTHA* enemy) {
     nextCandidateIndex = 0;
 }
 
+/// Tries candidate destinations until pathfinding returns a reachable route.
 bool DemonTHAWanderMoveState::RequestNextPath(DemonTHA* enemy) {
     enemy->EndPathFinding();
     if (nextCandidateIndex >= candidates.size()) return false;
@@ -105,6 +112,7 @@ bool DemonTHAWanderMoveState::RequestNextPath(DemonTHA* enemy) {
     return true;
 }
 
+/// Prepares this state when it becomes active.
 void DemonTHAWanderMoveState::Enter(DemonTHA* enemy) {
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
     enemy->SetGunShooting(false);
@@ -115,6 +123,7 @@ void DemonTHAWanderMoveState::Enter(DemonTHA* enemy) {
     }
 }
 
+/// Advances this component's state for the current frame.
 void DemonTHAWanderMoveState::Update(
     DemonTHA* enemy,
     float deltaTime
@@ -171,6 +180,7 @@ void DemonTHAWanderMoveState::Update(
     );
 }
 
+/// Cleans up this state before control moves elsewhere.
 void DemonTHAWanderMoveState::Exit(DemonTHA* enemy) {
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
@@ -178,6 +188,7 @@ void DemonTHAWanderMoveState::Exit(DemonTHA* enemy) {
     nextCandidateIndex = 0;
 }
 
+/// Begins fire.
 void DemonTHAAggroState::BeginFire(DemonTHA* enemy) {
     phase = Phase::Fire;
     timeRemaining = RandomSeconds(
@@ -187,6 +198,7 @@ void DemonTHAAggroState::BeginFire(DemonTHA* enemy) {
     enemy->SetGunShooting(true);
 }
 
+/// Begins recovery.
 void DemonTHAAggroState::BeginRecovery(DemonTHA* enemy) {
     phase = Phase::Recovery;
     timeRemaining = RandomSeconds(
@@ -196,6 +208,7 @@ void DemonTHAAggroState::BeginRecovery(DemonTHA* enemy) {
     enemy->SetGunShooting(false);
 }
 
+/// Prepares this state when it becomes active.
 void DemonTHAAggroState::Enter(DemonTHA* enemy) {
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
@@ -203,6 +216,7 @@ void DemonTHAAggroState::Enter(DemonTHA* enemy) {
     BeginFire(enemy);
 }
 
+/// Advances this component's state for the current frame.
 void DemonTHAAggroState::Update(DemonTHA* enemy, float deltaTime) {
     Paladin* target = enemy->GetActiveTarget();
     if (!target) {
@@ -230,6 +244,7 @@ void DemonTHAAggroState::Update(DemonTHA* enemy, float deltaTime) {
     BeginFire(enemy);
 }
 
+/// Cleans up this state before control moves elsewhere.
 void DemonTHAAggroState::Exit(DemonTHA* enemy) {
     enemy->SetGunShooting(false);
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });

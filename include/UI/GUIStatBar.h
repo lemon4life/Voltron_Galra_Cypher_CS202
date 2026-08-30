@@ -6,6 +6,7 @@
 
 class GUIStatBar {
 public:
+    /// Renders this component using its current state and visual resources.
     static void Draw(
         Rectangle bounds,
         const std::string& label,

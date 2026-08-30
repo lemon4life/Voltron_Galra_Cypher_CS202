@@ -10,6 +10,7 @@
 namespace {
     constexpr int EMBEDDED_RECOVERY_RADIUS = 32;
 
+    /// Implements the clamp footprint to level behavior for this component.
     Vector2 ClampFootprintToLevel(
         const Enemy& enemy,
         Vector2 position,
@@ -35,6 +36,7 @@ namespace {
         return position;
     }
 
+    /// Reports whether the map position clear condition is satisfied.
     bool IsMapPositionClear(
         const Enemy& enemy,
         Vector2 position,
@@ -45,6 +47,7 @@ namespace {
         );
     }
 
+    /// Searches for nearest clear position.
     std::optional<Vector2> FindNearestClearPosition(
         const Enemy& enemy,
         Vector2 origin,
@@ -105,6 +108,7 @@ namespace {
     }
 }
 
+/// Checks player attack overlap.
 bool EnemyCollision::CheckPlayerAttackOverlap(
     const Enemy& enemy,
     const Paladin& player
@@ -117,6 +121,7 @@ bool EnemyCollision::CheckPlayerAttackOverlap(
     );
 }
 
+/// Checks parry.
 bool EnemyCollision::CheckParry(
     const Enemy& enemy,
     const Paladin& player
@@ -124,6 +129,7 @@ bool EnemyCollision::CheckParry(
     return player.CanParryAttack(enemy.GetPosition());
 }
 
+/// Moves against walls.
 EnemyMoveResult EnemyCollision::MoveAgainstWalls(
     Enemy& enemy,
     Vector2 displacement,

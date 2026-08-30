@@ -18,6 +18,7 @@ namespace {
     constexpr float IDLE_COOLDOWN_RATE = 2.0f;
     constexpr float MINIMUM_POST_ATTACK_IDLE_TIME = 0.5f;
 
+    /// Randomizes candidate order so repeated searches do not favor the same destination.
     void ShuffleCandidates(std::vector<Vector2>& candidates) {
         for (std::size_t index = candidates.size(); index > 1; --index) {
             int swapIndex = GetRandomValue(0, (int)index - 1);
@@ -25,11 +26,13 @@ namespace {
         }
     }
 
+    /// Returns the current active target.
     Paladin* GetActiveTarget(Drone* drone) {
         TeamManager* targetTeam = drone->GetTargetTeam();
         return targetTeam ? targetTeam->GetActivePaladin() : nullptr;
     }
 
+    /// Reports whether this component has player line of sight.
     bool HasPlayerLineOfSight(Drone* drone, const Paladin* player) {
         return player && drone->GetLineOfSightQuery().HasClearLineOfSight(
             drone->GetPosition(),
@@ -39,6 +42,7 @@ namespace {
     }
 }
 
+/// Builds patrol candidates.
 void DroneMovingState::BuildPatrolCandidates(Drone* drone) {
     patrolCandidates = drone->GetPathAccess().GetNavigableTileCentersWithin(
         *drone,
@@ -49,6 +53,7 @@ void DroneMovingState::BuildPatrolCandidates(Drone* drone) {
     nextCandidateIndex = 0;
 }
 
+/// Tries candidate destinations until pathfinding returns a reachable route.
 bool DroneMovingState::RequestNextPath(Drone* drone) {
     drone->EndPathFinding();
     if (nextCandidateIndex >= patrolCandidates.size()) {
@@ -60,6 +65,7 @@ bool DroneMovingState::RequestNextPath(Drone* drone) {
     return true;
 }
 
+/// Prepares this state when it becomes active.
 void DroneMovingState::Enter(Drone* drone) {
     drone->SetCurrentVelocity({ 0.0f, 0.0f });
     trackingPlayerForFollowUp = false;
@@ -70,6 +76,7 @@ void DroneMovingState::Enter(Drone* drone) {
     }
 }
 
+/// Advances this component's state for the current frame.
 void DroneMovingState::Update(Drone* drone, float deltaTime) {
     drone->TickAttackCooldown(deltaTime);
 
@@ -154,6 +161,7 @@ void DroneMovingState::Update(Drone* drone, float deltaTime) {
     );
 }
 
+/// Cleans up this state before control moves elsewhere.
 void DroneMovingState::Exit(Drone* drone) {
     drone->SetCurrentVelocity({ 0.0f, 0.0f });
     drone->EndPathFinding();
@@ -163,12 +171,14 @@ void DroneMovingState::Exit(Drone* drone) {
     followUpTrackingTime = 0.0f;
 }
 
+/// Prepares this state when it becomes active.
 void DroneIdleState::Enter(Drone* drone) {
     drone->EndPathFinding();
     drone->SetCurrentVelocity({ 0.0f, 0.0f });
     idleTimeRemaining = (float)GetRandomValue(300, 500) / 100.0f;
 }
 
+/// Advances this component's state for the current frame.
 void DroneIdleState::Update(Drone* drone, float deltaTime) {
     drone->SetCurrentVelocity({ 0.0f, 0.0f });
     idleTimeRemaining -= std::max(0.0f, deltaTime);
@@ -193,6 +203,7 @@ void DroneIdleState::Update(Drone* drone, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void DroneIdleState::Exit(Drone* drone) {
     drone->SetCurrentVelocity({ 0.0f, 0.0f });
     idleTimeRemaining = 0.0f;

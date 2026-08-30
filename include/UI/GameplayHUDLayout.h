@@ -24,12 +24,14 @@ struct Result {
     Rectangle coinCounterBounds = {};
 };
 
+/// Returns the current base shell width.
 inline float GetBaseShellWidth(std::size_t teamSize) {
     if (teamSize == 2) return 354.0f;
     if (teamSize >= 3) return 482.0f;
     return 226.0f;
 }
 
+/// Implements the calculate behavior for this component.
 inline Result Calculate(Rectangle windowBounds, std::size_t teamSize) {
     Result result;
     result.baseShellWidth = GetBaseShellWidth(teamSize);

@@ -4,6 +4,7 @@
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/ParticleManager.h"
 
+/// Adds effect.
 void StatusComponent::AddEffect(EffectType type, float duration, float magnitude) {
     // Check if effect already exists to refresh it
     for (auto& mod : activeModifiers) {
@@ -20,6 +21,7 @@ void StatusComponent::AddEffect(EffectType type, float duration, float magnitude
     activeModifiers.push_back({type, duration, 0.0f, magnitude});
 }
 
+/// Reports whether this component has effect.
 bool StatusComponent::HasEffect(EffectType type) const {
     for (const auto& mod : activeModifiers) {
         if (mod.type == type) return true;
@@ -27,6 +29,7 @@ bool StatusComponent::HasEffect(EffectType type) const {
     return false;
 }
 
+/// Advances this component's state for the current frame.
 bool StatusComponent::Update(float deltaTime, Enemy* owner) {
     bool isFrozen = false;
     
@@ -78,6 +81,7 @@ bool StatusComponent::Update(float deltaTime, Enemy* owner) {
     return isFrozen;
 }
 
+/// Returns the current status tint.
 Color StatusComponent::GetStatusTint() const {
     bool hasBurn = false;
     bool hasPoison = false;
@@ -100,6 +104,7 @@ Color StatusComponent::GetStatusTint() const {
     return WHITE;
 }
 
+/// Removes all runtime entries owned by this component and resets transient state.
 void StatusComponent::Clear() {
     activeModifiers.clear();
 }

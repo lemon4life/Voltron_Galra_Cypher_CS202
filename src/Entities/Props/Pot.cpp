@@ -2,8 +2,10 @@
 #include "Entities/Player/Paladin.h"
 #include "Core/Manager/AudioManager.h"
 
+/// Creates a HpPot instance from the supplied configuration.
 HpPot::HpPot(Vector2 pos) : Pot(pos, "pot_hp") {}
 
+/// Handles the consume event.
 void HpPot::OnConsume(TeamManager* team) {
     if (isConsumed || !team) return;
     isConsumed = true;
@@ -17,8 +19,10 @@ void HpPot::OnConsume(TeamManager* team) {
     }
 }
 
+/// Creates a ExPot instance from the supplied configuration.
 ExPot::ExPot(Vector2 pos) : Pot(pos, "pot_ex") {}
 
+/// Handles the consume event.
 void ExPot::OnConsume(TeamManager* team) {
     if (isConsumed || !team) return;
     isConsumed = true;
@@ -32,8 +36,10 @@ void ExPot::OnConsume(TeamManager* team) {
     }
 }
 
+/// Creates a QuintPot instance from the supplied configuration.
 QuintPot::QuintPot(Vector2 pos) : Pot(pos, "pot_quint") {}
 
+/// Handles the consume event.
 void QuintPot::OnConsume(TeamManager* team) {
     if (isConsumed || !team) return;
     isConsumed = true;

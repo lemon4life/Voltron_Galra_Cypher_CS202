@@ -15,6 +15,7 @@ constexpr int ERROR_WINDOW_WIDTH = 900;
 constexpr int ERROR_WINDOW_HEIGHT = 560;
 constexpr float MIN_ERROR_FONT_SIZE = 12.0f;
 
+/// Reports whether the supplied text fits within the requested width at a font size.
 bool TextFits(const Font& font,
               const std::string& text,
               float fontSize,
@@ -23,6 +24,7 @@ bool TextFits(const Font& font,
     return MeasureTextEx(font, text.c_str(), fontSize, spacing).x <= maxWidth;
 }
 
+/// Wraps an error message into lines that fit inside the dialog body.
 std::vector<std::string> WrapErrorText(const std::string& text,
                                        const Font& font,
                                        float fontSize,
@@ -87,6 +89,7 @@ std::vector<std::string> WrapErrorText(const std::string& text,
     return lines;
 }
 
+/// Creates or resizes the fallback error window before the dialog is drawn.
 bool EnsureErrorWindow() {
     if (IsWindowReady()) {
         return true;
@@ -107,6 +110,7 @@ bool EnsureErrorWindow() {
 
 namespace ErrorDialog {
 
+/// Displays this UI and handles its interaction until it is dismissed.
 void Show(const std::string& errorText) {
     if (!EnsureErrorWindow()) {
         std::cerr << "Fatal error: " << errorText << '\n';
@@ -323,6 +327,7 @@ void Show(const std::string& errorText) {
     }
 }
 
+/// Returns the current current exception message.
 std::string GetCurrentExceptionMessage() {
     try {
         throw;

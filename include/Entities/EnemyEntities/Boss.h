@@ -31,57 +31,92 @@ private:
     bool phaseOneClonePending = false;
     bool phaseTwoClonePending = false;
 
+    /// Returns the current stomp foot world position.
     Vector2 GetStompFootWorldPosition() const;
+    /// Detects boss health thresholds and starts each one-time phase transition.
     void EvaluatePhaseTransitions();
+    /// Restarts the current spell cycle or enters the spell state for a forced phase transition.
     void RestartOrEnterSpellingState();
+    /// Attempts to summon boss clone.
     bool TrySummonBossClone(int cloneHealth, BossPhase clonePhase);
+    /// Returns the current body tint.
     Color GetBodyTint() const;
 
 public:
+    /// Creates a Boss instance from the supplied configuration.
     Boss(
         Vector2 pos,
         TeamManager* targetTeam,
         IEntityRemovalAccess& removalAccess,
         IEnemyPathAccess& pathAccess
     );
+    /// Releases resources owned by this Boss instance.
     ~Boss() override;
 
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
+    /// Applies incoming damage after this object handles defenses and state-specific rules.
     void TakeDamage(int amount) override;
 
+    /// Returns the current idling state.
     BossIdlingState* GetIdlingState() {
         return static_cast<BossIdlingState*>(idleState.get());
     }
+    /// Returns the current spelling state.
     BossSpellingState* GetSpellingState() { return spellingState.get(); }
+    /// Returns the current punch state.
     BossPunchState* GetPunchState() { return punchState.get(); }
+    /// Returns the current stomping state.
     BossStompingState* GetStompingState() { return stompingState.get(); }
+    /// Reports whether the spelling condition is satisfied.
     bool IsSpelling() const { return currentState == spellingState.get(); }
+    /// Reports whether the punching condition is satisfied.
     bool IsPunching() const { return currentState == punchState.get(); }
+    /// Reports whether the stomping condition is satisfied.
     bool IsStomping() const { return currentState == stompingState.get(); }
+    /// Reports whether the in offensive state condition is satisfied.
     bool IsInOffensiveState() const {
         return IsSpelling() || IsPunching() || IsStomping();
     }
+    /// Reports whether the clone condition is satisfied.
     bool IsClone() const { return cloneBoss; }
+    /// Returns the current phase.
     BossPhase GetPhase() const;
+    /// Configures as clone.
     void ConfigureAsClone(int cloneHealth, BossPhase clonePhase);
+    /// Reports whether this component has pending phase clone summons.
     bool HasPendingPhaseCloneSummons() const {
         return phaseOneClonePending || phaseTwoClonePending;
     }
+    /// Attempts to summon pending phase clones.
     void TrySummonPendingPhaseClones();
+    /// Returns the current idle minimum milliseconds.
     int GetIdleMinimumMilliseconds() const;
+    /// Returns the current idle maximum milliseconds.
     int GetIdleMaximumMilliseconds() const;
+    /// Returns the current idle movement speed scale.
     float GetIdleMovementSpeedScale() const;
+    /// Returns the current stomps per state.
     int GetStompsPerState() const;
+    /// Returns the current punches per state.
     int GetPunchesPerState() const;
+    /// Returns the current spell summon interval.
     float GetSpellSummonInterval() const;
+    /// Returns the current spell summon chance percent.
     int GetSpellSummonChancePercent() const;
+    /// Attempts to summon random enemy.
     bool TrySummonRandomEnemy(int& demonsSummonedThisSpell);
+    /// Spawns stomp smoke.
     void SpawnStompSmoke();
+    /// Emits the circular projectile patterns associated with a completed boss stomp.
     void FireStompProjectiles();
+    /// Creates one homing fire-punch projectile from the animated hand's muzzle position.
     void FirePunchProjectile(
         float bulletSpeed,
         float changeAngleDegreesPerSecond
     );
+    /// Resets animation cycle.
     void ResetAnimationCycle();
 };

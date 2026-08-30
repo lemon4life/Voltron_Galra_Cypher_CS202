@@ -12,12 +12,14 @@ namespace {
     constexpr int CONTACT_SEARCH_ITERATIONS = 20;
     constexpr int RECOVERY_DISTANCE_DOUBLINGS = 12;
 
+    /// Returns a copy of the rectangle translated by the requested displacement.
     Rectangle Translate(Rectangle rectangle, Vector2 displacement) {
         rectangle.x += displacement.x;
         rectangle.y += displacement.y;
         return rectangle;
     }
 
+    /// Searches for tiny overlap recovery.
     std::optional<Vector2> FindTinyOverlapRecovery(
         Rectangle collisionBox,
         const CollisionMovement::CollisionQuery& isBlocked
@@ -48,6 +50,7 @@ namespace {
         return std::nullopt;
     }
 
+    /// Moves a collision result slightly away from contact to prevent floating-point overlap.
     float BackOffFromContact(float distance) {
         float absoluteDistance = std::abs(distance);
         if (absoluteDistance <= MOVEMENT_EPSILON) return 0.0f;
@@ -55,6 +58,7 @@ namespace {
         return distance - std::copysign(skin, distance);
     }
 
+    /// Clamps movement on one axis against the nearest blocking rectangle.
     float ResolveAxis(
         Rectangle& collisionBox,
         float desiredDistance,
@@ -121,6 +125,7 @@ namespace {
         return appliedDistance;
     }
 
+    /// Tests one axis order for sliding and returns the resulting safe displacement.
     CollisionMovementResult ResolveSlideInOrder(
         Rectangle collisionBox,
         Vector2 desiredDisplacement,
@@ -157,6 +162,7 @@ namespace {
         return result;
     }
 
+    /// Scores how closely a collision-safe displacement follows the requested movement.
     float MovementProgressScore(
         CollisionMovementResult movement,
         Vector2 desiredDisplacement
@@ -166,6 +172,7 @@ namespace {
     }
 }
 
+/// Resolves movement one axis at a time so an actor can slide along blocking geometry.
 CollisionMovementResult CollisionMovement::ResolveSlide(
     Rectangle collisionBox,
     Vector2 desiredDisplacement,
@@ -214,6 +221,7 @@ CollisionMovementResult CollisionMovement::ResolveSlide(
     return result;
 }
 
+/// Clamps movement at the first blocking contact instead of allowing penetration.
 CollisionMovementResult CollisionMovement::ResolveStop(
     Rectangle collisionBox,
     Vector2 desiredDisplacement,

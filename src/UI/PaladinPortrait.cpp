@@ -8,6 +8,7 @@
 namespace {
 constexpr float IDLE_FRAME_COUNT = 4.0f;
 
+/// Crops to aspect.
 Rectangle CropToAspect(Rectangle source, Rectangle destination) {
     float destinationAspect = destination.width / destination.height;
     float sourceAspect = source.width / source.height;
@@ -25,6 +26,7 @@ Rectangle CropToAspect(Rectangle source, Rectangle destination) {
 }
 }
 
+/// Renders paladin portrait.
 void DrawPaladinPortrait(const Paladin* paladin, Rectangle destination) {
     if (!paladin) {
         return;
@@ -50,6 +52,7 @@ void DrawPaladinPortrait(const Paladin* paladin, Rectangle destination) {
     DrawTexturePro(cardTex, source, destination, {0.0f, 0.0f}, 0.0f, tint);
 }
 
+/// Renders paladin portrait.
 void DrawPaladinPortrait(
     Texture2D idleTexture,
     Rectangle destination,
@@ -90,6 +93,7 @@ void DrawPaladinPortrait(
     );
 }
 
+/// Renders paladin full body.
 void DrawPaladinFullBody(Texture2D idleTexture, Rectangle destination) {
     if (idleTexture.id == 0 || destination.width <= 0.0f ||
         destination.height <= 0.0f) {

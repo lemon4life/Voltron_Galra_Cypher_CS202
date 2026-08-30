@@ -10,6 +10,7 @@
 #include <queue>
 #include <unordered_map>
 
+/// Generates this object's configured data or runtime structure.
 void LevelMap::Generate(
     int width,
     int height,
@@ -248,6 +249,8 @@ void LevelMap::Generate(
     printf("LevelMap::Generate: failed to build a valid room tree\n");
 }
 
+/// Converts the room graph into render, collision, object, corridor, and gate layers.
+/// Room templates are selected by gameplay category before connections are carved.
 std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
     if (grid.empty() || generatedNodes.empty()) return nullptr;
     
@@ -618,6 +621,7 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
     return baked;
 }
 
+/// Renders room base.
 void TilemapRenderer::DrawRoomBase(
     const RoomTemplate& room,
     Vector2 roomOffsetWorldPos,
@@ -694,6 +698,7 @@ void TilemapRenderer::DrawRoomBase(
     }
 }
 
+/// Returns the current room depth render items.
 void TilemapRenderer::GetRoomDepthRenderItems(
     const RoomTemplate& room,
     Vector2 roomOffsetWorldPos,

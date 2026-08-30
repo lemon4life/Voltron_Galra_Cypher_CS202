@@ -3,6 +3,7 @@
 #include "Entities/Props/DoorGate.h"
 #include "Entities/Props/Prop.h"
 
+/// Reports whether the map object type condition is satisfied.
 bool MapObjectFactory::IsMapObjectType(MapObjectId type) {
     return type == MapObjectId::DestructibleBox ||
         type == MapObjectId::Prop1 ||
@@ -10,6 +11,7 @@ bool MapObjectFactory::IsMapObjectType(MapObjectId type) {
         type == MapObjectId::MockWall;
 }
 
+/// Creates the requested runtime object from the supplied type and configuration.
 std::unique_ptr<MapObject> MapObjectFactory::Create(
     MapObjectId type,
     Vector2 position,

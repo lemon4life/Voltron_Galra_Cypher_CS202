@@ -4,6 +4,7 @@
 
 #include <algorithm>
 
+/// Renders this component using its current state and visual resources.
 void GUIStatBar::Draw(
     Rectangle bounds,
     const std::string& label,

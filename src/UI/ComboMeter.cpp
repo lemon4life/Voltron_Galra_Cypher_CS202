@@ -4,6 +4,7 @@
 #include <cmath>
 #include <string>
 
+/// Adds damage.
 void ComboMeter::AddDamage(int amount) {
     accumulatedDamage += amount;
     comboTimer = 2.0f;
@@ -12,6 +13,7 @@ void ComboMeter::AddDamage(int amount) {
     popScale = 1.0f;
 }
 
+/// Restores this component to its initial runtime state.
 void ComboMeter::Reset() {
     accumulatedDamage = 0;
     comboTimer = 0.0f;
@@ -21,6 +23,7 @@ void ComboMeter::Reset() {
     popScale = 1.0f;
 }
 
+/// Advances this component's state for the current frame.
 void ComboMeter::Update(float deltaTime) {
     if (accumulatedDamage > 0) {
         if (state == State::ACTIVE) {
@@ -47,6 +50,7 @@ void ComboMeter::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void ComboMeter::Draw(Vector2 basePosition) {
     if (accumulatedDamage <= 0) return;
     

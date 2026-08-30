@@ -22,10 +22,16 @@ struct TeamStatsSnapshot {
     float maxQuintessence = 300.0f;
 };
 
+// Design Pattern - Observer (Observer interface):
+// UIManager is the concrete observer. It receives immutable player/team
+// snapshots, so HUD rendering reacts to TeamManager without owning gameplay data.
 class IObserver {
 public:
+    /// Releases resources owned by this IObserver instance.
     virtual ~IObserver() = default;
+    /// Handles the player stats changed event.
     virtual void OnPlayerStatsChanged(const PlayerStatsSnapshot& stats, int slotIndex) = 0;
+    /// Handles the team stats changed event.
     virtual void OnTeamStatsChanged(const TeamStatsSnapshot& stats) = 0;
 };
 

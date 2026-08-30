@@ -4,6 +4,7 @@
 #include "Core/Constants.h"
 
 
+/// Initializes the resources and collaborators required before this component can run.
 void CameraManager::Initialize() {
     camera = { 0 };
     camera.target = { 0.0f, 0.0f };
@@ -12,6 +13,7 @@ void CameraManager::Initialize() {
     camera.zoom = 1.0f;
 }
 
+/// Updates camera.
 void CameraManager::UpdateCamera(Vector2 playerPos, Vector2 mouseWorldPos, float deltaTime, Rectangle levelBounds, bool isHitstop) {
     float screenW = (float)GetScreenWidth();
     float screenH = (float)GetScreenHeight();

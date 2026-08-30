@@ -14,6 +14,7 @@
 #include "Core/Manager/AssetManager.h"
 
 namespace {
+/// Creates hub paladin stand.
 std::unique_ptr<GameObject> CreateHubPaladinStand(
     PaladinId id,
     Vector2 position
@@ -26,6 +27,7 @@ std::unique_ptr<GameObject> CreateHubPaladinStand(
     );
 }
 
+/// Prepares enemy spawn.
 std::unique_ptr<GameObject> PrepareEnemySpawn(
     std::unique_ptr<Enemy> enemy
 ) {
@@ -36,6 +38,7 @@ std::unique_ptr<GameObject> PrepareEnemySpawn(
 }
 }
 
+/// Creates entity.
 std::unique_ptr<GameObject> EntityFactory::CreateEntity(
     MapObjectId type,
     Vector2 position,

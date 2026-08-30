@@ -2,6 +2,7 @@
 #include "Core/Manager/AssetManager.h"
 #include "Core/Constants.h"
 
+/// Creates a DoorGate instance from the supplied configuration.
 DoorGate::DoorGate(Vector2 pos) 
     : MapObject(
           pos,
@@ -21,6 +22,7 @@ DoorGate::DoorGate(Vector2 pos)
     tex = AssetManager::GetInstance().GetTexture("doorGate");
 }
 
+/// Updates the stored state.
 void DoorGate::SetState(State newState) {
     if (state == newState) return;
     
@@ -39,6 +41,7 @@ void DoorGate::SetState(State newState) {
     }
 }
 
+/// Advances this component's state for the current frame.
 void DoorGate::Update(float deltaTime) {
     if (state == State::CLOSING) {
         animationTimer += deltaTime;
@@ -63,10 +66,12 @@ void DoorGate::Update(float deltaTime) {
     }
 }
 
+/// Returns the current bounding box.
 Rectangle DoorGate::GetBoundingBox() const {
     return boundingBox;
 }
 
+/// Returns the current collision box.
 Rectangle DoorGate::GetCollisionBox() const {
     // The sprite is two tiles tall, but the physical barrier occupies the
     // generated doorway tile. Keeping this explicit prevents visual height
@@ -74,6 +79,7 @@ Rectangle DoorGate::GetCollisionBox() const {
     return boundingBox;
 }
 
+/// Renders base layer.
 void DoorGate::DrawBaseLayer() {
     if (tex.id == 0) return;
     
@@ -97,6 +103,7 @@ void DoorGate::DrawBaseLayer() {
     }
 }
 
+/// Adds depth render items.
 void DoorGate::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
     if (state == State::OPEN) return; // No top half to render if open
     

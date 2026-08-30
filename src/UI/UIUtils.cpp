@@ -5,24 +5,28 @@
 
 namespace UIUtils {
 
+    /// Measures text.
     Vector2 MeasureText(const std::string& fontID, const std::string& text, FontSize size) {
         Font font = AssetManager::GetInstance().GetCustomFont(fontID);
         float fontSize = static_cast<float>(size);
         return MeasureTextEx(font, text.c_str(), fontSize, 1.0f);
     }
 
+    /// Renders text.
     void DrawText(const std::string& fontID, const std::string& text, Vector2 pos, FontSize size, Color color) {
         Font font = AssetManager::GetInstance().GetCustomFont(fontID);
         float fontSize = static_cast<float>(size);
         DrawTextEx(font, text.c_str(), pos, fontSize, 1.0f, color);
     }
 
+    /// Renders text pro.
     void DrawTextPro(const std::string& fontID, const std::string& text, Vector2 pos, Vector2 origin, float rotation, FontSize size, Color color) {
         Font font = AssetManager::GetInstance().GetCustomFont(fontID);
         float fontSize = static_cast<float>(size);
         ::DrawTextPro(font, text.c_str(), pos, origin, rotation, fontSize, 1.0f, color);
     }
 
+    /// Renders centered text.
     void DrawCenteredText(const std::string& fontID, const std::string& text, Vector2 centerPos, FontSize size, Color color) {
         Vector2 textSize = MeasureText(fontID, text, size);
         Vector2 pos = {
@@ -32,6 +36,7 @@ namespace UIUtils {
         DrawText(fontID, text, pos, size, color);
     }
 
+    /// Renders progress bar.
     void DrawProgressBar(Rectangle bounds, float currentValue, float maxValue, Color bgColor, Color fillColor) {
         DrawRectangleRec(bounds, bgColor);
         if (maxValue > 0.0f) {
@@ -41,6 +46,7 @@ namespace UIUtils {
         }
     }
 
+    /// Renders segmented progress bar.
     void DrawSegmentedProgressBar(Rectangle bounds, float currentVal, float maxVal, int segments, Color bgColor, Color fillColor, Color dividerColor) {
         // Background
         DrawRectangleRec(bounds, bgColor);
@@ -53,16 +59,19 @@ namespace UIUtils {
         }
     }
 
+    /// Renders panel.
     void DrawPanel(Rectangle bounds, Color color) {
         DrawRectangleRec(bounds, color);
         DrawRectangleLinesEx(bounds, 2.0f, LIGHTGRAY);
     }
 
+    /// Reports whether the hovered condition is satisfied.
     bool IsHovered(Rectangle bounds) {
         Vector2 mousePos = GetMousePosition();
         return CheckCollisionPointRec(mousePos, bounds);
     }
     
+    /// Creates centered ui camera.
     Camera2D CreateCenteredUICamera(float scale) {
         Camera2D camera = {};
         camera.zoom = scale;
@@ -73,10 +82,12 @@ namespace UIUtils {
         return camera;
     }
 
+    /// Returns the current virtual mouse position.
     Vector2 GetVirtualMousePosition(const Camera2D& camera) {
         return GetScreenToWorld2D(GetMousePosition(), camera);
     }
 
+    /// Renders gradient pulse bar.
     void DrawGradientPulseBar(Rectangle bounds, float fillPercentage, Color leftColor, Color rightColor, bool isPulsing, bool applyGrayFilter) {
         Rectangle filledRec = { bounds.x, bounds.y, bounds.width * fillPercentage, bounds.height };
         

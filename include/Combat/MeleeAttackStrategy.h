@@ -28,13 +28,16 @@ private:
     std::unordered_set<ObjectId> objectsHit;
     std::unordered_set<MapObjectHandle> mapObjectsHit;
 
+    /// Returns the current signed swing offset.
     float GetSignedSwingOffset() const;
+    /// Processes blade collision.
     void ProcessBladeCollision(
         float startAngleDegrees,
         float endAngleDegrees
     );
 
 public:
+    /// Creates a MeleeAttackStrategy instance from the supplied configuration.
     MeleeAttackStrategy(
         Texture2D weapon,
         Texture2D att1,
@@ -43,15 +46,21 @@ public:
         int heavyDamage
     );
     
+    /// Starts this attack behavior when its current conditions allow it.
     void Attack(Vector2 playerPos) override;
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw(Vector2 playerPos, bool facingLeft) override;
     
+    /// Returns the current combo step.
     int GetComboStep() const { return comboStep; }
+    /// Updates the stored damage.
     void SetDamage(int light, int heavy) override {
         lightDamage = light;
         heavyDamage = heavy;
     }
+    /// Updates the stored attack speed scalar.
     void SetAttackSpeedScalar(float scalar) override {
         timePerFrame = 0.05f * scalar;
     }

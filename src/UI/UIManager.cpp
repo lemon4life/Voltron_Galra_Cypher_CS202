@@ -12,14 +12,17 @@
 #include <string>
 #include <vector>
 
+/// Creates a UIManager instance from the supplied configuration.
 UIManager::UIManager() : teamManager(nullptr) {
     statsShell.id = 0;
     statsShellBack.id = 0;
 }
 
+/// Releases resources owned by this UIManager instance.
 UIManager::~UIManager() {
 }
 
+/// Initializes the resources and collaborators required before this component can run.
 void UIManager::Initialize() {
     AssetManager& assets = AssetManager::GetInstance();
     statsShell = assets.LoadTexture2D(
@@ -32,6 +35,7 @@ void UIManager::Initialize() {
     );
 }
 
+/// Reports whether the pause button pressed condition is satisfied.
 bool UIManager::IsPauseButtonPressed(Rectangle windowBounds, Vector2 mousePosition) const {
     if (!teamManager) return false;
     GameplayHUDLayout::Result layout = GameplayHUDLayout::Calculate(
@@ -45,6 +49,7 @@ bool UIManager::IsPauseButtonPressed(Rectangle windowBounds, Vector2 mousePositi
            IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
+/// Handles the player stats changed event.
 void UIManager::OnPlayerStatsChanged(const PlayerStatsSnapshot& stats, int slotIndex) {
     if (slotIndex >= static_cast<int>(cachedPlayerStats.size())) {
         cachedPlayerStats.resize(slotIndex + 1);
@@ -53,16 +58,19 @@ void UIManager::OnPlayerStatsChanged(const PlayerStatsSnapshot& stats, int slotI
     hasReceivedStats = true;
 }
 
+/// Handles the team stats changed event.
 void UIManager::OnTeamStatsChanged(const TeamStatsSnapshot& stats) {
     cachedTeamStats = stats;
     hasReceivedStats = true;
 }
 
+/// Renders hud.
 void UIManager::DrawHUD(Rectangle windowBounds, Vector2 mousePosition) {
     if (!teamManager) return;
     DrawTeamHUD(teamManager, windowBounds, mousePosition);
 }
 
+/// Renders team hud.
 void UIManager::DrawTeamHUD(
     TeamManager* team,
     Rectangle windowBounds,
@@ -343,6 +351,7 @@ void UIManager::DrawTeamHUD(
     DrawCoinHUD(layout.coinCounterBounds, team->GetCoins());
 }
 
+/// Renders coin hud.
 void UIManager::DrawCoinHUD(Rectangle bounds, int coins) {
     // Rounded background & border matching minimap style
     DrawRectangleRounded(bounds, 0.25f, 6, ColorAlpha(Color{ 10, 10, 15, 255 }, 0.8f));
@@ -381,6 +390,7 @@ void UIManager::DrawCoinHUD(Rectangle bounds, int coins) {
     UIUtils::DrawText("PixeloidMono", coinText.c_str(), textPos, static_cast<UIUtils::FontSize>(fontSize), Color{ 255, 223, 80, 255 });
 }
 
+/// Renders modal overlay.
 void UIManager::DrawModalOverlay() {
     DrawRectangle(-10000, -10000, 20000, 20000, Fade(BLACK, 0.6f));
 }

@@ -9,4 +9,5 @@ struct ProcessMemorySnapshot {
     std::size_t commitBytes = 0;
 };
 
+/// Reads process memory snapshot.
 ProcessMemorySnapshot ReadProcessMemorySnapshot();

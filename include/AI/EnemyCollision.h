@@ -19,16 +19,19 @@ struct EnemyMoveResult {
 };
 
 struct EnemyCollision {
+    /// Checks player attack overlap.
     static bool CheckPlayerAttackOverlap(
         const Enemy& enemy,
         const Paladin& player
     );
 
+    /// Checks parry.
     static bool CheckParry(
         const Enemy& enemy,
         const Paladin& player
     );
 
+    /// Moves against walls.
     static EnemyMoveResult MoveAgainstWalls(
         Enemy& enemy,
         Vector2 displacement,

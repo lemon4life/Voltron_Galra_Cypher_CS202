@@ -28,11 +28,13 @@ constexpr int MAX_SAFE_SPAWN_CANDIDATES = 32;
 constexpr float SPAWN_BOUNDS_MARGIN = 0.25f;
 constexpr float ENEMY_SPATIAL_CELL_SIZE = 64.0f;
 
+/// Packs a two-dimensional spatial-grid coordinate into one hash key.
 std::uint64_t SpatialCellKey(int x, int y) {
     return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(x)) << 32U) |
         static_cast<std::uint32_t>(y);
 }
 
+/// Reports whether the inner rectangle fits completely inside the outer rectangle.
 bool ContainsRectangle(Rectangle outer, Rectangle inner) {
     return inner.x >= outer.x + SPAWN_BOUNDS_MARGIN &&
         inner.y >= outer.y + SPAWN_BOUNDS_MARGIN &&
@@ -42,6 +44,7 @@ bool ContainsRectangle(Rectangle outer, Rectangle inner) {
             outer.y + outer.height - SPAWN_BOUNDS_MARGIN;
 }
 
+/// Renders object collision debug.
 void DrawObjectCollisionDebug(const GameObject& object) {
     Color hitboxColor = PURPLE;
     Color collisionColor = GOLD;
@@ -66,12 +69,15 @@ void DrawObjectCollisionDebug(const GameObject& object) {
 }
 }
 
+/// Creates a ObjectManager instance from the supplied configuration.
 ObjectManager::ObjectManager() = default;
 
+/// Releases resources owned by this ObjectManager instance.
 ObjectManager::~ObjectManager() {
     Clear();
 }
 
+/// Connects this component to the managers and services it needs at runtime.
 void ObjectManager::Configure(
     LevelManager& level,
     IEnemyPathAccess& paths,
@@ -84,6 +90,7 @@ void ObjectManager::Configure(
     teamManager = team;
 }
 
+/// Rebuilds views.
 void ObjectManager::RebuildViews() {
     enemyView.clear();
     enemyIndex.clear();
@@ -103,6 +110,7 @@ void ObjectManager::RebuildViews() {
     RebuildEnemySpatialIndex();
 }
 
+/// Rebuilds enemy spatial index.
 void ObjectManager::RebuildEnemySpatialIndex() {
     enemySpatialBuckets.clear();
     enemySpatialBuckets.reserve(enemyView.size());
@@ -119,6 +127,8 @@ void ObjectManager::RebuildEnemySpatialIndex() {
     }
 }
 
+/// Transfers a newly created object into its type-specific ownership container.
+/// Runtime views are rebuilt by the caller after batches, avoiding stale raw pointers.
 void ObjectManager::RouteObject(std::unique_ptr<GameObject> object) {
     if (!object) return;
 
@@ -139,17 +149,20 @@ void ObjectManager::RouteObject(std::unique_ptr<GameObject> object) {
     interactables.push_back(std::move(object));
 }
 
+/// Adds object.
 void ObjectManager::AddObject(std::unique_ptr<GameObject> object) {
     RouteObject(std::move(object));
     RebuildViews();
 }
 
+/// Spawns all.
 void ObjectManager::SpawnAll(const DynamicSpawnList& requests) {
     for (const DynamicSpawnRequest& request : requests) {
         Spawn(request.type, request.position);
     }
 }
 
+/// Creates and queues the requested runtime entity without mutating active iteration.
 GameObject* ObjectManager::Spawn(MapObjectId type, Vector2 position) {
     if (!teamManager || !pathFinding || !levelManager) {
         throw std::logic_error(
@@ -176,6 +189,7 @@ GameObject* ObjectManager::Spawn(MapObjectId type, Vector2 position) {
     return result;
 }
 
+/// Queues spawn.
 bool ObjectManager::QueueSpawn(MapObjectId type, Vector2 position) {
     if (!teamManager || !pathFinding || !levelManager) {
         throw std::logic_error(
@@ -196,6 +210,9 @@ bool ObjectManager::QueueSpawn(MapObjectId type, Vector2 position) {
     return true;
 }
 
+/// Searches outward from a requested spawn for a legal enemy footprint.
+/// Candidates must remain in the room/map and avoid static geometry, the player,
+/// existing entities, and already queued spawns before ownership is queued.
 bool ObjectManager::QueueEnemySpawnSafely(
     MapObjectId type,
     Vector2 desiredPosition,
@@ -316,6 +333,7 @@ bool ObjectManager::QueueEnemySpawnSafely(
     return false;
 }
 
+/// Processes pending additions.
 void ObjectManager::ProcessPendingAdditions() {
     for (std::unique_ptr<GameObject>& object : pendingAddition) {
         RouteObject(std::move(object));
@@ -324,10 +342,12 @@ void ObjectManager::ProcessPendingAdditions() {
     RebuildViews();
 }
 
+/// Queues removal.
 void ObjectManager::QueueRemoval(GameObject* object) {
     if (object) pendingRemoval.insert(object);
 }
 
+/// Deletes all enemies.
 void ObjectManager::DeleteAllEnemies() {
     for (const std::unique_ptr<Enemy>& enemy : enemies) {
         if (!enemy) continue;
@@ -336,6 +356,7 @@ void ObjectManager::DeleteAllEnemies() {
     }
 }
 
+/// Completes enemy death rewards and removes the dead enemy from managed views.
 void ObjectManager::FinalizeEnemyDeath(Enemy& enemy) {
     ObjectId id = enemy.GetObjectId();
     if (finalizedDeaths.count(id) || silentRemoval.count(id)) return;
@@ -370,6 +391,7 @@ void ObjectManager::FinalizeEnemyDeath(Enemy& enemy) {
     );
 }
 
+/// Processes pending removals.
 void ObjectManager::ProcessPendingRemovals() {
     if (pendingRemoval.empty()) return;
 
@@ -411,6 +433,8 @@ void ObjectManager::ProcessPendingRemovals() {
     RebuildViews();
 }
 
+/// Advances enemies, pickups, and interactables without changing their vectors.
+/// Dead objects are queued for removal and finalized after active iteration ends.
 void ObjectManager::UpdateEntities(float deltaTime) {
     for (const std::unique_ptr<Enemy>& enemy : enemies) {
         if (!enemy) continue;
@@ -435,12 +459,16 @@ void ObjectManager::UpdateEntities(float deltaTime) {
     RebuildEnemySpatialIndex();
 }
 
+/// Adds projectile.
 void ObjectManager::AddProjectile(
     std::unique_ptr<Projectile> projectile
 ) {
     if (projectile) projectiles.push_back(std::move(projectile));
 }
 
+/// Advances projectiles, resolves their collisions, and removes inactive shots safely.
+/// World collision, swept target hits, parries, and projectile-specific exceptions
+/// are resolved here because ObjectManager owns both projectile lifetime and routing.
 void ObjectManager::UpdateProjectiles(float deltaTime) {
     if (!levelManager) return;
 
@@ -618,6 +646,7 @@ void ObjectManager::UpdateProjectiles(float deltaTime) {
     }
 }
 
+/// Adds rover.
 void ObjectManager::AddRover(std::unique_ptr<Rover> rover) {
     if (!rover) return;
     if (!assists.empty()) {
@@ -627,6 +656,7 @@ void ObjectManager::AddRover(std::unique_ptr<Rover> rover) {
     }
 }
 
+/// Updates assists.
 void ObjectManager::UpdateAssists(float deltaTime) {
     for (const std::unique_ptr<Rover>& rover : assists) {
         if (rover) rover->Update(deltaTime);
@@ -643,6 +673,7 @@ void ObjectManager::UpdateAssists(float deltaTime) {
     );
 }
 
+/// Spawns quintessence orb.
 void ObjectManager::SpawnQuintessenceOrb(Vector2 position) {
     if (orbs.size() >= MAX_QUINTESSENCE_ORBS) {
         orbs.front() = std::move(orbs.back());
@@ -657,6 +688,7 @@ void ObjectManager::SpawnQuintessenceOrb(Vector2 position) {
     orbs.push_back(std::move(orb));
 }
 
+/// Updates orbs.
 void ObjectManager::UpdateOrbs(float deltaTime) {
     Paladin* player = teamManager ? teamManager->GetActivePaladin() : nullptr;
     std::size_t orbIndex = 0;
@@ -705,11 +737,14 @@ void ObjectManager::UpdateOrbs(float deltaTime) {
     }
 }
 
+/// Applies queued additions and removals after all entity/projectile loops finish.
+/// This is the frame's mutation barrier: views and spatial indexes are rebuilt here.
 void ObjectManager::CommitPendingChanges() {
     ProcessPendingAdditions();
     ProcessPendingRemovals();
 }
 
+/// Adds depth render items.
 void ObjectManager::AddDepthRenderItems(
     std::vector<DepthRenderItem>& items
 ) {
@@ -756,6 +791,7 @@ void ObjectManager::AddDepthRenderItems(
     }
 }
 
+/// Renders orbs.
 void ObjectManager::DrawOrbs() const {
     Texture2D texture = AssetManager::GetInstance().GetTexture("Quint_Orb");
     for (const QuintessenceOrb& orb : orbs) {
@@ -788,6 +824,7 @@ void ObjectManager::DrawOrbs() const {
     }
 }
 
+/// Renders debug overlays.
 void ObjectManager::DrawDebugOverlays() const {
     if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
         for (const std::unique_ptr<Enemy>& enemy : enemies) {
@@ -815,6 +852,7 @@ void ObjectManager::DrawDebugOverlays() const {
     }
 }
 
+/// Searches for object.
 GameObject* ObjectManager::FindObject(ObjectId id) const {
     if (id == INVALID_OBJECT_ID) return nullptr;
     for (Enemy* enemy : enemyView) {
@@ -837,11 +875,13 @@ GameObject* ObjectManager::FindObject(ObjectId id) const {
     return nullptr;
 }
 
+/// Searches for enemy.
 Enemy* ObjectManager::FindEnemy(ObjectId id) const {
     auto found = enemyIndex.find(id);
     return found == enemyIndex.end() ? nullptr : found->second;
 }
 
+/// Returns the current enemies near.
 void ObjectManager::GetEnemiesNear(
     Rectangle bounds,
     std::vector<Enemy*>& output
@@ -879,6 +919,7 @@ void ObjectManager::GetEnemiesNear(
     }
 }
 
+/// Searches for nearest pickup.
 Pot* ObjectManager::FindNearestPickup(Vector2 position, float radius) const {
     Pot* nearest = nullptr;
     float nearestDistanceSquared = radius * radius;
@@ -896,6 +937,7 @@ Pot* ObjectManager::FindNearestPickup(Vector2 position, float radius) const {
     return nearest;
 }
 
+/// Reports whether the dynamic collision blocked condition is satisfied.
 bool ObjectManager::IsDynamicCollisionBlocked(
     Rectangle bounds,
     const GameObject* ignored
@@ -916,6 +958,7 @@ bool ObjectManager::IsDynamicCollisionBlocked(
     return false;
 }
 
+/// Removes all runtime entries owned by this component and resets transient state.
 void ObjectManager::Clear() {
     decltype(pendingRemoval){}.swap(pendingRemoval);
     decltype(pendingAddition){}.swap(pendingAddition);
@@ -930,14 +973,17 @@ void ObjectManager::Clear() {
     RebuildViews();
 }
 
+/// Clears projectiles.
 void ObjectManager::ClearProjectiles() {
     decltype(projectiles){}.swap(projectiles);
 }
 
+/// Clears orbs.
 void ObjectManager::ClearOrbs() {
     decltype(orbs){}.swap(orbs);
 }
 
+/// Returns the current memory stats.
 ObjectManagerMemoryStats ObjectManager::GetMemoryStats() const {
     ObjectManagerMemoryStats stats;
     stats.enemies = enemies.size();

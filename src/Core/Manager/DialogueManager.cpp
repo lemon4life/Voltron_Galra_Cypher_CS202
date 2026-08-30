@@ -10,6 +10,7 @@
 #include <sstream>
 
 namespace {
+    /// Wraps text.
     std::string WrapText(const std::string& text, float maxWidth) {
         std::string wrapped = "";
         std::string currentLine = "";
@@ -33,16 +34,20 @@ namespace {
     }
 }
 
+/// Creates a DialogueManager instance from the supplied configuration.
 DialogueManager::DialogueManager() : isDialogueActive(false), currentNode(0), selectedOption(0), missionRequested(false), typewriterTimer(0.0f), visibleCharCount(0) {}
 
+/// Releases resources owned by this DialogueManager instance.
 DialogueManager::~DialogueManager() {
 }
 
+/// Returns the process-wide singleton instance of this manager.
 DialogueManager& DialogueManager::GetInstance() {
     static DialogueManager instance;
     return instance;
 }
 
+/// Initializes assets.
 void DialogueManager::InitializeAssets() {
     AssetManager& assets = AssetManager::GetInstance();
     portraits["Lance"] = assets.LoadTexture2D(
@@ -63,6 +68,7 @@ void DialogueManager::InitializeAssets() {
     LoadDialogueTree("assets/story/intro.txt");
 }
 
+/// Loads dialogue tree.
 void DialogueManager::LoadDialogueTree(const std::string& filepath) {
     currentTree.clear();
     showingTransientResponse = false;
@@ -120,6 +126,7 @@ void DialogueManager::LoadDialogueTree(const std::string& filepath) {
     file.close();
 }
 
+/// Starts dialogue.
 void DialogueManager::StartDialogue() {
     currentNode = 0;
     selectedOption = 0;
@@ -131,6 +138,7 @@ void DialogueManager::StartDialogue() {
     transientResponse = DialogueNode{};
 }
 
+/// Resets session.
 void DialogueManager::ResetSession() {
     isDialogueActive = false;
     currentNode = 0;
@@ -143,6 +151,7 @@ void DialogueManager::ResetSession() {
     transientResponse = DialogueNode{};
 }
 
+/// Advances this component's state for the current frame.
 void DialogueManager::Update(float deltaTime) {
     if (!isDialogueActive) return;
     if (currentTree.empty()) {
@@ -230,6 +239,7 @@ void DialogueManager::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void DialogueManager::Draw(int screenWidth, int screenHeight) {
     if (!isDialogueActive) return;
     if (currentTree.empty()) {

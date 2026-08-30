@@ -16,10 +16,14 @@
 #include <cmath>
 #include "Core/Manager/AssetManager.h"
 
+/// Creates a GameplayState instance from the supplied configuration.
 GameplayState::GameplayState(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager)
     : teamManager(teamManager), levelManager(levelManager), waveManager(waveManager) {
 }
 
+/// Orchestrates one gameplay frame in dependency order.
+/// Modal/cinematic states freeze simulation; otherwise the level, team, waves,
+/// paths/entities, projectiles, assists, and deferred object mutations advance.
 void GameplayState::Update(float deltaTime) {
     if (enhanceMenuUI.IsOpen()) {
         float viewportScale = std::min(
@@ -93,6 +97,9 @@ void GameplayState::Update(float deltaTime) {
     GameManager::GetInstance().UpdateEffects(deltaTime);
 }
 
+/// Builds the world frame from base tiles through depth-sorted actors and props.
+/// Effects are split behind/in front of actors, then debug overlays and the
+/// screen-space enhance menu are drawn in their appropriate camera spaces.
 void GameplayState::Draw() {
     BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
     levelManager->DrawLevelBase();

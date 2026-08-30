@@ -8,8 +8,10 @@
 #include "Core/Constants.h"
 
 // --- MainMenuState ---
+/// Creates a MainMenuState instance from the supplied configuration.
 MainMenuState::MainMenuState(MainMenu* menu, GameApplication* app) : menu(menu), app(app) {}
 
+/// Advances this component's state for the current frame.
 void MainMenuState::Update(float deltaTime) {
     menu->Update(deltaTime);
     MainMenuAction menuAction = menu->ConsumeAction();
@@ -38,14 +40,17 @@ void MainMenuState::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void MainMenuState::Draw() {
     menu->Draw(GetScreenWidth(), GetScreenHeight());
 }
 
 // --- PauseState ---
+/// Creates a PauseState instance from the supplied configuration.
 PauseState::PauseState(PauseMenu* menu, GameApplication* app, IGameState* backgroundState)
     : menu(menu), app(app), backgroundState(backgroundState) {}
 
+/// Advances this component's state for the current frame.
 void PauseState::Update(float deltaTime) {
     float viewportScale = std::min((float)GetScreenWidth() / Constants::GAME_WIDTH, (float)GetScreenHeight() / Constants::GAME_HEIGHT);
     Camera2D uiCamera = UIUtils::CreateCenteredUICamera(viewportScale);
@@ -71,6 +76,7 @@ void PauseState::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void PauseState::Draw() {
     if (backgroundState) {
         backgroundState->Draw();
@@ -87,9 +93,11 @@ void PauseState::Draw() {
 }
 
 // --- SettingsState ---
+/// Creates a SettingsState instance from the supplied configuration.
 SettingsState::SettingsState(SettingsMenu* menu, GameApplication* app, IGameState* backgroundState)
     : menu(menu), app(app), backgroundState(backgroundState), closeRequested(false) {}
 
+/// Advances this component's state for the current frame.
 void SettingsState::Update(float deltaTime) {
     float viewportScale = std::min((float)GetScreenWidth() / Constants::GAME_WIDTH, (float)GetScreenHeight() / Constants::GAME_HEIGHT);
     Camera2D uiCamera = UIUtils::CreateCenteredUICamera(viewportScale);
@@ -101,6 +109,7 @@ void SettingsState::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void SettingsState::Draw() {
     if (backgroundState) {
         backgroundState->Draw();
@@ -123,15 +132,18 @@ void SettingsState::Draw() {
 }
 
 // --- GameOverState ---
+/// Creates a GameOverState instance from the supplied configuration.
 GameOverState::GameOverState(GameApplication* app, IGameState* backgroundState)
     : app(app), backgroundState(backgroundState) {}
 
+/// Advances this component's state for the current frame.
 void GameOverState::Update(float deltaTime) {
     if (IsKeyPressed(KEY_R)) {
         app->ResetGame();
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void GameOverState::Draw() {
     if (backgroundState) {
         backgroundState->Draw();
@@ -148,15 +160,18 @@ void GameOverState::Draw() {
 }
 
 // --- VictoryState ---
+/// Creates a VictoryState instance from the supplied configuration.
 VictoryState::VictoryState(GameApplication* app, IGameState* backgroundState)
     : app(app), backgroundState(backgroundState) {}
 
+/// Advances this component's state for the current frame.
 void VictoryState::Update(float deltaTime) {
     if (IsKeyPressed(KEY_SPACE)) {
         app->ReturnToHub();
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void VictoryState::Draw() {
     if (backgroundState) {
         backgroundState->Draw();
@@ -173,8 +188,10 @@ void VictoryState::Draw() {
 }
 
 // --- RoomEditorStateAdapter ---
+/// Creates a RoomEditorStateAdapter instance from the supplied configuration.
 RoomEditorStateAdapter::RoomEditorStateAdapter(RoomEditorState* editor) : editor(editor) {}
 
+/// Advances this component's state for the current frame.
 void RoomEditorStateAdapter::Update(float deltaTime) {
     editor->Update(deltaTime);
     if (IsKeyPressed(KEY_ESCAPE)) {
@@ -183,6 +200,7 @@ void RoomEditorStateAdapter::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void RoomEditorStateAdapter::Draw() {
     BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
     editor->Draw();

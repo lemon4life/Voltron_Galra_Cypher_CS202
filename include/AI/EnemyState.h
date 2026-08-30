@@ -16,10 +16,14 @@ class EnemyIdleState : public IEnemyState {
 private:
     const float spotDistance;
 public:
+    /// Creates a EnemyIdleState instance from the supplied configuration.
     explicit EnemyIdleState(float spotDistance);
 
+    /// Prepares this state when it becomes active.
     void Enter(Enemy* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(Enemy* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(Enemy* enemy) override;
 };
 
@@ -28,10 +32,14 @@ private:
     float dTimer = 0.0f;
 
 public:
+    /// Prepares this state when it becomes active.
     void Enter(Enemy* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(Enemy* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(Enemy* enemy) override;
 
+    /// Returns the current remaining time.
     float GetRemainingTime() const { return dTimer; }
 };
 
@@ -41,8 +49,11 @@ public:
 
 class EnemyChaserChaseState : public ITypedEnemyState<EnemyChaser> {
 public:
+    /// Prepares this state when it becomes active.
     void Enter(EnemyChaser* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(EnemyChaser* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(EnemyChaser* enemy) override;
 };
 
@@ -54,8 +65,11 @@ private:
     bool attackResolved = false;
 
 public:
+    /// Prepares this state when it becomes active.
     void Enter(EnemyChaser* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(EnemyChaser* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(EnemyChaser* enemy) override;
 };
 
@@ -65,8 +79,11 @@ public:
 
 class EnemyDiverChaseState : public ITypedEnemyState<EnemyDiver> {
 public:
+    /// Prepares this state when it becomes active.
     void Enter(EnemyDiver* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(EnemyDiver* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(EnemyDiver* enemy) override;
 };
 
@@ -75,8 +92,11 @@ private:
     float dTimer = 0.0f;
 
 public:
+    /// Prepares this state when it becomes active.
     void Enter(EnemyDiver* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(EnemyDiver* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(EnemyDiver* enemy) override;
 };
 
@@ -86,11 +106,15 @@ private:
     bool isWaitingToChase = false;
     bool hasDamagedPlayer = false;
 
+    /// Begins recovery.
     void BeginRecovery(EnemyDiver* enemy);
 
 public:
+    /// Prepares this state when it becomes active.
     void Enter(EnemyDiver* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(EnemyDiver* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(EnemyDiver* enemy) override;
 };
 
@@ -101,18 +125,25 @@ public:
 
 class EnemyRangeChaseState : public ITypedEnemyState<EnemyRange> {
 public:
+    /// Prepares this state when it becomes active.
     void Enter(EnemyRange* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(EnemyRange* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(EnemyRange* enemy) override;
 };
 
 class EnemyRangeShootingState : public ITypedEnemyState<EnemyRange> {
 private:
+    /// Attempts to fire projectile.
     bool TryFireProjectile(EnemyRange* enemy, Vector2 targetPosition);
 
 public:
+    /// Prepares this state when it becomes active.
     void Enter(EnemyRange* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(EnemyRange* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(EnemyRange* enemy) override;
 };
 
@@ -132,8 +163,11 @@ private:
     float stageTimeRemaining = 0.0f;
 
 public:
+    /// Prepares this state when it becomes active.
     void Enter(Boss* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(Boss* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(Boss* enemy) override;
 };
 
@@ -146,8 +180,11 @@ private:
     int demonsSummoned = 0;
 
 public:
+    /// Prepares this state when it becomes active.
     void Enter(Boss* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(Boss* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(Boss* enemy) override;
 };
 
@@ -168,12 +205,18 @@ private:
     float changeAngleDegreesPerSecond = 30.0f;
 
 public:
+    /// Prepares this state when it becomes active.
     void Enter(Boss* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(Boss* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(Boss* enemy) override;
 
+    /// Returns the current phase.
     Phase GetPhase() const { return phase; }
+    /// Returns the current frame index.
     int GetFrameIndex() const { return frameIndex; }
+    /// Returns the current completed punches.
     int GetCompletedPunches() const { return completedPunches; }
 };
 
@@ -185,10 +228,15 @@ private:
     int stompsForState = 0;
 
 public:
+    /// Prepares this state when it becomes active.
     void Enter(Boss* enemy) override;
+    /// Advances this component's state for the current frame.
     void Update(Boss* enemy, float deltaTime) override;
+    /// Cleans up this state before control moves elsewhere.
     void Exit(Boss* enemy) override;
 
+    /// Returns the current frame index.
     int GetFrameIndex() const { return frameIndex; }
+    /// Returns the current completed stomps.
     int GetCompletedStomps() const { return completedStomps; }
 };

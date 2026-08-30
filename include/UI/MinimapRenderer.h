@@ -4,6 +4,7 @@
 
 class MinimapRenderer {
 public:
+    /// Renders this component using its current state and visual resources.
     static void Draw(
         const LevelMap& levelMap,
         int currentGridX,

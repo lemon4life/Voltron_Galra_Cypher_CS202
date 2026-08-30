@@ -7,17 +7,21 @@
 #include "raymath.h"
 #include <iostream>
 
+/// Returns the process-wide singleton instance of this manager.
 UltimateIntroManager& UltimateIntroManager::GetInstance() {
     static UltimateIntroManager instance;
     return instance;
 }
 
+/// Creates a UltimateIntroManager instance from the supplied configuration.
 UltimateIntroManager::UltimateIntroManager() : isPlaying(false), timer(0.0f), activePaladin(nullptr) {
 }
 
+/// Releases resources owned by this UltimateIntroManager instance.
 UltimateIntroManager::~UltimateIntroManager() {
 }
 
+/// Plays intro.
 void UltimateIntroManager::PlayIntro(Paladin* paladin) {
     activePaladin = paladin;
     isPlaying = true;
@@ -28,6 +32,7 @@ void UltimateIntroManager::PlayIntro(Paladin* paladin) {
     AudioManager::GetInstance().PlaySoundEffect(activePaladin->GetIntroData().voicelineAudioID);
 }
 
+/// Advances this component's state for the current frame.
 void UltimateIntroManager::Update(float deltaTime) {
     if (!isPlaying) return;
     
@@ -41,6 +46,7 @@ void UltimateIntroManager::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void UltimateIntroManager::Draw() {
     if (!isPlaying || !activePaladin) return;
     

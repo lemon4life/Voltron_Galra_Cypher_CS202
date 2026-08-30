@@ -14,6 +14,7 @@
 #include "Core/Manager/AssetManager.h"
 
 namespace {
+    /// Searches for nearest hub interactable.
     GameObject* FindNearestHubInteractable(const std::vector<GameObject*>& entities, Vector2 playerPosition) {
         GameObject* nearest = nullptr;
         float nearestDistance = 50.0f; // interaction range
@@ -38,6 +39,7 @@ namespace {
         return nearest;
     }
 
+    /// Renders interaction prompt.
     void DrawInteractionPrompt(const std::string& text) {
         float textWidth = UIUtils::MeasureText("PixeloidSans", text, UIUtils::FontSize::SMALL).x;
         Rectangle background = {
@@ -50,6 +52,7 @@ namespace {
         UIUtils::DrawCenteredText("PixeloidSans", text, { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
     }
 
+    /// Renders hub interaction prompt.
     void DrawHubInteractionPrompt(GameObject* interactable, Camera2D uiCamera) {
         if (!interactable) return;
 
@@ -77,10 +80,12 @@ namespace {
     }
 }
 
+/// Creates a HubState instance from the supplied configuration.
 HubState::HubState(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager, PaladinSelectionMenu* paladinSelectionMenu)
     : teamManager(teamManager), levelManager(levelManager), waveManager(waveManager), paladinSelectionMenu(paladinSelectionMenu) {
 }
 
+/// Advances this component's state for the current frame.
 void HubState::Update(float deltaTime) {
     if (paladinSelectionMenu->IsOpen()) {
         float viewportScale = std::min(
@@ -155,6 +160,7 @@ void HubState::Update(float deltaTime) {
     GameManager::GetInstance().UpdateEffects(deltaTime);
 }
 
+/// Renders this component using its current state and visual resources.
 void HubState::Draw() {
     BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
 

@@ -11,6 +11,7 @@ private:
     Vector2 direction;
 
 public:
+    /// Creates a DroneBullet instance from the supplied configuration.
     DroneBullet(
         Vector2 startPos,
         Vector2 targetDir,
@@ -24,5 +25,6 @@ public:
         bool isEnemyProjectile = true
     );
     
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
 };

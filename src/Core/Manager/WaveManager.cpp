@@ -24,6 +24,7 @@ namespace {
         float waveSizeMultiplier;
     };
 
+    /// Returns the current floor combat profile.
     FloorCombatProfile GetFloorCombatProfile(int floorNumber) {
         switch (std::clamp(floorNumber, 1, 5)) {
             case 2:
@@ -40,6 +41,7 @@ namespace {
         }
     }
 
+    /// Implements the push player clear of room gate behavior for this component.
     void PushPlayerClearOfRoomGate(
         TeamManager* teamManager,
         LevelManager* levelManager
@@ -58,10 +60,12 @@ namespace {
     }
 }
 
+/// Creates a WaveManager instance from the supplied configuration.
 WaveManager::WaveManager() {
     Reset();
 }
 
+/// Restores this component to its initial runtime state.
 void WaveManager::Reset(
     int startingEnemies,
     int startingRangeEnemies,
@@ -93,6 +97,7 @@ void WaveManager::Reset(
     dungeonAnnouncement = DungeonAnnouncement::None;
 }
 
+/// Configures dungeon wave.
 void WaveManager::ConfigureDungeonWave(
     int floorNumber,
     int waveNumber
@@ -134,6 +139,9 @@ void WaveManager::ConfigureDungeonWave(
     }
 }
 
+/// Selects the combat controller appropriate to the loaded map type.
+/// Procedural rooms use the locked-room lifecycle; legacy layered maps retain
+/// their independent wave counters until those maps are removed.
 void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager* levelManager) {
     // --- Procedural dungeon room combat ---
     if (levelManager->IsProceduralDungeon()) {
@@ -178,6 +186,8 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
     }
 }
 
+/// Runs the locked-room wave lifecycle from its opening delay through completion.
+/// It configures enemy composition, schedules spawns, and unlocks cleared rooms.
 void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, LevelManager* levelManager) {
     if (levelManager->GetActiveRoomState() != RoomState::LOCKED) {
         if (showWaveTextTimer > 0.0f) {
@@ -333,6 +343,7 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
     }
 }
 
+/// Creates the requested enemy with current floor modifiers and queues it for safe insertion.
 void WaveManager::SpawnEnemy(
     float deltaTime,
     TeamManager* teamManager,
@@ -425,6 +436,7 @@ void WaveManager::SpawnEnemy(
     }
 }
 
+/// Renders hud.
 void WaveManager::DrawHUD() {
     LevelManager* levelManager = GameManager::GetInstance().GetLevelManager();
 
@@ -479,6 +491,7 @@ void WaveManager::DrawHUD() {
     }
 }
 
+/// Implements the skip current room behavior for this component.
 bool WaveManager::SkipCurrentRoom(
     TeamManager* teamManager,
     LevelManager* levelManager

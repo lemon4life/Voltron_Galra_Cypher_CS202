@@ -35,14 +35,21 @@ private:
     Texture2D sprite;
     
 public:
+    /// Creates a Rover instance from the supplied configuration.
     Rover(Vector2 startPos, Paladin* owner, TeamManager* team);
     
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
     
+    /// Applies incoming damage after this object handles defenses and state-specific rules.
     void TakeDamage(int damage);
+    /// Reports whether the dead condition is satisfied.
     bool IsDead() const { return health <= 0 && isRemoved; }
+    /// Implements the heal behavior for this component.
     void Heal();
     
+    /// Returns the current owner.
     Paladin* GetOwner() const { return owner; }
 };

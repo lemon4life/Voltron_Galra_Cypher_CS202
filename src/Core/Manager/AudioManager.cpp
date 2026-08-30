@@ -3,14 +3,17 @@
 #include <algorithm>
 #include <iostream>
 
+/// Creates a AudioManager instance from the supplied configuration.
 AudioManager::AudioManager() {
     InitAudioDevice();
 }
 
+/// Releases resources owned by this AudioManager instance.
 AudioManager::~AudioManager() {
     Shutdown();
 }
 
+/// Releases resources owned by this component and leaves it safe to destroy.
 void AudioManager::Shutdown() {
     if (!IsAudioDeviceReady()) {
         initialized = false;
@@ -60,11 +63,13 @@ void AudioManager::Shutdown() {
     CloseAudioDevice();
 }
 
+/// Returns the process-wide singleton instance of this manager.
 AudioManager& AudioManager::GetInstance() {
     static AudioManager instance;
     return instance;
 }
 
+/// Initializes the resources and collaborators required before this component can run.
 void AudioManager::Initialize() {
     if (initialized) return;
     if (!IsAudioDeviceReady()) InitAudioDevice();
@@ -161,6 +166,7 @@ void AudioManager::Initialize() {
 }
 
 
+/// Plays sequential footstep.
 void AudioManager::PlaySequentialFootstep() {
     if (footstepSounds.empty()) return;
     float pitch = GetRandomValue(95, 105) / 100.0f;
@@ -170,6 +176,7 @@ void AudioManager::PlaySequentialFootstep() {
     currentFootstepIndex = (currentFootstepIndex + 1) % footstepSounds.size();
 }
 
+/// Plays random click.
 void AudioManager::PlayRandomClick() {
     if (clickSounds.empty()) return;
     int idx = GetRandomValue(0, clickSounds.size() - 1);
@@ -179,6 +186,7 @@ void AudioManager::PlayRandomClick() {
     ::PlaySound(clickSounds[idx]);
 }
 
+/// Plays random sword slash.
 void AudioManager::PlayRandomSwordSlash() {
     if (swordSlashSounds.empty()) return;
     int index = GetRandomValue(0, swordSlashSounds.size() - 1);
@@ -188,6 +196,7 @@ void AudioManager::PlayRandomSwordSlash() {
     ::PlaySound(swordSlashSounds[index]);
 }
 
+/// Plays random laser.
 void AudioManager::PlayRandomLaser() {
     if (laserSounds.empty()) return;
     int index = GetRandomValue(0, laserSounds.size() - 1);
@@ -197,6 +206,7 @@ void AudioManager::PlayRandomLaser() {
     ::PlaySound(laserSounds[index]);
 }
 
+/// Plays random laser gun.
 void AudioManager::PlayRandomLaserGun() {
     if (laserGunSounds.empty()) return;
     int index = GetRandomValue(0, laserGunSounds.size() - 1);
@@ -207,6 +217,7 @@ void AudioManager::PlayRandomLaserGun() {
 }
 
 
+/// Loads sound.
 void AudioManager::LoadSound(const std::string& name, const std::string& filepath) {
     if (sounds.find(name) == sounds.end()) {
         sounds[name] = ::LoadSound(filepath.c_str());
@@ -214,6 +225,7 @@ void AudioManager::LoadSound(const std::string& name, const std::string& filepat
     }
 }
 
+/// Creates sound voice pool.
 void AudioManager::CreateSoundVoicePool(
     const std::string& name,
     std::size_t voiceCount
@@ -237,6 +249,7 @@ void AudioManager::CreateSoundVoicePool(
     }
 }
 
+/// Plays sound effect.
 void AudioManager::PlaySoundEffect(const std::string& name) {
     if (sounds.find(name) != sounds.end()) {
         SetSoundPitch(sounds[name], 1.0f); // Reset pitch in case it was altered
@@ -244,6 +257,7 @@ void AudioManager::PlaySoundEffect(const std::string& name) {
     }
 }
 
+/// Plays polyphonic sound effect.
 void AudioManager::PlayPolyphonicSoundEffect(const std::string& name) {
     auto poolEntry = soundVoicePools.find(name);
     if (poolEntry == soundVoicePools.end() ||
@@ -269,6 +283,7 @@ void AudioManager::PlayPolyphonicSoundEffect(const std::string& name) {
     pool.nextVoice = (selectedVoice + 1) % pool.voices.size();
 }
 
+/// Plays sound effect volume.
 void AudioManager::PlaySoundEffectVolume(const std::string& name, float volumeScale) {
     if (sounds.find(name) != sounds.end()) {
         SetSoundPitch(sounds[name], 1.0f);
@@ -277,6 +292,7 @@ void AudioManager::PlaySoundEffectVolume(const std::string& name, float volumeSc
     }
 }
 
+/// Plays sound effect pitch.
 void AudioManager::PlaySoundEffectPitch(const std::string& name, float pitch) {
     if (sounds.find(name) != sounds.end()) {
         SetSoundPitch(sounds[name], pitch);
@@ -284,6 +300,7 @@ void AudioManager::PlaySoundEffectPitch(const std::string& name, float pitch) {
     }
 }
 
+/// Loads music.
 void AudioManager::LoadMusic(const std::string& name, const std::string& filepath) {
     if (music.find(name) == music.end()) {
         music[name] = LoadMusicStream(filepath.c_str());
@@ -291,6 +308,7 @@ void AudioManager::LoadMusic(const std::string& name, const std::string& filepat
     }
 }
 
+/// Plays music track.
 void AudioManager::PlayMusicTrack(const std::string& name, float fadeTime) {
     if (music.find(name) == music.end()) return; // Track not found
     if (name == currentMusicName && currentFadeState != MusicFadeState::FADING_OUT) return; // Already playing
@@ -311,6 +329,7 @@ void AudioManager::PlayMusicTrack(const std::string& name, float fadeTime) {
     }
 }
 
+/// Updates music stream.
 void AudioManager::UpdateMusicStream() {
     float dt = std::clamp(GetFrameTime(), 0.0f, 0.05f);
 
@@ -359,6 +378,7 @@ void AudioManager::UpdateMusicStream() {
     }
 }
 
+/// Updates the stored sound effects volume.
 void AudioManager::SetSoundEffectsVolume(float volume) {
     soundEffectsVolume = std::clamp(volume, 0.0f, 1.0f);
 
@@ -387,6 +407,7 @@ void AudioManager::SetSoundEffectsVolume(float volume) {
     }
 }
 
+/// Updates the stored music volume level.
 void AudioManager::SetMusicVolumeLevel(float volume) {
     musicVolume = std::clamp(volume, 0.0f, 1.0f);
 
@@ -395,14 +416,17 @@ void AudioManager::SetMusicVolumeLevel(float volume) {
     }
 }
 
+/// Returns the current sound effects volume.
 float AudioManager::GetSoundEffectsVolume() const {
     return soundEffectsVolume;
 }
 
+/// Returns the current music volume level.
 float AudioManager::GetMusicVolumeLevel() const {
     return musicVolume;
 }
 
+/// Returns the current sound count.
 std::size_t AudioManager::GetSoundCount() const {
     std::size_t pooledVoiceCount = 0;
     for (const auto& pair : soundVoicePools) {

@@ -8,6 +8,7 @@
 #include "raymath.h"
 #include <cmath>
 
+/// Creates a Coin instance from the supplied configuration.
 Coin::Coin(Vector2 pos, Vector2 initialVelocity)
     : GameObject(pos, GameObjectType::Prop),
       velocity(initialVelocity),
@@ -17,6 +18,7 @@ Coin::Coin(Vector2 pos, Vector2 initialVelocity)
     boundingBox = { pos.x - 4.0f, pos.y - 4.5f, 8.0f, 9.0f };
 }
 
+/// Advances this component's state for the current frame.
 void Coin::Update(float deltaTime) {
     if (isCollected) return;
 
@@ -66,6 +68,7 @@ void Coin::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void Coin::Draw() {
     if (isCollected) return;
 

@@ -28,6 +28,7 @@ constexpr float TEAM_CARD_WIDTH = 205.0f;
 constexpr float TEAM_CARD_HEIGHT = 64.0f;
 constexpr float TEAM_CARD_GAP = 14.0f;
 
+/// Calculates and returns team card bounds.
 Rectangle TeamCardBounds(std::size_t index) {
     return {
         TEAM_CARD_X + index * (TEAM_CARD_WIDTH + TEAM_CARD_GAP),
@@ -37,11 +38,13 @@ Rectangle TeamCardBounds(std::size_t index) {
     };
 }
 
+/// Renders panel.
 void DrawPanel(Rectangle bounds, const char* title) {
     UIUtils::DrawPanel(bounds, Color{24, 31, 44, 248});
     UIUtils::DrawCenteredText("PixeloidBold", title, { bounds.x + bounds.width * 0.5f, bounds.y + 16.0f }, UIUtils::FontSize::SMALL, Color{225, 234, 248, 255});
 }
 
+/// Renders wrapped text.
 void DrawWrappedText(
     const std::string& text,
     Rectangle bounds,
@@ -67,6 +70,7 @@ void DrawWrappedText(
     }
 }
 
+/// Renders texture aspect fit.
 void DrawTextureAspectFit(Texture2D texture, Rectangle bounds) {
     if (texture.id == 0) return;
     float scale = std::min(
@@ -89,12 +93,14 @@ void DrawTextureAspectFit(Texture2D texture, Rectangle bounds) {
     );
 }
 
+/// Formats number.
 std::string FormatNumber(float value, int precision = 0) {
     std::ostringstream output;
     output << std::fixed << std::setprecision(precision) << value;
     return output.str();
 }
 
+/// Renders level up button.
 void DrawLevelUpButton(
     Rectangle bounds,
     int paladinLevel,
@@ -175,6 +181,7 @@ void DrawLevelUpButton(
     }
 }
 
+/// Renders simple button.
 void DrawSimpleButton(
     Rectangle bounds,
     const char* label,
@@ -188,12 +195,14 @@ void DrawSimpleButton(
 }
 }
 
+/// Creates a EnhanceMenuUI instance from the supplied configuration.
 EnhanceMenuUI::EnhanceMenuUI()
     : open(false),
       inspectedPaladin(PaladinId::Lance),
       feedbackTimer(0.0f) {
 }
 
+/// Opens this menu and prepares its current selection.
 void EnhanceMenuUI::Open(PaladinId paladinId) {
     open = true;
     inspectedPaladin = paladinId;
@@ -201,17 +210,20 @@ void EnhanceMenuUI::Open(PaladinId paladinId) {
     feedbackTimer = 0.0f;
 }
 
+/// Closes this menu and clears transient interaction state.
 void EnhanceMenuUI::Close() {
     open = false;
     feedbackText.clear();
     feedbackTimer = 0.0f;
 }
 
+/// Updates the stored feedback.
 void EnhanceMenuUI::SetFeedback(const std::string& text) {
     feedbackText = text;
     feedbackTimer = 2.5f;
 }
 
+/// Advances this component's state for the current frame.
 void EnhanceMenuUI::Update(
     float deltaTime,
     Vector2 mousePosition,
@@ -283,6 +295,7 @@ void EnhanceMenuUI::Update(
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void EnhanceMenuUI::Draw(
     Vector2 mousePosition,
     const TeamManager& teamManager

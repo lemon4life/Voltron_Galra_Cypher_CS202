@@ -3,6 +3,7 @@
 #include "UI/UIUtils.h"
 #include <cmath>
 
+/// Creates a NPC instance from the supplied configuration.
 NPC::NPC(Vector2 pos, NpcId id)
     : GameObject(pos, GameObjectType::NPC),
       npcId(id),
@@ -22,6 +23,7 @@ NPC::NPC(Vector2 pos, NpcId id)
     );
 }
 
+/// Advances this component's state for the current frame.
 void NPC::Update(float deltaTime) {
     frameTimer += deltaTime;
     if (frameTimer >= frameDuration) {
@@ -30,6 +32,7 @@ void NPC::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void NPC::Draw() {
     Texture2D tex = AssetManager::GetInstance().GetTexture(
         npcId == NpcId::Shiro ? "NPC_Shiro_Idle" : "NPC_Allura_Idle"
@@ -50,6 +53,7 @@ void NPC::Draw() {
     }
 }
 
+/// Returns the current bounding box.
 Rectangle NPC::GetBoundingBox() const {
     return { position.x - 16.0f, position.y - 16.0f, 32.0f, 32.0f };
 }

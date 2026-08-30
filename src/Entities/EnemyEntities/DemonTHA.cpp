@@ -58,6 +58,7 @@ namespace {
     constexpr float HEALTH_BAR_HEIGHT = 4.0f;
     constexpr float MIN_DIRECTION_LENGTH = 0.001f;
 
+    /// Rotates a vector around the origin by the supplied angle.
     Vector2 RotateVector(Vector2 value, float angleDegrees) {
         float angle = angleDegrees * DEG2RAD;
         float cosine = std::cos(angle);
@@ -68,6 +69,7 @@ namespace {
         };
     }
 
+    /// Returns the current player center.
     Vector2 GetPlayerCenter(const Paladin& player) {
         Rectangle bounds = player.GetBoundingBox();
         return {
@@ -77,6 +79,7 @@ namespace {
     }
 }
 
+/// Creates a DemonTHA instance from the supplied configuration.
 DemonTHA::DemonTHA(
     Vector2 position,
     TeamManager* targetTeam,
@@ -124,6 +127,7 @@ DemonTHA::DemonTHA(
     ChangeState(wanderIdleState.get());
 }
 
+/// Releases resources owned by this DemonTHA instance.
 DemonTHA::~DemonTHA() {
     if (currentState) {
         currentState->Exit(this);
@@ -131,14 +135,17 @@ DemonTHA::~DemonTHA() {
     currentState = nullptr;
 }
 
+/// Reports whether the aggroing condition is satisfied.
 bool DemonTHA::IsAggroing() const {
     return currentState == aggroState.get();
 }
 
+/// Returns the current active target.
 Paladin* DemonTHA::GetActiveTarget() const {
     return targetTeam ? targetTeam->GetActivePaladin() : nullptr;
 }
 
+/// Calculates gun pose.
 DemonTHA::GunPose DemonTHA::CalculateGunPose(
     Vector2 entityPosition,
     Vector2 targetPosition
@@ -222,6 +229,7 @@ DemonTHA::GunPose DemonTHA::CalculateGunPose(
     };
 }
 
+/// Reports whether this component has clear shot from.
 bool DemonTHA::HasClearShotFrom(
     Vector2 entityPosition,
     const Paladin& target
@@ -245,6 +253,7 @@ bool DemonTHA::HasClearShotFrom(
            );
 }
 
+/// Reports whether this component should perform immediately aggro.
 bool DemonTHA::ShouldImmediatelyAggro() const {
     Paladin* target = GetActiveTarget();
     return target &&
@@ -253,6 +262,7 @@ bool DemonTHA::ShouldImmediatelyAggro() const {
         HasClearShotFrom(position, *target);
 }
 
+/// Reports whether this component should perform roll distant aggro on idle entry.
 bool DemonTHA::ShouldRollDistantAggroOnIdleEntry() const {
     Paladin* target = GetActiveTarget();
     if (!target ||
@@ -264,12 +274,14 @@ bool DemonTHA::ShouldRollDistantAggroOnIdleEntry() const {
     return GetRandomValue(1, 100) <= DISTANT_IDLE_AGGRO_PERCENT;
 }
 
+/// Consumes and returns next wander goal uses line of sight.
 bool DemonTHA::ConsumeNextWanderGoalUsesLineOfSight() {
     bool useLineOfSight = nextWanderGoalUsesLineOfSight;
     nextWanderGoalUsesLineOfSight = !nextWanderGoalUsesLineOfSight;
     return useLineOfSight;
 }
 
+/// Returns the current current room candidate radius.
 float DemonTHA::GetCurrentRoomCandidateRadius() const {
     Rectangle levelBounds = pathAccess.GetLevelBounds();
     return std::max(
@@ -278,6 +290,7 @@ float DemonTHA::GetCurrentRoomCandidateRadius() const {
     );
 }
 
+/// Updates the stored gun shooting.
 void DemonTHA::SetGunShooting(bool shooting) {
     if (gunShooting == shooting) return;
     gunShooting = shooting;
@@ -286,6 +299,7 @@ void DemonTHA::SetGunShooting(bool shooting) {
     gunFrameIndex = 0;
 }
 
+/// Returns the current desired body animation.
 DemonTHA::BodyAnimation DemonTHA::GetDesiredBodyAnimation() const {
     if (IsAggroing()) return BodyAnimation::Shooting;
     return IsMovingForAnimation()
@@ -293,6 +307,7 @@ DemonTHA::BodyAnimation DemonTHA::GetDesiredBodyAnimation() const {
         : BodyAnimation::Idle;
 }
 
+/// Attempts to fire at active player.
 bool DemonTHA::TryFireAtActivePlayer() {
     Paladin* target = GetActiveTarget();
     if (!target) return false;
@@ -323,6 +338,7 @@ bool DemonTHA::TryFireAtActivePlayer() {
     return true;
 }
 
+/// Updates animations.
 void DemonTHA::UpdateAnimations(float deltaTime) {
     BodyAnimation desiredAnimation = GetDesiredBodyAnimation();
     if (desiredAnimation != bodyAnimation) {
@@ -368,6 +384,7 @@ void DemonTHA::UpdateAnimations(float deltaTime) {
     }
 }
 
+/// Advances this component's state for the current frame.
 void DemonTHA::Update(float deltaTime) {
     Vector2 updateStartPosition = position;
     if (UpdateSpawnSequence(deltaTime)) {
@@ -393,6 +410,7 @@ void DemonTHA::Update(float deltaTime) {
     UpdateAnimations(deltaTime);
 }
 
+/// Renders this component using its current state and visual resources.
 void DemonTHA::Draw() {
     if (!ShouldDrawDuringSpawn()) {
         DrawSpawnEffect();

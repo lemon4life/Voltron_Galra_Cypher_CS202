@@ -9,13 +9,16 @@ constexpr std::size_t MAX_ACTIVE_PARTICLES = 2048;
 
 // ─── Constructor ────────────────────────────────────────────────────────────
 
+/// Creates a ParticleManager instance from the supplied configuration.
 ParticleManager::ParticleManager() : silhouetteShader({ 0 }) {
 }
 
+/// Releases resources owned by this ParticleManager instance.
 ParticleManager::~ParticleManager() {
     if (silhouetteShader.id != 0) UnloadShader(silhouetteShader);
 }
 
+/// Initializes the resources and collaborators required before this component can run.
 void ParticleManager::Initialize() {
     if (silhouetteShader.id != 0) return;
     // Fragment shader: uses the sprite's alpha for the shape, but replaces
@@ -36,6 +39,7 @@ void ParticleManager::Initialize() {
     silhouetteShader = LoadShaderFromMemory(NULL, fragSrc);
 }
 
+/// Releases resources owned by this component and leaves it safe to destroy.
 void ParticleManager::Shutdown() {
     Clear();
     if (silhouetteShader.id != 0) {
@@ -46,6 +50,7 @@ void ParticleManager::Shutdown() {
 
 // ─── Singleton ───────────────────────────────────────────────────────────────
 
+/// Returns the process-wide singleton instance of this manager.
 ParticleManager& ParticleManager::GetInstance() {
     static ParticleManager instance;
     return instance;
@@ -53,11 +58,13 @@ ParticleManager& ParticleManager::GetInstance() {
 
 // ─── SpriteParticle Implementation ──────────────────────────────────────────
 
+/// Creates a SpriteParticle instance from the supplied configuration.
 SpriteParticle::SpriteParticle(Vector2 pos, Vector2 vel, Color col, float sz, float life, 
                                Texture2D tex, Rectangle srcRect, float rot, bool sil)
     : position(pos), velocity(vel), color(col), size(sz), lifeSpan(life), lifeRemaining(life),
       texture(tex), sourceRect(srcRect), rotation(rot), silhouette(sil) {}
 
+/// Advances this component's state for the current frame.
 void SpriteParticle::Update(float deltaTime) {
     lifeRemaining -= deltaTime;
     
@@ -72,6 +79,7 @@ void SpriteParticle::Update(float deltaTime) {
     color.a = (unsigned char)(lifeRatio * 255.0f);
 }
 
+/// Renders this component using its current state and visual resources.
 void SpriteParticle::Draw() const {
     if (texture.id != 0) {
         // Sprite particle — optionally use silhouette shader
@@ -109,12 +117,14 @@ void SpriteParticle::Draw() const {
     }
 }
 
+/// Reports whether the dead condition is satisfied.
 bool SpriteParticle::IsDead() const {
     return lifeRemaining <= 0.0f;
 }
 
 // ─── Emission ────────────────────────────────────────────────────────────────
 
+/// Implements the emit behavior for this component.
 void ParticleManager::Emit(Vector2 position, Vector2 velocity, Color color, float size, float lifeSpan) {
     if (activeParticles.size() >= MAX_ACTIVE_PARTICLES ||
         lifeSpan <= 0.0f || size <= 0.0f) {
@@ -129,6 +139,7 @@ void ParticleManager::Emit(Vector2 position, Vector2 velocity, Color color, floa
     );
 }
 
+/// Emits sprite.
 void ParticleManager::EmitSprite(Vector2 position, Vector2 velocity, Texture2D texture,
                                   Rectangle sourceRect, float rotation, float size,
                                   float lifeSpan, Color tint, bool silhouette) {
@@ -151,6 +162,7 @@ void ParticleManager::EmitSprite(Vector2 position, Vector2 velocity, Texture2D t
 
 // ─── Update ──────────────────────────────────────────────────────────────────
 
+/// Advances this component's state for the current frame.
 void ParticleManager::Update(float deltaTime) {
     for (std::size_t index = 0; index < activeParticles.size();) {
         activeParticles[index].Update(deltaTime);
@@ -175,6 +187,7 @@ void ParticleManager::Update(float deltaTime) {
 
 // ─── Draw ────────────────────────────────────────────────────────────────────
 
+/// Renders this component using its current state and visual resources.
 void ParticleManager::Draw() {
     for (const SpriteParticle& particle : activeParticles) {
         particle.Draw();
@@ -186,6 +199,7 @@ void ParticleManager::Draw() {
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 
+/// Removes all runtime entries owned by this component and resets transient state.
 void ParticleManager::Clear() {
     activeParticles.clear();
     damageTextParticles.clear();
@@ -193,6 +207,7 @@ void ParticleManager::Clear() {
 
 // ─── Combat Emitters ─────────────────────────────────────────────────────────
 
+/// Spawns dash trail.
 void ParticleManager::SpawnDashTrail(Vector2 pos, Rectangle sourceRect, Texture2D texture,
                                       float rotation, bool flipX) {
     Rectangle rect = sourceRect;
@@ -209,6 +224,7 @@ void ParticleManager::SpawnDashTrail(Vector2 pos, Rectangle sourceRect, Texture2
                fabsf(sourceRect.width), 0.2f, blue, /*silhouette=*/true);
 }
 
+/// Spawns parry sparks.
 void ParticleManager::SpawnParrySparks(Vector2 pos, int count) {
     if (count <= 0) return;
 
@@ -229,6 +245,7 @@ void ParticleManager::SpawnParrySparks(Vector2 pos, int count) {
     }
 }
 
+/// Spawns impact.
 void ParticleManager::SpawnImpact(Vector2 pos, Vector2 projectileVelocity, Color color, int count) {
     if (count <= 0) return;
 
@@ -263,6 +280,7 @@ void ParticleManager::SpawnImpact(Vector2 pos, Vector2 projectileVelocity, Color
     }
 }
 
+/// Spawns damage number.
 void ParticleManager::SpawnDamageNumber(Vector2 pos, int damage) {
     if (GetActiveCount() >= MAX_ACTIVE_PARTICLES) return;
     // Generate a random slight upward/outward velocity (less extreme)

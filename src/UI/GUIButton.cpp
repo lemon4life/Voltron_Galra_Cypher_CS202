@@ -4,15 +4,18 @@
 
 #include <utility>
 
+/// Creates a GUIButton instance from the supplied configuration.
 GUIButton::GUIButton(Rectangle bounds, std::string label)
     : bounds(bounds), label(std::move(label)) {
 }
 
+/// Advances this component's state for the current frame.
 bool GUIButton::Update(Vector2 mousePosition) const {
     return CheckCollisionPointRec(mousePosition, bounds) &&
            IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
+/// Renders this component using its current state and visual resources.
 void GUIButton::Draw(Vector2 mousePosition) const {
     const bool isHovered = CheckCollisionPointRec(mousePosition, bounds);
     const Color backgroundColor = isHovered ? Color{72, 91, 118, 255}

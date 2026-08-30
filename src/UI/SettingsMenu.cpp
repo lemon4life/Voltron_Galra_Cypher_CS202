@@ -13,6 +13,7 @@ constexpr float BUTTON_WIDTH = 180.0f;
 constexpr float BUTTON_HEIGHT = 34.0f;
 }
 
+/// Creates a SettingsMenu instance from the supplied configuration.
 SettingsMenu::SettingsMenu()
     : containerBounds{
           (Constants::GAME_WIDTH - CONTAINER_WIDTH) * 0.5f,
@@ -49,6 +50,7 @@ SettingsMenu::SettingsMenu()
           "Back") {
 }
 
+/// Advances this component's state for the current frame.
 bool SettingsMenu::Update(Vector2 mousePosition) {
     AudioManager& audioManager = AudioManager::GetInstance();
 
@@ -73,6 +75,7 @@ bool SettingsMenu::Update(Vector2 mousePosition) {
     return false;
 }
 
+/// Renders this component using its current state and visual resources.
 void SettingsMenu::Draw(Vector2 mousePosition) const {
     DrawRectangleRec(containerBounds, Color{25, 31, 43, 248});
     DrawRectangleLinesEx(containerBounds, 2.0f, Color{145, 156, 178, 255});

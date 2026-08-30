@@ -83,10 +83,12 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
 }};
 }
 
+/// Returns the value represented by this accessor object.
 const PaladinDefinition& PaladinCatalog::Get(PaladinId id) {
     return PALADINS[static_cast<std::size_t>(id)];
 }
 
+/// Returns the current all.
 const std::array<PaladinDefinition, 4>& PaladinCatalog::GetAll() {
     return PALADINS;
 }

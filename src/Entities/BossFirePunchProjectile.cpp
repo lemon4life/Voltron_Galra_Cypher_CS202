@@ -18,6 +18,7 @@ namespace {
     constexpr float FIRE_PUNCH_COLLISION_BOTTOM = 39.0f;
     constexpr float POSITION_EPSILON = 0.0001f;
 
+    /// Normalizes an angle to the signed range from -180 to 180 degrees.
     float NormalizeSignedAngle(float angleDegrees) {
         float normalized = std::fmod(angleDegrees + 180.0f, 360.0f);
         if (normalized < 0.0f) {
@@ -26,11 +27,13 @@ namespace {
         return normalized - 180.0f;
     }
 
+    /// Converts an angle in degrees into a unit direction vector.
     Vector2 DirectionFromAngle(float angleDegrees) {
         float radians = angleDegrees * DEG2RAD;
         return { std::cos(radians), std::sin(radians) };
     }
 
+    /// Rotates a local-space offset around the origin by the supplied angle.
     Vector2 RotateOffset(Vector2 offset, float angleDegrees) {
         float radians = angleDegrees * DEG2RAD;
         float cosine = std::cos(radians);
@@ -41,6 +44,7 @@ namespace {
         };
     }
 
+    /// Reports whether the finite rectangle condition is satisfied.
     bool IsFiniteRectangle(Rectangle bounds) {
         return std::isfinite(bounds.x) &&
             std::isfinite(bounds.y) &&
@@ -48,6 +52,7 @@ namespace {
             std::isfinite(bounds.height);
     }
 
+    /// Reports whether this component has usable bounds.
     bool HasUsableBounds(Rectangle bounds) {
         return IsFiniteRectangle(bounds) &&
             bounds.width > 0.0f &&
@@ -55,6 +60,7 @@ namespace {
     }
 }
 
+/// Creates a BossFirePunchProjectile instance from the supplied configuration.
 BossFirePunchProjectile::BossFirePunchProjectile(
     Vector2 spawnPosition,
     Vector2 initialTargetPosition,
@@ -100,6 +106,7 @@ BossFirePunchProjectile::BossFirePunchProjectile(
     UpdateCollisionBox();
 }
 
+/// Advances this component's state for the current frame.
 void BossFirePunchProjectile::Update(float deltaTime) {
     if (!IsActive()) return;
 
@@ -158,6 +165,7 @@ void BossFirePunchProjectile::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void BossFirePunchProjectile::Draw() {
     if (!IsActive()) return;
 
@@ -189,6 +197,7 @@ void BossFirePunchProjectile::Draw() {
     );
 }
 
+/// Updates collision box.
 void BossFirePunchProjectile::UpdateCollisionBox() {
     const Vector2 collisionCorners[] = {
         { FIRE_PUNCH_COLLISION_LEFT, FIRE_PUNCH_COLLISION_TOP },
@@ -228,6 +237,7 @@ void BossFirePunchProjectile::UpdateCollisionBox() {
     };
 }
 
+/// Reports whether the outside travel bounds condition is satisfied.
 bool BossFirePunchProjectile::IsOutsideTravelBounds() const {
     if (!std::isfinite(position.x) ||
         !std::isfinite(position.y) ||

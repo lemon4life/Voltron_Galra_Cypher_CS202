@@ -10,10 +10,12 @@ constexpr float SAMPLE_WINDOW_SECONDS = 30.0f;
 constexpr float RECALCULATION_INTERVAL_SECONDS = 0.25f;
 constexpr float HITCH_THRESHOLD_SECONDS = 0.050f;
 
+/// Converts a frame duration in seconds into frames per second.
 float FpsFromFrameTime(float frameTime) {
     return frameTime > 0.0f ? 1.0f / frameTime : 0.0f;
 }
 
+/// Calculates average FPS over the slowest portion of captured frame samples.
 float SlowestAverageFps(
     const std::vector<float>& sortedFrameTimes,
     float fraction
@@ -33,6 +35,7 @@ float SlowestAverageFps(
     return FpsFromFrameTime(total / static_cast<float>(count));
 }
 
+/// Returns the requested frame-time percentile in milliseconds.
 float PercentileMilliseconds(
     const std::vector<float>& sortedFrameTimes,
     float percentile
@@ -46,11 +49,13 @@ float PercentileMilliseconds(
 }
 }
 
+/// Returns the process-wide singleton instance of this manager.
 FramePerformanceStats& FramePerformanceStats::GetInstance() {
     static FramePerformanceStats instance;
     return instance;
 }
 
+/// Restores this component to its initial runtime state.
 void FramePerformanceStats::Reset() {
     frameTimes.clear();
     sortedScratch.clear();
@@ -59,6 +64,7 @@ void FramePerformanceStats::Reset() {
     snapshot = {};
 }
 
+/// Advances this component's state for the current frame.
 void FramePerformanceStats::Update(float deltaTime, int targetFps) {
     if (!std::isfinite(deltaTime) || deltaTime <= 0.0f) return;
 
@@ -80,6 +86,7 @@ void FramePerformanceStats::Update(float deltaTime, int targetFps) {
     }
 }
 
+/// Recomputes cached values from the latest runtime samples.
 void FramePerformanceStats::Recalculate(int targetFps) {
     if (frameTimes.empty()) {
         snapshot = {};

@@ -6,6 +6,8 @@
 #include <memory>
 #include <string>
 
+/// Starts the application, reports unexpected failures through the error dialog,
+/// and guarantees shutdown runs before the process exits.
 int main() {
     std::unique_ptr<GameApplication> app;
     bool shutdownStarted = false;

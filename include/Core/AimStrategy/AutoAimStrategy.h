@@ -3,5 +3,6 @@
 
 class AutoAimStrategy : public IAimStrategy {
 public:
+    /// Calculates aim vector.
     Vector2 CalculateAimVector(Paladin* paladin) override;
 };

@@ -23,13 +23,19 @@ private:
     Texture2D texture = {};
 
 public:
+    /// Creates a Coin instance from the supplied configuration.
     Coin(Vector2 pos, Vector2 initialVelocity = {0.0f, 0.0f});
+    /// Releases resources owned by this Coin instance.
     ~Coin() override = default;
 
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
 
+    /// Reports whether the collected condition is satisfied.
     bool IsCollected() const { return isCollected; }
+    /// Returns the current bounding box.
     Rectangle GetBoundingBox() const override {
         return { position.x - 4.0f, position.y - 4.5f, 8.0f, 9.0f };
     }

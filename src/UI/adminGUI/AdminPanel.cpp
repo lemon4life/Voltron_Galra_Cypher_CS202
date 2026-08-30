@@ -14,6 +14,7 @@
 #include <cstdio>
 
 namespace {
+/// Renders text admin.
 void DrawTextAdmin(const char* text, int x, int y, int fontSize, Color color) {
     DrawTextEx(AssetManager::GetInstance().GetCustomFont("PixeloidSans"), text, {(float)x, (float)y}, fontSize, 1.0f, color);
 }
@@ -117,15 +118,18 @@ constexpr std::array<std::array<float, 14>, 5> DEFAULT_SPAWN_VALUES = {{
       34.0f, 30.0f, 14.0f, 8.0f, 0.0f, 10.5f }
 }};
 
+/// Reports whether the point inside condition is satisfied.
 bool IsPointInside(Rectangle bounds, Vector2 point) {
     return CheckCollisionPointRec(point, bounds);
 }
 
+/// Implements the was button pressed behavior for this component.
 bool WasButtonPressed(Rectangle bounds, Vector2 mousePosition) {
     return IsPointInside(bounds, mousePosition) &&
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
+/// Renders button.
 void DrawButton(
     Rectangle bounds,
     const char* text,
@@ -149,6 +153,7 @@ void DrawButton(
     );
 }
 
+/// Calculates and returns enemy type name.
 const char* EnemyTypeName(MapObjectId type) {
     switch (type) {
         case MapObjectId::Chaser: return "Chaser";
@@ -160,6 +165,7 @@ const char* EnemyTypeName(MapObjectId type) {
     }
 }
 
+/// Implements the slider value from mouse behavior for this component.
 float SliderValueFromMouse(
     Rectangle track,
     Vector2 mousePosition,
@@ -182,6 +188,7 @@ float SliderValueFromMouse(
     );
 }
 
+/// Renders toggle row.
 void DrawToggleRow(
     Rectangle row,
     const char* label,
@@ -204,6 +211,7 @@ void DrawToggleRow(
 }
 }
 
+/// Creates a AdminPanel instance from the supplied configuration.
 AdminPanel::AdminPanel()
     : open(false),
       placementArmed(false),
@@ -219,6 +227,7 @@ AdminPanel::AdminPanel()
       pathMaximumMilliseconds(0.0f) {
 }
 
+/// Returns the current panel bounds.
 Rectangle AdminPanel::GetPanelBounds() const {
     return {
         PANEL_X,
@@ -228,6 +237,7 @@ Rectangle AdminPanel::GetPanelBounds() const {
     };
 }
 
+/// Returns the current property viewport.
 Rectangle AdminPanel::GetPropertyViewport() const {
     Rectangle panel = GetPanelBounds();
     return {
@@ -238,6 +248,7 @@ Rectangle AdminPanel::GetPropertyViewport() const {
     };
 }
 
+/// Returns the current spawn type index.
 std::size_t AdminPanel::GetSpawnTypeIndex() const {
     switch (spawnType) {
         case MapObjectId::Chaser: return 0;
@@ -249,6 +260,7 @@ std::size_t AdminPanel::GetSpawnTypeIndex() const {
     }
 }
 
+/// Spawns selected type.
 void AdminPanel::SpawnSelectedType(
     Vector2 worldMousePosition,
     LevelManager& levelManager,
@@ -303,6 +315,7 @@ void AdminPanel::SpawnSelectedType(
         EnemyTypeName(spawnType);
 }
 
+/// Deletes all enemies.
 void AdminPanel::DeleteAllEnemies(LevelManager& levelManager) {
     (void)levelManager;
     ObjectManager& objectManager =
@@ -316,6 +329,7 @@ void AdminPanel::DeleteAllEnemies(LevelManager& levelManager) {
         : "No enemies to delete";
 }
 
+/// Updates property editor.
 void AdminPanel::UpdatePropertyEditor(Vector2 mousePosition) {
     Rectangle viewport = GetPropertyViewport();
     float totalHeight = (float)PROPERTIES.size() * PROPERTY_ROW_HEIGHT;
@@ -369,6 +383,7 @@ void AdminPanel::UpdatePropertyEditor(Vector2 mousePosition) {
     }
 }
 
+/// Advances this component's state for the current frame.
 void AdminPanel::Update(
     Vector2 worldMousePosition,
     LevelManager& levelManager,
@@ -523,6 +538,7 @@ void AdminPanel::Update(
     }
 }
 
+/// Renders property editor.
 void AdminPanel::DrawPropertyEditor() const {
     Rectangle viewport = GetPropertyViewport();
     DrawRectangleRec(viewport, Color{ 12, 16, 23, 230 });
@@ -618,6 +634,7 @@ void AdminPanel::DrawPropertyEditor() const {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void AdminPanel::Draw() const {
     if (!Constants::ENABLE_ADMIN_GUI || !open) return;
 

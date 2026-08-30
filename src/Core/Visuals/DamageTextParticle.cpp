@@ -2,11 +2,13 @@
 #include "UI/UIUtils.h"
 #include <algorithm>
 
+/// Creates a DamageTextParticle instance from the supplied configuration.
 DamageTextParticle::DamageTextParticle(Vector2 pos, Vector2 vel, int dmg, float life)
     : position(pos), velocity(vel), damage(dmg), lifetime(life), maxLifetime(life) {
     text = std::to_string(damage);
 }
 
+/// Advances this component's state for the current frame.
 void DamageTextParticle::Update(float deltaTime) {
     // Apply gentle gravity
     velocity.y += 150.0f * deltaTime;
@@ -18,6 +20,7 @@ void DamageTextParticle::Update(float deltaTime) {
     lifetime -= deltaTime;
 }
 
+/// Renders this component using its current state and visual resources.
 void DamageTextParticle::Draw() const {
     if (lifetime <= 0.0f) return;
     
@@ -44,6 +47,7 @@ void DamageTextParticle::Draw() const {
     UIUtils::DrawCenteredText("PixeloidBold", text, position, fontSize, textColor);
 }
 
+/// Reports whether the dead condition is satisfied.
 bool DamageTextParticle::IsDead() const {
     return lifetime <= 0.0f;
 }

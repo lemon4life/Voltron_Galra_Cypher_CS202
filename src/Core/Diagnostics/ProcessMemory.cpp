@@ -11,6 +11,7 @@
 #include <psapi.h>
 #endif
 
+/// Reads process memory snapshot.
 ProcessMemorySnapshot ReadProcessMemorySnapshot() {
     ProcessMemorySnapshot snapshot;
 #ifdef _WIN32

@@ -17,6 +17,7 @@ namespace {
     constexpr float PREVIEW_OPACITY = 0.70f;
     constexpr float RECTANGLE_EPSILON = 0.01f;
 
+    /// Produces a repeatable pseudo-random value for a tile coordinate.
     int StableTileHash(int x, int y) {
         unsigned int hash =
             static_cast<unsigned int>(x * 374761393 ^ y * 668265263);
@@ -24,6 +25,7 @@ namespace {
         return static_cast<int>(hash ^ (hash >> 16));
     }
 
+    /// Reports whether the inner rectangle fits completely inside the outer rectangle.
     bool ContainsRectangle(Rectangle outer, Rectangle inner) {
         return inner.x >= outer.x - RECTANGLE_EPSILON &&
             inner.y >= outer.y - RECTANGLE_EPSILON &&
@@ -33,6 +35,7 @@ namespace {
                 outer.y + outer.height + RECTANGLE_EPSILON;
     }
 
+    /// Reports whether the two rectangles overlap by a meaningful area.
     bool RectanglesOverlap(Rectangle first, Rectangle second) {
         return first.x < second.x + second.width - RECTANGLE_EPSILON &&
             first.x + first.width > second.x + RECTANGLE_EPSILON &&
@@ -41,6 +44,7 @@ namespace {
     }
 }
 
+/// Creates a RoomEditorState instance from the supplied configuration.
 RoomEditorState::RoomEditorState()
     : camera({}),
       currentRoomSize(RoomSize::SMALL),
@@ -58,8 +62,10 @@ RoomEditorState::RoomEditorState()
     camera.zoom = 1.0f;
 }
 
+/// Releases resources owned by this RoomEditorState instance.
 RoomEditorState::~RoomEditorState() = default;
 
+/// Initializes the resources and collaborators required before this component can run.
 void RoomEditorState::Initialize() {
     placedObjects.clear();
     scrollOffset = 0.0f;
@@ -153,6 +159,7 @@ void RoomEditorState::Initialize() {
     UpdateResponsiveLayout(true);
 }
 
+/// Loads room.
 bool RoomEditorState::LoadRoom(const std::string& path) {
     RoomSize loadedSize = RoomSize::SMALL;
     std::vector<PlaceableObject> loadedObjects;
@@ -174,6 +181,7 @@ bool RoomEditorState::LoadRoom(const std::string& path) {
     return true;
 }
 
+/// Returns the current room dimensions.
 Vector2 RoomEditorState::GetRoomDimensions(RoomSize size) const {
     switch (size) {
         case RoomSize::SMALL:
@@ -186,6 +194,7 @@ Vector2 RoomEditorState::GetRoomDimensions(RoomSize size) const {
     return { 15.0f * GRID_SIZE, 15.0f * GRID_SIZE };
 }
 
+/// Updates responsive layout.
 void RoomEditorState::UpdateResponsiveLayout(bool centerCamera) {
     int screenWidth = std::max(1, GetScreenWidth());
     int screenHeight = std::max(1, GetScreenHeight());
@@ -233,6 +242,7 @@ void RoomEditorState::UpdateResponsiveLayout(bool centerCamera) {
     }
 }
 
+/// Centers the editor camera on the active room after its size or viewport changes.
 void RoomEditorState::CenterCameraOnRoom() {
     Vector2 roomSize = GetRoomDimensions(currentRoomSize);
     float canvasWidth = std::max(
@@ -259,6 +269,7 @@ void RoomEditorState::CenterCameraOnRoom() {
     );
 }
 
+/// Advances this component's state for the current frame.
 void RoomEditorState::Update(float deltaTime) {
     if (statusTimer > 0.0f) {
         statusTimer = std::max(0.0f, statusTimer - deltaTime);
@@ -268,6 +279,7 @@ void RoomEditorState::Update(float deltaTime) {
     HandleInput();
 }
 
+/// Handles input.
 void RoomEditorState::HandleInput() {
     // Do not treat the Main Menu/Edit button click that opened this state as
     // a Room Editor placement click. Placement begins only after release.
@@ -365,6 +377,7 @@ void RoomEditorState::HandleInput() {
     }
 }
 
+/// Returns the current brush.
 const EditorBrush* RoomEditorState::GetBrush(int objectID) const {
     auto match = std::find_if(
         brushes.begin(),
@@ -376,6 +389,7 @@ const EditorBrush* RoomEditorState::GetBrush(int objectID) const {
     return match == brushes.end() ? nullptr : &(*match);
 }
 
+/// Returns the current placement sprite bounds.
 Rectangle RoomEditorState::GetPlacementSpriteBounds(
     const EditorBrush& brush,
     int gridX,
@@ -419,6 +433,7 @@ Rectangle RoomEditorState::GetPlacementSpriteBounds(
     };
 }
 
+/// Returns the current placement hitbox.
 Rectangle RoomEditorState::GetPlacementHitbox(
     const EditorBrush& brush,
     int gridX,
@@ -440,6 +455,7 @@ Rectangle RoomEditorState::GetPlacementHitbox(
     return GetPlacementCollisionBox(brush, gridX, gridY);
 }
 
+/// Returns the current placement collision box.
 Rectangle RoomEditorState::GetPlacementCollisionBox(
     const EditorBrush& brush,
     int gridX,
@@ -472,6 +488,7 @@ Rectangle RoomEditorState::GetPlacementCollisionBox(
     return GetPlacementSpriteBounds(brush, gridX, gridY);
 }
 
+/// Reports whether this component can perform place object.
 bool RoomEditorState::CanPlaceObject(int gridX, int gridY) const {
     const EditorBrush* brush = GetBrush(static_cast<int>(currentBrush));
     if (!brush) return false;
@@ -508,6 +525,7 @@ bool RoomEditorState::CanPlaceObject(int gridX, int gridY) const {
     return true;
 }
 
+/// Returns the current hovered object index.
 int RoomEditorState::GetHoveredObjectIndex(Vector2 worldPosition) const {
     int hoveredIndex = -1;
     float hoveredDepth = -INFINITY;
@@ -537,6 +555,7 @@ int RoomEditorState::GetHoveredObjectIndex(Vector2 worldPosition) const {
     return hoveredIndex;
 }
 
+/// Adds the selected wall or prop at the validated editor position.
 void RoomEditorState::PlaceObject(int gridX, int gridY) {
     if (!CanPlaceObject(gridX, gridY)) return;
     placedObjects.push_back({
@@ -546,6 +565,7 @@ void RoomEditorState::PlaceObject(int gridX, int gridY) {
     });
 }
 
+/// Removes the wall or prop currently selected by the eraser.
 void RoomEditorState::EraseObject(int gridX, int gridY) {
     placedObjects.erase(
         std::remove_if(
@@ -559,6 +579,7 @@ void RoomEditorState::EraseObject(int gridX, int gridY) {
     );
 }
 
+/// Renders this component using its current state and visual resources.
 void RoomEditorState::Draw() {
     ClearBackground(DARKGRAY);
 
@@ -586,6 +607,7 @@ void RoomEditorState::Draw() {
     if (showGuide) DrawGuidePanel();
 }
 
+/// Renders room shell.
 void RoomEditorState::DrawRoomShell() {
     Vector2 bounds = GetRoomDimensions(currentRoomSize);
     Texture2D floorTexture =
@@ -674,6 +696,7 @@ void RoomEditorState::DrawRoomShell() {
     }
 }
 
+/// Renders grid overlay.
 void RoomEditorState::DrawGridOverlay() {
     Vector2 bounds = GetRoomDimensions(currentRoomSize);
     for (int x = 0; x <= static_cast<int>(bounds.x); x += GRID_SIZE) {
@@ -717,6 +740,7 @@ void RoomEditorState::DrawGridOverlay() {
     }
 }
 
+/// Renders brush.
 void RoomEditorState::DrawBrush(
     const EditorBrush& brush,
     int gridX,
@@ -775,6 +799,7 @@ void RoomEditorState::DrawBrush(
     );
 }
 
+/// Renders placement collision debug.
 void RoomEditorState::DrawPlacementCollisionDebug(
     const EditorBrush& brush,
     int gridX,
@@ -792,6 +817,7 @@ void RoomEditorState::DrawPlacementCollisionDebug(
     );
 }
 
+/// Renders placed objects.
 void RoomEditorState::DrawPlacedObjects() {
     Vector2 mouseWorld = GetScreenToWorld2D(GetMousePosition(), camera);
     int hoveredIndex = currentBrush == BrushType::ERASER
@@ -866,6 +892,7 @@ void RoomEditorState::DrawPlacedObjects() {
     }
 }
 
+/// Renders placement preview.
 void RoomEditorState::DrawPlacementPreview() {
     Vector2 mousePosition = GetMousePosition();
     if (CheckCollisionPointRec(mousePosition, sidebarBounds)) return;
@@ -893,6 +920,7 @@ void RoomEditorState::DrawPlacementPreview() {
     }
 }
 
+/// Renders editor text.
 void RoomEditorState::DrawEditorText(
     const std::string& text,
     Vector2 position,
@@ -910,6 +938,7 @@ void RoomEditorState::DrawEditorText(
     DrawTextEx(font, text.c_str(), position, fontSize, 1.0f, color);
 }
 
+/// Renders ui.
 void RoomEditorState::DrawUI() {
     UIUtils::DrawPanel(sidebarBounds, Color{ 20, 20, 20, 240 });
 
@@ -1171,6 +1200,7 @@ void RoomEditorState::DrawUI() {
     }
 }
 
+/// Renders guide panel.
 void RoomEditorState::DrawGuidePanel() {
     DrawRectangle(
         0,

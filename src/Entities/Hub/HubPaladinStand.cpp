@@ -10,6 +10,7 @@ constexpr float FRAME_DURATION = 0.1f;
 constexpr float INTERACTION_DISTANCE = 44.0f;
 }
 
+/// Creates a HubPaladinStand instance from the supplied configuration.
 HubPaladinStand::HubPaladinStand(
     PaladinId paladinId,
     Vector2 position,
@@ -22,6 +23,7 @@ HubPaladinStand::HubPaladinStand(
       frameTimer(0.0f) {
 }
 
+/// Advances this component's state for the current frame.
 void HubPaladinStand::Update(float deltaTime) {
     frameTimer += deltaTime;
     while (frameTimer >= FRAME_DURATION) {
@@ -30,6 +32,7 @@ void HubPaladinStand::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void HubPaladinStand::Draw() {
     if (idleTexture.id == 0) {
         DrawRectangleRec(GetBoundingBox(), MAGENTA);
@@ -61,14 +64,17 @@ void HubPaladinStand::Draw() {
     );
 }
 
+/// Returns the current bounding box.
 Rectangle HubPaladinStand::GetBoundingBox() const {
     return {position.x - 8.0f, position.y - 12.0f, 16.0f, 24.0f};
 }
 
+/// Returns the current display name.
 const char* HubPaladinStand::GetDisplayName() const {
     return PaladinCatalog::Get(paladinId).name.c_str();
 }
 
+/// Reports whether the within interaction range condition is satisfied.
 bool HubPaladinStand::IsWithinInteractionRange(
     Vector2 playerPosition
 ) const {

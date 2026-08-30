@@ -20,6 +20,56 @@ namespace {
         float rowHeight;
     };
 
+    struct InfoModalLayout {
+        Rectangle panel;
+        Rectangle content;
+        Rectangle closeButton;
+        float scale;
+    };
+
+    struct InstructionLine {
+        const char* text;
+        bool heading;
+    };
+
+    constexpr InstructionLine INSTRUCTION_LINES[] = {
+        { "OBJECTIVE", true },
+        { "Clear every {O:enemy wave} so the {O:room gates} reopen.", false },
+        { "Explore each floor, then use its {O:portal} to continue.", false },
+        { "Clear all rooms and defeat the final {O:Boss} on {O:Floor 5}.", false },
+        { "", false },
+        { "CONTROLS", true },
+        { "Move: {K:W}/{K:A}/{K:S}/{K:D} or {K:Arrow Keys}", false },
+        { "Aim: {K:Mouse} | Toggle Auto-Aim: {K:T}", false },
+        { "Attack: {K:Left Mouse} or {K:J}", false },
+        { "Parry: Hold {K:Right Mouse} or {K:L}", false },
+        { "Dash: {K:Space}", false },
+        { "Skill: {K:E} | Ultimate: {K:Q}", false },
+        { "Switch Paladin: {K:Tab} | Direct slots: {K:1}, {K:2}, {K:3}", false },
+        { "Interact: {K:F} | Pause: {K:P} or {K:Escape}", false },
+        { "Dialogue: {K:W}/{K:S} or {K:Arrows}; {K:Enter} to select", false },
+        { "Main Menu: {K:Enter} to Start/Continue", false },
+        { "Game Over: {K:R} restart | Victory: {K:Space} return", false },
+        { "Developer Admin Panel: {K:F1} (when enabled)", false },
+        { "", false },
+        { "SKILLS AND ULTIMATES", true },
+        { "Skills need personal {O:EX} and cannot restart while active.", false },
+        { "Skill EX: {C:Keith} 70%, {C:Lance} 50%, {C:Hunk} 30%, {C:Pidge} 70%.", false },
+        { "Deal damage or use {O:EX pots} to refill {O:EX}.", false },
+        { "Ultimates need 100 {O:Quintessence} and a ready 5s cooldown.", false },
+        { "Enemy rewards and {O:Quintessence pots} refill the shared meter.", false },
+        { "", false },
+        { "BEGINNER TIPS", true },
+        { "Use {K:F} near {O:NPCs}, {O:Paladin stands}, {O:pots}, and {O:portals}.", false },
+        { "{O:HP pots} heal the team; {O:EX pots} refill skill energy.", false },
+        { "{O:Chests} open when approached and release a reward.", false },
+        { "{O:Enhancement machines} spend {O:coins} on permanent upgrades.", false },
+        { "Switch Paladins to use different health, skills, and weapons.", false },
+        { "Downed Paladins cannot be selected; protect the whole team.", false },
+        { "Use the minimap to locate unexplored and special rooms.", false }
+    };
+
+    /// Returns the current room list layout.
     RoomListLayout GetRoomListLayout(int screenWidth, int screenHeight) {
         float scale = std::clamp(
             std::min(screenWidth / 1280.0f, screenHeight / 720.0f),
@@ -65,6 +115,57 @@ namespace {
         };
     }
 
+    /// Returns the current info modal layout.
+    InfoModalLayout GetInfoModalLayout(int screenWidth, int screenHeight) {
+        float scale = std::clamp(
+            std::min(screenWidth / 1280.0f, screenHeight / 720.0f),
+            0.65f,
+            1.4f
+        );
+        float panelWidth = std::min(
+            900.0f * scale,
+            screenWidth - 30.0f * scale
+        );
+        float panelHeight = std::min(
+            650.0f * scale,
+            screenHeight - 30.0f * scale
+        );
+        Rectangle panel = {
+            (screenWidth - panelWidth) * 0.5f,
+            (screenHeight - panelHeight) * 0.5f,
+            panelWidth,
+            panelHeight
+        };
+        float padding = 28.0f * scale;
+        float headerHeight = 72.0f * scale;
+        float footerHeight = 70.0f * scale;
+        Rectangle content = {
+            panel.x + padding,
+            panel.y + headerHeight,
+            panel.width - padding * 2.0f,
+            panel.height - headerHeight - footerHeight
+        };
+        float buttonWidth = std::min(220.0f * scale, content.width);
+        float buttonHeight = 40.0f * scale;
+        Rectangle closeButton = {
+            panel.x + (panel.width - buttonWidth) * 0.5f,
+            panel.y + panel.height - padding - buttonHeight,
+            buttonWidth,
+            buttonHeight
+        };
+        return { panel, content, closeButton, scale };
+    }
+
+    /// Returns the current instruction content height.
+    float GetInstructionContentHeight(float scale) {
+        float height = 0.0f;
+        for (const InstructionLine& line : INSTRUCTION_LINES) {
+            height += (line.heading ? 42.0f : 31.0f) * scale;
+        }
+        return height + 24.0f * scale;
+    }
+
+    /// Renders room list text.
     void DrawRoomListText(
         const std::string& text,
         Vector2 position,
@@ -80,15 +181,195 @@ namespace {
         }
         DrawTextEx(font, text.c_str(), position, fontSize, 1.0f, color);
     }
+
+    /// Renders info text.
+    void DrawInfoText(
+        const std::string& fontKey,
+        const std::string& text,
+        Vector2 position,
+        float fontSize,
+        Color color,
+        bool centered = false
+    ) {
+        Font font = AssetManager::GetInstance().GetCustomFont(fontKey);
+        Vector2 size = MeasureTextEx(font, text.c_str(), fontSize, 1.0f);
+        if (centered) {
+            position.x -= size.x * 0.5f;
+            position.y -= size.y * 0.5f;
+        }
+        DrawTextEx(font, text.c_str(), position, fontSize, 1.0f, color);
+    }
+
+    /// Returns the current character name color.
+    Color GetCharacterNameColor(const std::string& name) {
+        if (name == "Keith") return Color{ 255, 104, 104, 255 };
+        if (name == "Lance") return Color{ 100, 190, 255, 255 };
+        if (name == "Hunk") return Color{ 255, 211, 82, 255 };
+        if (name == "Pidge") return Color{ 105, 224, 120, 255 };
+        return Color{ 235, 164, 255, 255 };
+    }
+
+    /// Renders rich instruction line.
+    void DrawRichInstructionLine(
+        const std::string& markup,
+        Vector2 position,
+        float fontSize,
+        float scale
+    ) {
+        AssetManager& assets = AssetManager::GetInstance();
+        Font normalFont = assets.GetCustomFont("PixeloidSans");
+        Font monoFont = assets.GetCustomFont("PixeloidMono");
+        Font boldFont = assets.GetCustomFont("PixeloidBold");
+        float x = position.x;
+
+        auto drawNormal = [&](const std::string& text) {
+            if (text.empty()) return;
+            DrawTextEx(
+                normalFont,
+                text.c_str(),
+                { x, position.y },
+                fontSize,
+                1.0f,
+                RAYWHITE
+            );
+            x += MeasureTextEx(
+                normalFont,
+                text.c_str(),
+                fontSize,
+                1.0f
+            ).x;
+        };
+
+        std::size_t cursor = 0;
+        while (cursor < markup.size()) {
+            std::size_t marker = markup.find('{', cursor);
+            if (marker == std::string::npos) {
+                drawNormal(markup.substr(cursor));
+                break;
+            }
+            drawNormal(markup.substr(cursor, marker - cursor));
+
+            std::size_t end = markup.find('}', marker + 1);
+            if (end == std::string::npos || marker + 3 >= end ||
+                markup[marker + 2] != ':') {
+                drawNormal(markup.substr(marker, 1));
+                cursor = marker + 1;
+                continue;
+            }
+
+            char style = markup[marker + 1];
+            std::string text = markup.substr(marker + 3, end - marker - 3);
+            if (style == 'K') {
+                float keyFontSize = fontSize * 0.84f;
+                Vector2 textSize = MeasureTextEx(
+                    monoFont,
+                    text.c_str(),
+                    keyFontSize,
+                    1.0f
+                );
+                float paddingX = 6.0f * scale;
+                float paddingY = 3.0f * scale;
+                Rectangle keycap = {
+                    x,
+                    position.y - 2.0f * scale,
+                    textSize.x + paddingX * 2.0f,
+                    textSize.y + paddingY * 2.0f
+                };
+                DrawRectangleRounded(
+                    keycap,
+                    0.25f,
+                    4,
+                    Color{ 244, 211, 94, 255 }
+                );
+                DrawRectangleLinesEx(
+                    keycap,
+                    std::max(1.0f, scale),
+                    Color{ 108, 76, 22, 255 }
+                );
+                DrawTextEx(
+                    monoFont,
+                    text.c_str(),
+                    {
+                        keycap.x + paddingX,
+                        keycap.y + paddingY
+                    },
+                    keyFontSize,
+                    1.0f,
+                    Color{ 28, 24, 18, 255 }
+                );
+                x += keycap.width + 4.0f * scale;
+            } else if (style == 'C') {
+                Color characterColor = GetCharacterNameColor(text);
+                DrawTextEx(
+                    boldFont,
+                    text.c_str(),
+                    { x + scale, position.y + scale },
+                    fontSize,
+                    1.0f,
+                    Color{ 20, 12, 25, 220 }
+                );
+                DrawTextEx(
+                    boldFont,
+                    text.c_str(),
+                    { x, position.y },
+                    fontSize,
+                    1.0f,
+                    characterColor
+                );
+                x += MeasureTextEx(
+                    boldFont,
+                    text.c_str(),
+                    fontSize,
+                    1.0f
+                ).x + 2.0f * scale;
+            } else if (style == 'O') {
+                float objectFontSize = fontSize * 0.9f;
+                Vector2 textSize = MeasureTextEx(
+                    boldFont,
+                    text.c_str(),
+                    objectFontSize,
+                    1.0f
+                );
+                float paddingX = 5.0f * scale;
+                Rectangle badge = {
+                    x,
+                    position.y - scale,
+                    textSize.x + paddingX * 2.0f,
+                    textSize.y + 3.0f * scale
+                };
+                DrawRectangleRounded(
+                    badge,
+                    0.3f,
+                    4,
+                    Color{ 31, 78, 105, 230 }
+                );
+                DrawTextEx(
+                    boldFont,
+                    text.c_str(),
+                    { badge.x + paddingX, position.y },
+                    objectFontSize,
+                    1.0f,
+                    Color{ 123, 224, 255, 255 }
+                );
+                x += badge.width + 3.0f * scale;
+            } else {
+                drawNormal(text);
+            }
+            cursor = end + 1;
+        }
+    }
 }
 
+/// Creates a MainMenu instance from the supplied configuration.
 MainMenu::MainMenu() : currentSlideIndex(0), slideTimer(0.0f), panTimer(0.0f), switchedIndex(false) {
     logoTex.id = 0;
 }
 
+/// Releases resources owned by this MainMenu instance.
 MainMenu::~MainMenu() {
 }
 
+/// Loads current background.
 void MainMenu::LoadCurrentBackground() {
     if (backgroundTexture.id != 0) {
         UnloadTexture(backgroundTexture);
@@ -105,6 +386,7 @@ void MainMenu::LoadCurrentBackground() {
     SetTextureFilter(backgroundTexture, TEXTURE_FILTER_BILINEAR);
 }
 
+/// Initializes the resources and collaborators required before this component can run.
 void MainMenu::Initialize() {
     AssetManager& assets = AssetManager::GetInstance();
     currentSlideIndex = 0;
@@ -118,6 +400,7 @@ void MainMenu::Initialize() {
     RebuildButtons();
 }
 
+/// Releases resources owned by this component and leaves it safe to destroy.
 void MainMenu::Shutdown() {
     if (backgroundTexture.id != 0) {
         UnloadTexture(backgroundTexture);
@@ -125,6 +408,7 @@ void MainMenu::Shutdown() {
     }
 }
 
+/// Rebuilds buttons.
 void MainMenu::RebuildButtons() {
     buttons.clear();
     std::vector<std::string> titles;
@@ -135,7 +419,8 @@ void MainMenu::RebuildButtons() {
     titles.push_back("Settings");
     titles.push_back("Room Editor");
     titles.push_back("Room List");
-    titles.push_back("About us");
+    titles.push_back("Instructions");
+    titles.push_back("About Us");
     titles.push_back("Exit Game");
 
     for (const std::string& title : titles) {
@@ -149,6 +434,7 @@ void MainMenu::RebuildButtons() {
     }
 }
 
+/// Advances this component's state for the current frame.
 void MainMenu::Update(float deltaTime) {
     // Slideshow timer logic
     slideTimer += deltaTime;
@@ -191,6 +477,11 @@ void MainMenu::Update(float deltaTime) {
         }
     } else if (currentState == MenuState::ACTIVE) {
         uiAlpha = 1.0f;
+
+        if (openModal != MainMenuModal::None) {
+            UpdateInfoModal();
+            return;
+        }
 
         if (roomListOpen) {
             UpdateRoomList();
@@ -236,6 +527,12 @@ void MainMenu::Update(float deltaTime) {
                     } else if (btn.text == "Room List") {
                     AudioManager::GetInstance().PlayRandomClick();
                         OpenRoomList();
+                    } else if (btn.text == "Instructions") {
+                    AudioManager::GetInstance().PlayRandomClick();
+                        OpenInfoModal(MainMenuModal::Instructions);
+                    } else if (btn.text == "About Us") {
+                    AudioManager::GetInstance().PlayRandomClick();
+                        OpenInfoModal(MainMenuModal::About);
                     } else if (btn.text == "Exit Game") {
                     AudioManager::GetInstance().PlayRandomClick();
                         quitRequested = true;
@@ -254,30 +551,77 @@ void MainMenu::Update(float deltaTime) {
     }
 }
 
+/// Consumes and returns quit request.
 bool MainMenu::ConsumeQuitRequest() {
     bool requested = quitRequested;
     quitRequested = false;
     return requested;
 }
 
+/// Consumes and returns action.
 MainMenuAction MainMenu::ConsumeAction() {
     MainMenuAction action = pendingAction;
     pendingAction = MainMenuAction::None;
     return action;
 }
 
+/// Consumes and returns selected room path.
 std::string MainMenu::ConsumeSelectedRoomPath() {
     std::string path = selectedRoomPath;
     selectedRoomPath.clear();
     return path;
 }
 
+/// Opens room list.
 void MainMenu::OpenRoomList() {
+    openModal = MainMenuModal::None;
     roomListOpen = true;
     roomListScroll = 0.0f;
     RefreshRoomList();
 }
 
+/// Opens info modal.
+void MainMenu::OpenInfoModal(MainMenuModal modal) {
+    roomListOpen = false;
+    openModal = modal;
+    instructionsScroll = 0.0f;
+}
+
+/// Updates info modal.
+void MainMenu::UpdateInfoModal() {
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        openModal = MainMenuModal::None;
+        return;
+    }
+
+    InfoModalLayout layout = GetInfoModalLayout(
+        GetScreenWidth(),
+        GetScreenHeight()
+    );
+    Vector2 mouse = GetMousePosition();
+    if (openModal == MainMenuModal::Instructions &&
+        CheckCollisionPointRec(mouse, layout.content)) {
+        float minimumScroll = std::min(
+            0.0f,
+            layout.content.height -
+                GetInstructionContentHeight(layout.scale)
+        );
+        instructionsScroll = std::clamp(
+            instructionsScroll +
+                GetMouseWheelMove() * 38.0f * layout.scale,
+            minimumScroll,
+            0.0f
+        );
+    }
+
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) &&
+        CheckCollisionPointRec(mouse, layout.closeButton)) {
+        AudioManager::GetInstance().PlayRandomClick();
+        openModal = MainMenuModal::None;
+    }
+}
+
+/// Refreshes room list.
 void MainMenu::RefreshRoomList() {
     std::string previousSelection;
     if (selectedRoomIndex >= 0 &&
@@ -298,6 +642,7 @@ void MainMenu::RefreshRoomList() {
     }
 }
 
+/// Updates room list.
 void MainMenu::UpdateRoomList() {
     if (IsKeyPressed(KEY_ESCAPE)) {
         roomListOpen = false;
@@ -359,6 +704,7 @@ void MainMenu::UpdateRoomList() {
     }
 }
 
+/// Updates the stored continue available.
 void MainMenu::SetContinueAvailable(bool available) {
     if (continueAvailable == available) return;
 
@@ -366,6 +712,7 @@ void MainMenu::SetContinueAvailable(bool available) {
     RebuildButtons();
 }
 
+/// Renders this component using its current state and visual resources.
 void MainMenu::Draw(int screenWidth, int screenHeight) {
     // 1. Draw Slideshow Background with Pan
     if (backgroundTexture.id != 0) {
@@ -484,14 +831,28 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
 
         // Start buttons perfectly spaced below the sliding logo
         float startY = currentLogoY + currentLogoHeight + (40.0f * scaleFactor);
+        float baseMenuFontSize =
+            static_cast<float>(UIUtils::FontSize::HEADER) * scaleFactor;
+        float baseButtonHeight = baseMenuFontSize + 20.0f * scaleFactor;
+        float availableButtonHeight = std::max(
+            0.0f,
+            screenHeight - startY - baseButtonHeight - 14.0f * scaleFactor
+        );
         float btnSpacing = 55.0f * scaleFactor;
+        if (buttons.size() > 1) {
+            btnSpacing = std::min(
+                btnSpacing,
+                availableButtonHeight /
+                    static_cast<float>(buttons.size() - 1)
+            );
+        }
         
         float btnSlideY = (1.0f - uiAlpha) * (30.0f * scaleFactor); // Buttons slide up as they fade in
         
         for (size_t i = 0; i < buttons.size(); i++) {
             auto& btn = buttons[i];
             
-            float baseFontSize = static_cast<float>(UIUtils::FontSize::HEADER) * scaleFactor;
+            float baseFontSize = baseMenuFontSize;
             float textWidth = UIUtils::MeasureText("PixeloidSans", btn.text, static_cast<UIUtils::FontSize>(baseFontSize)).x;
             
             float drawTextWidth = textWidth * btn.currentScale;
@@ -529,8 +890,183 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
     if (roomListOpen) {
         DrawRoomList(screenWidth, screenHeight);
     }
+    if (openModal != MainMenuModal::None) {
+        DrawInfoModal(screenWidth, screenHeight);
+    }
 }
 
+/// Renders info modal.
+void MainMenu::DrawInfoModal(int screenWidth, int screenHeight) {
+    InfoModalLayout layout = GetInfoModalLayout(screenWidth, screenHeight);
+    DrawRectangle(
+        0,
+        0,
+        screenWidth,
+        screenHeight,
+        ColorAlpha(BLACK, 0.82f)
+    );
+    DrawRectangleRec(layout.panel, Color{ 25, 31, 43, 252 });
+    DrawRectangleLinesEx(
+        layout.panel,
+        std::max(1.0f, 2.0f * layout.scale),
+        Color{ 145, 156, 178, 255 }
+    );
+
+    const char* title = openModal == MainMenuModal::About
+        ? "ABOUT US"
+        : "INSTRUCTIONS";
+    DrawInfoText(
+        "PixeloidBold",
+        title,
+        {
+            layout.panel.x + layout.panel.width * 0.5f,
+            layout.panel.y + 36.0f * layout.scale
+        },
+        34.0f * layout.scale,
+        RAYWHITE,
+        true
+    );
+
+    DrawRectangleRec(layout.content, Color{ 14, 18, 27, 235 });
+    BeginScissorMode(
+        static_cast<int>(layout.content.x),
+        static_cast<int>(layout.content.y),
+        static_cast<int>(layout.content.width),
+        static_cast<int>(layout.content.height)
+    );
+
+    if (openModal == MainMenuModal::About) {
+        float centerX = layout.content.x + layout.content.width * 0.5f;
+        float y = layout.content.y + 46.0f * layout.scale;
+        DrawInfoText(
+            "PixeloidBold",
+            "VOLTRON MISSION - GALRA CYPHER",
+            { centerX, y },
+            27.0f * layout.scale,
+            GOLD,
+            true
+        );
+        y += 64.0f * layout.scale;
+        DrawInfoText(
+            "PixeloidSans",
+            "Developed by",
+            { centerX, y },
+            21.0f * layout.scale,
+            LIGHTGRAY,
+            true
+        );
+        y += 42.0f * layout.scale;
+        DrawInfoText(
+            "PixeloidBold",
+            "Tran Phuc Khanh",
+            { centerX, y },
+            25.0f * layout.scale,
+            RAYWHITE,
+            true
+        );
+        y += 38.0f * layout.scale;
+        DrawInfoText(
+            "PixeloidBold",
+            "Hoang Nguyen Anh",
+            { centerX, y },
+            25.0f * layout.scale,
+            RAYWHITE,
+            true
+        );
+        y += 62.0f * layout.scale;
+        DrawInfoText(
+            "PixeloidSans",
+            "A course project for CS202",
+            { centerX, y },
+            21.0f * layout.scale,
+            LIGHTGRAY,
+            true
+        );
+        y += 34.0f * layout.scale;
+        DrawInfoText(
+            "PixeloidSans",
+            "Advanced Program in Computer Science (APCS)",
+            { centerX, y },
+            19.0f * layout.scale,
+            LIGHTGRAY,
+            true
+        );
+        y += 34.0f * layout.scale;
+        DrawInfoText(
+            "PixeloidSans",
+            "HCMUS - Academic Year 2025-2026",
+            { centerX, y },
+            19.0f * layout.scale,
+            LIGHTGRAY,
+            true
+        );
+    } else {
+        float textX = layout.content.x + 22.0f * layout.scale;
+        float y = layout.content.y + instructionsScroll +
+            12.0f * layout.scale;
+        for (const InstructionLine& line : INSTRUCTION_LINES) {
+            float lineHeight = (line.heading ? 42.0f : 31.0f) *
+                layout.scale;
+            if (line.text[0] != '\0') {
+                if (line.heading) {
+                    DrawInfoText(
+                        "PixeloidBold",
+                        line.text,
+                        { textX, y },
+                        21.0f * layout.scale,
+                        GOLD
+                    );
+                } else {
+                    DrawRichInstructionLine(
+                        line.text,
+                        { textX, y },
+                        16.0f * layout.scale,
+                        layout.scale
+                    );
+                }
+            }
+            y += lineHeight;
+        }
+    }
+    EndScissorMode();
+
+    Vector2 mouse = GetMousePosition();
+    Color closeColor = Color{ 108, 116, 132, 255 };
+    if (CheckCollisionPointRec(mouse, layout.closeButton)) {
+        closeColor = ColorBrightness(closeColor, 0.18f);
+    }
+    DrawRectangleRec(layout.closeButton, closeColor);
+    DrawRectangleLinesEx(layout.closeButton, 1.0f, BLACK);
+    DrawInfoText(
+        "PixeloidBold",
+        "CLOSE",
+        {
+            layout.closeButton.x + layout.closeButton.width * 0.5f,
+            layout.closeButton.y + layout.closeButton.height * 0.5f
+        },
+        18.0f * layout.scale,
+        WHITE,
+        true
+    );
+
+    if (openModal == MainMenuModal::Instructions &&
+        GetInstructionContentHeight(layout.scale) > layout.content.height) {
+        DrawInfoText(
+            "PixeloidSans",
+            "Scroll for more",
+            {
+                layout.content.x + layout.content.width * 0.5f,
+                layout.content.y + layout.content.height -
+                    14.0f * layout.scale
+            },
+            13.0f * layout.scale,
+            GRAY,
+            true
+        );
+    }
+}
+
+/// Renders room list.
 void MainMenu::DrawRoomList(int screenWidth, int screenHeight) {
     RoomListLayout layout = GetRoomListLayout(screenWidth, screenHeight);
     DrawRectangle(

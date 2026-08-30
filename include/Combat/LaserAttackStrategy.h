@@ -19,6 +19,7 @@ private:
     int damage;
 
 public:
+    /// Creates a LaserAttackStrategy instance from the supplied configuration.
     LaserAttackStrategy(
         Texture2D weapon,
         Texture2D muzzle,
@@ -27,8 +28,12 @@ public:
         int damage,
         float recoilStrength
     );
+    /// Starts this attack behavior when its current conditions allow it.
     void Attack(Vector2 playerPos) override;
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw(Vector2 playerPos, bool facingLeft) override;
+    /// Updates the stored damage.
     void SetDamage(int minDmg, int maxDmg) override { damage = maxDmg; }
 };

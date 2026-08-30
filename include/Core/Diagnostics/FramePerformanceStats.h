@@ -23,15 +23,23 @@ struct FramePerformanceSnapshot {
     std::size_t sampleCount = 0;
 };
 
+// Design Pattern - Singleton:
+// FramePerformanceStats is the single process-wide accumulator for frame samples,
+// ensuring gameplay and diagnostics read the same rolling measurements.
 class FramePerformanceStats {
 public:
+    /// Returns the process-wide singleton instance of this manager.
     static FramePerformanceStats& GetInstance();
 
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime, int targetFps);
+    /// Restores this component to its initial runtime state.
     void Reset();
+    /// Returns the current snapshot.
     const FramePerformanceSnapshot& GetSnapshot() const { return snapshot; }
 
 private:
+    /// Recomputes cached values from the latest runtime samples.
     void Recalculate(int targetFps);
 
     std::deque<float> frameTimes;

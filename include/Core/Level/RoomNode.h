@@ -39,12 +39,14 @@ struct RoomNode {
     Rectangle triggerBounds; // in absolute world coords
     bool isCleared;
     
+    /// Returns the current world bounds.
     Rectangle GetWorldBounds() const;
 
     std::vector<DoorGate*> doors;
     std::vector<Vector2> availableSpawnNodes;
     int roomSize;
 
+    /// Creates a RoomNode instance from the supplied configuration.
     RoomNode(int x, int y, RoomType t = RoomType::BATTLE)
         : type(t), gridX(x), gridY(y),
           north(nullptr), south(nullptr), east(nullptr), west(nullptr),
@@ -64,10 +66,13 @@ struct RoomNode {
         }
     }
 
+    /// Releases resources owned by this RoomNode instance.
     ~RoomNode() { --liveCount; }
 
+    /// Creates a RoomNode instance from the supplied configuration.
     RoomNode(const RoomNode&) = delete;
     RoomNode& operator=(const RoomNode&) = delete;
           
+    /// Calculates walkable grid.
     void CalculateWalkableGrid(class LevelManager* lm);
 };

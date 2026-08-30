@@ -9,6 +9,7 @@
 #include <cmath>
 #include <iostream>
 
+/// Creates a LaserAttackStrategy instance from the supplied configuration.
 LaserAttackStrategy::LaserAttackStrategy(
     Texture2D weapon,
     Texture2D muzzle,
@@ -31,6 +32,7 @@ LaserAttackStrategy::LaserAttackStrategy(
 }
 
 // Custom 2D Line-AABB intersection
+/// Checks collision segment rec.
 bool CheckCollisionSegmentRec(Vector2 start, Vector2 end, Rectangle rec) {
     Vector2 p1 = {rec.x, rec.y};
     Vector2 p2 = {rec.x + rec.width, rec.y};
@@ -45,6 +47,7 @@ bool CheckCollisionSegmentRec(Vector2 start, Vector2 end, Rectangle rec) {
     return false;
 }
 
+/// Starts this attack behavior when its current conditions allow it.
 void LaserAttackStrategy::Attack(Vector2 playerPos) {
     AudioManager::GetInstance().PlayRandomLaserGun();
     
@@ -109,6 +112,7 @@ void LaserAttackStrategy::Attack(Vector2 playerPos) {
     }
 }
 
+/// Advances this component's state for the current frame.
 void LaserAttackStrategy::Update(float deltaTime) {
     recoilOffset.x += (0.0f - recoilOffset.x) * 10.0f * deltaTime;
     recoilOffset.y += (0.0f - recoilOffset.y) * 10.0f * deltaTime;
@@ -118,6 +122,7 @@ void LaserAttackStrategy::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void LaserAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
     float drawAngle = aimAngle;
     Vector2 drawDir = aimDir;

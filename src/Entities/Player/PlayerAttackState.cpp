@@ -4,6 +4,7 @@
 #include "Core/Manager/InputManager.h"
 #include "raymath.h"
 
+/// Prepares this state when it becomes active.
 void PlayerAttackState::Enter(Paladin* player) {
     // Lock movement for 0.2s
     attackTimer = player->GetAttackCooldown();
@@ -15,6 +16,7 @@ void PlayerAttackState::Enter(Paladin* player) {
 
 #include "Combat/MeleeAttackStrategy.h"
 
+/// Advances this component's state for the current frame.
 void PlayerAttackState::Update(Paladin* player, float deltaTime) {
     attackTimer -= deltaTime;
     
@@ -59,6 +61,7 @@ void PlayerAttackState::Update(Paladin* player, float deltaTime) {
 }
 
 
+/// Cleans up this state before control moves elsewhere.
 void PlayerAttackState::Exit(Paladin* player) {
     // Attack finished
 }

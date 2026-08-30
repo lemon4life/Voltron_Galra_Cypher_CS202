@@ -30,10 +30,12 @@ namespace {
     constexpr float MAX_MODAL_SCALE = 1.35f;
     constexpr const char* HUB_LEVEL_PATH = "assets/map/hub_Tile Layer 1.csv";
 
+    /// Reports whether the playable session state condition is satisfied.
     bool IsPlayableSessionState(GameState state) {
         return state == GameState::HUB || state == GameState::GAMEPLAY;
     }
 
+    /// Reports whether the overlay state condition is satisfied.
     bool IsOverlayState(GameState state) {
         return state == GameState::PAUSE ||
             state == GameState::SETTINGS ||
@@ -41,12 +43,14 @@ namespace {
             state == GameState::VICTORY;
     }
 
+    /// Returns the current session music.
     const char* GetSessionMusic(GameState state) {
         return state == GameState::GAMEPLAY
             ? "bgm_battle"
             : "bgm_story_mode";
     }
 
+    /// Returns the current level center.
     Vector2 GetLevelCenter(const LevelManager& levelManager) {
         Rectangle bounds = levelManager.GetLevelBounds();
         return {
@@ -57,6 +61,7 @@ namespace {
 
 }
 
+/// Creates a GameApplication instance from the supplied configuration.
 GameApplication::GameApplication() 
     : levelManager(*GameManager::GetInstance().GetLevelManager()),
       waveManager(GameManager::GetInstance().GetWaveManager()),
@@ -70,6 +75,7 @@ GameApplication::GameApplication()
       continueMusicName("bgm_story_mode") {
 }
 
+/// Releases resources owned by this GameApplication instance.
 GameApplication::~GameApplication() {
     try {
         Shutdown();
@@ -78,6 +84,9 @@ GameApplication::~GameApplication() {
     }
 }
 
+/// Boots the window and the minimum UI needed to display the loading screen.
+/// Heavy assets and manager initialization are queued in dependency order; the
+/// final task marks the application ready only after the team and Hub exist.
 void GameApplication::Initialize() {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(
@@ -128,6 +137,8 @@ void GameApplication::Initialize() {
     });
 }
 
+/// Creates the playable Paladin roster, transfers ownership to GameManager,
+/// and connects TeamManager notifications to the gameplay HUD.
 void GameApplication::InitializeTeamAndUI() {
     GameManager& gameManager = GameManager::GetInstance();
     gameManager.SetBulletImpactTexture(
@@ -161,6 +172,8 @@ void GameApplication::InitializeTeamAndUI() {
     teamManager->RefreshAimStrategies();
 }
 
+/// Loads the Hub through GameManager, then places and publishes the new team
+/// only after both the level and active Paladin have been validated.
 void GameApplication::InitializeHubWorld() {
     if (!teamManager || !teamManager->GetActivePaladin()) {
         throw std::runtime_error(
@@ -172,6 +185,9 @@ void GameApplication::InitializeHubWorld() {
     teamManager->NotifyObservers();
 }
 
+/// Validates the fully loaded session and starts menu audio.
+/// Setting systemInitialized here prevents the frame loop from touching a
+/// partially constructed team or world while loading tasks are still running.
 void GameApplication::FinalizeStartup() {
     if (!teamManager || !teamManager->GetActivePaladin() ||
         levelManager.GetLevelWidth() <= 0.0f ||
@@ -192,6 +208,7 @@ void GameApplication::FinalizeStartup() {
     );
 }
 
+/// Releases resources owned by this component and leaves it safe to destroy.
 void GameApplication::Shutdown() {
     if (shutdownComplete) return;
 
@@ -209,6 +226,7 @@ void GameApplication::Shutdown() {
     shutdownComplete = true;
 }
 
+/// Clears prior session state and starts a fresh game from the Hub.
 void GameApplication::StartNewGame() {
     ClearSuspendedSession();
     GameManager::GetInstance().ResetTransientState();
@@ -221,6 +239,7 @@ void GameApplication::StartNewGame() {
     GameManager::GetInstance().SetState(GameState::HUB);
 }
 
+/// Resets game.
 void GameApplication::ResetGame() {
     teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
     for (auto* paladin : teamManager->GetTeam()) {
@@ -234,6 +253,7 @@ void GameApplication::ResetGame() {
     GameManager::GetInstance().SetState(GameState::GAMEPLAY);
 }
 
+/// Resets demo game.
 void GameApplication::ResetDemoGame() {
     teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
     for (auto* paladin : teamManager->GetTeam()) {
@@ -248,6 +268,7 @@ void GameApplication::ResetDemoGame() {
     GameManager::GetInstance().SetState(GameState::GAMEPLAY);
 }
 
+/// Implements the return to hub behavior for this component.
 void GameApplication::ReturnToHub() {
     GameManager::GetInstance().ClearProjectiles();
     for (auto* paladin : teamManager->GetTeam()) {
@@ -261,6 +282,7 @@ void GameApplication::ReturnToHub() {
     GameManager::GetInstance().SetState(GameState::HUB);
 }
 
+/// Preserves the resumable session state before returning to the main menu.
 void GameApplication::SuspendSessionToMainMenu() {
     GameManager& gameManager = GameManager::GetInstance();
     GameState suspendedState = gameManager.GetPreviousGameState();
@@ -285,6 +307,7 @@ void GameApplication::SuspendSessionToMainMenu() {
     gameManager.SetState(GameState::MAIN_MENU);
 }
 
+/// Restores a suspended session and its matching music when one is available.
 bool GameApplication::ContinueSuspendedSession() {
     if (!hasContinuableSession ||
         !IsPlayableSessionState(continueState)) {
@@ -301,6 +324,7 @@ bool GameApplication::ContinueSuspendedSession() {
     return true;
 }
 
+/// Clears suspended session.
 void GameApplication::ClearSuspendedSession() {
     hasContinuableSession = false;
     continueState = GameState::HUB;
@@ -308,6 +332,10 @@ void GameApplication::ClearSuspendedSession() {
     mainMenu.SetContinueAvailable(false);
 }
 
+/// Runs the main frame loop until the window or an in-game quit action closes it.
+/// Each frame maps real input into virtual UI/world coordinates, materializes
+/// the requested IGameState, updates gameplay, then draws state, HUD, and debug layers.
+/// Overlay states preserve their background state so pause/settings can resume safely.
 void GameApplication::RunLoop() {
     GameManager& gameManager = GameManager::GetInstance();
     
@@ -388,6 +416,8 @@ void GameApplication::RunLoop() {
             state = gameManager.GetState();
         }
 
+        // The enum is only a transition request. This block constructs the
+        // polymorphic state object that owns the actual Update/Draw behavior.
         static GameState previousEnumState = static_cast<GameState>(-1);
         if (state != previousEnumState) {
             std::unique_ptr<IGameState> newState;

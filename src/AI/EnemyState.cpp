@@ -7,11 +7,14 @@
 #include <algorithm>
 
 // --- EnemyIdleState ---
+/// Creates a EnemyIdleState instance from the supplied configuration.
 EnemyIdleState::EnemyIdleState(float spotDistance)
     : spotDistance(spotDistance) {}
 
+/// Prepares this state when it becomes active.
 void EnemyIdleState::Enter(Enemy* enemy) {}
 
+/// Advances this component's state for the current frame.
 void EnemyIdleState::Update(Enemy* enemy, float deltaTime) {
     if (!enemy->GetTargetTeam()) return;
     Paladin* activePaladin = enemy->GetTargetTeam()->GetActivePaladin();
@@ -25,13 +28,16 @@ void EnemyIdleState::Update(Enemy* enemy, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void EnemyIdleState::Exit(Enemy* enemy) {}
 
 // --- EnemyDazeState ---
+/// Prepares this state when it becomes active.
 void EnemyDazeState::Enter(Enemy* enemy) {
     dTimer = std::max(0.0f, enemy->GetDazeDuration());
 }
 
+/// Advances this component's state for the current frame.
 void EnemyDazeState::Update(Enemy* enemy, float deltaTime) {
     dTimer = std::max(0.0f, dTimer - deltaTime);
     if (dTimer <= 0.0f) {
@@ -39,6 +45,7 @@ void EnemyDazeState::Update(Enemy* enemy, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void EnemyDazeState::Exit(Enemy* enemy) {
     dTimer = 0.0f;
 }

@@ -20,10 +20,12 @@ namespace {
     constexpr float BOX_COLLISION_WIDTH = 16.0f;
     constexpr float BOX_COLLISION_HEIGHT = 16.0f;
 
+    /// Returns the current box world scale.
     float GetBoxWorldScale() {
         return Constants::RENDER_TILE_SIZE / BOX_SPRITE_WIDTH;
     }
 
+    /// Returns the current box sprite top left.
     Vector2 GetBoxSpriteTopLeft(Vector2 tileCenter) {
         float scale = GetBoxWorldScale();
         return {
@@ -33,6 +35,7 @@ namespace {
         };
     }
 
+    /// Returns the current map object frame size.
     void GetMapObjectFrameSize(
         MapObjectId type,
         float& width,
@@ -60,6 +63,7 @@ namespace {
     }
 }
 
+/// Creates a Prop instance from the supplied configuration.
 Prop::Prop(
     Vector2 tileCenter,
     GameObjectCell objectCell,
@@ -78,6 +82,7 @@ Prop::Prop(
     boundingBox = GetBoundingBox();
 }
 
+/// Advances this component's state for the current frame.
 void Prop::Update(float deltaTime) {
     if (mapObjectType == MapObjectId::Prop1) {
         animationTimer += deltaTime;
@@ -88,6 +93,7 @@ void Prop::Update(float deltaTime) {
     }
 }
 
+/// Renders base layer.
 void Prop::DrawBaseLayer() {
     if (mapObjectType == MapObjectId::DestructibleBox) {
         Texture2D tex = AssetManager::GetInstance().GetTexture("box");
@@ -149,6 +155,7 @@ void Prop::DrawBaseLayer() {
     }
 }
 
+/// Adds depth render items.
 void Prop::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
     items.push_back({
         GetBoundingBox().y + GetBoundingBox().height, // Base Y for sorting
@@ -221,14 +228,17 @@ void Prop::AddDepthRenderItems(std::vector<DepthRenderItem>& items) {
     });
 }
 
+/// Returns the current bounding box.
 Rectangle Prop::GetBoundingBox() const {
     return GetMapObjectBoundingBox(position, mapObjectType);
 }
 
+/// Returns the current collision box.
 Rectangle Prop::GetCollisionBox() const {
     return GetMapObjectCollisionBox(position, mapObjectType);
 }
 
+/// Applies incoming damage after this object handles defenses and state-specific rules.
 void Prop::TakeDamage(int amount) {
     if (mapObjectType != MapObjectId::DestructibleBox) return;
 
@@ -243,6 +253,7 @@ void Prop::TakeDamage(int amount) {
     }
 }
 
+/// Returns the current destructible box sprite bounds.
 Rectangle Prop::GetDestructibleBoxSpriteBounds(Vector2 tileCenter) {
     float scale = GetBoxWorldScale();
     Vector2 topLeft = GetBoxSpriteTopLeft(tileCenter);
@@ -254,6 +265,7 @@ Rectangle Prop::GetDestructibleBoxSpriteBounds(Vector2 tileCenter) {
     };
 }
 
+/// Returns the current destructible box bounding box.
 Rectangle Prop::GetDestructibleBoxBoundingBox(Vector2 tileCenter) {
     float scale = GetBoxWorldScale();
     Rectangle spriteBounds = GetDestructibleBoxSpriteBounds(tileCenter);
@@ -265,6 +277,7 @@ Rectangle Prop::GetDestructibleBoxBoundingBox(Vector2 tileCenter) {
     };
 }
 
+/// Returns the current destructible box collision box.
 Rectangle Prop::GetDestructibleBoxCollisionBox(Vector2 tileCenter) {
     float scale = GetBoxWorldScale();
     Rectangle spriteBounds = GetDestructibleBoxSpriteBounds(tileCenter);
@@ -276,6 +289,7 @@ Rectangle Prop::GetDestructibleBoxCollisionBox(Vector2 tileCenter) {
     };
 }
 
+/// Returns the current map object sprite bounds.
 Rectangle Prop::GetMapObjectSpriteBounds(
     Vector2 tileCenter,
     MapObjectId type
@@ -301,6 +315,7 @@ Rectangle Prop::GetMapObjectSpriteBounds(
     };
 }
 
+/// Returns the current map object bounding box.
 Rectangle Prop::GetMapObjectBoundingBox(
     Vector2 tileCenter,
     MapObjectId type
@@ -323,6 +338,7 @@ Rectangle Prop::GetMapObjectBoundingBox(
     };
 }
 
+/// Returns the current map object collision box.
 Rectangle Prop::GetMapObjectCollisionBox(
     Vector2 tileCenter,
     MapObjectId type
@@ -333,6 +349,7 @@ Rectangle Prop::GetMapObjectCollisionBox(
     return GetMapObjectBoundingBox(tileCenter, type);
 }
 
+/// Reports whether the solid condition is satisfied.
 bool Prop::IsSolid() const {
     return mapObjectType == MapObjectId::DestructibleBox ||
         mapObjectType == MapObjectId::Prop1 ||

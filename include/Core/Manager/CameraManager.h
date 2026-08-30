@@ -3,17 +3,25 @@
 #include "raylib.h"
 #include <cmath>
 
+// Design Pattern - Singleton:
+// CameraManager is the sole owner of shared world/render camera state;
+// GetInstance provides global access while copy construction is disabled.
 class CameraManager {
 public:
+    /// Returns the process-wide singleton instance of this manager.
     static CameraManager& GetInstance() {
         static CameraManager instance;
         return instance;
     }
 
+    /// Initializes the resources and collaborators required before this component can run.
     void Initialize();
+    /// Updates camera.
     void UpdateCamera(Vector2 playerPos, Vector2 mouseWorldPos, float deltaTime, Rectangle levelBounds, bool isHitstop);
     
+    /// Returns the current camera.
     Camera2D& GetCamera() { return camera; }
+    /// Returns the current render camera.
     Camera2D GetRenderCamera() const {
         Camera2D cam = camera;
         // Snap zoom to nearest integer (min 1) — fixes elongated pixels and tile gaps.
@@ -33,9 +41,12 @@ public:
     }
 
 private:
+    /// Creates a CameraManager instance from the supplied configuration.
     CameraManager() = default;
+    /// Releases resources owned by this CameraManager instance.
     ~CameraManager() = default;
 
+    /// Creates a CameraManager instance from the supplied configuration.
     CameraManager(const CameraManager&) = delete;
     CameraManager& operator=(const CameraManager&) = delete;
 

@@ -92,40 +92,58 @@ private:
     EnemyPathProfilingStats profilingStats;
     std::vector<Enemy*> nearbyEnemyScratch;
 
+    /// Adds enemy.
     void AddEnemy(Enemy& enemy);
+    /// Adds enemy to.
     void AddEnemyTo(Enemy& enemy, Vector2 worldGoal);
+    /// Removes enemy.
     void RemoveEnemy(Enemy& enemy);
 
 public:
+    /// Creates a PathFindingManager instance from the supplied configuration.
     PathFindingManager(
         LevelManager& levelManager,
         ObjectManager& objectManager
     );
+    /// Releases resources owned by this PathFindingManager instance.
     ~PathFindingManager();
+    /// Creates a PathFindingManager instance from the supplied configuration.
     PathFindingManager(const PathFindingManager&) = delete;
     PathFindingManager& operator=(const PathFindingManager&) = delete;
 
+    /// Removes all runtime entries owned by this component and resets transient state.
     void Clear();
 
+    /// Begins path finding.
     void BeginPathFinding(Enemy& enemy) override;
+    /// Begins path finding to.
     void BeginPathFindingTo(Enemy& enemy, Vector2 worldGoal) override;
+    /// Finishes path finding.
     void EndPathFinding(Enemy& enemy) override;
+    /// Reports whether the blocked condition is satisfied.
     bool IsBlocked(Rectangle bounds) const override;
+    /// Returns the current level bounds.
     Rectangle GetLevelBounds() const override;
+    /// Returns the current next move target.
     std::optional<Vector2> GetNextMoveTarget(Enemy& enemy) override;
+    /// Returns the current navigable tile centers within.
     std::vector<Vector2> GetNavigableTileCentersWithin(
         const Enemy& enemy,
         Vector2 origin,
         float radius
     ) const override;
+    /// Returns the current local direction.
     Vector2 GetLocalDirection(
         Enemy& enemy,
         Vector2 desiredDirection
     ) override;
 
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime);
+    /// Returns the current profiling stats.
     const EnemyPathProfilingStats& GetProfilingStats() const {
         return profilingStats;
     }
+    /// Returns the current memory stats.
     PathFindingMemoryStats GetMemoryStats() const;
 };

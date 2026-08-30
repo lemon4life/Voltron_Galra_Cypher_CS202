@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 namespace {
+/// Validates projectile inputs.
 void ValidateProjectileInputs(
     Vector2 velocity,
     float lifetime,
@@ -21,6 +22,7 @@ void ValidateProjectileInputs(
 }
 }
 
+/// Creates a Projectile instance from the supplied configuration.
 Projectile::Projectile(
     Vector2 pos,
     Vector2 vel,
@@ -42,6 +44,7 @@ Projectile::Projectile(
     };
 }
 
+/// Creates a Projectile instance from the supplied configuration.
 Projectile::Projectile(
     Vector2 pos,
     Vector2 vel,
@@ -63,6 +66,7 @@ Projectile::Projectile(
     };
 }
 
+/// Advances this component's state for the current frame.
 void Projectile::Update(float deltaTime) {
     if (!active) return;
 
@@ -108,6 +112,7 @@ void Projectile::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void Projectile::Draw() {
     if (active) {
         if (texture.id != 0) {
@@ -122,6 +127,7 @@ void Projectile::Draw() {
     }
 }
 
+/// Reports whether this component has hit target.
 bool Projectile::HasHitTarget(GameObject* target) const {
     if (!target) return false;
     return std::find(
@@ -132,6 +138,7 @@ bool Projectile::HasHitTarget(GameObject* target) const {
         hitTargets.end();
 }
 
+/// Updates the stored velocity.
 void Projectile::SetVelocity(Vector2 value) {
     if (!std::isfinite(value.x) || !std::isfinite(value.y)) {
         throw std::invalid_argument("Projectile velocity must be finite");
@@ -139,6 +146,7 @@ void Projectile::SetVelocity(Vector2 value) {
     velocity = value;
 }
 
+/// Records hit.
 void Projectile::RecordHit(GameObject* target) {
     if (target && !HasHitTarget(target)) {
         hitTargets.push_back(target->GetObjectId());

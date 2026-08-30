@@ -20,6 +20,10 @@ struct WeaponDefinition {
     bool recoilApplicable;
 };
 
+// Design Pattern - Data-Driven Catalog:
+// PaladinDefinition stores identity, stats, descriptions, and asset keys as data.
+// PaladinCatalog is the central read-only lookup used by gameplay and UI, avoiding
+// repeated character metadata and selection switches across concrete Paladins.
 struct PaladinDefinition {
     PaladinId id;
     std::string name;
@@ -34,6 +38,8 @@ struct PaladinDefinition {
 
 class PaladinCatalog {
 public:
+    /// Returns the value represented by this accessor object.
     static const PaladinDefinition& Get(PaladinId id);
+    /// Returns the current all.
     static const std::array<PaladinDefinition, 4>& GetAll();
 };

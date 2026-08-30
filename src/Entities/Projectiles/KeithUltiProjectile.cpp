@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cmath>
 
+/// Creates a KeithUltiProjectile instance from the supplied configuration.
 KeithUltiProjectile::KeithUltiProjectile(
     Vector2 startPos,
     Vector2 dir,
@@ -46,6 +47,7 @@ KeithUltiProjectile::KeithUltiProjectile(
     SetFixedRotation(true, rot);
 }
 
+/// Spawns trail nodes.
 void KeithUltiProjectile::SpawnTrailNodes(float fromDist, float toDist) {
     float step = 20.0f; // Spacing along the trail
     Vector2 normal = { -travelDirection.y, travelDirection.x };
@@ -74,6 +76,7 @@ void KeithUltiProjectile::SpawnTrailNodes(float fromDist, float toDist) {
     }
 }
 
+/// Updates trail.
 void KeithUltiProjectile::UpdateTrail(float deltaTime) {
     // Cycle animation frames for all fire nodes
     for (auto& node : fireNodes) {
@@ -116,6 +119,7 @@ void KeithUltiProjectile::UpdateTrail(float deltaTime) {
     }
 }
 
+/// Advances this component's state for the current frame.
 void KeithUltiProjectile::Update(float deltaTime) {
     if (!IsActive()) return;
 
@@ -142,6 +146,7 @@ void KeithUltiProjectile::Update(float deltaTime) {
     UpdateTrail(deltaTime);
 }
 
+/// Renders this component using its current state and visual resources.
 void KeithUltiProjectile::Draw() {
     if (!IsActive()) return;
 

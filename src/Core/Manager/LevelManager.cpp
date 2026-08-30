@@ -27,6 +27,7 @@ namespace {
     constexpr float GATE_ESCAPE_STEP = 1.0f;
     constexpr float GATE_ESCAPE_PADDING = 1.0f;
 
+    /// Implements the blocks line of sight or projectiles behavior for this component.
     bool BlocksLineOfSightOrProjectiles(const MapObject& object) {
         if (object.IsSolid()) return true;
         const DoorGate* gate = dynamic_cast<const DoorGate*>(&object);
@@ -34,11 +35,13 @@ namespace {
     }
 }
 
+/// Creates a LevelManager instance from the supplied configuration.
 LevelManager::LevelManager()
     : levelWidth(0.0f), levelHeight(0.0f), gridRows(0), gridCols(0) {
     // Textures must be loaded after InitWindow() — call InitializeAssets() explicitly.
 }
 
+/// Initializes assets.
 void LevelManager::InitializeAssets() {
     AssetManager& assets = AssetManager::GetInstance();
     floorTileset = assets.LoadTexture2D(
@@ -61,11 +64,13 @@ void LevelManager::InitializeAssets() {
         "Transfer_gate", "assets/Objects/Transfer_gate.png", true);
 }
 
+/// Releases resources owned by this LevelManager instance.
 LevelManager::~LevelManager() {
     ClearLevel();
     ShutdownAssets();
 }
 
+/// Implements the shutdown assets behavior for this component.
 void LevelManager::ShutdownAssets() {
     floorTileset = {};
     wallTileset = {};
@@ -75,10 +80,12 @@ void LevelManager::ShutdownAssets() {
     gateTexture = {};
 }
 
+/// Loads object grid.
 bool LevelManager::LoadObjectGrid(const std::string& filepath) {
     return MapLoader::ParseObjectGrid(filepath, mapObjectGrid, mapGridLayer1);
 }
 
+/// Spawns map content.
 DynamicSpawnList LevelManager::SpawnMapContent() {
     DynamicSpawnList dynamicSpawns;
     for (int row = 0; row < (int)mapObjectGrid.size(); ++row) {
@@ -118,6 +125,7 @@ DynamicSpawnList LevelManager::SpawnMapContent() {
     return dynamicSpawns;
 }
 
+/// Clears the active world, loads a level definition, and creates its runtime objects.
 DynamicSpawnList LevelManager::LoadLevel(const std::string& filepath) {
     DynamicSpawnList dynamicSpawns;
     ClearLevel();
@@ -190,6 +198,8 @@ DynamicSpawnList LevelManager::LoadLevel(const std::string& filepath) {
     return dynamicSpawns;
 }
 
+/// Advances room discovery, room locking, doors, map objects, and collision state.
+/// The player position is also checked for safe gate nudging during transitions.
 void LevelManager::UpdateLevel(
     float deltaTime,
     Vector2 playerPos,
@@ -266,6 +276,7 @@ void LevelManager::UpdateLevel(
     ProcessDestroyedMapObjects();
 }
 
+/// Searches for gate escape position.
 bool LevelManager::FindGateEscapePosition(
     Rectangle playerCollisionBox,
     Vector2 playerPosition,
@@ -356,6 +367,7 @@ bool LevelManager::FindGateEscapePosition(
     return false;
 }
 
+/// Renders level base.
 void LevelManager::DrawLevelBase() {
     if (currentLevelProvider) {
         currentLevelProvider->DrawBase();
@@ -369,6 +381,7 @@ void LevelManager::DrawLevelBase() {
     }
 }
 
+/// Returns the current depth render items.
 void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
     if (currentLevelProvider) {
         currentLevelProvider->GetDepthRenderItems(items);
@@ -381,6 +394,7 @@ void LevelManager::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
     }
 }
 
+/// Clears level.
 void LevelManager::ClearLevel() {
     for (const std::shared_ptr<RoomNode>& node : levelMap.generatedNodes) {
         if (node) node->doors.clear();
@@ -423,6 +437,7 @@ void LevelManager::ClearLevel() {
     MarkNavigationChanged();
 }
 
+/// Adds map object.
 MapObject* LevelManager::AddMapObject(
     std::unique_ptr<MapObject> object
 ) {
@@ -434,6 +449,7 @@ MapObject* LevelManager::AddMapObject(
     return pointer;
 }
 
+/// Reports whether the solid collision condition is satisfied.
 bool LevelManager::IsSolidCollision(Rectangle box) const {
     if (currentLevelProvider &&
         currentLevelProvider->IsSolidCollision(box)) {
@@ -442,6 +458,7 @@ bool LevelManager::IsSolidCollision(Rectangle box) const {
     return FindSolidMapObjectCollision(box) != nullptr;
 }
 
+/// Resolves solid movement.
 CollisionMovementResult LevelManager::ResolveSolidMovement(
     Rectangle collisionBox,
     Vector2 desiredDisplacement
@@ -455,6 +472,7 @@ CollisionMovementResult LevelManager::ResolveSolidMovement(
     );
 }
 
+/// Searches for solid map object collision.
 MapObject* LevelManager::FindSolidMapObjectCollision(
     Rectangle box
 ) const {
@@ -494,6 +512,7 @@ MapObject* LevelManager::FindSolidMapObjectCollision(
     return nullptr;
 }
 
+/// Searches for solid map object collisions.
 std::vector<MapObject*> LevelManager::FindSolidMapObjectCollisions(
     Rectangle box
 ) const {
@@ -535,6 +554,7 @@ std::vector<MapObject*> LevelManager::FindSolidMapObjectCollisions(
     return collisions;
 }
 
+/// Searches for projectile map object collision.
 MapObject* LevelManager::FindProjectileMapObjectCollision(
     Rectangle box
 ) const {
@@ -574,12 +594,14 @@ MapObject* LevelManager::FindProjectileMapObjectCollision(
     return nullptr;
 }
 
+/// Returns the current line of sight grid origin.
 Vector2 LevelManager::GetLineOfSightGridOrigin() const {
     return IsProceduralDungeon() && activeRoom
         ? roomOffset
         : Vector2{ 0.0f, 0.0f };
 }
 
+/// Implements the world to line of sight tile behavior for this component.
 LevelManager::LineOfSightTile LevelManager::WorldToLineOfSightTile(
     Vector2 position
 ) const {
@@ -591,6 +613,7 @@ LevelManager::LineOfSightTile LevelManager::WorldToLineOfSightTile(
     };
 }
 
+/// Returns the current line of sight tile bounds.
 Rectangle LevelManager::GetLineOfSightTileBounds(
     LineOfSightTile tile
 ) const {
@@ -604,6 +627,7 @@ Rectangle LevelManager::GetLineOfSightTileBounds(
     };
 }
 
+/// Ensures line of sight blocker index.
 void LevelManager::EnsureLineOfSightBlockerIndex() const {
     Vector2 origin = GetLineOfSightGridOrigin();
     const RoomTemplate* room = IsProceduralDungeon()
@@ -655,6 +679,7 @@ void LevelManager::EnsureLineOfSightBlockerIndex() const {
     lineOfSightBlockerIndexRoom = room;
 }
 
+/// Reports whether this component has clear line of sight.
 bool LevelManager::HasClearLineOfSight(
     Vector2 start,
     Vector2 end,
@@ -847,6 +872,7 @@ bool LevelManager::HasClearLineOfSight(
     return finishQuery(true);
 }
 
+/// Returns the current memory stats.
 LevelMemoryStats LevelManager::GetMemoryStats() const {
     LevelMemoryStats stats;
     stats.roomNodes = levelMap.generatedNodes.size();
@@ -866,6 +892,7 @@ LevelMemoryStats LevelManager::GetMemoryStats() const {
     return stats;
 }
 
+/// Renders line of sight debug.
 void LevelManager::DrawLineOfSightDebug() const {
     for (const LineOfSightDebugTrace& trace : lineOfSightDebugTraces) {
         Color resultColor = trace.clear ? LIME : RED;
@@ -915,6 +942,7 @@ void LevelManager::DrawLineOfSightDebug() const {
     }
 }
 
+/// Renders map collision debug.
 void LevelManager::DrawMapCollisionDebug() const {
     if (!Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) return;
     for (const std::unique_ptr<MapObject>& object : mapObjects) {
@@ -940,6 +968,7 @@ void LevelManager::DrawMapCollisionDebug() const {
     }
 }
 
+/// Updates the stored active room state.
 void LevelManager::SetActiveRoomState(RoomState state) {
     if (!currentlyLockedRoom || currentlyLockedRoom->state == state) return;
 
@@ -953,6 +982,7 @@ void LevelManager::SetActiveRoomState(RoomState state) {
     MarkNavigationChanged();
 }
 
+/// Implements the world to tile behavior for this component.
 Vector2 LevelManager::WorldToTile(Vector2 worldPos) const {
     return {
         std::floor(worldPos.x / Constants::RENDER_TILE_SIZE),
@@ -960,6 +990,7 @@ Vector2 LevelManager::WorldToTile(Vector2 worldPos) const {
     };
 }
 
+/// Implements the tile to world behavior for this component.
 Vector2 LevelManager::TileToWorld(int tileX, int tileY) const {
     return {
         tileX * Constants::RENDER_TILE_SIZE + Constants::RENDER_TILE_SIZE / 2.0f,
@@ -998,10 +1029,12 @@ void LevelManager::ProcessDestroyedMapObjects() {
     if (navigationChanged) MarkNavigationChanged();
 }
 
+/// Returns the current level bounds.
 Rectangle LevelManager::GetLevelBounds() const {
     return { 0.0f, 0.0f, levelWidth, levelHeight };
 }
 
+/// Returns the current current room bounds.
 Rectangle LevelManager::GetCurrentRoomBounds() const {
     if (IsProceduralDungeon() && currentlyLockedRoom && currentlyLockedRoom->state == RoomState::LOCKED) {
         return currentlyLockedRoom->GetWorldBounds();
@@ -1009,6 +1042,7 @@ Rectangle LevelManager::GetCurrentRoomBounds() const {
     return { 0.0f, 0.0f, levelWidth, levelHeight };
 }
 
+/// Reports whether the player in exit room condition is satisfied.
 bool LevelManager::IsPlayerInExitRoom(Vector2 playerPos) const {
     if (!IsProceduralDungeon()) return false;
     
@@ -1028,6 +1062,7 @@ bool LevelManager::IsPlayerInExitRoom(Vector2 playerPos) const {
     return false;
 }
 
+/// Returns the current world bounds.
 Rectangle RoomNode::GetWorldBounds() const {
     float tileW = Constants::RENDER_TILE_SIZE;
     int roomOuterSize = Constants::MAX_ROOM_TILE_SIZE + Constants::CORRIDOR_LENGTH;
@@ -1044,6 +1079,7 @@ Rectangle RoomNode::GetWorldBounds() const {
     return { startX + tileW, startY + tileW, roomW - 2 * tileW, roomH - 2 * tileW };
 }
 
+/// Calculates walkable grid.
 void RoomNode::CalculateWalkableGrid(LevelManager* lm) {
     availableSpawnNodes.clear();
     
@@ -1069,6 +1105,8 @@ void RoomNode::CalculateWalkableGrid(LevelManager* lm) {
     }
 }
 
+/// Builds the current procedural floor, bakes its rooms into level layers,
+/// creates special-room entities, and exposes all resulting dynamic spawns.
 DynamicSpawnList LevelManager::GenerateDungeon(int floorNumber) {
     DynamicSpawnList dynamicSpawns;
     printf("GenerateDungeon: Start\n");
@@ -1244,6 +1282,7 @@ DynamicSpawnList LevelManager::GenerateDungeon(int floorNumber) {
     return dynamicSpawns;
 }
 
+/// Returns the current safe spawn position.
 bool LevelManager::GetSafeSpawnPosition(std::shared_ptr<RoomNode> room, Vector2& outPos) {
     if (!room) return false;
 
@@ -1270,6 +1309,7 @@ bool LevelManager::GetSafeSpawnPosition(std::shared_ptr<RoomNode> room, Vector2&
     return true;
 }
 
+/// Returns the current guaranteed spawn point.
 bool LevelManager::GetGuaranteedSpawnPoint(Vector2& outPos) {
     if (IsProceduralDungeon()) {
         return GetSafeSpawnPosition(currentlyLockedRoom, outPos);

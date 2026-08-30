@@ -10,15 +10,18 @@ namespace {
 constexpr std::size_t MAX_ACTIVE_EFFECTS = 512;
 }
 
+/// Initializes the resources and collaborators required before this component can run.
 void EffectManager::Initialize() {
     ParticleManager::GetInstance().Initialize();
 }
 
+/// Releases resources owned by this component and leaves it safe to destroy.
 void EffectManager::Shutdown() {
     ClearSession();
     ParticleManager::GetInstance().Shutdown();
 }
 
+/// Adds effect.
 void EffectManager::AddEffect(
     Vector2 position,
     Texture2D texture,
@@ -43,6 +46,7 @@ void EffectManager::AddEffect(
     );
 }
 
+/// Adds anchored effect.
 void EffectManager::AddAnchoredEffect(
     Vector2 position,
     Texture2D texture,
@@ -72,10 +76,12 @@ void EffectManager::AddAnchoredEffect(
     });
 }
 
+/// Adds impact effect.
 void EffectManager::AddImpactEffect(Vector2 position) {
     AddEffect(position, bulletImpactTexture, 4, 0.2f);
 }
 
+/// Spawns impact.
 void EffectManager::SpawnImpact(
     Vector2 position,
     Vector2 velocity,
@@ -87,14 +93,17 @@ void EffectManager::SpawnImpact(
     );
 }
 
+/// Spawns parry sparks.
 void EffectManager::SpawnParrySparks(Vector2 position, int count) {
     ParticleManager::GetInstance().SpawnParrySparks(position, count);
 }
 
+/// Spawns damage number.
 void EffectManager::SpawnDamageNumber(Vector2 position, int damage) {
     ParticleManager::GetInstance().SpawnDamageNumber(position, damage);
 }
 
+/// Spawns dash trail.
 void EffectManager::SpawnDashTrail(
     Vector2 position,
     Rectangle source,
@@ -107,6 +116,7 @@ void EffectManager::SpawnDashTrail(
     );
 }
 
+/// Adds corpse.
 void EffectManager::AddCorpse(
     Vector2 position,
     Texture2D texture,
@@ -118,6 +128,7 @@ void EffectManager::AddCorpse(
     );
 }
 
+/// Advances this component's state for the current frame.
 void EffectManager::Update(float deltaTime) {
     for (std::size_t index = 0; index < activeEffects.size();) {
         ImpactEffect& effect = activeEffects[index];
@@ -143,6 +154,7 @@ void EffectManager::Update(float deltaTime) {
     DecalManager::GetInstance().Update(deltaTime, levelManager);
 }
 
+/// Renders this component using its current state and visual resources.
 void EffectManager::Draw(bool background) const {
     if (background) {
         DecalManager::GetInstance().Draw();
@@ -178,10 +190,12 @@ void EffectManager::Draw(bool background) const {
     }
 }
 
+/// Renders particles.
 void EffectManager::DrawParticles() const {
     ParticleManager::GetInstance().Draw();
 }
 
+/// Clears session.
 void EffectManager::ClearSession() {
     activeEffects.clear();
     ParticleManager::GetInstance().Clear();

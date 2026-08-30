@@ -8,10 +8,14 @@
 
 class HubState : public IGameState {
 public:
+    /// Creates a HubState instance from the supplied configuration.
     HubState(TeamManager* teamManager, LevelManager* levelManager, WaveManager* waveManager, PaladinSelectionMenu* paladinSelectionMenu);
+    /// Releases resources owned by this HubState instance.
     ~HubState() override = default;
 
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
 
 private:

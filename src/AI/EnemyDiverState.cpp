@@ -15,6 +15,7 @@
 namespace {
     constexpr float MIN_DIRECTION_LENGTH = 0.001f;
 
+    /// Updates attack cooldown.
     void UpdateAttackCooldown(EnemyDiver* enemy, float deltaTime) {
         if (enemy->GetAttackCooldown() <= 0.0f) return;
 
@@ -24,6 +25,7 @@ namespace {
         ));
     }
 
+    /// Implements the normalize or fallback behavior for this component.
     Vector2 NormalizeOrFallback(Vector2 direction, Vector2 fallback) {
         if (Vector2Length(direction) <= MIN_DIRECTION_LENGTH) {
             return fallback;
@@ -32,10 +34,12 @@ namespace {
     }
 }
 
+/// Prepares this state when it becomes active.
 void EnemyDiverChaseState::Enter(EnemyDiver* enemy) {
     enemy->StartPathFinding();
 }
 
+/// Advances this component's state for the current frame.
 void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
     UpdateAttackCooldown(enemy, deltaTime);
 
@@ -95,10 +99,12 @@ void EnemyDiverChaseState::Update(EnemyDiver* enemy, float deltaTime) {
     );
 }
 
+/// Cleans up this state before control moves elsewhere.
 void EnemyDiverChaseState::Exit(EnemyDiver* enemy) {
     enemy->EndPathFinding();
 }
 
+/// Prepares this state when it becomes active.
 void EnemyDiverReadyState::Enter(EnemyDiver* enemy) {
     enemy->EndPathFinding();
     dTimer = enemy->GetReadyDuration();
@@ -111,6 +117,7 @@ void EnemyDiverReadyState::Enter(EnemyDiver* enemy) {
     enemy->BeginAttackPreparation(attackDirection);
 }
 
+/// Advances this component's state for the current frame.
 void EnemyDiverReadyState::Update(EnemyDiver* enemy, float deltaTime) {
     float activeTime = std::min(std::max(deltaTime, 0.0f), dTimer);
     dTimer = std::max(0.0f, dTimer - deltaTime);
@@ -139,11 +146,13 @@ void EnemyDiverReadyState::Update(EnemyDiver* enemy, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void EnemyDiverReadyState::Exit(EnemyDiver* enemy) {
     enemy->EndAttackPreparation();
     dTimer = 0.0f;
 }
 
+/// Prepares this state when it becomes active.
 void EnemyDiverLungingState::Enter(EnemyDiver* enemy) {
     enemy->EndPathFinding();
     enemy->BeginAttackEffect();
@@ -152,6 +161,7 @@ void EnemyDiverLungingState::Enter(EnemyDiver* enemy) {
     hasDamagedPlayer = false;
 }
 
+/// Advances this component's state for the current frame.
 void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
     if (isWaitingToChase) {
         dTimer = std::max(0.0f, dTimer - deltaTime);
@@ -228,6 +238,7 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void EnemyDiverLungingState::Exit(EnemyDiver* enemy) {
     enemy->EndAttackEffect();
     isWaitingToChase = false;
@@ -235,6 +246,7 @@ void EnemyDiverLungingState::Exit(EnemyDiver* enemy) {
     dTimer = 0.0f;
 }
 
+/// Begins recovery.
 void EnemyDiverLungingState::BeginRecovery(EnemyDiver* enemy) {
     if (isWaitingToChase) return;
 

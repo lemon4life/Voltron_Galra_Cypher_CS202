@@ -9,6 +9,7 @@
 #include "Core/Manager/UltimateIntroManager.h"
 #include "Entities/Enemy.h"
 
+/// Creates a Lance instance from the supplied configuration.
 Lance::Lance(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Lance)),
       isUltimateFlash(false),
@@ -30,10 +31,12 @@ Lance::Lance(Vector2 pos, CharacterSprites sprites)
     hudPortraitSlice = { 92.0f, 71.0f, 194.0f, 84.0f };
 }
 
+/// Reports whether the weapon visible condition is satisfied.
 bool Lance::IsWeaponVisible() const {
     return !HasPersonalBuff<DualWieldBuff>();
 }
 
+/// Advances this component's state for the current frame.
 void Lance::Update(float deltaTime) {
     Paladin::Update(deltaTime);
     
@@ -53,11 +56,13 @@ void Lance::Update(float deltaTime) {
     UpdatePendingFreezeTargets(deltaTime);
 }
 
+/// Updates inactive.
 void Lance::UpdateInactive(float deltaTime) {
     Paladin::UpdateInactive(deltaTime);
     UpdatePendingFreezeTargets(deltaTime);
 }
 
+/// Updates pending freeze targets.
 void Lance::UpdatePendingFreezeTargets(float deltaTime) {
     ObjectManager& objects = GameManager::GetInstance().GetObjectManager();
     for (auto it = pendingFreezeTargets.begin();
@@ -81,6 +86,7 @@ void Lance::UpdatePendingFreezeTargets(float deltaTime) {
     }
 }
 
+/// Starts this attack behavior when its current conditions allow it.
 void Lance::Attack() {
     if (!HasPersonalBuff<DualWieldBuff>()) {
         Paladin::Attack();
@@ -100,6 +106,7 @@ void Lance::Attack() {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void Lance::Draw() {
     if (!HasPersonalBuff<DualWieldBuff>()) {
         Paladin::Draw();
@@ -125,6 +132,7 @@ void Lance::Draw() {
     }
 }
 
+/// Activates skill.
 void Lance::UseSkill() {
     if (exEnergy < skillCost || isSkillActive) return;
     
@@ -134,6 +142,7 @@ void Lance::UseSkill() {
     AddPersonalBuff(std::make_unique<DualWieldBuff>(5.0f));
 }
 
+/// Activates ultimate.
 void Lance::UseUltimate() {
     // Gate on Quintessence (shared team fuel) + individual cooldown
     if (ultimateCooldownTimer > 0.0f) return;
@@ -144,6 +153,7 @@ void Lance::UseUltimate() {
     UltimateIntroManager::GetInstance().PlayIntro(this);
 }
 
+/// Executes the gameplay effect after the Ultimate introduction finishes.
 void Lance::ExecuteUltimateAction() {
     isUltimateFlash = true;
     ultimateFlashTimer = 0.2f; // Short flash

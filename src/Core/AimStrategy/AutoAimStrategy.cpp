@@ -5,6 +5,7 @@
 #include "Core/Manager/InputManager.h"
 #include "raymath.h"
 
+/// Calculates aim vector.
 Vector2 AutoAimStrategy::CalculateAimVector(Paladin* paladin) {
     float bestDist = 400.0f; // Targeting range
     Enemy* bestTarget = nullptr;

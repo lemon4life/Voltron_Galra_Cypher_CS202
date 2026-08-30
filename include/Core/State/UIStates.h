@@ -8,8 +8,11 @@
 
 class MainMenuState : public IGameState {
 public:
+    /// Creates a MainMenuState instance from the supplied configuration.
     MainMenuState(MainMenu* menu, GameApplication* app);
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
 private:
     MainMenu* menu;
@@ -18,8 +21,11 @@ private:
 
 class PauseState : public IGameState {
 public:
+    /// Creates a PauseState instance from the supplied configuration.
     PauseState(PauseMenu* menu, GameApplication* app, IGameState* backgroundState);
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
 private:
     PauseMenu* menu;
@@ -29,8 +35,11 @@ private:
 
 class SettingsState : public IGameState {
 public:
+    /// Creates a SettingsState instance from the supplied configuration.
     SettingsState(SettingsMenu* menu, GameApplication* app, IGameState* backgroundState);
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
 private:
     SettingsMenu* menu;
@@ -41,8 +50,11 @@ private:
 
 class GameOverState : public IGameState {
 public:
+    /// Creates a GameOverState instance from the supplied configuration.
     GameOverState(GameApplication* app, IGameState* backgroundState);
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
 private:
     GameApplication* app;
@@ -51,18 +63,27 @@ private:
 
 class VictoryState : public IGameState {
 public:
+    /// Creates a VictoryState instance from the supplied configuration.
     VictoryState(GameApplication* app, IGameState* backgroundState);
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
 private:
     GameApplication* app;
     IGameState* backgroundState;
 };
 
+// Design Pattern - Adapter:
+// Adaptee: RoomEditorState. Target interface: IGameState. This adapter translates
+// the game loop's Update/Draw calls so the editor can participate as a game state.
 class RoomEditorStateAdapter : public IGameState {
 public:
+    /// Creates a RoomEditorStateAdapter instance from the supplied configuration.
     RoomEditorStateAdapter(RoomEditorState* editor);
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
 private:
     RoomEditorState* editor;

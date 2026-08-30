@@ -2,11 +2,13 @@
 #include <iostream>
 #include <stdexcept>
 
+/// Returns the process-wide singleton instance of this manager.
 AssetManager& AssetManager::GetInstance() {
     static AssetManager instance;
     return instance;
 }
 
+/// Loads texture2 d.
 Texture2D AssetManager::LoadTexture2D(const std::string& key, const std::string& path, bool applyPointFilter) {
     if (textures.find(key) != textures.end()) {
         return textures[key]; // Already loaded
@@ -32,6 +34,7 @@ Texture2D AssetManager::LoadTexture2D(const std::string& key, const std::string&
     return tex;
 }
 
+/// Returns the current texture.
 Texture2D AssetManager::GetTexture(const std::string& key) {
     auto it = textures.find(key);
     if (it != textures.end()) {
@@ -40,6 +43,7 @@ Texture2D AssetManager::GetTexture(const std::string& key) {
     throw std::runtime_error("Required texture key is not loaded: " + key);
 }
 
+/// Loads custom font.
 Font AssetManager::LoadCustomFont(const std::string& key, const std::string& path, int fontSize) {
     if (fonts.find(key) != fonts.end()) {
         return fonts[key];
@@ -56,6 +60,7 @@ Font AssetManager::LoadCustomFont(const std::string& key, const std::string& pat
     return font;
 }
 
+/// Returns the current custom font.
 Font AssetManager::GetCustomFont(const std::string& key) {
     auto it = fonts.find(key);
     if (it != fonts.end()) {
@@ -64,17 +69,20 @@ Font AssetManager::GetCustomFont(const std::string& key) {
     throw std::runtime_error("Required font key is not loaded: " + key);
 }
 
+/// Loads global fonts.
 void AssetManager::LoadGlobalFonts() {
     LoadCustomFont("PixeloidMono", "assets/fonts/PixeloidMono.ttf", 64);
     LoadCustomFont("PixeloidBold", "assets/fonts/PixeloidSans-Bold.ttf", 64);
     LoadCustomFont("PixeloidSans", "assets/fonts/PixeloidSans.ttf", 64);
 }
 
+/// Begins loading queue.
 void AssetManager::BeginLoadingQueue() {
     loadTasks.clear();
     totalTasks = 0;
 }
 
+/// Queues loading task.
 void AssetManager::QueueLoadingTask(
     const std::string& label,
     std::function<void()> action
@@ -83,6 +91,7 @@ void AssetManager::QueueLoadingTask(
     totalTasks = static_cast<int>(loadTasks.size());
 }
 
+/// Queues common assets.
 void AssetManager::QueueCommonAssets() {
     auto add = [this](
         const std::string& key,
@@ -118,6 +127,7 @@ void AssetManager::QueueCommonAssets() {
     add("doorGate", "assets/tileset/Galra_Door_8.png", true);
 }
 
+/// Unloads all.
 void AssetManager::UnloadAll() {
     for (auto& pair : texturesByPath) {
         UnloadTexture(pair.second);
@@ -131,6 +141,7 @@ void AssetManager::UnloadAll() {
     fonts.clear();
 }
 
+/// Returns the current estimated texture bytes.
 std::size_t AssetManager::GetEstimatedTextureBytes() const {
     std::size_t total = 0;
     for (const auto& pair : texturesByPath) {
@@ -143,6 +154,7 @@ std::size_t AssetManager::GetEstimatedTextureBytes() const {
     return total;
 }
 
+/// Queues character assets.
 void AssetManager::QueueCharacterAssets() {
     auto add = [this](const std::string& k, const std::string& p, bool f = false) { 
         QueueLoadingTask(
@@ -300,6 +312,7 @@ void AssetManager::QueueCharacterAssets() {
     );
 }
 
+/// Updates loading.
 bool AssetManager::UpdateLoading(
     float& outProgress,
     std::string& outCurrentTask
@@ -329,6 +342,7 @@ bool AssetManager::UpdateLoading(
     return loadTasks.empty();
 }
 
+/// Returns the current lance sprites.
 CharacterSprites AssetManager::GetLanceSprites() {
     CharacterSprites sprites;
     sprites.idle = GetTexture("Lance_Idle");
@@ -344,6 +358,7 @@ CharacterSprites AssetManager::GetLanceSprites() {
     return sprites;
 }
 
+/// Returns the current keith sprites.
 CharacterSprites AssetManager::GetKeithSprites() {
     CharacterSprites sprites;
     sprites.idle = GetTexture("Keith_Idle");
@@ -358,6 +373,7 @@ CharacterSprites AssetManager::GetKeithSprites() {
     return sprites;
 }
 
+/// Returns the current hunk sprites.
 CharacterSprites AssetManager::GetHunkSprites() {
     CharacterSprites sprites;
     sprites.idle = GetTexture("Hunk_Idle");
@@ -373,6 +389,7 @@ CharacterSprites AssetManager::GetHunkSprites() {
     return sprites;
 }
 
+/// Returns the current pidge sprites.
 CharacterSprites AssetManager::GetPidgeSprites() {
     CharacterSprites sprites;
     sprites.idle = GetTexture("Paladin_Pidge_Idle");
@@ -385,6 +402,7 @@ CharacterSprites AssetManager::GetPidgeSprites() {
     return sprites;
 }
 
+/// Returns the current range sprites.
 EnemySprites AssetManager::GetRangeSprites() {
     return EnemySprites{
         GetTexture("Knight_Idle"),
@@ -395,6 +413,7 @@ EnemySprites AssetManager::GetRangeSprites() {
         GetTexture("Knight_Gun_Bullet")
     };
 }
+/// Returns the current diver sprites.
 EnemySprites AssetManager::GetDiverSprites() {
     return EnemySprites{
         GetTexture("Knight_Idle"),
@@ -405,6 +424,7 @@ EnemySprites AssetManager::GetDiverSprites() {
         {0}
     };
 }
+/// Returns the current chaser sprites.
 EnemySprites AssetManager::GetChaserSprites() {
     return EnemySprites{
         GetTexture("Knight_Idle"),
@@ -416,6 +436,7 @@ EnemySprites AssetManager::GetChaserSprites() {
     };
 }
 
+/// Returns the current boss sprites.
 EnemySprites AssetManager::GetBossSprites() {
     return EnemySprites{
         GetTexture("Boss_Idle"),

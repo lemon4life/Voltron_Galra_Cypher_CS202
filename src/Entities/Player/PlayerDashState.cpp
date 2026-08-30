@@ -3,6 +3,7 @@
 #include "Core/Manager/GameManager.h"
 #include "raymath.h"
 
+/// Prepares this state when it becomes active.
 void PlayerDashState::Enter(Paladin* player) {
     player->SetInvincible(true);
     player->SetDashTimer(0.3f); // 0.3s dash duration
@@ -37,6 +38,7 @@ void PlayerDashState::Enter(Paladin* player) {
     trailTimer = 0.0f; // Reset trail timer at the start of every dash
 }
 
+/// Advances this component's state for the current frame.
 void PlayerDashState::Update(Paladin* player, float deltaTime) {
     float timer = player->GetDashTimer() - deltaTime;
     player->SetDashTimer(timer);
@@ -75,6 +77,7 @@ void PlayerDashState::Update(Paladin* player, float deltaTime) {
     player->UpdateAnimation(deltaTime);
 }
 
+/// Cleans up this state before control moves elsewhere.
 void PlayerDashState::Exit(Paladin* player) {
     player->SetInvincible(false);
     player->SetDashCooldown(0.7f); // 1.0s cooldown

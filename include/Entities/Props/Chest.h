@@ -22,16 +22,26 @@ private:
     Texture2D chestTop;
 
 public:
+    /// Creates a Chest instance from the supplied configuration.
     Chest(Vector2 pos, ChestRewardType reward = ChestRewardType::Pot);
+    /// Releases resources owned by this Chest instance.
     ~Chest() override = default;
 
+    /// Advances this component's state for the current frame.
     void Update(float deltaTime) override;
+    /// Renders this component using its current state and visual resources.
     void Draw() override;
 
+    /// Returns the current reward type.
     ChestRewardType GetRewardType() const { return rewardType; }
+    /// Reports whether the opened condition is satisfied.
     bool IsOpened() const { return isOpened; }
+    /// Reports whether the opening condition is satisfied.
     bool IsOpening() const { return isOpening; }
+    /// Returns the current open progress.
     float GetOpenProgress() const { return openProgress; }
+    /// Returns the current pot scale progress.
     float GetPotScaleProgress() const { return potScaleProgress; }
+    /// Returns the current selected pot type.
     int GetSelectedPotType() const { return selectedPotType; }
 };

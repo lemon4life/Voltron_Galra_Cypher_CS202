@@ -17,6 +17,7 @@ namespace {
     constexpr float MIN_DIRECTION_LENGTH = 0.001f;
     constexpr float MAX_CHARGE_COLLISION_STEP = 2.0f;
 
+    /// Implements the normalize or fallback behavior for this component.
     Vector2 NormalizeOrFallback(Vector2 direction, Vector2 fallback) {
         if (Vector2Length(direction) <= MIN_DIRECTION_LENGTH) {
             return fallback;
@@ -24,16 +25,19 @@ namespace {
         return Vector2Normalize(direction);
     }
 
+    /// Implements the finish damage attempt behavior for this component.
     void FinishDamageAttempt(EnemyChaser* enemy) {
         enemy->ResetAttackCooldown();
         enemy->ChangeState(enemy->GetChaseState());
     }
 }
 
+/// Prepares this state when it becomes active.
 void EnemyChaserChaseState::Enter(EnemyChaser* enemy) {
     enemy->StartPathFinding();
 }
 
+/// Advances this component's state for the current frame.
 void EnemyChaserChaseState::Update(EnemyChaser* enemy, float deltaTime) {
     TeamManager* targetTeam = enemy->GetTargetTeam();
     Paladin* activePaladin = targetTeam
@@ -83,10 +87,12 @@ void EnemyChaserChaseState::Update(EnemyChaser* enemy, float deltaTime) {
     enemy->UpdateMovement(Vector2Scale(direction, enemy->GetSpeed()), deltaTime, EnemyWallResponse::Slide);
 }
 
+/// Cleans up this state before control moves elsewhere.
 void EnemyChaserChaseState::Exit(EnemyChaser* enemy) {
     enemy->EndPathFinding();
 }
 
+/// Prepares this state when it becomes active.
 void EnemyChaserDamageState::Enter(EnemyChaser* enemy) {
     TeamManager* targetTeam = enemy->GetTargetTeam();
     Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
@@ -107,6 +113,7 @@ void EnemyChaserDamageState::Enter(EnemyChaser* enemy) {
     AudioManager::GetInstance().PlayRandomSwordSlash();
 }
 
+/// Advances this component's state for the current frame.
 void EnemyChaserDamageState::Update(
     EnemyChaser* enemy,
     float deltaTime
@@ -192,6 +199,7 @@ void EnemyChaserDamageState::Update(
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void EnemyChaserDamageState::Exit(EnemyChaser* enemy) {
     dTimer = 0.0f;
     remainingChargeDistance = 0.0f;

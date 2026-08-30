@@ -9,12 +9,14 @@
 #include "raymath.h"
 #include <cmath>
 
+/// Creates a EnhanceMachine instance from the supplied configuration.
 EnhanceMachine::EnhanceMachine(Vector2 pos)
     : GameObject(pos, GameObjectType::Prop) {
     machineTexture = AssetManager::GetInstance().GetTexture("machine");
     boundingBox = { pos.x - 32.0f, pos.y - 36.0f, 64.0f, 72.0f };
 }
 
+/// Advances this component's state for the current frame.
 void EnhanceMachine::Update(float deltaTime) {
     // 1. Continuous 4-frame animation (~7 FPS)
     frameTimer += deltaTime;
@@ -43,6 +45,7 @@ void EnhanceMachine::Update(float deltaTime) {
     }
 }
 
+/// Handles the interact event.
 void EnhanceMachine::OnInteract(Paladin* player) {
     if (!player) return;
     AudioManager::GetInstance().PlaySoundEffect("fx_button_click");
@@ -51,6 +54,7 @@ void EnhanceMachine::OnInteract(Paladin* player) {
     GameManager::GetInstance().OpenEnhanceMenu(player->GetPaladinId());
 }
 
+/// Renders this component using its current state and visual resources.
 void EnhanceMachine::Draw() {
     if (machineTexture.id != 0) {
         Rectangle source = { (float)(currentFrame * 64), 0.0f, 64.0f, 72.0f };
@@ -62,10 +66,12 @@ void EnhanceMachine::Draw() {
     }
 }
 
+/// Returns the current bounding box.
 Rectangle EnhanceMachine::GetBoundingBox() const {
     return { position.x - 32.0f, position.y - 36.0f, 64.0f, 48.0f };
 }
 
+/// Returns the current collision box.
 Rectangle EnhanceMachine::GetCollisionBox() const {
     return { position.x - 24.0f, position.y - 4.0f, 48.0f, 20.0f };
 }

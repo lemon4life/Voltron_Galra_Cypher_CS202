@@ -33,6 +33,7 @@ namespace {
         { 0.0f, 8.0f }
     };
 
+    /// Randomly selects aggro duration.
     float RollAggroDuration() {
         return (float)GetRandomValue(
             CHASER_MIN_AGGRO_MILLISECONDS,
@@ -41,6 +42,7 @@ namespace {
     }
 }
 
+/// Creates a EnemyChaser instance from the supplied configuration.
 EnemyChaser::EnemyChaser(
     Vector2 position,
     TeamManager* targetTeam,
@@ -72,6 +74,7 @@ EnemyChaser::EnemyChaser(
     ChangeState(GetIdleState());
 }
 
+/// Releases resources owned by this EnemyChaser instance.
 EnemyChaser::~EnemyChaser() {
     if (currentState) {
         currentState->Exit(this);
@@ -79,6 +82,7 @@ EnemyChaser::~EnemyChaser() {
     currentState = nullptr;
 }
 
+/// Advances this component's state for the current frame.
 void EnemyChaser::Update(float deltaTime) {
     Vector2 updateStartPosition = position;
     if (UpdateSpawnSequence(deltaTime)) {
@@ -140,6 +144,7 @@ void EnemyChaser::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void EnemyChaser::Draw() {
     if (!ShouldDrawDuringSpawn()) {
         DrawSpawnEffect();
@@ -222,18 +227,22 @@ void EnemyChaser::Draw() {
 }
 
 
+/// Returns the current damage state.
 EnemyChaserDamageState* EnemyChaser::GetDamageState() {
     return damageState.get();
 }
 
+/// Reports whether the beyond disengage distance condition is satisfied.
 bool EnemyChaser::IsBeyondDisengageDistance(Vector2 targetPosition) const {
     return Vector2Distance(position, targetPosition) > CHASER_SIGHT_DISTANCE;
 }
 
+/// Reports whether the within aggro range condition is satisfied.
 bool EnemyChaser::IsWithinAggroRange(Vector2 targetPosition) const {
     return Vector2Distance(position, targetPosition) <= CHASER_AGGRO_RANGE;
 }
 
+/// Reports whether the within stop path finding distance condition is satisfied.
 bool EnemyChaser::IsWithinStopPathFindingDistance(
     Vector2 targetPosition
 ) const {
@@ -241,14 +250,17 @@ bool EnemyChaser::IsWithinStopPathFindingDistance(
            CHASER_STOP_PATH_FINDING_DISTANCE;
 }
 
+/// Returns the current damage charge distance.
 float EnemyChaser::GetDamageChargeDistance() const {
     return CHASER_DAMAGE_CHARGE_DISTANCE;
 }
 
+/// Returns the current damage charge duration.
 float EnemyChaser::GetDamageChargeDuration() const {
     return CHASER_DAMAGE_CHARGE_DURATION;
 }
 
+/// Updates aggro meter.
 void EnemyChaser::UpdateAggroMeter(
     bool isNearPlayer,
     float deltaTime
@@ -263,10 +275,12 @@ void EnemyChaser::UpdateAggroMeter(
     );
 }
 
+/// Reports whether the aggro ready condition is satisfied.
 bool EnemyChaser::IsAggroReady() const {
     return aggroMeter >= requiredAggroDuration;
 }
 
+/// Resets aggro meter.
 void EnemyChaser::ResetAggroMeter() {
     aggroMeter = 0.0f;
     requiredAggroDuration = RollAggroDuration();

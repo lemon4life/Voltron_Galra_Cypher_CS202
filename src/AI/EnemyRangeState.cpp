@@ -20,6 +20,7 @@ namespace {
     constexpr int MIN_AIM_ERROR_CENTIDEGREES = -100;
     constexpr int MAX_AIM_ERROR_CENTIDEGREES = 100;
 
+    /// Updates attack cooldown.
     void UpdateAttackCooldown(Enemy* enemy, float deltaTime) {
         if (!enemy || enemy->GetAttackCooldown() <= 0.0f) return;
 
@@ -27,6 +28,7 @@ namespace {
         enemy->SetAttackCooldown(std::max(0.0f, remainingCooldown));
     }
 
+    /// Returns the current projectile origin.
     Vector2 GetProjectileOrigin(EnemyRange* enemy, Vector2 targetPosition) {
         Vector2 enemyPosition = enemy->GetPosition();
         Vector2 direction = Vector2Subtract(targetPosition, enemyPosition);
@@ -51,6 +53,7 @@ namespace {
         return Vector2Add(pivot, rotatedOffset);
     }
 
+    /// Reports whether this component has clear shot.
     bool HasClearShot(EnemyRange* enemy, Vector2 targetPosition) {
         Vector2 enemyPosition = enemy->GetPosition();
         Vector2 projectileOrigin = GetProjectileOrigin(enemy, targetPosition);
@@ -77,10 +80,12 @@ namespace {
 
 }
 
+/// Prepares this state when it becomes active.
 void EnemyRangeChaseState::Enter(EnemyRange* enemy) {
     enemy->StartPathFinding();
 }
 
+/// Advances this component's state for the current frame.
 void EnemyRangeChaseState::Update(EnemyRange* enemy, float deltaTime) {
     UpdateAttackCooldown(enemy, deltaTime);
 
@@ -123,14 +128,17 @@ void EnemyRangeChaseState::Update(EnemyRange* enemy, float deltaTime) {
     enemy->UpdateMovement(Vector2Scale(direction, enemy->GetSpeed()), deltaTime, EnemyWallResponse::Slide);
 }
 
+/// Cleans up this state before control moves elsewhere.
 void EnemyRangeChaseState::Exit(EnemyRange* enemy) {
     enemy->EndPathFinding();
 }
 
+/// Prepares this state when it becomes active.
 void EnemyRangeShootingState::Enter(EnemyRange* enemy) {
     enemy->EndPathFinding();
 }
 
+/// Advances this component's state for the current frame.
 void EnemyRangeShootingState::Update(EnemyRange* enemy, float deltaTime) {
     UpdateAttackCooldown(enemy, deltaTime);
 
@@ -156,9 +164,11 @@ void EnemyRangeShootingState::Update(EnemyRange* enemy, float deltaTime) {
     }
 }
 
+/// Cleans up this state before control moves elsewhere.
 void EnemyRangeShootingState::Exit(EnemyRange*) {
 }
 
+/// Attempts to fire projectile.
 bool EnemyRangeShootingState::TryFireProjectile(
     EnemyRange* enemy,
     Vector2 targetPosition

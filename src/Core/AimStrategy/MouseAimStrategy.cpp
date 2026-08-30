@@ -2,6 +2,7 @@
 #include "Entities/Player/Paladin.h"
 #include "raymath.h"
 
+/// Calculates aim vector.
 Vector2 MouseAimStrategy::CalculateAimVector(Paladin* paladin) {
     Vector2 aimDir = Vector2Subtract(paladin->GetAimTarget(), paladin->GetWeaponPivot());
     if (Vector2Length(aimDir) > 0.1f) {

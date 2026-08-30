@@ -1,5 +1,6 @@
 #include "Combat/WeaponKinematics.h"
 
+/// Creates a WeaponKinematics instance from the supplied configuration.
 WeaponKinematics::WeaponKinematics(WeaponKinematicsType t)
     : type(t), offset{0.0f, 0.0f}, angleOffset(0.0f),
       recoilVelocity{0.0f, 0.0f}, animationTimer(0.0f),
@@ -14,6 +15,7 @@ void WeaponKinematics::ApplyRecoil(Vector2 aimDir, float strength) {
     offset = recoilVelocity;
 }
 
+/// Applies swing.
 void WeaponKinematics::ApplySwing(float duration, float arc, bool reverse) {
     if (type != WeaponKinematicsType::Melee) return;
     isAnimating = true;
@@ -29,6 +31,7 @@ void WeaponKinematics::ApplySwing(float duration, float arc, bool reverse) {
     angleOffset = swingStartAngle;
 }
 
+/// Applies thrust.
 void WeaponKinematics::ApplyThrust(Vector2 aimDir, float duration) {
     if (type != WeaponKinematicsType::Thrust) return;
     isAnimating = true;
@@ -38,6 +41,7 @@ void WeaponKinematics::ApplyThrust(Vector2 aimDir, float duration) {
     offset = {0.0f, 0.0f};
 }
 
+/// Advances this component's state for the current frame.
 void WeaponKinematics::Update(float deltaTime) {
     if (type == WeaponKinematicsType::Ranged) {
         // Exponential decay for recoil

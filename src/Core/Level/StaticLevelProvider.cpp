@@ -9,6 +9,7 @@ namespace {
     constexpr float RIGHT_PARTIAL_WALL_OFFSET = Constants::RENDER_TILE_SIZE - PARTIAL_WALL_WIDTH;
 }
 
+/// Creates a StaticLevelProvider instance from the supplied configuration.
 StaticLevelProvider::StaticLevelProvider(
     const std::vector<std::vector<int>>& mapGridLayer1,
     const std::vector<std::vector<int>>& mapGridLayer2,
@@ -20,10 +21,12 @@ StaticLevelProvider::StaticLevelProvider(
     floorTileset(floorTileset),
     wallTileset(wallTileset), gridRows(gridRows), gridCols(gridCols) {}
 
+/// Implements the pos hash behavior for this component.
 int StaticLevelProvider::pos_hash(int x, int y) const {
     return x * 73856093 ^ y * 19349663;
 }
 
+/// Renders base.
 void StaticLevelProvider::DrawBase() {
     VisibleTileRange visible = GetVisibleTileRange(
         { 0.0f, 0.0f },
@@ -97,6 +100,7 @@ void StaticLevelProvider::DrawBase() {
     }
 }
 
+/// Returns the current depth render items.
 void StaticLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& items) {
     VisibleTileRange visible = GetVisibleTileRange(
         { 0.0f, 0.0f },
@@ -136,6 +140,7 @@ void StaticLevelProvider::GetDepthRenderItems(std::vector<DepthRenderItem>& item
     }
 }
 
+/// Reports whether the solid collision condition is satisfied.
 bool StaticLevelProvider::IsSolidCollision(Rectangle box) const {
     int minCol = (int)std::floor((box.x + COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
     int maxCol = (int)std::floor((box.x + box.width - COLLISION_EDGE_PADDING) / Constants::RENDER_TILE_SIZE);
@@ -186,6 +191,7 @@ bool StaticLevelProvider::IsSolidCollision(Rectangle box) const {
     return false;
 }
 
+/// Appends static blocking colliders for tile.
 void StaticLevelProvider::AppendStaticBlockingCollidersForTile(
     int tileX,
     int tileY,

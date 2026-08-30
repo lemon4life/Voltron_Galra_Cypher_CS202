@@ -23,10 +23,12 @@ namespace {
 constexpr float LOG_INTERVAL_SECONDS = 10.0f;
 float periodicTimer = 0.0f;
 
+/// Implements the to megabytes behavior for this component.
 double ToMegabytes(std::size_t bytes) {
     return static_cast<double>(bytes) / (1024.0 * 1024.0);
 }
 
+/// Calculates and returns state name.
 const char* StateName(GameState state) {
     switch (state) {
         case GameState::MAIN_MENU: return "MAIN_MENU";
@@ -41,6 +43,7 @@ const char* StateName(GameState state) {
     return "UNKNOWN";
 }
 
+/// Implements the local timestamp behavior for this component.
 std::string LocalTimestamp() {
     std::time_t now = std::time(nullptr);
     std::tm local = {};
@@ -55,6 +58,7 @@ std::string LocalTimestamp() {
 }
 }
 
+/// Resets log.
 void MemoryDiagnostics::ResetLog() {
     periodicTimer = 0.0f;
     if (!Constants::DEBUG_MEMORY_DIAGNOSTICS) return;
@@ -65,6 +69,7 @@ void MemoryDiagnostics::ResetLog() {
               "memory separately.\n\n";
 }
 
+/// Records a timestamped runtime memory snapshot in the diagnostics log.
 void MemoryDiagnostics::Capture(
     const std::string& label,
     const GameManager& game
@@ -160,6 +165,7 @@ void MemoryDiagnostics::Capture(
            << (dialogue.HasTransientResponse() ? 1 : 0) << "\n\n";
 }
 
+/// Updates periodic.
 void MemoryDiagnostics::UpdatePeriodic(
     float deltaTime,
     const GameManager& game

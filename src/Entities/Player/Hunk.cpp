@@ -5,6 +5,7 @@
 #include "Core/Manager/TeamManager.h"
 #include "Combat/Buffs.h"
 
+/// Creates a Hunk instance from the supplied configuration.
 Hunk::Hunk(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Hunk))
 {
@@ -32,10 +33,12 @@ Hunk::Hunk(Vector2 pos, CharacterSprites sprites)
 #include "Entities/Enemy.h"
 #include "raymath.h"
 
+/// Applies knockback.
 void Hunk::ApplyKnockback(Vector2 dir, float force) {
     // Inherent Knockback Resistance: Hunk ignores collision forces!
 }
 
+/// Advances this component's state for the current frame.
 void Hunk::Update(float deltaTime) {
     Paladin::Update(deltaTime);
     
@@ -47,6 +50,7 @@ void Hunk::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void Hunk::Draw() {
     Paladin::Draw();
     
@@ -61,6 +65,7 @@ void Hunk::Draw() {
     }
 }
 
+/// Activates skill.
 void Hunk::UseSkill() {
     if (exEnergy < skillCost || isSkillActive) return;
     
@@ -92,6 +97,7 @@ void Hunk::UseSkill() {
 
 #include "Core/Manager/UltimateIntroManager.h"
 
+/// Activates ultimate.
 void Hunk::UseUltimate() {
     // Gate on Quintessence (shared team fuel) + individual cooldown
     if (ultimateCooldownTimer > 0.0f) return;
@@ -101,6 +107,7 @@ void Hunk::UseUltimate() {
     UltimateIntroManager::GetInstance().PlayIntro(this);
 }
 
+/// Executes the gameplay effect after the Ultimate introduction finishes.
 void Hunk::ExecuteUltimateAction() {
     AudioManager::GetInstance().PlaySoundEffect("vl_hunk_ult");
     AudioManager::GetInstance().PlaySoundEffect("fx_get_buff");

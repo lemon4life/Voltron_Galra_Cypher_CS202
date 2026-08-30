@@ -15,6 +15,7 @@ namespace {
 constexpr std::size_t MAX_TOXIC_PARTICLES = 128;
 }
 
+/// Creates a Pidge instance from the supplied configuration.
 Pidge::Pidge(Vector2 startPos, CharacterSprites sprites)
     : Paladin(startPos, sprites, PaladinCatalog::Get(PaladinId::Pidge)) {
     toxicParticles.reserve(MAX_TOXIC_PARTICLES);
@@ -36,6 +37,7 @@ Pidge::Pidge(Vector2 startPos, CharacterSprites sprites)
     hudPortraitSlice = { 144.0f, 96.0f, 194.0f, 84.0f };
 }
 
+/// Updates venom zone.
 void Pidge::UpdateVenomZone(float deltaTime) {
     if (!isVenomZoneActive) return;
     
@@ -113,6 +115,7 @@ void Pidge::UpdateVenomZone(float deltaTime) {
     }
 }
 
+/// Renders venom zone.
 void Pidge::DrawVenomZone() const {
     if (!isVenomZoneActive) return;
     
@@ -139,11 +142,13 @@ void Pidge::DrawVenomZone() const {
     }
 }
 
+/// Updates inactive.
 void Pidge::UpdateInactive(float deltaTime) {
     Paladin::UpdateInactive(deltaTime);
     UpdateVenomZone(deltaTime);
 }
 
+/// Advances this component's state for the current frame.
 void Pidge::Update(float deltaTime) {
     Paladin::Update(deltaTime);
     
@@ -160,6 +165,7 @@ void Pidge::Update(float deltaTime) {
     UpdateVenomZone(deltaTime);
 }
 
+/// Starts this attack behavior when its current conditions allow it.
 void Pidge::Attack() {
     if (isWeaponThrown) return; // Cannot attack while weapon is flying
     
@@ -179,11 +185,13 @@ void Pidge::Attack() {
     if (!projectile) isWeaponThrown = false;
 }
 
+/// Handles catching weapon.
 void Pidge::CatchWeapon() {
     isWeaponThrown = false;
     thrownWeaponId = INVALID_OBJECT_ID;
 }
 
+/// Activates skill.
 void Pidge::UseSkill() {
     if (exEnergy < skillCost || isSkillActive) return;
     
@@ -203,6 +211,7 @@ void Pidge::UseSkill() {
     }
 }
 
+/// Activates ultimate.
 void Pidge::UseUltimate() {
     // Gate on Quintessence (shared team fuel) + individual cooldown
     if (ultimateCooldownTimer > 0.0f) return;
@@ -213,11 +222,13 @@ void Pidge::UseUltimate() {
     UltimateIntroManager::GetInstance().PlayIntro(this);
 }
 
+/// Executes the gameplay effect after the Ultimate introduction finishes.
 void Pidge::ExecuteUltimateAction() {
     auto rover = std::make_unique<Rover>(position, this, GetTeamManager());
     GameManager::GetInstance().AddRover(std::move(rover));
 }
 
+/// Renders this component using its current state and visual resources.
 void Pidge::Draw() {
     DrawVenomZone();
 
@@ -233,6 +244,7 @@ void Pidge::Draw() {
     Paladin::Draw();
 }
 
+/// Renders inactive.
 void Pidge::DrawInactive() {
     DrawVenomZone();
     Paladin::DrawInactive();

@@ -18,19 +18,32 @@
 
 class GameApplication {
 public:
+    /// Creates a GameApplication instance from the supplied configuration.
     GameApplication();
+    /// Releases resources owned by this GameApplication instance.
     ~GameApplication();
 
+    /// Initializes the resources and collaborators required before this component can run.
     void Initialize();
+    /// Runs the main frame loop until the window or an in-game quit action closes it.
+    /// It coordinates input, state transitions, updates, rendering, audio, and diagnostics.
     void RunLoop();
+    /// Releases resources owned by this component and leaves it safe to destroy.
     void Shutdown();
 
+    /// Clears prior session state and starts a fresh game from the Hub.
     void StartNewGame();
+    /// Resets game.
     void ResetGame();
+    /// Resets demo game.
     void ResetDemoGame();
+    /// Implements the return to hub behavior for this component.
     void ReturnToHub();
+    /// Preserves the resumable session state before returning to the main menu.
     void SuspendSessionToMainMenu();
+    /// Restores a suspended session and its matching music when one is available.
     bool ContinueSuspendedSession();
+    /// Clears suspended session.
     void ClearSuspendedSession();
 
     friend class MainMenuState;
@@ -40,8 +53,11 @@ public:
     friend class VictoryState;
 
 private:
+    /// Initializes team and ui.
     void InitializeTeamAndUI();
+    /// Initializes hub world.
     void InitializeHubWorld();
+    /// Finalizes startup.
     void FinalizeStartup();
 
     MainMenu mainMenu;

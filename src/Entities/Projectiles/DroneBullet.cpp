@@ -1,6 +1,7 @@
 #include "Entities/Projectiles/DroneBullet.h"
 #include <algorithm>
 
+/// Creates a DroneBullet instance from the supplied configuration.
 DroneBullet::DroneBullet(
     Vector2 startPos,
     Vector2 targetDir,
@@ -37,6 +38,7 @@ DroneBullet::DroneBullet(
     SetVelocity({direction.x * currentSpeed, direction.y * currentSpeed});
 }
 
+/// Advances this component's state for the current frame.
 void DroneBullet::Update(float deltaTime) {
     if (currentSpeed > minSpeed) {
         currentSpeed = std::max(minSpeed, currentSpeed - (drag * deltaTime));

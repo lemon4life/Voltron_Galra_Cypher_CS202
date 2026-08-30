@@ -2,6 +2,7 @@
 #include "Entities/Projectile.h"
 #include "Core/Manager/GameManager.h"
 
+/// Creates a RangedAttackStrategy instance from the supplied configuration.
 RangedAttackStrategy::RangedAttackStrategy(
     Texture2D tex,
     Texture2D muzzleTex,
@@ -22,6 +23,7 @@ RangedAttackStrategy::RangedAttackStrategy(
 
 #include "Core/Manager/AudioManager.h"
 
+/// Starts this attack behavior when its current conditions allow it.
 void RangedAttackStrategy::Attack(Vector2 playerPos) {
     Vector2 projVelocity = { aimDir.x * 400.0f, aimDir.y * 400.0f };
     // Create projectile originating at barrel tip to prevent wall collision
@@ -41,6 +43,7 @@ void RangedAttackStrategy::Attack(Vector2 playerPos) {
     AudioManager::GetInstance().PlayRandomLaserGun();
 }
 
+/// Advances this component's state for the current frame.
 void RangedAttackStrategy::Update(float deltaTime) {
     
     kinematics.Update(deltaTime);
@@ -50,6 +53,7 @@ void RangedAttackStrategy::Update(float deltaTime) {
     }
 }
 
+/// Renders this component using its current state and visual resources.
 void RangedAttackStrategy::Draw(Vector2 playerPos, bool facingLeft) {
     Rectangle source = { 0.0f, 0.0f, (float)weaponTex.width, (float)weaponTex.height };
     // If aiming left, flip the gun vertically so it isn't upside down

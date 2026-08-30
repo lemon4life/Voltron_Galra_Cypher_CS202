@@ -19,6 +19,7 @@ namespace {
     constexpr float DRONE_BULLET_RADIUS = 4.0f;
 }
 
+/// Creates a Drone instance from the supplied configuration.
 Drone::Drone(
     Vector2 position,
     TeamManager* targetTeam,
@@ -46,6 +47,7 @@ Drone::Drone(
     droneIdleState = std::make_unique<DroneIdleState>();
 }
 
+/// Releases resources owned by this Drone instance.
 Drone::~Drone() {
     if (currentState) {
         currentState->Exit(this);
@@ -53,6 +55,7 @@ Drone::~Drone() {
     }
 }
 
+/// Advances this component's state for the current frame.
 void Drone::Update(float deltaTime) {
     Vector2 updateStartPosition = position;
     if (UpdateSpawnSequence(deltaTime)) {
@@ -83,6 +86,7 @@ void Drone::Update(float deltaTime) {
     UpdateMovementAnimationFlag(updateStartPosition);
 }
 
+/// Renders this component using its current state and visual resources.
 void Drone::Draw() {
     if (IsDead()) {
         Enemy::Draw();
@@ -119,6 +123,7 @@ void Drone::Draw() {
     DrawSpawnEffect();
 }
 
+/// Returns the current bounding box.
 Rectangle Drone::GetBoundingBox() const {
     float width = DRONE_RENDER_WIDTH * DRONE_HITBOX_SCALE;
     float height = DRONE_RENDER_HEIGHT * DRONE_HITBOX_SCALE;
@@ -130,6 +135,7 @@ Rectangle Drone::GetBoundingBox() const {
     };
 }
 
+/// Advances attack cooldown.
 void Drone::TickAttackCooldown(float deltaTime, float rate) {
     SetAttackCooldown(std::max(
         0.0f,
@@ -138,6 +144,7 @@ void Drone::TickAttackCooldown(float deltaTime, float rate) {
     ));
 }
 
+/// Starts this attack behavior when its current conditions allow it.
 bool Drone::Attack() {
     if (!targetTeam) return false;
     

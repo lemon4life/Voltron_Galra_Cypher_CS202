@@ -12,6 +12,7 @@ constexpr float BUTTON_WIDTH = 230.0f;
 constexpr float BUTTON_HEIGHT = 34.0f;
 }
 
+/// Creates a PauseMenu instance from the supplied configuration.
 PauseMenu::PauseMenu()
     : containerBounds{
           (Constants::GAME_WIDTH - CONTAINER_WIDTH) * 0.5f,
@@ -48,6 +49,7 @@ PauseMenu::PauseMenu()
           "Quit Game") {
 }
 
+/// Advances this component's state for the current frame.
 PauseMenuAction PauseMenu::Update(Vector2 mousePosition) {
     AudioManager& audioManager = AudioManager::GetInstance();
 
@@ -74,6 +76,7 @@ PauseMenuAction PauseMenu::Update(Vector2 mousePosition) {
     return PauseMenuAction::None;
 }
 
+/// Renders this component using its current state and visual resources.
 void PauseMenu::Draw(Vector2 mousePosition) const {
     DrawRectangleRec(containerBounds, Color{25, 31, 43, 248});
     DrawRectangleLinesEx(containerBounds, 2.0f, Color{145, 156, 178, 255});

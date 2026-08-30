@@ -6,6 +6,7 @@
 #include <cmath>
 #include <algorithm>
 
+/// Renders this component using its current state and visual resources.
 void MinimapRenderer::Draw(
     const LevelMap& levelMap,
     int currentGridX,
