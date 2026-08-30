@@ -18,6 +18,14 @@ public:
     void Initialize();
     /// Updates camera.
     void UpdateCamera(Vector2 playerPos, Vector2 mouseWorldPos, float deltaTime, Rectangle levelBounds, bool isHitstop);
+    /// Frames a world-space area during a gameplay cinematic.
+    void UpdateCinematicCamera(
+        Rectangle focusBounds,
+        float deltaTime,
+        Rectangle levelBounds
+    );
+    /// Starts or strengthens a short screen-space camera shake.
+    void StartShake(float duration, float magnitude);
     
     /// Returns the current camera.
     Camera2D& GetCamera() { return camera; }
@@ -29,6 +37,10 @@ public:
         // causing some pixels to appear wider/taller than neighbours.
         float zoom = fmaxf(1.0f, std::roundf(cam.zoom));
         cam.zoom = zoom;
+        // Shake is stored in screen pixels so its visual strength is stable at
+        // every resolution and zoom level.
+        cam.target.x += shakeOffset.x / zoom;
+        cam.target.y += shakeOffset.y / zoom;
         // Snap target to the nearest 1-screen-pixel boundary (= 1/zoom world units).
         // Using roundf(x*zoom)/zoom gives 1-px step movement instead of floorf(x)
         // which gave 2-px jumps at zoom=2 and felt laggy.
@@ -50,5 +62,14 @@ private:
     CameraManager(const CameraManager&) = delete;
     CameraManager& operator=(const CameraManager&) = delete;
 
+    /// Advances the transient shake sample without affecting base tracking.
+    void UpdateShake(float deltaTime);
+    /// Keeps a camera target inside the current room when the view can fit.
+    void ClampToLevel(Rectangle levelBounds, float screenW, float screenH);
+
     Camera2D camera;
+    Vector2 shakeOffset = { 0.0f, 0.0f };
+    float shakeTimeRemaining = 0.0f;
+    float shakeDuration = 0.0f;
+    float shakeMagnitude = 0.0f;
 };

@@ -6,6 +6,7 @@
 #include "Core/Constants.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Enemy.h"
+#include "Entities/EnemyEntities/Boss.h"
 #include "UI/GameplayHUDLayout.h"
 #include "UI/MinimapRenderer.h"
 #include "UI/UIUtils.h"
@@ -42,6 +43,17 @@ void GameplayState::Update(float deltaTime) {
         return; // Freeze gameplay while the cinematic plays
     }
 
+    ObjectManager& objects = GameManager::GetInstance().GetObjectManager();
+    if (objects.FindActiveCinematicBoss()) {
+        // This return is the gameplay freeze boundary: player controls, normal
+        // enemies, paths, projectiles, room/wave logic, assists, and orbs do not
+        // advance. Boss-owned visuals continue so the ceremony remains visible.
+        objects.UpdateBossCinematic(deltaTime);
+        objects.CommitPendingChanges();
+        GameManager::GetInstance().UpdateEffects(deltaTime);
+        return;
+    }
+
     if (InputManager::IsToggleAutoAimPressed()) {
         Constants::isAutoAimEnabled = !Constants::isAutoAimEnabled;
     }
@@ -74,8 +86,6 @@ void GameplayState::Update(float deltaTime) {
         }
         
         Paladin* active = teamManager->GetActivePaladin();
-        ObjectManager& objects =
-            GameManager::GetInstance().GetObjectManager();
         Pot* nearestPot = objects.FindNearestPickup(
             active->GetPosition(),
             50.0f

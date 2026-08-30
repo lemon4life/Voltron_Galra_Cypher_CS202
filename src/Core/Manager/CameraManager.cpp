@@ -11,6 +11,73 @@ void CameraManager::Initialize() {
     camera.offset = { 0.0f, 0.0f };
     camera.rotation = 0.0f;
     camera.zoom = 1.0f;
+    shakeOffset = { 0.0f, 0.0f };
+    shakeTimeRemaining = 0.0f;
+    shakeDuration = 0.0f;
+    shakeMagnitude = 0.0f;
+}
+
+/// Starts a bounded screen-space shake. Repeated impacts strengthen/refresh an
+/// existing shake without accumulating permanent camera displacement.
+void CameraManager::StartShake(float duration, float magnitude) {
+    if (!std::isfinite(duration) || !std::isfinite(magnitude) ||
+        duration <= 0.0f || magnitude <= 0.0f) {
+        return;
+    }
+    shakeDuration = std::max(shakeDuration, duration);
+    shakeTimeRemaining = std::max(shakeTimeRemaining, duration);
+    shakeMagnitude = std::max(shakeMagnitude, magnitude);
+}
+
+/// Advances the random shake sample and fades it toward zero over its lifetime.
+void CameraManager::UpdateShake(float deltaTime) {
+    if (shakeTimeRemaining <= 0.0f) {
+        shakeOffset = { 0.0f, 0.0f };
+        shakeDuration = 0.0f;
+        shakeMagnitude = 0.0f;
+        return;
+    }
+
+    shakeTimeRemaining = std::max(
+        0.0f,
+        shakeTimeRemaining - std::max(0.0f, deltaTime)
+    );
+    float strength = shakeDuration > 0.0f
+        ? shakeTimeRemaining / shakeDuration
+        : 0.0f;
+    auto randomUnit = []() {
+        return static_cast<float>(GetRandomValue(-1000, 1000)) / 1000.0f;
+    };
+    shakeOffset = {
+        randomUnit() * shakeMagnitude * strength,
+        randomUnit() * shakeMagnitude * strength
+    };
+}
+
+/// Clamps the unshaken camera target to the active level bounds.
+void CameraManager::ClampToLevel(
+    Rectangle levelBounds,
+    float screenW,
+    float screenH
+) {
+    if (levelBounds.width <= 0.0f || levelBounds.height <= 0.0f ||
+        camera.zoom <= 0.0f) {
+        return;
+    }
+
+    float viewWidth = screenW / camera.zoom;
+    float viewHeight = screenH / camera.zoom;
+    float minX = levelBounds.x + viewWidth / 2.0f;
+    float maxX = levelBounds.x + levelBounds.width - viewWidth / 2.0f;
+    float minY = levelBounds.y + viewHeight / 2.0f;
+    float maxY = levelBounds.y + levelBounds.height - viewHeight / 2.0f;
+
+    camera.target.x = maxX < minX
+        ? levelBounds.x + levelBounds.width / 2.0f
+        : std::clamp(camera.target.x, minX, maxX);
+    camera.target.y = maxY < minY
+        ? levelBounds.y + levelBounds.height / 2.0f
+        : std::clamp(camera.target.y, minY, maxY);
 }
 
 /// Updates camera.
@@ -59,28 +126,39 @@ void CameraManager::UpdateCamera(Vector2 playerPos, Vector2 mouseWorldPos, float
     }
 
     // 5. World Constraints (Room Clamping)
-    if (levelBounds.width > 0 && levelBounds.height > 0 && camera.zoom > 0) {
-        float viewWidth = screenW / camera.zoom;
-        float viewHeight = screenH / camera.zoom;
+    ClampToLevel(levelBounds, screenW, screenH);
+    UpdateShake(deltaTime);
+}
 
-        float minX = levelBounds.x + viewWidth / 2.0f;
-        float maxX = levelBounds.x + levelBounds.width - viewWidth / 2.0f;
-        float minY = levelBounds.y + viewHeight / 2.0f;
-        float maxY = levelBounds.y + levelBounds.height - viewHeight / 2.0f;
+/// Smoothly centers and zooms the camera so the complete requested world area
+/// remains visible. This is used for boss introductions and phase ceremonies.
+void CameraManager::UpdateCinematicCamera(
+    Rectangle focusBounds,
+    float deltaTime,
+    Rectangle levelBounds
+) {
+    float screenW = static_cast<float>(GetScreenWidth());
+    float screenH = static_cast<float>(GetScreenHeight());
+    camera.offset = { screenW * 0.5f, screenH * 0.5f };
 
-        // X Clamp
-        if (maxX < minX) {
-            // Level is smaller than viewport, center it
-            camera.target.x = levelBounds.x + levelBounds.width / 2.0f;
-        } else {
-            camera.target.x = std::clamp(camera.target.x, minX, maxX);
-        }
+    constexpr float CINEMATIC_FRAME_MARGIN = 0.88f;
+    float safeWidth = std::max(1.0f, focusBounds.width);
+    float safeHeight = std::max(1.0f, focusBounds.height);
+    float desiredZoom = std::min(
+        screenW / safeWidth,
+        screenH / safeHeight
+    ) * CINEMATIC_FRAME_MARGIN;
+    desiredZoom = std::max(1.0f, desiredZoom);
 
-        // Y Clamp
-        if (maxY < minY) {
-            camera.target.y = levelBounds.y + levelBounds.height / 2.0f;
-        } else {
-            camera.target.y = std::clamp(camera.target.y, minY, maxY);
-        }
-    }
+    Vector2 desiredTarget = {
+        focusBounds.x + focusBounds.width * 0.5f,
+        focusBounds.y + focusBounds.height * 0.5f
+    };
+    float blend = std::clamp(8.0f * std::max(0.0f, deltaTime), 0.0f, 1.0f);
+    camera.zoom = Lerp(camera.zoom, desiredZoom, blend);
+    camera.target.x = Lerp(camera.target.x, desiredTarget.x, blend);
+    camera.target.y = Lerp(camera.target.y, desiredTarget.y, blend);
+
+    ClampToLevel(levelBounds, screenW, screenH);
+    UpdateShake(deltaTime);
 }

@@ -16,6 +16,7 @@
 #include <vector>
 
 class EffectManager;
+class Boss;
 class Enemy;
 class GameObject;
 class LevelManager;
@@ -159,6 +160,8 @@ public:
 
     /// Updates entities.
     void UpdateEntities(float deltaTime);
+    /// Advances only the active cinematic boss and permitted spawn animations.
+    void UpdateBossCinematic(float deltaTime);
     /// Advances projectiles, resolves their collisions, and removes inactive shots safely.
     void UpdateProjectiles(float deltaTime);
     /// Updates assists.
@@ -184,6 +187,8 @@ public:
 
     /// Returns the current enemies.
     const std::vector<Enemy*>& GetEnemies() const { return enemyView; }
+    /// Finds the non-clone boss currently controlling a gameplay cinematic.
+    Boss* FindActiveCinematicBoss() const;
     /// Returns the current interactables.
     const std::vector<GameObject*>& GetInteractables() const {
         return interactableView;

@@ -11,6 +11,7 @@
 #include "Core/Diagnostics/MemoryDiagnostics.h"
 #include "Core/Diagnostics/FramePerformanceStats.h"
 #include "Entities/Hub/HubPaladinStand.h"
+#include "Entities/EnemyEntities/Boss.h"
 #include "Entities/NPC.h"
 #include "Entities/Player/Hunk.h"
 #include "Entities/Player/Keith.h"
@@ -491,6 +492,16 @@ void GameApplication::RunLoop() {
         }
 
         if (systemInitialized && teamManager && teamManager->GetActivePaladin()) {
+            Boss* cinematicBoss = state == GameState::GAMEPLAY
+                ? gameManager.GetObjectManager().FindActiveCinematicBoss()
+                : nullptr;
+            if (cinematicBoss) {
+                CameraManager::GetInstance().UpdateCinematicCamera(
+                    cinematicBoss->GetCinematicCameraBounds(),
+                    deltaTime,
+                    levelManager.GetLevelBounds()
+                );
+            } else {
             Vector2 aimVec = teamManager->GetActivePaladin()->GetCurrentAimVector();
             Vector2 targetPos = { teamManager->GetActivePaladin()->GetPosition().x + aimVec.x * 100.0f, teamManager->GetActivePaladin()->GetPosition().y + aimVec.y * 100.0f };
             CameraManager::GetInstance().UpdateCamera(
@@ -500,6 +511,7 @@ void GameApplication::RunLoop() {
                 levelManager.GetLevelBounds(),
                 gameManager.GetHitstopTimer() > 0.0f
             );
+            }
         }
 
         adminPanel.Update(

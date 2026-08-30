@@ -1,6 +1,8 @@
 #include "Entities/EnemyEntities/Boss.h"
 
 #include "Core/Manager/AssetManager.h"
+#include "Core/Manager/AudioManager.h"
+#include "Core/Manager/CameraManager.h"
 #include "Core/Constants.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/LevelManager.h"
@@ -107,6 +109,13 @@ namespace {
     constexpr Color BOSS_PHASE_TWO_TINT = { 255, 215, 215, 255 };
     constexpr Color BOSS_PHASE_THREE_TINT = { 255, 165, 165, 255 };
     constexpr Color BOSS_CLONE_TINT = { 145, 190, 255, 255 };
+    constexpr int BOSS_CINEMATIC_STOMP_COUNT = 3;
+    constexpr float BOSS_STOMP_SHAKE_DURATION = 0.2f;
+    constexpr float BOSS_STOMP_SHAKE_BASE_MAGNITUDE = 4.0f;
+    constexpr float BOSS_STOMP_SHAKE_PHASE_INCREMENT = 0.10f;
+    constexpr float BOSS_INTRO_CAMERA_WIDTH = 120.0f;
+    constexpr float BOSS_INTRO_CAMERA_HEIGHT = 120.0f;
+    constexpr float BOSS_PHASE_CAMERA_HALF_EXTENT = 112.0f;
 
     /// Combines two color tints by multiplying their normalized channels.
     Color MultiplyColor(Color first, Color second) {
@@ -287,6 +296,14 @@ Boss::~Boss() {
 void Boss::Update(float deltaTime) {
     Vector2 updateStartPosition = position;
     if (UpdateSpawnSequence(deltaTime)) {
+        UpdateMovementAnimationFlag(updateStartPosition);
+        return;
+    }
+    if (cinematicStage == BossCinematicStage::Introduction) {
+        // The spawn sequence is now fully complete. End on a clean idle frame;
+        // normal simulation and player control resume on the following frame.
+        cinematicStage = BossCinematicStage::None;
+        SetCurrentVelocity({ 0.0f, 0.0f });
         UpdateMovementAnimationFlag(updateStartPosition);
         return;
     }
@@ -519,6 +536,7 @@ void Boss::ConfigureAsClone(int cloneHealth, BossPhase clonePhase) {
     phaseThreeTransitionTriggered = true;
     phaseOneClonePending = false;
     phaseTwoClonePending = false;
+    cinematicStage = BossCinematicStage::None;
     SetMaxHealth(std::max(1, cloneHealth));
     SetHealth(GetMaxHealth());
 }
@@ -540,17 +558,16 @@ void Boss::EvaluatePhaseTransitions() {
         enteredNewPhase = true;
     }
 
-    if (enteredNewPhase) RestartOrEnterSpellingState();
+    if (enteredNewPhase) StartPhaseCinematic();
 }
 
-/// Restarts the current spell cycle or enters the spell state for a forced phase transition.
-void Boss::RestartOrEnterSpellingState() {
-    if (IsSpelling()) {
-        spellingState->Exit(this);
-        spellingState->Enter(this);
-        return;
-    }
-    ChangeState(GetSpellingState());
+/// Stops normal boss behavior and begins the scripted three-stomp phase ceremony.
+void Boss::StartPhaseCinematic() {
+    cinematicStage = BossCinematicStage::PhaseStomps;
+    EndPathFinding();
+    SetCurrentVelocity({ 0.0f, 0.0f });
+    statusComponent.Clear();
+    ChangeState(GetStompingState());
 }
 
 /// Returns the current body tint.
@@ -666,6 +683,14 @@ int Boss::GetStompsPerState() const {
         : BOSS_HARDER_PHASE_STOMPS;
 }
 
+/// Returns three non-damaging stomps during a phase ceremony, otherwise the
+/// phase's normal offensive stomp count.
+int Boss::GetCurrentStompCount() const {
+    return cinematicStage == BossCinematicStage::PhaseStomps
+        ? BOSS_CINEMATIC_STOMP_COUNT
+        : GetStompsPerState();
+}
+
 /// Returns the current punches per state.
 int Boss::GetPunchesPerState() const {
     switch (GetPhase()) {
@@ -775,6 +800,60 @@ void Boss::SpawnStompSmoke() {
             BOSS_STOMP_SMOKE_FRAME_DURATION,
         BOSS_STOMP_SMOKE_ORIGIN
     );
+}
+
+/// Plays one stomp impact. Cinematic stomps intentionally retain their smoke,
+/// sound, and shake while suppressing the radial projectile attack.
+void Boss::HandleStompImpact() {
+    AudioManager::GetInstance().PlaySoundEffect("boss_stomping");
+    SpawnStompSmoke();
+
+    int phaseIndex = static_cast<int>(GetPhase());
+    float shakeMagnitude = BOSS_STOMP_SHAKE_BASE_MAGNITUDE *
+        (1.0f + BOSS_STOMP_SHAKE_PHASE_INCREMENT * phaseIndex);
+    CameraManager::GetInstance().StartShake(
+        BOSS_STOMP_SHAKE_DURATION,
+        shakeMagnitude
+    );
+
+    if (cinematicStage != BossCinematicStage::PhaseStomps) {
+        FireStompProjectiles();
+    }
+}
+
+/// Continues a phase ceremony into its forced spell; normal stomps return to idle.
+void Boss::CompleteStompingState() {
+    if (cinematicStage == BossCinematicStage::PhaseStomps) {
+        cinematicStage = BossCinematicStage::PhaseSpell;
+        ChangeState(GetSpellingState());
+        return;
+    }
+    ChangeState(GetIdlingState());
+}
+
+/// Releases gameplay only after the complete forced spell cycle has finished.
+void Boss::CompleteSpellingState() {
+    if (cinematicStage == BossCinematicStage::PhaseSpell) {
+        cinematicStage = BossCinematicStage::None;
+    }
+    ChangeState(GetIdlingState());
+}
+
+/// Frames the boss tightly on introduction and widens to include the complete
+/// maximum summon radius during a phase transition.
+Rectangle Boss::GetCinematicCameraBounds() const {
+    float width = cinematicStage == BossCinematicStage::Introduction
+        ? BOSS_INTRO_CAMERA_WIDTH
+        : BOSS_PHASE_CAMERA_HALF_EXTENT * 2.0f;
+    float height = cinematicStage == BossCinematicStage::Introduction
+        ? BOSS_INTRO_CAMERA_HEIGHT
+        : BOSS_PHASE_CAMERA_HALF_EXTENT * 2.0f;
+    return {
+        position.x - width * 0.5f,
+        position.y - height * 0.5f,
+        width,
+        height
+    };
 }
 
 /// Emits the circular projectile patterns associated with a completed boss stomp.

@@ -9,6 +9,7 @@
 #include "Core/Manager/TeamManager.h"
 #include "Core/Level/VisibleWorld.h"
 #include "Entities/Enemy.h"
+#include "Entities/EnemyEntities/Boss.h"
 #include "Entities/GameObject.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Projectile.h"
@@ -457,6 +458,45 @@ void ObjectManager::UpdateEntities(float deltaTime) {
 
     ProcessPendingAdditions();
     RebuildEnemySpatialIndex();
+}
+
+/// Advances the only actor allowed to simulate during a boss cinematic. During
+/// the forced spell section, other enemies may finish their cosmetic spawn
+/// sequence but cannot enter AI states, move, attack, or pathfind.
+void ObjectManager::UpdateBossCinematic(float deltaTime) {
+    Boss* cinematicBoss = FindActiveCinematicBoss();
+    if (!cinematicBoss) return;
+
+    cinematicBoss->Update(deltaTime);
+    bool allowSpawnAnimations =
+        cinematicBoss->AllowsCinematicSpawnAnimations();
+    if (allowSpawnAnimations) {
+        for (const std::unique_ptr<Enemy>& enemy : enemies) {
+            if (!enemy || enemy.get() == cinematicBoss ||
+                !enemy->IsSpawnSequenceActive()) {
+                continue;
+            }
+            enemy->UpdateSpawnSequence(deltaTime);
+        }
+    }
+
+    // Boss spells queue summons while enemies are being iterated. Publish them
+    // only after the selective update finishes, preserving pointer/view safety.
+    ProcessPendingAdditions();
+    RebuildEnemySpatialIndex();
+}
+
+/// Returns the primary cinematic boss. Clones explicitly opt out so they never
+/// take over player input or camera ownership from the real encounter boss.
+Boss* ObjectManager::FindActiveCinematicBoss() const {
+    for (Enemy* enemy : enemyView) {
+        Boss* boss = dynamic_cast<Boss*>(enemy);
+        if (boss && !boss->IsClone() && boss->IsCinematicActive() &&
+            !boss->IsDead()) {
+            return boss;
+        }
+    }
+    return nullptr;
 }
 
 /// Adds projectile.

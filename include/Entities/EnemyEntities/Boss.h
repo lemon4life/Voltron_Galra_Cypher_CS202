@@ -8,6 +8,14 @@ enum class BossPhase {
     Phase3
 };
 
+/// Identifies which scripted boss sequence currently owns gameplay and camera control.
+enum class BossCinematicStage {
+    None,
+    Introduction,
+    PhaseStomps,
+    PhaseSpell
+};
+
 class Boss : public Enemy {
 private:
     std::unique_ptr<BossSpellingState> spellingState;
@@ -30,13 +38,14 @@ private:
     bool phaseThreeTransitionTriggered = false;
     bool phaseOneClonePending = false;
     bool phaseTwoClonePending = false;
+    BossCinematicStage cinematicStage = BossCinematicStage::Introduction;
 
     /// Returns the current stomp foot world position.
     Vector2 GetStompFootWorldPosition() const;
     /// Detects boss health thresholds and starts each one-time phase transition.
     void EvaluatePhaseTransitions();
-    /// Restarts the current spell cycle or enters the spell state for a forced phase transition.
-    void RestartOrEnterSpellingState();
+    /// Starts the non-interactive stomp-and-spell ceremony for a new phase.
+    void StartPhaseCinematic();
     /// Attempts to summon boss clone.
     bool TrySummonBossClone(int cloneHealth, BossPhase clonePhase);
     /// Returns the current body tint.
@@ -100,6 +109,8 @@ public:
     float GetIdleMovementSpeedScale() const;
     /// Returns the current stomps per state.
     int GetStompsPerState() const;
+    /// Returns the stomp count selected for the currently active state cycle.
+    int GetCurrentStompCount() const;
     /// Returns the current punches per state.
     int GetPunchesPerState() const;
     /// Returns the current spell summon interval.
@@ -110,6 +121,12 @@ public:
     bool TrySummonRandomEnemy(int& demonsSummonedThisSpell);
     /// Spawns stomp smoke.
     void SpawnStompSmoke();
+    /// Applies audiovisual impact feedback and optional combat projectiles.
+    void HandleStompImpact();
+    /// Selects the state following a completed stomp sequence.
+    void CompleteStompingState();
+    /// Selects the state following a completed spell sequence.
+    void CompleteSpellingState();
     /// Emits the circular projectile patterns associated with a completed boss stomp.
     void FireStompProjectiles();
     /// Creates one homing fire-punch projectile from the animated hand's muzzle position.
@@ -119,4 +136,15 @@ public:
     );
     /// Resets animation cycle.
     void ResetAnimationCycle();
+
+    /// Reports whether this boss currently owns a gameplay cinematic.
+    bool IsCinematicActive() const {
+        return cinematicStage != BossCinematicStage::None;
+    }
+    /// Reports whether summoned enemies may advance their spawn-only animation.
+    bool AllowsCinematicSpawnAnimations() const {
+        return cinematicStage == BossCinematicStage::PhaseSpell;
+    }
+    /// Returns the world area which the cinematic camera must keep visible.
+    Rectangle GetCinematicCameraBounds() const;
 };

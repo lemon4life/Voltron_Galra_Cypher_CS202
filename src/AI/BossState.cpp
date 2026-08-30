@@ -234,7 +234,7 @@ void BossSpellingState::Update(Boss* enemy, float deltaTime) {
     }
 
     if (elapsedTime >= spellDuration) {
-        enemy->ChangeState(enemy->GetIdlingState());
+        enemy->CompleteSpellingState();
     }
 }
 
@@ -309,7 +309,7 @@ void BossStompingState::Enter(Boss* enemy) {
     frameTimer = 0.0f;
     frameIndex = 0;
     completedStomps = 0;
-    stompsForState = enemy->GetStompsPerState();
+    stompsForState = enemy->GetCurrentStompCount();
     enemy->EndPathFinding();
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
     enemy->ResetAnimationCycle();
@@ -324,16 +324,14 @@ void BossStompingState::Update(Boss* enemy, float deltaTime) {
         ++frameIndex;
 
         if (frameIndex == BOSS_STOMP_FRAME_COUNT - 1) {
-            AudioManager::GetInstance().PlaySoundEffect("boss_stomping");
-            enemy->SpawnStompSmoke();
-            enemy->FireStompProjectiles();
+            enemy->HandleStompImpact();
         }
 
         if (frameIndex >= BOSS_STOMP_FRAME_COUNT) {
             frameIndex = 0;
             ++completedStomps;
             if (completedStomps >= stompsForState) {
-                enemy->ChangeState(enemy->GetIdlingState());
+                enemy->CompleteStompingState();
                 return;
             }
         }
