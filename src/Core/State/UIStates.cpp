@@ -61,8 +61,10 @@ void PauseState::Update(float deltaTime) {
             GameManager::GetInstance().SetState(GameState::SETTINGS);
             break;
         case PauseMenuAction::BackToMainMenu:
-        case PauseMenuAction::Quit:
             app->SuspendSessionToMainMenu();
+            break;
+        case PauseMenuAction::Quit:
+            app->quitRequested = true;
             break;
         case PauseMenuAction::None:
             break;
@@ -86,14 +88,15 @@ void PauseState::Draw() {
 
 // --- SettingsState ---
 SettingsState::SettingsState(SettingsMenu* menu, GameApplication* app, IGameState* backgroundState)
-    : menu(menu), app(app), backgroundState(backgroundState) {}
+    : menu(menu), app(app), backgroundState(backgroundState), closeRequested(false) {}
 
 void SettingsState::Update(float deltaTime) {
     float viewportScale = std::min((float)GetScreenWidth() / Constants::GAME_WIDTH, (float)GetScreenHeight() / Constants::GAME_HEIGHT);
     Camera2D uiCamera = UIUtils::CreateCenteredUICamera(viewportScale);
     Vector2 modalMousePosition = UIUtils::GetVirtualMousePosition(uiCamera);
 
-    if (menu->Update(modalMousePosition)) {
+    if (menu->Update(modalMousePosition) || InputManager::IsPausePressed()) {
+        closeRequested = true;
         GameManager::GetInstance().SetState(app->settingsReturnState);
     }
 }
@@ -101,6 +104,12 @@ void SettingsState::Update(float deltaTime) {
 void SettingsState::Draw() {
     if (backgroundState) {
         backgroundState->Draw();
+    }
+
+    // The state object is replaced at the start of the next frame. Do not draw
+    // the settings panel again after Back/Escape has already requested closing.
+    if (closeRequested) {
+        return;
     }
 
     float viewportScale = std::min((float)GetScreenWidth() / Constants::GAME_WIDTH, (float)GetScreenHeight() / Constants::GAME_HEIGHT);

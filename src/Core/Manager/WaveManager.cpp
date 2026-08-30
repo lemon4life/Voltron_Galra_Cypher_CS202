@@ -201,11 +201,11 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
             }
         }
 
-        // If the locked room is a CHEST, EVENT, EXIT, SPAWN, or small utility room, do NOT spawn combat waves
-        if (!lockedNode || lockedNode->type == RoomType::CHEST ||
-            lockedNode->type == RoomType::EVENT || lockedNode->type == RoomType::EXIT ||
-            lockedNode->type == RoomType::SPAWN ||
-            (lockedNode->roomSize == 15 && lockedNode->type != RoomType::BOSS)) {
+        // Only explicit battle and boss rooms may start combat. Room size is
+        // not a room-type signal because normal battles can now be 15x15.
+        if (!lockedNode ||
+            (lockedNode->type != RoomType::BATTLE &&
+             lockedNode->type != RoomType::BOSS)) {
             return;
         }
 

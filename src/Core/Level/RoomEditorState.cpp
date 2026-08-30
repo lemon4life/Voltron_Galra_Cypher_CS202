@@ -1185,7 +1185,7 @@ void RoomEditorState::DrawGuidePanel() {
         GetScreenWidth() - 40.0f * uiScale
     );
     float panelHeight = std::min(
-        400.0f * uiScale,
+        500.0f * uiScale,
         GetScreenHeight() - 40.0f * uiScale
     );
     Rectangle panel = {
@@ -1240,6 +1240,35 @@ void RoomEditorState::DrawGuidePanel() {
     contentY += lineStep;
     DrawEditorText(
         "- Scroll Palette: Wheel over palette",
+        { left, contentY },
+        14.0f,
+        WHITE
+    );
+
+    contentY += lineStep;
+    DrawEditorText(
+        "TEMPLATE USAGE",
+        { left, contentY },
+        15.0f,
+        ORANGE
+    );
+    contentY += 28.0f * uiScale;
+    DrawEditorText(
+        "- SMALL: Random utility rooms",
+        { left, contentY },
+        14.0f,
+        WHITE
+    );
+    contentY += 26.0f * uiScale;
+    DrawEditorText(
+        "- MEDIUM: Random enemy battle rooms",
+        { left, contentY },
+        14.0f,
+        WHITE
+    );
+    contentY += 26.0f * uiScale;
+    DrawEditorText(
+        "- LARGE: Random Boss rooms",
         { left, contentY },
         14.0f,
         WHITE

@@ -33,9 +33,14 @@ void LevelMap::Generate(
     auto setRoomType = [](const std::shared_ptr<RoomNode>& node,
                           RoomType type) {
         node->type = type;
-        node->roomSize = type == RoomType::BOSS
-            ? 25
-            : (type == RoomType::BATTLE ? 20 : 15);
+        if (type == RoomType::BOSS) {
+            node->roomSize = 25;
+        } else if (type == RoomType::BATTLE) {
+            node->roomSize = 20;
+        } else {
+            // Non-combat utility rooms always use Small templates.
+            node->roomSize = 15;
+        }
         bool utility = type == RoomType::SPAWN ||
             type == RoomType::CHEST || type == RoomType::EVENT ||
             type == RoomType::EXIT;
@@ -86,6 +91,7 @@ void LevelMap::Generate(
 
         auto connectRoom = [&](const OpenSlot& slot, RoomType type) {
             auto node = std::make_shared<RoomNode>(slot.x, slot.y, type);
+            setRoomType(node, type);
             grid[slot.y][slot.x] = node;
             generatedNodes.push_back(node);
             if (slot.dx == 1) {
@@ -272,8 +278,8 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
         
         int offset = (Constants::MAX_ROOM_TILE_SIZE - currentRoomSize) / 2;
         
-        // For SPAWN room (which doesn't use CSV), carve a default walled room.
-        // For all other rooms the CSV will overwrite this with its own content.
+        // Start every room as an empty floor with a solid perimeter. The
+        // selected category template overwrites its interior below.
         for (int y = 0; y < currentRoomSize; ++y) {
             for (int x = 0; x < currentRoomSize; ++x) {
                 int px = startX + offset + x;
@@ -288,10 +294,9 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
             }
         }
         
-        // Spawn and Boss rooms use the fixed empty-room layout created above.
-        // Other room types may load randomized CSV layouts.
-        if (node->type != RoomType::SPAWN &&
-            node->type != RoomType::BOSS) {
+        // Template category is determined by gameplay purpose:
+        // Small = utility, Medium = enemy battle, Large = boss.
+        {
             std::string sizePrefix = "Small";
             if (node->roomSize == 25) sizePrefix = "Large";
             else if (node->roomSize == 20) sizePrefix = "Medium";
@@ -347,31 +352,6 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
                             }
                         }
                         
-                        // If it is an EXIT room, ensure the central area under the huge transfer gate is completely clear of walls/props
-                        if (node->type == RoomType::EXIT) {
-                            for (int y = currentRoomSize / 2 - 3; y <= currentRoomSize / 2 + 3; ++y) {
-                                for (int x = currentRoomSize / 2 - 3; x <= currentRoomSize / 2 + 3; ++x) {
-                                    if (x >= 0 && x < currentRoomSize && y >= 0 && y < currentRoomSize) {
-                                        int px = startX + offset + x;
-                                        int py = startY + offset + y;
-                                        baked->layer0_tiles[py][px] = 0; // Force floor
-                                        baked->layer2_props[py][px] = 0; // Force no props
-                                    }
-                                }
-                            }
-                        }
-
-                        // If it is a CHEST or EVENT room, clear layer2_props so only the animated entity is placed (Chest or EnhanceMachine)
-                        if (node->type == RoomType::CHEST || node->type == RoomType::EVENT) {
-                            for (int y = 0; y < currentRoomSize; ++y) {
-                                for (int x = 0; x < currentRoomSize; ++x) {
-                                    int px = startX + offset + x;
-                                    int py = startY + offset + y;
-                                    baked->layer2_props[py][px] = 0;
-                                }
-                            }
-                        }
-                        
                         // Dynamically pierce walls for corridors
                         // (extracted to lambda, called below for all room types)
                         
@@ -392,36 +372,31 @@ std::shared_ptr<RoomTemplate> LevelMap::BakeLevel() {
             }
         }
 
-        if (node->type == RoomType::BOSS) {
-            // Keep the 25x25 Boss arena completely open inside its perimeter.
-            // Four 2x2 destructible-box groups sit halfway between the arena
-            // center and its corners.
-            for (int y = 1; y < currentRoomSize - 1; ++y) {
-                for (int x = 1; x < currentRoomSize - 1; ++x) {
+        // Keep the automatic spawn/entity position usable even when a random
+        // template placed a wall or prop in the center of the room.
+        int clearRadius = 0;
+        if (node->type == RoomType::EXIT) {
+            clearRadius = 3;
+        } else if (node->type == RoomType::SPAWN ||
+                   node->type == RoomType::BOSS) {
+            clearRadius = 2;
+        } else if (node->type == RoomType::CHEST ||
+                   node->type == RoomType::EVENT) {
+            clearRadius = 1;
+        }
+        if (clearRadius > 0) {
+            int localCenter = currentRoomSize / 2;
+            for (int y = localCenter - clearRadius;
+                 y <= localCenter + clearRadius;
+                 ++y) {
+                for (int x = localCenter - clearRadius;
+                     x <= localCenter + clearRadius;
+                     ++x) {
                     int px = startX + offset + x;
                     int py = startY + offset + y;
                     baked->layer0_tiles[py][px] = 0;
                     baked->layer1_objects[py][px] = 0;
                     baked->layer2_props[py][px] = 0;
-                }
-            }
-
-            int nearSide = currentRoomSize / 4 - 1;
-            int farSide = currentRoomSize - currentRoomSize / 4 - 2;
-            constexpr int clusterSize = 2;
-            const int clusterStarts[4][2] = {
-                { nearSide, nearSide },
-                { farSide, nearSide },
-                { nearSide, farSide },
-                { farSide, farSide }
-            };
-            for (const auto& clusterStart : clusterStarts) {
-                for (int dy = 0; dy < clusterSize; ++dy) {
-                    for (int dx = 0; dx < clusterSize; ++dx) {
-                        int px = startX + offset + clusterStart[0] + dx;
-                        int py = startY + offset + clusterStart[1] + dy;
-                        baked->layer2_props[py][px] = 5;
-                    }
                 }
             }
         }

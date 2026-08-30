@@ -36,6 +36,7 @@ private:
     SettingsMenu* menu;
     GameApplication* app;
     IGameState* backgroundState;
+    bool closeRequested;
 };
 
 class GameOverState : public IGameState {
