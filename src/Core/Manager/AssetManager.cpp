@@ -125,6 +125,8 @@ void AssetManager::QueueCommonAssets() {
     add("minimap_boss", "assets/UI/minimap/boss.png", true);
     add("minimap_chest", "assets/UI/minimap/chest.png", true);
     add("doorGate", "assets/tileset/Galra_Door_8.png", true);
+    add("author_hna", "assets/sprites/AboutUs/HNA.PNG", true);
+    add("author_tpk", "assets/sprites/AboutUs/TPK.PNG", true);
 }
 
 /// Unloads all.

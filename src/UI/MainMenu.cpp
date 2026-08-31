@@ -478,6 +478,38 @@ void MainMenu::Update(float deltaTime) {
     } else if (currentState == MenuState::ACTIVE) {
         uiAlpha = 1.0f;
 
+        if (openModal == MainMenuModal::About) {
+            // HNA Blinking
+            hnaBlinkTimer += deltaTime;
+            if (hnaBlinkTimer < hnaNextBlinkInterval) {
+                hnaFrame = 0;
+            } else {
+                int animStep = static_cast<int>((hnaBlinkTimer - hnaNextBlinkInterval) / BLINK_FRAME_DURATION);
+                if (animStep < 4) {
+                    hnaFrame = animStep;
+                } else {
+                    hnaBlinkTimer = 0.0f;
+                    hnaFrame = 0;
+                    hnaNextBlinkInterval = 3.0f + static_cast<float>(rand() % 200) / 100.0f;
+                }
+            }
+
+            // TPK Blinking
+            tpkBlinkTimer += deltaTime;
+            if (tpkBlinkTimer < tpkNextBlinkInterval) {
+                tpkFrame = 0;
+            } else {
+                int animStep = static_cast<int>((tpkBlinkTimer - tpkNextBlinkInterval) / BLINK_FRAME_DURATION);
+                if (animStep < 4) {
+                    tpkFrame = animStep;
+                } else {
+                    tpkBlinkTimer = 0.0f;
+                    tpkFrame = 0;
+                    tpkNextBlinkInterval = 4.5f + static_cast<float>(rand() % 250) / 100.0f;
+                }
+            }
+        }
+
         if (openModal != MainMenuModal::None) {
             UpdateInfoModal();
             return;
@@ -585,6 +617,14 @@ void MainMenu::OpenInfoModal(MainMenuModal modal) {
     roomListOpen = false;
     openModal = modal;
     instructionsScroll = 0.0f;
+    if (modal == MainMenuModal::About) {
+        hnaBlinkTimer = 0.0f;
+        tpkBlinkTimer = 0.0f;
+        hnaFrame = 0;
+        tpkFrame = 0;
+        hnaNextBlinkInterval = 3.5f;
+        tpkNextBlinkInterval = 5.0f;
+    }
 }
 
 /// Updates info modal.
@@ -937,66 +977,102 @@ void MainMenu::DrawInfoModal(int screenWidth, int screenHeight) {
 
     if (openModal == MainMenuModal::About) {
         float centerX = layout.content.x + layout.content.width * 0.5f;
-        float y = layout.content.y + 46.0f * layout.scale;
+        float y = layout.content.y + 24.0f * layout.scale;
         DrawInfoText(
             "PixeloidBold",
             "VOLTRON MISSION - GALRA CYPHER",
             { centerX, y },
-            27.0f * layout.scale,
+            25.0f * layout.scale,
             GOLD,
             true
         );
-        y += 64.0f * layout.scale;
+        y += 40.0f * layout.scale;
         DrawInfoText(
             "PixeloidSans",
             "Developed by",
             { centerX, y },
-            21.0f * layout.scale,
+            18.0f * layout.scale,
             LIGHTGRAY,
             true
         );
-        y += 42.0f * layout.scale;
+        y += 24.0f * layout.scale;
+
+        // Two-Column Author Layout (2.5x Scale)
+        float leftColCenterX = centerX - 180.0f * layout.scale;
+        float rightColCenterX = centerX + 180.0f * layout.scale;
+        float portraitSize = 90.0f * 2.5f * layout.scale;
+        float spriteY = y;
+        float nameY = spriteY + portraitSize + 14.0f * layout.scale;
+
+        AssetManager& assets = AssetManager::GetInstance();
+        Texture2D hnaTex = assets.GetTexture("author_hna");
+        Texture2D tpkTex = assets.GetTexture("author_tpk");
+
+        // Column 1 (Left): Tran Phuc Khanh
+        if (tpkTex.id != 0) {
+            Rectangle srcTpk = { static_cast<float>(tpkFrame) * 90.0f, 0.0f, 90.0f, 90.0f };
+            Rectangle destTpk = {
+                leftColCenterX - portraitSize * 0.5f,
+                spriteY,
+                portraitSize,
+                portraitSize
+            };
+            DrawTexturePro(tpkTex, srcTpk, destTpk, { 0.0f, 0.0f }, 0.0f, WHITE);
+        }
         DrawInfoText(
             "PixeloidBold",
             "Tran Phuc Khanh",
-            { centerX, y },
-            25.0f * layout.scale,
+            { leftColCenterX, nameY },
+            19.0f * layout.scale,
             RAYWHITE,
             true
         );
-        y += 38.0f * layout.scale;
+
+        // Column 2 (Right): Hoang Nguyen Anh
+        if (hnaTex.id != 0) {
+            Rectangle srcHna = { static_cast<float>(hnaFrame) * 90.0f, 0.0f, 90.0f, 90.0f };
+            Rectangle destHna = {
+                rightColCenterX - portraitSize * 0.5f,
+                spriteY,
+                portraitSize,
+                portraitSize
+            };
+            DrawTexturePro(hnaTex, srcHna, destHna, { 0.0f, 0.0f }, 0.0f, WHITE);
+        }
         DrawInfoText(
             "PixeloidBold",
             "Hoang Nguyen Anh",
-            { centerX, y },
-            25.0f * layout.scale,
+            { rightColCenterX, nameY },
+            19.0f * layout.scale,
             RAYWHITE,
             true
         );
-        y += 62.0f * layout.scale;
+
+        // Academic Course Metadata
+        y = nameY + 30.0f * layout.scale;
         DrawInfoText(
             "PixeloidSans",
             "A course project for CS202",
             { centerX, y },
-            21.0f * layout.scale,
+            17.0f * layout.scale,
             LIGHTGRAY,
             true
         );
-        y += 34.0f * layout.scale;
+        y += 24.0f * layout.scale;
         DrawInfoText(
             "PixeloidSans",
             "Advanced Program in Computer Science (APCS)",
             { centerX, y },
-            19.0f * layout.scale,
+            16.0f * layout.scale,
             LIGHTGRAY,
             true
         );
-        y += 34.0f * layout.scale;
+        y += 22.0f * layout.scale;
         DrawInfoText(
             "PixeloidSans",
             "HCMUS - Academic Year 2025-2026",
             { centerX, y },
-            19.0f * layout.scale,
+            16.0f * layout.scale,
             LIGHTGRAY,
             true
         );

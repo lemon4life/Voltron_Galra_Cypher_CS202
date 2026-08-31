@@ -54,6 +54,15 @@ private:
     Texture2D logoTex = {};
     std::vector<MenuButton> buttons;
 
+    // About modal author portraits animation
+    float hnaBlinkTimer = 0.0f;
+    float tpkBlinkTimer = 0.0f;
+    int hnaFrame = 0;
+    int tpkFrame = 0;
+    float hnaNextBlinkInterval = 3.5f;
+    float tpkNextBlinkInterval = 5.0f;
+    static constexpr float BLINK_FRAME_DURATION = 0.08f;
+
     /// Rebuilds buttons.
     void RebuildButtons();
     /// Loads current background.
