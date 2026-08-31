@@ -490,7 +490,7 @@ void MainMenu::Update(float deltaTime) {
                 } else {
                     hnaBlinkTimer = 0.0f;
                     hnaFrame = 0;
-                    hnaNextBlinkInterval = 3.0f + static_cast<float>(rand() % 200) / 100.0f;
+                    hnaNextBlinkInterval = 1.5f + static_cast<float>(rand() % 60) / 100.0f;
                 }
             }
 
@@ -505,7 +505,7 @@ void MainMenu::Update(float deltaTime) {
                 } else {
                     tpkBlinkTimer = 0.0f;
                     tpkFrame = 0;
-                    tpkNextBlinkInterval = 4.5f + static_cast<float>(rand() % 250) / 100.0f;
+                    tpkNextBlinkInterval = 2.5f + static_cast<float>(rand() % 80) / 100.0f;
                 }
             }
         }
@@ -622,8 +622,8 @@ void MainMenu::OpenInfoModal(MainMenuModal modal) {
         tpkBlinkTimer = 0.0f;
         hnaFrame = 0;
         tpkFrame = 0;
-        hnaNextBlinkInterval = 3.5f;
-        tpkNextBlinkInterval = 5.0f;
+        hnaNextBlinkInterval = 1.5f;
+        tpkNextBlinkInterval = 2.5f;
     }
 }
 
@@ -844,19 +844,19 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
 
     // Calculate Logo dynamic position (Lerp from top-center to panel layout)
     
-    // Target Logo State
-    float logoTargetWidth = panelWidth * 0.8f;
+    // Target Logo State (Bigger logo & closer to options)
+    float logoTargetWidth = panelWidth * 0.95f;
     float logoTargetScale = logoTargetWidth / logoTex.width;
     float logoTargetHeight = logoTex.height * logoTargetScale;
     float logoTargetX = panelX + (panelWidth - logoTargetWidth) / 2.0f;
-    float logoTargetY = screenHeight * 0.15f;
+    float logoTargetY = screenHeight * 0.07f;
     
     // Init Logo State (Loading Phase)
-    float logoInitWidth = screenWidth * 0.35f;
+    float logoInitWidth = screenWidth * 0.40f;
     float logoInitScale = logoInitWidth / logoTex.width;
     float logoInitHeight = logoTex.height * logoInitScale;
     float logoInitX = (screenWidth - logoInitWidth) / 2.0f;
-    float logoInitY = screenHeight * 0.3f;
+    float logoInitY = screenHeight * 0.28f;
     
     float currentLogoX = Lerp(logoInitX, logoTargetX, uiAlpha);
     float currentLogoY = Lerp(logoInitY, logoTargetY, uiAlpha);
@@ -869,8 +869,8 @@ void MainMenu::Draw(int screenWidth, int screenHeight) {
 
         float scaleFactor = (float)screenHeight / 720.0f;
 
-        // Start buttons perfectly spaced below the sliding logo
-        float startY = currentLogoY + currentLogoHeight + (40.0f * scaleFactor);
+        // Start buttons closer below the sliding logo
+        float startY = currentLogoY + currentLogoHeight + (12.0f * scaleFactor);
         float baseMenuFontSize =
             static_cast<float>(UIUtils::FontSize::HEADER) * scaleFactor;
         float baseButtonHeight = baseMenuFontSize + 20.0f * scaleFactor;

@@ -59,8 +59,8 @@ private:
     float tpkBlinkTimer = 0.0f;
     int hnaFrame = 0;
     int tpkFrame = 0;
-    float hnaNextBlinkInterval = 3.5f;
-    float tpkNextBlinkInterval = 5.0f;
+    float hnaNextBlinkInterval = 1.5f;
+    float tpkNextBlinkInterval = 2.5f;
     static constexpr float BLINK_FRAME_DURATION = 0.08f;
 
     /// Rebuilds buttons.
