@@ -15,12 +15,20 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
         0.4f,
         {
             "Blue Bayard",
-            "A fast energy rifle built for accurate ranged pressure.",
+            "Fires rapid, high-velocity laser rifle bolts with steady recoil kickback and pinpoint forward accuracy.",
             "Lance_Weapon",
             1.8f,
             1.8f,
             15.0f,
             true
+        },
+        {
+            "Dual Wield",
+            "Equips dual Blue Bayards for 5s, doubling fire rate to unleash synchronized double volleys."
+        },
+        {
+            "Glacier Pierce",
+            "Detonates cryogenic explosions under all enemies on the battlefield, freezing every hostile solid for 5s."
         }
     },
     {
@@ -34,12 +42,20 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
         0.4f,
         {
             "Red Bayard",
-            "A melee blade with alternating light and heavy combo strikes.",
+            "Slices enemies in a sweeping 2-hit melee combo with bonus critical strike damage on the second swing.",
             "Keith_Weapon",
             2.5f,
             4.0f,
             0.0f,
             false
+        },
+        {
+            "Fire Circle",
+            "Ignites a rotating fiery aura for 5s that continuously burns nearby enemies and generates bonus EX energy."
+        },
+        {
+            "Excalibur",
+            "Charges and unleashes a massive flaming energy wave across 500px, leaving a lingering fire trail that incinerates foes."
         }
     },
     {
@@ -53,12 +69,20 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
         1.0f,
         {
             "Yellow Bayard",
-            "A heavy cannon whose beam pierces targets with strong recoil.",
+            "Fires a continuous piercing laser beam that tears through multiple lined-up targets with heavy recoil.",
             "Hunk_Weapon",
             2.5f,
             2.5f,
             30.0f,
             true
+        },
+        {
+            "Earthshatter",
+            "Slams the ground to emit a seismic shockwave, knocking back surrounding enemies and stunning them for 2s."
+        },
+        {
+            "Aegis Shield",
+            "Deploys an impenetrable rotating Aegis barrier around the team, granting complete invulnerability for 5s."
         }
     },
     {
@@ -69,15 +93,23 @@ const std::array<PaladinDefinition, 4> PALADINS = {{
         1.5f,    // hpScalar
         1.15f,   // speedScalar
         100.f,   // maxExEnergy
-        0.55f,   // attackCooldownScalar (buffed for faster attack cycles)
+        0.55f,   // attackCooldownScalar
         {
             "Green Bayard",
-            "A grappling katar whose tethered blade pierces targets before returning with zero recoil.",
+            "Launches a grappling katar forward on an electric cable that pierces targets and snaps back to hand with zero recoil.",
             "Paladin_Pidge_Weapon",
             1.6f,    // minDamageScalar
             1.8f,    // maxDamageScalar
             0.0f,    // recoil
             false    // recoilApplicable
+        },
+        {
+            "Venom Zone",
+            "Deploys a caustic chemical field for 7s that inflicts lingering poison damage (DoT) and severely slows enemy movement."
+        },
+        {
+            "Rover Override",
+            "Deploys Rover, an autonomous flying combat drone companion that follows the team and provides heavy fire support."
         }
     }
 }};

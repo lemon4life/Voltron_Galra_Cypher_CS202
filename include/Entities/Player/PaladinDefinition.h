@@ -10,6 +10,11 @@ enum class PaladinId {
     Pidge
 };
 
+struct AbilityInfo {
+    std::string name;
+    std::string description;
+};
+
 struct WeaponDefinition {
     std::string name;
     std::string description;
@@ -21,7 +26,7 @@ struct WeaponDefinition {
 };
 
 // Design Pattern - Data-Driven Catalog:
-// PaladinDefinition stores identity, stats, descriptions, and asset keys as data.
+// PaladinDefinition stores identity, stats, descriptions, ability info, and asset keys as data.
 // PaladinCatalog is the central read-only lookup used by gameplay and UI, avoiding
 // repeated character metadata and selection switches across concrete Paladins.
 struct PaladinDefinition {
@@ -34,6 +39,8 @@ struct PaladinDefinition {
     float maxExEnergy;
     float attackCooldownScalar;
     WeaponDefinition weapon;
+    AbilityInfo skill;
+    AbilityInfo ultimate;
 };
 
 class PaladinCatalog {
