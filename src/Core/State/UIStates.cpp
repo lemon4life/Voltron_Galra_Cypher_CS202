@@ -150,7 +150,7 @@ void GameOverState::Draw() {
 
     BeginMode2D(uiCamera);
     UIManager::DrawModalOverlay();
-    UIUtils::DrawCenteredText("PixeloidSansBold", "GAME OVER", { Constants::GAME_WIDTH * 0.5f, Constants::GAME_HEIGHT * 0.4f }, UIUtils::FontSize::TITLE, RED);
+    UIUtils::DrawCenteredText("PixeloidBold", "GAME OVER", { Constants::GAME_WIDTH * 0.5f, Constants::GAME_HEIGHT * 0.4f }, UIUtils::FontSize::TITLE, RED);
     UIUtils::DrawCenteredText("PixeloidSans", "Press R to Restart", { Constants::GAME_WIDTH * 0.5f, Constants::GAME_HEIGHT * 0.5f }, UIUtils::FontSize::BODY, RAYWHITE);
     EndMode2D();
 }
