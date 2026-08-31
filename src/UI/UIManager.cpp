@@ -5,6 +5,8 @@
 #include "Core/Manager/InputManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/Player/Paladin.h"
+#include "Entities/EnemyEntities/Boss.h"
+#include "Core/Manager/GameManager.h"
 #include "UI/PaladinPortrait.h"
 #include "Core/Manager/AssetManager.h"
 #include <algorithm>
@@ -68,6 +70,11 @@ void UIManager::OnTeamStatsChanged(const TeamStatsSnapshot& stats) {
 void UIManager::DrawHUD(Rectangle windowBounds, Vector2 mousePosition) {
     if (!teamManager) return;
     DrawTeamHUD(teamManager, windowBounds, mousePosition);
+
+    Boss* primaryBoss = GameManager::GetInstance().GetObjectManager().FindPrimaryBoss();
+    if (primaryBoss && !primaryBoss->IsDead() && !primaryBoss->IsSpawnSequenceActive()) {
+        DrawBossHealthBar(primaryBoss, windowBounds, GetFrameTime());
+    }
 }
 
 /// Renders team hud.
@@ -393,4 +400,58 @@ void UIManager::DrawCoinHUD(Rectangle bounds, int coins) {
 /// Renders modal overlay.
 void UIManager::DrawModalOverlay() {
     DrawRectangle(-10000, -10000, 20000, 20000, Fade(BLACK, 0.6f));
+}
+
+/// Renders Soul Knight style boss health bar fixed at top of screen.
+void UIManager::DrawBossHealthBar(Boss* boss, Rectangle windowBounds, float deltaTime) {
+    if (!boss || boss->IsDead()) return;
+
+    // Track ghost HP for smooth damage animation
+    static float s_ghostHp = -1.0f;
+    static Boss* s_lastBoss = nullptr;
+    if (s_lastBoss != boss || s_ghostHp < 0.0f) {
+        s_lastBoss = boss;
+        s_ghostHp = (float)boss->GetHealth();
+    }
+
+    float currentHp = (float)boss->GetHealth();
+    float maxHp = (float)std::max(1, boss->GetMaxHealth());
+
+    if (s_ghostHp < currentHp) {
+        s_ghostHp = currentHp;
+    } else if (s_ghostHp > currentHp) {
+        s_ghostHp = std::max(currentHp, s_ghostHp - deltaTime * 400.0f);
+    }
+
+    float healthPercent = std::clamp(currentHp / maxHp, 0.0f, 1.0f);
+    float ghostPercent = std::clamp(s_ghostHp / maxHp, 0.0f, 1.0f);
+
+    // Soul Knight Style Top-Center Boss Bar (Centered, longer, without dividers)
+    float barWidth = 330.0f;
+    float barHeight = 15.0f;
+    float startX = windowBounds.x + (windowBounds.width - barWidth) * 0.5f;
+    float startY = 68.0f; // Fixed below Player Team HUD to avoid overlap
+
+    // 1. Dark outer frame / shadow
+    Rectangle outerFrame = { startX - 3.0f, startY - 3.0f, barWidth + 6.0f, barHeight + 6.0f };
+    DrawRectangleRec(outerFrame, Color{ 14, 14, 18, 230 });
+    DrawRectangleLinesEx(outerFrame, 1.5f, Color{ 55, 55, 65, 255 });
+
+    // 2. Inner background fill (dark crimson empty bar)
+    Rectangle innerBar = { startX, startY, barWidth, barHeight };
+    DrawRectangleRec(innerBar, Color{ 35, 12, 16, 255 });
+
+    // 3. Ghost HP Bar (Yellow/Orange trailing damage)
+    if (ghostPercent > healthPercent) {
+        DrawRectangleRec(
+            { startX, startY, barWidth * ghostPercent, barHeight },
+            Color{ 230, 165, 45, 240 }
+        );
+    }
+
+    // 4. Current HP Bar (Vibrant Soul Knight Red)
+    DrawRectangleRec(
+        { startX, startY, barWidth * healthPercent, barHeight },
+        Color{ 220, 35, 35, 255 }
+    );
 }

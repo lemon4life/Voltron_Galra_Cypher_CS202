@@ -2,6 +2,7 @@
 
 #include "Core/Manager/AssetManager.h"
 #include "Core/Manager/AudioManager.h"
+#include "Core/Manager/BossIntroManager.h"
 #include "Core/Manager/CameraManager.h"
 #include "Core/Constants.h"
 #include "Core/Manager/GameManager.h"
@@ -300,8 +301,21 @@ void Boss::Update(float deltaTime) {
         return;
     }
     if (cinematicStage == BossCinematicStage::Introduction) {
-        // The spawn sequence is now fully complete. End on a clean idle frame;
-        // normal simulation and player control resume on the following frame.
+        if (!introPlayed) {
+            introPlayed = true;
+            BossIntroManager::GetInstance().PlayIntro(this);
+            SetCurrentVelocity({ 0.0f, 0.0f });
+            UpdateMovementAnimationFlag(updateStartPosition);
+            return;
+        }
+
+        if (BossIntroManager::GetInstance().IsPlaying()) {
+            SetCurrentVelocity({ 0.0f, 0.0f });
+            UpdateMovementAnimationFlag(updateStartPosition);
+            return;
+        }
+
+        // The spawn sequence and intro banner are now fully complete.
         cinematicStage = BossCinematicStage::None;
         SetCurrentVelocity({ 0.0f, 0.0f });
         UpdateMovementAnimationFlag(updateStartPosition);
@@ -476,25 +490,7 @@ void Boss::Draw() {
         DrawRectangleRec(GetBoundingBox(), ORANGE);
     }
 
-    float healthPercent = maxHealth > 0
-        ? std::clamp((float)health / (float)maxHealth, 0.0f, 1.0f)
-        : 0.0f;
-    Rectangle healthBar = {
-        position.x - BOSS_HEALTH_BAR_WIDTH * 0.5f,
-        position.y - BOSS_SIZE.y * 0.5f - BOSS_HEALTH_BAR_GAP,
-        BOSS_HEALTH_BAR_WIDTH,
-        BOSS_HEALTH_BAR_HEIGHT
-    };
-    DrawRectangleRec(healthBar, Color{ 24, 24, 28, 220 });
-    DrawRectangleRec(
-        {
-            healthBar.x,
-            healthBar.y,
-            healthBar.width * healthPercent,
-            healthBar.height
-        },
-        RED
-    );
+    // Overhead health bar removed - now rendered in dedicated fixed top HUD (Soul Knight style)
     DrawSpawnEffect();
 }
 

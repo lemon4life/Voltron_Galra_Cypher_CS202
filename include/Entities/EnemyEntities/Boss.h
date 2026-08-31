@@ -39,6 +39,7 @@ private:
     bool phaseOneClonePending = false;
     bool phaseTwoClonePending = false;
     BossCinematicStage cinematicStage = BossCinematicStage::Introduction;
+    bool introPlayed = false;
 
     /// Returns the current stomp foot world position.
     Vector2 GetStompFootWorldPosition() const;

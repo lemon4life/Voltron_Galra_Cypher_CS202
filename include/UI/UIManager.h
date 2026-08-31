@@ -4,6 +4,7 @@
 #include <vector>
 
 class TeamManager;
+class Boss;
 
 // Design Pattern - Observer (Concrete Observer):
 // UIManager subscribes to TeamManager and caches PlayerStatsSnapshot and
@@ -54,6 +55,13 @@ public:
     void DrawCoinHUD(
         Rectangle bounds,
         int coins
+    );
+
+    /// Renders Soul Knight style boss health bar fixed at top of screen.
+    static void DrawBossHealthBar(
+        Boss* boss,
+        Rectangle windowBounds,
+        float deltaTime
     );
 
     // --- Core UI Helpers ---

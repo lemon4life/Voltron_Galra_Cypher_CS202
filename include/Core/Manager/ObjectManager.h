@@ -190,6 +190,8 @@ public:
     const std::vector<Enemy*>& GetEnemies() const { return enemyView; }
     /// Finds the non-clone boss currently controlling a gameplay cinematic.
     Boss* FindActiveCinematicBoss() const;
+    /// Finds the primary non-clone boss currently alive in the room.
+    Boss* FindPrimaryBoss() const;
     /// Returns the current interactables.
     const std::vector<GameObject*>& GetInteractables() const {
         return interactableView;

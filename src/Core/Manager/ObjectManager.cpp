@@ -501,6 +501,17 @@ Boss* ObjectManager::FindActiveCinematicBoss() const {
     return nullptr;
 }
 
+/// Returns the primary encounter boss if alive.
+Boss* ObjectManager::FindPrimaryBoss() const {
+    for (Enemy* enemy : enemyView) {
+        Boss* boss = dynamic_cast<Boss*>(enemy);
+        if (boss && !boss->IsClone() && !boss->IsDead()) {
+            return boss;
+        }
+    }
+    return nullptr;
+}
+
 /// Adds projectile.
 void ObjectManager::AddProjectile(
     std::unique_ptr<Projectile> projectile

@@ -1,5 +1,6 @@
 #include "Core/State/GameplayState.h"
 #include "Core/Manager/UltimateIntroManager.h"
+#include "Core/Manager/BossIntroManager.h"
 #include "Core/Manager/CameraManager.h"
 #include "Core/Manager/DecalManager.h"
 #include "Core/Manager/InputManager.h"
@@ -42,6 +43,11 @@ void GameplayState::Update(float deltaTime) {
     UltimateIntroManager::GetInstance().Update(deltaTime);
     if (UltimateIntroManager::GetInstance().IsPlaying()) {
         return; // Freeze gameplay while the cinematic plays
+    }
+
+    BossIntroManager::GetInstance().Update(deltaTime);
+    if (BossIntroManager::GetInstance().IsPlaying()) {
+        return; // Freeze gameplay while the boss intro cinematic plays
     }
 
     ObjectManager& objects = GameManager::GetInstance().GetObjectManager();
@@ -417,6 +423,7 @@ void GameplayState::Draw() {
     }
 
     UltimateIntroManager::GetInstance().Draw();
+    BossIntroManager::GetInstance().Draw();
 
     if (enhanceMenuUI.IsOpen()) {
         Vector2 mouseUI = GetScreenToWorld2D(GetMousePosition(), uiCamera);
