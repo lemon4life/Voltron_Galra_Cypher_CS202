@@ -35,8 +35,6 @@ public:
     void StartNewGame();
     /// Resets game.
     void ResetGame();
-    /// Resets demo game.
-    void ResetDemoGame();
     /// Implements the return to hub behavior for this component.
     void ReturnToHub();
     /// Preserves the resumable session state before returning to the main menu.

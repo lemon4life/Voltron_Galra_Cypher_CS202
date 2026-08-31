@@ -254,21 +254,6 @@ void GameApplication::ResetGame() {
     GameManager::GetInstance().SetState(GameState::GAMEPLAY);
 }
 
-/// Resets demo game.
-void GameApplication::ResetDemoGame() {
-    teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
-    for (auto* paladin : teamManager->GetTeam()) {
-        paladin->ResetStats();
-    }
-    GameManager::GetInstance().ClearProjectiles();
-    GameManager::GetInstance().LoadLevel(
-        "assets/map/demo-big_Tile Layer 1.csv"
-    );
-    waveManager.Reset(10, 0, 0);
-    AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
-    GameManager::GetInstance().SetState(GameState::GAMEPLAY);
-}
-
 /// Implements the return to hub behavior for this component.
 void GameApplication::ReturnToHub() {
     GameManager::GetInstance().ClearProjectiles();

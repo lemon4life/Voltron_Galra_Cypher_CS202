@@ -34,10 +34,6 @@ void MainMenuState::Update(float deltaTime) {
         }
     }
     
-    if (app->systemInitialized && IsKeyPressed(KEY_R)) {
-        app->paladinSelectionMenu.Close();
-        app->ResetDemoGame();
-    }
 }
 
 /// Renders this component using its current state and visual resources.
