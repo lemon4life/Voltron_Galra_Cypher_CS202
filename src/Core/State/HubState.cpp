@@ -100,7 +100,7 @@ void HubState::Update(float deltaTime) {
             uiMousePosition,
             *teamManager
         );
-        if (InputManager::IsInteractPressed()) {
+        if (InputManager::IsInteractPressed() && !paladinSelectionMenu->IsDemoOpen()) {
             paladinSelectionMenu->Close();
         }
     } else if (DialogueManager::GetInstance().IsActive()) {

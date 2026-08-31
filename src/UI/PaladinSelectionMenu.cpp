@@ -18,9 +18,10 @@ constexpr Rectangle CONTAINER = {8.0f, 8.0f, 667.0f, 496.0f};
 constexpr Rectangle LEFT_PANEL = {20.0f, 50.0f, 188.0f, 270.0f};
 constexpr Rectangle CENTER_PANEL = {218.0f, 50.0f, 247.0f, 270.0f};
 constexpr Rectangle RIGHT_PANEL = {475.0f, 50.0f, 188.0f, 270.0f};
+constexpr Rectangle DEMO_BUTTON = {288.0f, 323.0f, 106.0f, 22.0f};
 constexpr Rectangle BACK_BUTTON = {575.0f, 466.0f, 76.0f, 28.0f};
 constexpr float TEAM_CARD_X = 20.0f;
-constexpr float TEAM_CARD_Y = 350.0f;
+constexpr float TEAM_CARD_Y = 368.0f;
 constexpr float TEAM_CARD_WIDTH = 205.0f;
 constexpr float TEAM_CARD_HEIGHT = 68.0f;
 constexpr float TEAM_CARD_GAP = 14.0f;
@@ -33,6 +34,26 @@ Rectangle TeamCardBounds(std::size_t index) {
         TEAM_CARD_WIDTH,
         TEAM_CARD_HEIGHT
     };
+}
+
+/// Renders stylized demo button.
+void DrawDemoButton(
+    Rectangle bounds,
+    Vector2 mousePosition
+) {
+    bool hovered = UIUtils::IsHovered(bounds);
+    Color background = hovered ? Color{48, 76, 112, 255}
+                               : Color{28, 44, 68, 255};
+    Color border = hovered ? GOLD : Color{80, 130, 190, 255};
+    UIUtils::DrawPanel(bounds, background);
+    DrawRectangleLinesEx(bounds, 1.5f, border);
+    UIUtils::DrawCenteredText(
+        "PixeloidBold",
+        "[ DEMO ]",
+        { bounds.x + bounds.width * 0.5f, bounds.y + bounds.height * 0.5f },
+        static_cast<UIUtils::FontSize>(12),
+        hovered ? GOLD : RAYWHITE
+    );
 }
 
 /// Renders panel.
@@ -126,6 +147,7 @@ void PaladinSelectionMenu::Open(PaladinId paladinId) {
     inspectedPaladin = paladinId;
     feedbackText.clear();
     feedbackTimer = 0.0f;
+    demoModal.Close();
 }
 
 /// Closes this menu and clears transient interaction state.
@@ -133,6 +155,7 @@ void PaladinSelectionMenu::Close() {
     open = false;
     feedbackText.clear();
     feedbackTimer = 0.0f;
+    demoModal.Close();
 }
 
 /// Updates the stored feedback.
@@ -148,6 +171,11 @@ void PaladinSelectionMenu::Update(
     TeamManager& teamManager
 ) {
     if (!open) {
+        return;
+    }
+
+    if (demoModal.IsOpen()) {
+        demoModal.Update(deltaTime, mousePosition);
         return;
     }
 
@@ -172,6 +200,12 @@ void PaladinSelectionMenu::Update(
     if (CheckCollisionPointRec(mousePosition, BACK_BUTTON)) {
         audioManager.PlayRandomClick();
         Close();
+        return;
+    }
+
+    if (CheckCollisionPointRec(mousePosition, DEMO_BUTTON)) {
+        audioManager.PlayRandomClick();
+        demoModal.Open(inspectedPaladin);
         return;
     }
 
@@ -200,6 +234,11 @@ void PaladinSelectionMenu::Draw(
     const TeamManager& teamManager
 ) const {
     if (!open) {
+        return;
+    }
+
+    if (demoModal.IsOpen()) {
+        demoModal.Draw(mousePosition);
         return;
     }
 
@@ -316,10 +355,12 @@ void PaladinSelectionMenu::Draw(
         Color{205, 215, 230, 255}
     );
 
+    DrawDemoButton(DEMO_BUTTON, mousePosition);
+
     std::string instruction =
         "Click a portrait card to place " + definition.name +
         " in that slot";
-    UIUtils::DrawCenteredText("PixeloidSans", instruction, { 683.0f * 0.5f, 328.0f + 7.0f }, static_cast<UIUtils::FontSize>(14), Color{218, 226, 240, 255});
+    UIUtils::DrawCenteredText("PixeloidSans", instruction, { 683.0f * 0.5f, 350.0f }, static_cast<UIUtils::FontSize>(13), Color{218, 226, 240, 255});
 
     const std::vector<Paladin*>& team = teamManager.GetTeam();
     for (std::size_t index = 0; index < team.size(); ++index) {

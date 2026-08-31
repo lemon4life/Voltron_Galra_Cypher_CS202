@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Entities/Player/PaladinDefinition.h"
+#include "UI/AbilityDemoModal.h"
 #include "raylib.h"
 
 #include <cstddef>
@@ -14,6 +15,7 @@ private:
     PaladinId inspectedPaladin;
     std::string feedbackText;
     float feedbackTimer;
+    AbilityDemoModal demoModal;
 
     /// Updates the stored feedback.
     void SetFeedback(const std::string& text);
@@ -28,6 +30,8 @@ public:
     void Close();
     /// Reports whether the open condition is satisfied.
     bool IsOpen() const { return open; }
+    /// Reports whether the ability demo modal is open.
+    bool IsDemoOpen() const { return demoModal.IsOpen(); }
 
     /// Advances this component's state for the current frame.
     void Update(
