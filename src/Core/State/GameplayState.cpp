@@ -3,6 +3,7 @@
 #include "Core/Manager/CameraManager.h"
 #include "Core/Manager/DecalManager.h"
 #include "Core/Manager/InputManager.h"
+#include "Core/Manager/MissionCheckpointManager.h"
 #include "Core/Constants.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Enemy.h"
@@ -62,6 +63,8 @@ void GameplayState::Update(float deltaTime) {
         GameManager::GetInstance().UpdateHitstop(deltaTime);
     } else {
         Paladin* activePaladin = teamManager->GetActivePaladin();
+        std::shared_ptr<RoomNode> lockedRoomBeforeUpdate =
+            levelManager->GetCurrentlyLockedRoom();
         levelManager->UpdateLevel(
             deltaTime,
             activePaladin->GetPosition(),
@@ -69,6 +72,13 @@ void GameplayState::Update(float deltaTime) {
         );
         if (levelManager->NeedsPlayerNudge()) {
             teamManager->GetActivePaladin()->SetPosition(levelManager->ConsumeNudge());
+        }
+        if (!lockedRoomBeforeUpdate &&
+            levelManager->GetCurrentlyLockedRoom()) {
+            // Memory-only and tiny: no map copy or disk access on battle entry.
+            MissionCheckpointManager::GetInstance().CapturePreBattle(
+                GameManager::GetInstance()
+            );
         }
         teamManager->Update(deltaTime);
         
@@ -105,6 +115,9 @@ void GameplayState::Update(float deltaTime) {
     }
     GameManager::GetInstance().UpdateOrbs(deltaTime, teamManager);
     GameManager::GetInstance().UpdateEffects(deltaTime);
+    MissionCheckpointManager::GetInstance().SaveIfProgressed(
+        GameManager::GetInstance()
+    );
 }
 
 /// Builds the world frame from base tiles through depth-sorted actors and props.

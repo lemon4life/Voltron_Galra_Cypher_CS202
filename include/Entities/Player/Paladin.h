@@ -10,6 +10,7 @@
 #include <string>
 #include <memory>
 #include "Combat/IBuff.h"
+#include "Core/MissionSaveData.h"
 
 struct BaseStats {
     static constexpr int HP = 100;
@@ -378,6 +379,10 @@ public:
     
     /// Returns the current intro data.
     const UltimateIntroData& GetIntroData() const { return introData; }
+    /// Captures persistent progression and combat resources at a safe checkpoint.
+    SavedPaladinState CaptureCheckpointState() const;
+    /// Restores persistent state and resumes from a stable idle/down state.
+    void RestoreCheckpointState(const SavedPaladinState& saved);
     
     /// Returns the current idle state.
     PlayerIdleState* GetIdleState() { return &idleState; }

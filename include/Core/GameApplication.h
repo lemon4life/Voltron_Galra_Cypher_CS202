@@ -74,6 +74,7 @@ private:
     bool systemInitialized;
     bool shutdownComplete;
     bool hasContinuableSession;
+    bool continueRequiresCheckpointLoad;
     
     GameState settingsReturnState;
     GameState continueState;

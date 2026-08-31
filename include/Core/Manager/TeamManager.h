@@ -9,6 +9,7 @@
 #include "Core/AimStrategy/IAimStrategy.h"
 #include "Core/AimStrategy/AutoAimStrategy.h"
 #include "Core/AimStrategy/MouseAimStrategy.h"
+#include "Core/MissionSaveData.h"
 #include <memory>
 
 class Paladin;
@@ -133,4 +134,8 @@ public:
     const std::vector<Paladin*>& GetTeam() const { return team; }
     /// Returns the current active index.
     int GetActiveIndex() const { return activeIndex; }
+    /// Captures selected slots, shared resources, and every Paladin's progression.
+    SavedTeamState CaptureCheckpointState() const;
+    /// Restores a checkpoint into the already loaded character roster.
+    bool RestoreCheckpointState(const SavedTeamState& saved);
 };

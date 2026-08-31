@@ -7,6 +7,7 @@
 #include "Core/Manager/ObjectManager.h"
 #include "Core/Manager/PathFindingManager.h"
 #include "UI/ComboMeter.h"
+#include "Core/MissionSaveData.h"
 #include "raylib.h"
 
 #include <memory>
@@ -175,6 +176,12 @@ public:
     void ResetWorld();
     /// Resets transient state.
     void ResetTransientState();
+    /// Reports whether the generated mission can produce a stable checkpoint.
+    bool HasCheckpointableMission() const;
+    /// Captures stable floor/team progress; live battle objects are excluded.
+    MissionSaveData CaptureCheckpointState() const;
+    /// Restores a stable checkpoint and prepares the room to start combat anew.
+    bool RestoreCheckpointState(const MissionSaveData& saved);
 
     /// Advances managed entities and commits lifecycle changes without invalidating active iteration.
     void UpdateDynamicEntities(float deltaTime);

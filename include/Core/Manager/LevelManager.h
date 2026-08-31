@@ -13,6 +13,7 @@
 #include "Core/Level/Tilemap.h"
 #include "Core/DepthRenderItem.h"
 #include "Core/Level/ILevelProvider.h"
+#include "Core/MissionSaveData.h"
 
 struct LevelMemoryStats {
     std::size_t roomNodes = 0;
@@ -87,6 +88,7 @@ private:
     Vector2 nudgePosition = {0.0f, 0.0f};
     bool needsNudge = false;
     std::uint64_t navigationRevision = 0;
+    std::uint64_t checkpointRevision = 0;
     std::unique_ptr<ILevelProvider> currentLevelProvider;
     std::vector<Vector2> staticSpawnNodes;
 
@@ -230,10 +232,16 @@ public:
     std::uint64_t GetNavigationRevision() const {
         return navigationRevision;
     }
+    /// Changes only at stable save points: floor creation, room clear, utility entry.
+    std::uint64_t GetCheckpointRevision() const { return checkpointRevision; }
     /// Returns the current map objects.
     const std::vector<std::unique_ptr<MapObject>>& GetMapObjects() const {
         return mapObjects;
     }
+    /// Captures the exact generated layout and stable room/map-object progress.
+    SavedLevelState CaptureCheckpointState() const;
+    /// Rebuilds a generated level from a stable checkpoint.
+    bool RestoreCheckpointState(const SavedLevelState& saved);
     /// Returns the current memory stats.
     LevelMemoryStats GetMemoryStats() const;
 };

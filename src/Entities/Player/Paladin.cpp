@@ -382,6 +382,83 @@ void Paladin::ResetStats() {
     ResetAnimation();
 }
 
+/// Captures only durable player values; mid-attack animation and pointer-based
+/// targets are not part of a room checkpoint.
+SavedPaladinState Paladin::CaptureCheckpointState() const {
+    SavedPaladinState saved;
+    saved.id = static_cast<int>(paladinId);
+    saved.position = position;
+    saved.aimTarget = aimTarget;
+    saved.health = health;
+    saved.maxHealth = maxHealth;
+    saved.ghostHealth = ghostHp;
+    saved.displayedHealth = displayedHp;
+    saved.exEnergy = exEnergy;
+    saved.displayedExEnergy = displayedExEnergy;
+    saved.attackCooldown = attackCooldown;
+    saved.dashCooldown = dashCooldown;
+    saved.ultimateCooldown = ultimateCooldownTimer;
+    saved.activeSkillDuration = activeSkillDuration;
+    saved.activeSkillTimer = activeSkillTimer;
+    saved.paladinLevel = paladinLevel;
+    saved.facingLeft = facingLeft;
+    saved.skillActive = isSkillActive;
+    return saved;
+}
+
+/// Restores progression and resources while rebuilding transient player state.
+void Paladin::RestoreCheckpointState(const SavedPaladinState& saved) {
+    position = saved.position;
+    aimTarget = saved.aimTarget;
+    paladinLevel = std::clamp(saved.paladinLevel, 1, MAX_PALADIN_LEVEL);
+    hpScalar = 1.0f + (paladinLevel - 1) * 0.2f;
+    speedScalar = 1.0f + (paladinLevel - 1) * 0.1f;
+    attackCooldownScalar = 1.0f - (paladinLevel - 1) * 0.05f;
+    damageScalar = 1.0f + (paladinLevel - 1) * 0.15f;
+    RecalculateStats();
+
+    maxHealth = std::max(1, saved.maxHealth);
+    health = std::clamp(saved.health, 0, maxHealth);
+    ghostHp = std::clamp(saved.ghostHealth, 0.0f, (float)maxHealth);
+    displayedHp = std::clamp(
+        saved.displayedHealth,
+        0.0f,
+        (float)maxHealth
+    );
+    exEnergy = std::clamp(saved.exEnergy, 0.0f, maxExEnergy);
+    displayedExEnergy = std::clamp(
+        saved.displayedExEnergy,
+        0.0f,
+        maxExEnergy
+    );
+    attackCooldown = std::max(0.0f, saved.attackCooldown);
+    dashCooldown = std::max(0.0f, saved.dashCooldown);
+    ultimateCooldownTimer = std::max(0.0f, saved.ultimateCooldown);
+    activeSkillDuration = std::max(0.0f, saved.activeSkillDuration);
+    activeSkillTimer = std::clamp(
+        saved.activeSkillTimer,
+        0.0f,
+        activeSkillDuration
+    );
+    isSkillActive = saved.skillActive && activeSkillTimer > 0.0f;
+    skillInitialEx = exEnergy;
+    facingLeft = saved.facingLeft;
+
+    isInvincible = false;
+    isInvulnerable = false;
+    isParrying = false;
+    parrySuccess = false;
+    knockbackVelocity = { 0.0f, 0.0f };
+    lockedEnemyId = INVALID_OBJECT_ID;
+    personalBuffs.clear();
+    attachedEffects.clear();
+    currentState = health > 0
+        ? static_cast<IPlayerState*>(&idleState)
+        : static_cast<IPlayerState*>(&downState);
+    texture = health > 0 ? GetIdleTexture() : GetDownTexture();
+    ResetAnimation();
+}
+
 /// Returns the current bounding box.
 Rectangle Paladin::GetBoundingBox() const {
     // Inset one pixel on each side and two pixels from the top while

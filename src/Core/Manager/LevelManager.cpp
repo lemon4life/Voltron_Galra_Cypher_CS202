@@ -227,8 +227,15 @@ void LevelManager::UpdateLevel(
                 for (auto& node : levelMap.generatedNodes) {
                     bool playerInside = CheckCollisionRecs(playerBox, node->triggerBounds);
 
+                    bool firstDiscovery = playerInside && !node->isDiscovered;
                     if (playerInside) {
                         node->isDiscovered = true;
+                    }
+                    if (firstDiscovery &&
+                        (node->type == RoomType::CHEST ||
+                         node->type == RoomType::EVENT ||
+                         node->type == RoomType::EXIT)) {
+                        ++checkpointRevision;
                     }
 
                     if (playerInside && (node->type == RoomType::BATTLE || node->type == RoomType::BOSS) && node->state == RoomState::IDLE) {
@@ -973,6 +980,10 @@ void LevelManager::SetActiveRoomState(RoomState state) {
     if (!currentlyLockedRoom || currentlyLockedRoom->state == state) return;
 
     currentlyLockedRoom->state = state;
+    if (state == RoomState::CLEARED) {
+        currentlyLockedRoom->isCleared = true;
+        ++checkpointRevision;
+    }
     bool projectileBarrierActive = state != RoomState::CLEARED;
     for (DoorGate* door : currentlyLockedRoom->doors) {
         if (door) {
@@ -1279,7 +1290,218 @@ DynamicSpawnList LevelManager::GenerateDungeon(int floorNumber) {
     }
 
     printf("GenerateDungeon: Done\n");
+    ++checkpointRevision;
     return dynamicSpawns;
+}
+
+/// Captures the baked room layers so loading never rerolls the dungeon layout.
+SavedLevelState LevelManager::CaptureCheckpointState() const {
+    SavedLevelState saved;
+    if (!IsProceduralDungeon() || !activeRoom) return saved;
+
+    saved.width = activeRoom->width;
+    saved.height = activeRoom->height;
+    saved.roomOffset = roomOffset;
+    saved.graphHeight = static_cast<int>(levelMap.grid.size());
+    saved.graphWidth = levelMap.grid.empty()
+        ? 0
+        : static_cast<int>(levelMap.grid.front().size());
+    if (levelMap.spawnRoom) {
+        saved.spawnRoomX = levelMap.spawnRoom->gridX;
+        saved.spawnRoomY = levelMap.spawnRoom->gridY;
+    }
+
+    std::size_t tileCount = static_cast<std::size_t>(saved.width) *
+        static_cast<std::size_t>(saved.height);
+    saved.floorTiles.reserve(tileCount);
+    saved.objectTiles.reserve(tileCount);
+    saved.propTiles.reserve(tileCount);
+    for (int y = 0; y < saved.height; ++y) {
+        for (int x = 0; x < saved.width; ++x) {
+            saved.floorTiles.push_back(activeRoom->layer0_tiles[y][x]);
+            saved.objectTiles.push_back(activeRoom->layer1_objects[y][x]);
+            saved.propTiles.push_back(activeRoom->layer2_props[y][x]);
+        }
+    }
+
+    for (const std::shared_ptr<RoomNode>& room : levelMap.generatedNodes) {
+        if (!room) continue;
+        // A checkpoint never resumes a battle. A defensive conversion also
+        // handles shutdown occurring on the exact frame a gate locks.
+        RoomState stableState = room->state == RoomState::LOCKED
+            ? RoomState::IDLE
+            : room->state;
+        saved.rooms.push_back({
+            room->gridX,
+            room->gridY,
+            static_cast<int>(room->type),
+            room->roomSize,
+            room->isDiscovered,
+            room->isCleared,
+            static_cast<int>(stableState),
+            room->triggerBounds
+        });
+    }
+
+    for (const std::unique_ptr<MapObject>& object : mapObjects) {
+        if (!object || object->IsDestroyed()) continue;
+        SavedMapObjectState mapObject;
+        mapObject.type = static_cast<int>(object->GetMapObjectType());
+        mapObject.position = object->GetPosition();
+        mapObject.row = object->GetObjectCell().row;
+        mapObject.column = object->GetObjectCell().column;
+        if (const DoorGate* door = dynamic_cast<const DoorGate*>(object.get())) {
+            mapObject.door = true;
+            // Saved battles resume before lockdown, so every gate is open.
+            mapObject.doorState = static_cast<int>(DoorGate::State::OPEN);
+            mapObject.projectileBarrier = false;
+        }
+        saved.mapObjects.push_back(mapObject);
+    }
+    return saved;
+}
+
+/// Reconstructs the room graph, baked layers, remaining props, and door views.
+bool LevelManager::RestoreCheckpointState(const SavedLevelState& saved) {
+    constexpr int MAX_MAP_DIMENSION = 512;
+    if (saved.width <= 0 || saved.height <= 0 ||
+        saved.width > MAX_MAP_DIMENSION || saved.height > MAX_MAP_DIMENSION ||
+        saved.graphWidth <= 0 || saved.graphHeight <= 0) {
+        return false;
+    }
+    std::size_t tileCount = static_cast<std::size_t>(saved.width) *
+        static_cast<std::size_t>(saved.height);
+    if (saved.floorTiles.size() != tileCount ||
+        saved.objectTiles.size() != tileCount ||
+        saved.propTiles.size() != tileCount) {
+        return false;
+    }
+
+    ClearLevel();
+    levelMode = LevelMode::Procedural;
+    activeRoom = std::make_shared<RoomTemplate>(saved.width, saved.height);
+    std::size_t index = 0;
+    for (int y = 0; y < saved.height; ++y) {
+        for (int x = 0; x < saved.width; ++x, ++index) {
+            activeRoom->layer0_tiles[y][x] = saved.floorTiles[index];
+            activeRoom->layer1_objects[y][x] = saved.objectTiles[index];
+            activeRoom->layer2_props[y][x] = saved.propTiles[index];
+        }
+    }
+
+    levelMap.grid.assign(
+        saved.graphHeight,
+        std::vector<std::shared_ptr<RoomNode>>(saved.graphWidth, nullptr)
+    );
+    for (const SavedRoomState& roomState : saved.rooms) {
+        if (roomState.gridX < 0 || roomState.gridY < 0 ||
+            roomState.gridX >= saved.graphWidth ||
+            roomState.gridY >= saved.graphHeight) {
+            ClearLevel();
+            return false;
+        }
+        auto room = std::make_shared<RoomNode>(
+            roomState.gridX,
+            roomState.gridY,
+            static_cast<RoomType>(roomState.type)
+        );
+        room->roomSize = roomState.roomSize;
+        room->isDiscovered = roomState.discovered;
+        room->isCleared = roomState.cleared;
+        room->state = roomState.state == static_cast<int>(RoomState::CLEARED)
+            ? RoomState::CLEARED
+            : RoomState::IDLE;
+        room->triggerBounds = roomState.triggerBounds;
+        levelMap.grid[room->gridY][room->gridX] = room;
+        levelMap.generatedNodes.push_back(room);
+        if (room->gridX == saved.spawnRoomX &&
+            room->gridY == saved.spawnRoomY) {
+            levelMap.spawnRoom = room;
+        }
+    }
+    if (!levelMap.spawnRoom || levelMap.generatedNodes.empty()) {
+        ClearLevel();
+        return false;
+    }
+
+    for (const std::shared_ptr<RoomNode>& room : levelMap.generatedNodes) {
+        int x = room->gridX;
+        int y = room->gridY;
+        if (y > 0 && levelMap.grid[y - 1][x]) {
+            room->north = levelMap.grid[y - 1][x].get();
+        }
+        if (y + 1 < saved.graphHeight && levelMap.grid[y + 1][x]) {
+            room->south = levelMap.grid[y + 1][x].get();
+        }
+        if (x > 0 && levelMap.grid[y][x - 1]) {
+            room->west = levelMap.grid[y][x - 1].get();
+        }
+        if (x + 1 < saved.graphWidth && levelMap.grid[y][x + 1]) {
+            room->east = levelMap.grid[y][x + 1].get();
+        }
+    }
+
+    roomOffset = saved.roomOffset;
+    levelWidth = saved.width * Constants::RENDER_TILE_SIZE;
+    levelHeight = saved.height * Constants::RENDER_TILE_SIZE;
+    currentLevelProvider = std::make_unique<ProceduralLevelProvider>(
+        activeRoom,
+        roomOffset,
+        floorTileset,
+        wallTileset,
+        prop1Texture,
+        prop2Texture,
+        boxTexture,
+        gateTexture,
+        levelMap
+    );
+
+    for (const SavedMapObjectState& objectState : saved.mapObjects) {
+        if (objectState.door) {
+            auto ownedDoor = std::make_unique<DoorGate>(objectState.position);
+            DoorGate* door = ownedDoor.get();
+            door->SetState(DoorGate::State::OPEN);
+            door->SetProjectileBarrierActive(false);
+            AddMapObject(std::move(ownedDoor));
+
+            std::shared_ptr<RoomNode> nearestRoom;
+            float nearestDistance = std::numeric_limits<float>::max();
+            for (const std::shared_ptr<RoomNode>& room :
+                 levelMap.generatedNodes) {
+                Rectangle bounds = room->GetWorldBounds();
+                float dx = objectState.position.x -
+                    (bounds.x + bounds.width * 0.5f);
+                float dy = objectState.position.y -
+                    (bounds.y + bounds.height * 0.5f);
+                float distance = dx * dx + dy * dy;
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestRoom = room;
+                }
+            }
+            if (nearestRoom) nearestRoom->doors.push_back(door);
+            continue;
+        }
+
+        MapObjectId type = static_cast<MapObjectId>(objectState.type);
+        if (MapObjectFactory::IsMapObjectType(type)) {
+            AddMapObject(MapObjectFactory::Create(
+                type,
+                objectState.position,
+                { objectState.row, objectState.column }
+            ));
+        }
+    }
+
+    for (const std::shared_ptr<RoomNode>& room : levelMap.generatedNodes) {
+        room->CalculateWalkableGrid(this);
+    }
+    currentlyLockedRoom = nullptr;
+    needsNudge = false;
+    lineOfSightBlockerIndexValid = false;
+    MarkNavigationChanged();
+    ++checkpointRevision;
+    return true;
 }
 
 /// Returns the current safe spawn position.

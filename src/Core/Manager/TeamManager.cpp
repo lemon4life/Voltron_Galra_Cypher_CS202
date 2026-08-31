@@ -52,6 +52,86 @@ Paladin* TeamManager::GetActivePaladin() const {
     return team[static_cast<std::size_t>(activeIndex)];
 }
 
+/// Captures the whole roster independently from the three selected team slots.
+SavedTeamState TeamManager::CaptureCheckpointState() const {
+    SavedTeamState saved;
+    saved.activeIndex = activeIndex;
+    saved.sharedArmor = sharedArmor;
+    saved.maxSharedArmor = maxSharedArmor;
+    saved.quintessence = currentQuintessence;
+    saved.coins = coins;
+    for (const std::unique_ptr<Paladin>& paladin : roster) {
+        if (paladin) saved.roster.push_back(paladin->CaptureCheckpointState());
+    }
+    for (const Paladin* paladin : team) {
+        if (paladin) {
+            saved.selectedSlots.push_back(
+                static_cast<int>(paladin->GetPaladinId())
+            );
+        }
+    }
+    return saved;
+}
+
+/// Restores stable character values and rebuilds the non-owning selected-team view.
+bool TeamManager::RestoreCheckpointState(const SavedTeamState& saved) {
+    if (saved.roster.empty() || saved.selectedSlots.empty()) return false;
+
+    for (const SavedPaladinState& paladinState : saved.roster) {
+        auto match = std::find_if(
+            roster.begin(),
+            roster.end(),
+            [&](const std::unique_ptr<Paladin>& paladin) {
+                return paladin && static_cast<int>(paladin->GetPaladinId()) ==
+                    paladinState.id;
+            }
+        );
+        if (match == roster.end()) return false;
+        (*match)->RestoreCheckpointState(paladinState);
+    }
+
+    std::vector<Paladin*> restoredTeam;
+    restoredTeam.reserve(saved.selectedSlots.size());
+    for (int savedId : saved.selectedSlots) {
+        auto match = std::find_if(
+            roster.begin(),
+            roster.end(),
+            [savedId](const std::unique_ptr<Paladin>& paladin) {
+                return paladin && static_cast<int>(paladin->GetPaladinId()) ==
+                    savedId;
+            }
+        );
+        if (match == roster.end()) return false;
+        restoredTeam.push_back(match->get());
+    }
+
+    Paladin* oldActive = GetActivePaladin();
+    for (std::unique_ptr<IBuff>& buff : sharedBuffs) {
+        if (buff) buff->OnRemove(oldActive);
+    }
+    sharedBuffs.clear();
+    team = std::move(restoredTeam);
+    activeIndex = std::clamp(
+        saved.activeIndex,
+        0,
+        static_cast<int>(team.size()) - 1
+    );
+    sharedArmor = std::max(0, saved.sharedArmor);
+    maxSharedArmor = std::max(sharedArmor, saved.maxSharedArmor);
+    currentQuintessence = std::clamp(
+        saved.quintessence,
+        0.0f,
+        maxQuintessence
+    );
+    displayedQuintessence = currentQuintessence;
+    coins = std::max(0, saved.coins);
+    isSpawning = false;
+    spawnAnimTimer = 0.0f;
+    RefreshAimStrategies();
+    NotifyObservers();
+    return true;
+}
+
 /// Resets for new game.
 void TeamManager::ResetForNewGame(Vector2 spawnPosition) {
     std::sort(

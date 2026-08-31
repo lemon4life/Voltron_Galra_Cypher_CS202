@@ -14,6 +14,8 @@
 #include "Entities/Player/Paladin.h"
 #include "Entities/Projectile.h"
 #include "Entities/Props/Pot.h"
+#include "Entities/Props/Chest.h"
+#include "Entities/Props/EnhanceMachine.h"
 #include "Entities/Rover.h"
 #include "raymath.h"
 
@@ -1038,4 +1040,58 @@ ObjectManagerMemoryStats ObjectManager::GetMemoryStats() const {
     stats.pendingAdditions = pendingAddition.size();
     stats.pendingRemovals = pendingRemoval.size();
     return stats;
+}
+
+/// Captures unopened utility rewards and machines without touching combat state.
+std::vector<SavedDynamicObject> ObjectManager::CaptureCheckpointObjects() const {
+    std::vector<SavedDynamicObject> saved;
+    saved.reserve(pickups.size() + interactables.size());
+    for (const std::unique_ptr<Pot>& pickup : pickups) {
+        if (!pickup || pickup->IsConsumed()) continue;
+        MapObjectId type = MapObjectId::PotHP;
+        if (dynamic_cast<const ExPot*>(pickup.get())) {
+            type = MapObjectId::PotEX;
+        } else if (dynamic_cast<const QuintPot*>(pickup.get())) {
+            type = MapObjectId::PotQuint;
+        }
+        saved.push_back({ static_cast<int>(type), pickup->GetPosition() });
+    }
+    for (const std::unique_ptr<GameObject>& object : interactables) {
+        if (!object) continue;
+        if (const Chest* chest = dynamic_cast<const Chest*>(object.get())) {
+            if (!chest->IsOpened()) {
+                saved.push_back({
+                    static_cast<int>(MapObjectId::Chest),
+                    chest->GetPosition()
+                });
+            }
+        } else if (dynamic_cast<const EnhanceMachine*>(object.get())) {
+            saved.push_back({
+                static_cast<int>(MapObjectId::EnhanceMachine),
+                object->GetPosition()
+            });
+        }
+    }
+    return saved;
+}
+
+/// Drops all transient battle ownership and recreates only checkpoint utilities.
+bool ObjectManager::RestoreCheckpointObjects(
+    const std::vector<SavedDynamicObject>& savedObjects
+) {
+    constexpr std::size_t MAX_CHECKPOINT_OBJECTS = 128;
+    if (savedObjects.size() > MAX_CHECKPOINT_OBJECTS) return false;
+    Clear();
+    for (const SavedDynamicObject& saved : savedObjects) {
+        MapObjectId type = static_cast<MapObjectId>(saved.type);
+        if (type != MapObjectId::Chest &&
+            type != MapObjectId::EnhanceMachine &&
+            type != MapObjectId::PotHP && type != MapObjectId::PotEX &&
+            type != MapObjectId::PotQuint) {
+            return false;
+        }
+        if (!QueueSpawn(type, saved.position)) return false;
+    }
+    CommitPendingChanges();
+    return true;
 }

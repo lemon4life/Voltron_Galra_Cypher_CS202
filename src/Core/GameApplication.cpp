@@ -7,6 +7,7 @@
 #include "Core/Manager/DialogueManager.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/UltimateIntroManager.h"
+#include "Core/Manager/MissionCheckpointManager.h"
 #include "Core/DepthRenderItem.h"
 #include "Core/Diagnostics/MemoryDiagnostics.h"
 #include "Core/Diagnostics/FramePerformanceStats.h"
@@ -71,6 +72,7 @@ GameApplication::GameApplication()
       systemInitialized(false),
       shutdownComplete(false),
       hasContinuableSession(false),
+      continueRequiresCheckpointLoad(false),
       settingsReturnState(GameState::MAIN_MENU),
       continueState(GameState::HUB),
       continueMusicName("bgm_story_mode") {
@@ -203,6 +205,13 @@ void GameApplication::FinalizeStartup() {
     );
     AudioManager::GetInstance().PlaySoundEffect("ui_opening");
     systemInitialized = true;
+    if (MissionCheckpointManager::GetInstance().HasValidSave()) {
+        hasContinuableSession = true;
+        continueRequiresCheckpointLoad = true;
+        continueState = GameState::GAMEPLAY;
+        continueMusicName = "bgm_battle";
+        mainMenu.SetContinueAvailable(true);
+    }
     MemoryDiagnostics::Capture(
         "startup_assets_and_system_ready",
         GameManager::GetInstance()
@@ -214,6 +223,9 @@ void GameApplication::Shutdown() {
     if (shutdownComplete) return;
 
     GameManager& gameManager = GameManager::GetInstance();
+    if (systemInitialized) {
+        MissionCheckpointManager::GetInstance().FlushOnShutdown(gameManager);
+    }
     MemoryDiagnostics::Capture("shutdown_begin", gameManager);
     gameManager.ResetWorld();
     gameManager.GetEffectManager().Shutdown();
@@ -230,6 +242,7 @@ void GameApplication::Shutdown() {
 /// Clears prior session state and starts a fresh game from the Hub.
 void GameApplication::StartNewGame() {
     ClearSuspendedSession();
+    MissionCheckpointManager::GetInstance().DeleteSave();
     GameManager::GetInstance().ResetTransientState();
     DialogueManager::GetInstance().ResetSession();
     GameManager::GetInstance().ResetFloorCount();
@@ -242,6 +255,7 @@ void GameApplication::StartNewGame() {
 
 /// Resets game.
 void GameApplication::ResetGame() {
+    MissionCheckpointManager::GetInstance().DeleteSave();
     teamManager->GetActivePaladin()->SetPosition({160.0f, 160.0f});
     for (auto* paladin : teamManager->GetTeam()) {
         paladin->ResetStats();
@@ -256,6 +270,7 @@ void GameApplication::ResetGame() {
 
 /// Implements the return to hub behavior for this component.
 void GameApplication::ReturnToHub() {
+    MissionCheckpointManager::GetInstance().DeleteSave();
     GameManager::GetInstance().ClearProjectiles();
     for (auto* paladin : teamManager->GetTeam()) {
         paladin->ResetStats();
@@ -285,6 +300,7 @@ void GameApplication::SuspendSessionToMainMenu() {
     continueState = suspendedState;
     continueMusicName = GetSessionMusic(suspendedState);
     hasContinuableSession = true;
+    continueRequiresCheckpointLoad = false;
     mainMenu.SetContinueAvailable(true);
     AudioManager::GetInstance().PlayMusicTrack(
         "bgm_starter_menu",
@@ -300,6 +316,20 @@ bool GameApplication::ContinueSuspendedSession() {
         return false;
     }
 
+    if (continueRequiresCheckpointLoad) {
+        if (!MissionCheckpointManager::GetInstance().Load(
+                GameManager::GetInstance())) {
+            MissionCheckpointManager::GetInstance().DeleteSave();
+            ClearSuspendedSession();
+            return false;
+        }
+        hasContinuableSession = false;
+        continueRequiresCheckpointLoad = false;
+        mainMenu.SetContinueAvailable(false);
+        AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
+        return true;
+    }
+
     GameState restoredState = continueState;
     std::string restoredMusic = continueMusicName;
     ClearSuspendedSession();
@@ -313,6 +343,7 @@ bool GameApplication::ContinueSuspendedSession() {
 /// Clears suspended session.
 void GameApplication::ClearSuspendedSession() {
     hasContinuableSession = false;
+    continueRequiresCheckpointLoad = false;
     continueState = GameState::HUB;
     continueMusicName = "bgm_story_mode";
     mainMenu.SetContinueAvailable(false);

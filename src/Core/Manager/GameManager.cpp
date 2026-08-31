@@ -188,6 +188,57 @@ void GameManager::ResetTransientState() {
     MemoryDiagnostics::Capture("after_reset_transient", *this);
 }
 
+/// A checkpoint applies only to a generated floor with a living team.
+bool GameManager::HasCheckpointableMission() const {
+    return levelManager.IsProceduralDungeon() && teamManager &&
+        teamManager->GetActivePaladin() && !teamManager->IsTeamDead() &&
+        currentFloor >= 1 && currentFloor <= MAX_FLOORS;
+}
+
+/// Captures stable ownership only. Enemies, bullets, effects, paths, and current
+/// wave counters are intentionally absent so combat restarts from room entry.
+MissionSaveData GameManager::CaptureCheckpointState() const {
+    MissionSaveData saved;
+    saved.floor = currentFloor;
+    saved.talkedToShiro = hasTalkedToShiro;
+    saved.autoAim = Constants::isAutoAimEnabled;
+    saved.level = levelManager.CaptureCheckpointState();
+    if (teamManager) saved.team = teamManager->CaptureCheckpointState();
+    saved.utilityObjects = objectManager.CaptureCheckpointObjects();
+    return saved;
+}
+
+/// Rebuilds the static floor before the team and utility objects, then resets
+/// the wave controller so the next battle begins through its normal entry flow.
+bool GameManager::RestoreCheckpointState(const MissionSaveData& saved) {
+    pathFindingManager.Clear();
+    objectManager.Clear();
+    effectManager.ClearSession();
+    ClearOverlayBackgroundState();
+    if (!teamManager ||
+        !levelManager.RestoreCheckpointState(saved.level) ||
+        !teamManager->RestoreCheckpointState(saved.team) ||
+        !objectManager.RestoreCheckpointObjects(saved.utilityObjects)) {
+        pathFindingManager.Clear();
+        objectManager.Clear();
+        levelManager.ClearLevel();
+        waveManager.Reset(0, 0, 0);
+        return false;
+    }
+
+    currentFloor = std::clamp(saved.floor, 1, MAX_FLOORS);
+    hasTalkedToShiro = saved.talkedToShiro;
+    Constants::isAutoAimEnabled = saved.autoAim;
+    waveManager.Reset(0, 0, 0);
+    hitstopTimer = 0.0f;
+    previousGameState = GameState::GAMEPLAY;
+    currentState = GameState::GAMEPLAY;
+    currentStateObj.reset();
+    teamManager->RefreshAimStrategies();
+    teamManager->NotifyObservers();
+    return true;
+}
+
 /// Advances global pathfinding first, then lets each enemy consume its latest
 /// route. Additions/removals remain queued until GameplayState commits them.
 void GameManager::UpdateDynamicEntities(float deltaTime) {

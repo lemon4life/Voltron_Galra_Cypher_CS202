@@ -4,6 +4,7 @@
 #include "Core/LevelAccess.h"
 #include "Core/World/ObjectId.h"
 #include "Core/World/WorldDefinition.h"
+#include "Core/MissionSaveData.h"
 #include "raylib.h"
 
 #include <array>
@@ -197,6 +198,12 @@ public:
     std::size_t GetEnemyCount() const { return enemies.size(); }
     /// Returns the current memory stats.
     ObjectManagerMemoryStats GetMemoryStats() const;
+    /// Captures only stable utility objects; combat entities are excluded.
+    std::vector<SavedDynamicObject> CaptureCheckpointObjects() const;
+    /// Clears battle objects and reconstructs saved utility objects.
+    bool RestoreCheckpointObjects(
+        const std::vector<SavedDynamicObject>& savedObjects
+    );
     /// Searches for object.
     GameObject* FindObject(ObjectId id) const;
     /// Searches for enemy.
