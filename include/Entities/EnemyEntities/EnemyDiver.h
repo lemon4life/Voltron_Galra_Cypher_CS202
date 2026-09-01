@@ -15,15 +15,17 @@ private:
     ILevelLineOfSightQuery& lineOfSightQuery;
     Texture2D attackNotification = {};
     Vector2 attackEffectStart = { 0.0f, 0.0f };
-    Vector2 attackEffectEnd = { 0.0f, 0.0f };
     Vector2 lockedAttackDirection = { 1.0f, 0.0f };
     float attackTelegraphElapsed = 0.0f;
+    float attackEffectElapsed = 0.0f;
     bool attackTelegraphActive = false;
 
     /// Calculates attack effect origin.
     Vector2 CalculateAttackEffectOrigin() const;
-    /// Returns the current attack effect end.
-    Vector2 GetAttackEffectEnd() const;
+    /// Returns the trailing edge of the active, forward-moving attack capsule.
+    Vector2 GetAttackHitboxStart() const;
+    /// Returns the leading tip of the active, forward-moving attack capsule.
+    Vector2 GetAttackHitboxEnd() const;
 
 public:
     /// Creates a EnemyDiver instance from the supplied configuration.
@@ -78,6 +80,8 @@ public:
     void EndAttackPreparation();
     /// Begins attack effect.
     void BeginAttackEffect();
+    /// Advances the active attack hitbox along the telegraphed lane.
+    void AdvanceAttackEffect(float deltaTime);
     /// Finishes attack effect.
     void EndAttackEffect();
     /// Returns the current locked attack direction.
@@ -86,8 +90,8 @@ public:
     }
     /// Implements the does attack hit behavior for this component.
     bool DoesAttackHit(Rectangle targetBounds) const;
-    /// Returns the current attack contact position.
-    Vector2 GetAttackContactPosition(Rectangle targetBounds) const;
+    /// Returns a stable source point for directional parry checks.
+    Vector2 GetAttackParrySourcePosition() const;
     /// Returns the current line of sight query.
     const ILevelLineOfSightQuery& GetLineOfSightQuery() const { return lineOfSightQuery; }
 

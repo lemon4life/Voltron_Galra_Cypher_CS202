@@ -46,6 +46,8 @@ namespace {
     constexpr float DIVER_ATTACK_VISIBLE_HEIGHT = 15.0f;
     constexpr float DIVER_ATTACK_REACH =
         DIVER_ATTACK_VISIBLE_END_X * DIVER_ATTACK_SCALE;
+    constexpr float DIVER_ATTACK_HITBOX_LENGTH =
+        DIVER_ATTACK_REACH * 0.25f;
     constexpr float DIVER_ATTACK_RADIUS =
         DIVER_ATTACK_VISIBLE_HEIGHT * DIVER_ATTACK_SCALE * 0.5f;
     constexpr float DIVER_ATTACK_TELEGRAPH_OPACITY = 0.70f;
@@ -285,20 +287,21 @@ void EnemyDiver::Draw() {
         );
 
         if (Constants::DEBUG_DRAW_ENTITY_COLLISION_BOXES) {
-            Vector2 attackEnd = GetAttackEffectEnd();
+            Vector2 hitboxStart = GetAttackHitboxStart();
+            Vector2 hitboxEnd = GetAttackHitboxEnd();
             DrawLineEx(
-                attackEffectStart,
-                attackEnd,
+                hitboxStart,
+                hitboxEnd,
                 DIVER_ATTACK_RADIUS * 2.0f,
                 Fade(RED, 0.35f)
             );
             DrawCircleV(
-                attackEffectStart,
+                hitboxStart,
                 DIVER_ATTACK_RADIUS,
                 Fade(RED, 0.35f)
             );
             DrawCircleV(
-                attackEnd,
+                hitboxEnd,
                 DIVER_ATTACK_RADIUS,
                 Fade(RED, 0.35f)
             );
@@ -398,9 +401,31 @@ Vector2 EnemyDiver::CalculateAttackEffectOrigin() const {
     return position;
 }
 
-/// Returns the current attack effect end.
-Vector2 EnemyDiver::GetAttackEffectEnd() const {
-    return attackEffectEnd;
+/// Returns the trailing edge of the active, forward-moving attack capsule.
+Vector2 EnemyDiver::GetAttackHitboxStart() const {
+    float progress = std::clamp(
+        attackEffectElapsed / DIVE_DURATION,
+        0.0f,
+        1.0f
+    );
+    float tailDistance = progress * (
+        DIVER_ATTACK_REACH - DIVER_ATTACK_HITBOX_LENGTH
+    );
+    return Vector2Add(
+        attackEffectStart,
+        Vector2Scale(lockedAttackDirection, tailDistance)
+    );
+}
+
+/// Returns the leading tip of the active, forward-moving attack capsule.
+Vector2 EnemyDiver::GetAttackHitboxEnd() const {
+    return Vector2Add(
+        GetAttackHitboxStart(),
+        Vector2Scale(
+            lockedAttackDirection,
+            DIVER_ATTACK_HITBOX_LENGTH
+        )
+    );
 }
 
 /// Begins attack preparation.
@@ -414,12 +439,6 @@ void EnemyDiver::BeginAttackPreparation(Vector2 direction) {
     // before the Diver starts backing up.
     // Charging and lunging movement must never move this warning or hitbox.
     attackEffectStart = CalculateAttackEffectOrigin();
-    attackEffectEnd = {
-        attackEffectStart.x +
-            lockedAttackDirection.x * DIVER_ATTACK_REACH,
-        attackEffectStart.y +
-            lockedAttackDirection.y * DIVER_ATTACK_REACH
-    };
     attackTelegraphElapsed = 0.0f;
     attackTelegraphActive = true;
     playingEffect = false;
@@ -440,14 +459,25 @@ void EnemyDiver::BeginAttackEffect() {
     EndAttackPreparation();
     playingEffect = true;
     effectTimer = 0.0f;
+    attackEffectElapsed = 0.0f;
     currentEffectFrame = 0;
     kinematics.ApplyThrust(lockedAttackDirection, DIVE_DURATION);
+}
+
+/// Advances the active attack hitbox along the telegraphed lane.
+void EnemyDiver::AdvanceAttackEffect(float deltaTime) {
+    if (!playingEffect) return;
+    attackEffectElapsed = std::min(
+        DIVE_DURATION,
+        attackEffectElapsed + std::max(0.0f, deltaTime)
+    );
 }
 
 /// Finishes attack effect.
 void EnemyDiver::EndAttackEffect() {
     playingEffect = false;
     effectTimer = 0.0f;
+    attackEffectElapsed = 0.0f;
     currentEffectFrame = 0;
 }
 
@@ -455,33 +485,17 @@ void EnemyDiver::EndAttackEffect() {
 bool EnemyDiver::DoesAttackHit(Rectangle targetBounds) const {
     if (!playingEffect) return false;
     return LineOfSightGeometry::CapsuleIntersectsRectangle(
-        attackEffectStart,
-        GetAttackEffectEnd(),
+        GetAttackHitboxStart(),
+        GetAttackHitboxEnd(),
         DIVER_ATTACK_RADIUS,
         targetBounds
     );
 }
 
-/// Returns the current attack contact position.
-Vector2 EnemyDiver::GetAttackContactPosition(
-    Rectangle targetBounds
-) const {
-    Vector2 targetCenter = {
-        targetBounds.x + targetBounds.width * 0.5f,
-        targetBounds.y + targetBounds.height * 0.5f
-    };
-    Vector2 attackEnd = GetAttackEffectEnd();
-    Vector2 attackSegment = Vector2Subtract(attackEnd, attackEffectStart);
-    float segmentLengthSquared = Vector2LengthSqr(attackSegment);
-    if (segmentLengthSquared <= 0.0f) return attackEffectStart;
-
-    float projection = Vector2DotProduct(
-        Vector2Subtract(targetCenter, attackEffectStart),
-        attackSegment
-    ) / segmentLengthSquared;
-    projection = std::clamp(projection, 0.0f, 1.0f);
-    return Vector2Add(
-        attackEffectStart,
-        Vector2Scale(attackSegment, projection)
+/// Returns a stable source point for directional parry checks.
+Vector2 EnemyDiver::GetAttackParrySourcePosition() const {
+    return Vector2Scale(
+        Vector2Add(GetAttackHitboxStart(), GetAttackHitboxEnd()),
+        0.5f
     );
 }

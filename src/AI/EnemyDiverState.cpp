@@ -2,6 +2,7 @@
 
 #include "AI/EnemyCollision.h"
 #include "Core/LevelAccess.h"
+#include "Core/Manager/AudioManager.h"
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Entities/EnemyEntities/EnemyDiver.h"
@@ -156,6 +157,7 @@ void EnemyDiverReadyState::Exit(EnemyDiver* enemy) {
 void EnemyDiverLungingState::Enter(EnemyDiver* enemy) {
     enemy->EndPathFinding();
     enemy->BeginAttackEffect();
+    AudioManager::GetInstance().PlayRandomSwordSlash();
     dTimer = enemy->GetDiveDuration();
     isWaitingToChase = false;
     hasDamagedPlayer = false;
@@ -186,6 +188,7 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
         (int)std::ceil(frameDistance / maximumSubstep)
     );
     float substepDistance = frameDistance / (float)substepCount;
+    float substepTime = activeTime / (float)substepCount;
 
     TeamManager* targetTeam = enemy->GetTargetTeam();
     Paladin* player = targetTeam ? targetTeam->GetActivePaladin() : nullptr;
@@ -204,14 +207,14 @@ void EnemyDiverLungingState::Update(EnemyDiver* enemy, float deltaTime) {
             return;
         }
 
+        enemy->AdvanceAttackEffect(substepTime);
+
         if (!hasDamagedPlayer && player &&
             enemy->DoesAttackHit(player->GetCollisionBox())) {
             hasDamagedPlayer = true;
-            Vector2 attackContact = enemy->GetAttackContactPosition(
-                player->GetCollisionBox()
-            );
+            Vector2 attackSource = enemy->GetAttackParrySourcePosition();
 
-            if (player->CanParryAttack(attackContact)) {
+            if (player->CanParryAttack(attackSource)) {
                 Vector2 playerPosition = player->GetPosition();
                 player->TriggerParrySuccess(enemy);
                 player->IncrementParryCount();
