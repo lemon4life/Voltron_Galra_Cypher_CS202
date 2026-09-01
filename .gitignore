@@ -80,3 +80,8 @@ cmake-build-debug/
 #locoal AGENTS.md
 AGENTS.md
 .vscode/settings.json
+
+# Remove unrelated game release file
+implementation_plan/
+.idea/
+AI Usage Note/
