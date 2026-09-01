@@ -192,7 +192,7 @@ void RoomEditorStateAdapter::Update(float deltaTime) {
     editor->Update(deltaTime);
     if (IsKeyPressed(KEY_ESCAPE)) {
         GameManager::GetInstance().SetState(GameState::MAIN_MENU);
-        AudioManager::GetInstance().PlayMusicTrack("bgm_starter_menu", 1.0f);
+        AudioManager::GetInstance().PlayMusicTrack("bg_idle", 1.0f);
     }
 }
 

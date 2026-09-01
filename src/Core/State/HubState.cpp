@@ -3,6 +3,7 @@
 #include "Core/Manager/DialogueManager.h"
 #include "Core/Manager/CameraManager.h"
 #include "Core/Manager/InputManager.h"
+#include "Core/Manager/AudioManager.h"
 #include "Core/Constants.h"
 #include "Entities/Player/Paladin.h"
 #include "Entities/Hub/HubPaladinStand.h"
@@ -114,6 +115,7 @@ void HubState::Update(float deltaTime) {
             GameManager::GetInstance().ResetFloorCount();
             GameManager::GetInstance().GenerateDungeon();
             waveManager->Reset(0, 0, 0, 0);
+            AudioManager::GetInstance().PlayMusicTrack("bg_combat", 1.0f);
             GameManager::GetInstance().SetState(GameState::GAMEPLAY);
         }
     } else {

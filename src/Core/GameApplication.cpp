@@ -48,8 +48,8 @@ namespace {
     /// Returns the current session music.
     const char* GetSessionMusic(GameState state) {
         return state == GameState::GAMEPLAY
-            ? "bgm_battle"
-            : "bgm_story_mode";
+            ? "bg_combat"
+            : "bg_idle";
     }
 
     /// Returns the current level center.
@@ -75,7 +75,7 @@ GameApplication::GameApplication()
       continueRequiresCheckpointLoad(false),
       settingsReturnState(GameState::MAIN_MENU),
       continueState(GameState::HUB),
-      continueMusicName("bgm_story_mode") {
+      continueMusicName("bg_idle") {
 }
 
 /// Releases resources owned by this GameApplication instance.
@@ -200,7 +200,7 @@ void GameApplication::FinalizeStartup() {
         );
     }
     AudioManager::GetInstance().PlayMusicTrack(
-        "bgm_starter_menu",
+        "bg_idle",
         1.0f
     );
     AudioManager::GetInstance().PlaySoundEffect("ui_opening");
@@ -209,7 +209,7 @@ void GameApplication::FinalizeStartup() {
         hasContinuableSession = true;
         continueRequiresCheckpointLoad = true;
         continueState = GameState::GAMEPLAY;
-        continueMusicName = "bgm_battle";
+        continueMusicName = "bg_combat";
         mainMenu.SetContinueAvailable(true);
     }
     MemoryDiagnostics::Capture(
@@ -249,7 +249,7 @@ void GameApplication::StartNewGame() {
     GameManager::GetInstance().LoadLevel(HUB_LEVEL_PATH);
     teamManager->ResetForNewGame(GetLevelCenter(levelManager));
     waveManager.Reset(0, 0, 0);
-    AudioManager::GetInstance().PlayMusicTrack("bgm_story_mode", 1.0f);
+    AudioManager::GetInstance().PlayMusicTrack("bg_idle", 1.0f);
     GameManager::GetInstance().SetState(GameState::HUB);
 }
 
@@ -264,7 +264,7 @@ void GameApplication::ResetGame() {
     GameManager::GetInstance().ResetFloorCount();
     GameManager::GetInstance().GenerateDungeon();
     waveManager.Reset(0, 0, 0);
-    AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
+    AudioManager::GetInstance().PlayMusicTrack("bg_combat", 1.0f);
     GameManager::GetInstance().SetState(GameState::GAMEPLAY);
 }
 
@@ -279,7 +279,7 @@ void GameApplication::ReturnToHub() {
     teamManager->GetActivePaladin()->SetPosition(
         GetLevelCenter(levelManager)
     );
-    AudioManager::GetInstance().PlayMusicTrack("bgm_story_mode", 1.0f);
+    AudioManager::GetInstance().PlayMusicTrack("bg_idle", 1.0f);
     GameManager::GetInstance().SetState(GameState::HUB);
 }
 
@@ -290,7 +290,7 @@ void GameApplication::SuspendSessionToMainMenu() {
     if (!IsPlayableSessionState(suspendedState)) {
         ClearSuspendedSession();
         AudioManager::GetInstance().PlayMusicTrack(
-            "bgm_starter_menu",
+            "bg_idle",
             1.0f
         );
         gameManager.SetState(GameState::MAIN_MENU);
@@ -303,7 +303,7 @@ void GameApplication::SuspendSessionToMainMenu() {
     continueRequiresCheckpointLoad = false;
     mainMenu.SetContinueAvailable(true);
     AudioManager::GetInstance().PlayMusicTrack(
-        "bgm_starter_menu",
+        "bg_idle",
         1.0f
     );
     gameManager.SetState(GameState::MAIN_MENU);
@@ -326,7 +326,7 @@ bool GameApplication::ContinueSuspendedSession() {
         hasContinuableSession = false;
         continueRequiresCheckpointLoad = false;
         mainMenu.SetContinueAvailable(false);
-        AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
+        AudioManager::GetInstance().PlayMusicTrack("bg_combat", 1.0f);
         return true;
     }
 
@@ -345,7 +345,7 @@ void GameApplication::ClearSuspendedSession() {
     hasContinuableSession = false;
     continueRequiresCheckpointLoad = false;
     continueState = GameState::HUB;
-    continueMusicName = "bgm_story_mode";
+    continueMusicName = "bg_idle";
     mainMenu.SetContinueAvailable(false);
 }
 
@@ -485,6 +485,7 @@ void GameApplication::RunLoop() {
                     break;
                 case GameState::GAMEPLAY:
                     newState = std::make_unique<GameplayState>(teamManager, &levelManager, &waveManager);
+                    AudioManager::GetInstance().PlayMusicTrack("bg_combat", 1.0f);
                     break;
                 case GameState::MAIN_MENU:
                     newState = std::make_unique<MainMenuState>(&mainMenu, this);

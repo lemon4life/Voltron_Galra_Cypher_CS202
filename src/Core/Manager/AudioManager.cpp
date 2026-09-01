@@ -103,9 +103,15 @@ void AudioManager::Initialize() {
     }
 
     // Load BGM Tracks
-    LoadMusic("bgm_starter_menu", "assets/audio/BGM/bgm_starter_menu.mp3");
-    LoadMusic("bgm_story_mode", "assets/audio/BGM/bgm_story_mode.mp3");
-    LoadMusic("bgm_battle", "assets/audio/BGM/bgm_battle.mp3");
+    LoadMusic("bg_idle", "assets/audio/BGM/bg_idle.mp3");
+    LoadMusic("bg_combat", "assets/audio/BGM/bg_combat.mp3");
+    LoadMusic("bg_boss", "assets/audio/BGM/bg_boss.mp3");
+
+    // Legacy aliases mapped to new audio tracks
+    LoadMusic("bgm_starter_menu", "assets/audio/BGM/bg_idle.mp3");
+    LoadMusic("bgm_story_mode", "assets/audio/BGM/bg_idle.mp3");
+    LoadMusic("bgm_battle", "assets/audio/BGM/bg_combat.mp3");
+    LoadMusic("bgm_boss_theme", "assets/audio/BGM/bg_boss.mp3");
 
     // Load Enemy SFX correctly
     LoadSound("knight_dead_0", "assets/audio/SFX/Enemy/knight_dead_0.wav");
@@ -149,15 +155,6 @@ void AudioManager::Initialize() {
     LoadSound("fx_fire", "assets/audio/SFX/Character/fx_fire.wav");
     LoadSound("fx_flash_lighting", "assets/audio/SFX/Character/fx_flash_lighting.wav");
     LoadSound("fx_coin", "assets/audio/SFX/Item/fx_coin.wav");
-
-    LoadMusic("bgm_boss_theme", "assets/audio/BGM/bgm_boss_theme.mp3");
-
-    // Load Voicelines
-    LoadSound("vl_lance_skill", "assets/audio/Voice/lance_skill.wav");
-    LoadSound("vl_lance_ult", "assets/audio/Voice/lance_ult.wav");
-    LoadSound("vl_pidge_ult", "assets/audio/Voice/pidge_ult.wav");
-    LoadSound("vl_keith_ult", "assets/audio/Voice/keith_ult.wav");
-    LoadSound("vl_hunk_ult", "assets/audio/Voice/hunk_ult.wav");
 
     currentFootstepIndex = 0;
     SetSoundEffectsVolume(soundEffectsVolume);

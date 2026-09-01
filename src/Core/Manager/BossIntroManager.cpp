@@ -35,7 +35,7 @@ void BossIntroManager::PlayIntro(Boss* boss, const std::string& name, const std:
     
     // Play intro sounds and dramatic swell
     AudioManager::GetInstance().PlaySoundEffect("ui_opening");
-    AudioManager::GetInstance().PlayMusicTrack("bgm_boss_theme", 1.0f);
+    AudioManager::GetInstance().PlayMusicTrack("bg_boss", 1.0f);
 }
 
 void BossIntroManager::Update(float deltaTime) {

@@ -90,13 +90,18 @@ void GameplayState::Update(float deltaTime) {
         
         if (levelManager->IsPlayerInExitRoom(teamManager->GetActivePaladin()->GetPosition())) {
             if (InputManager::IsInteractPressed()) {
-                GameManager::GetInstance().AdvanceFloorCount();
-                if (GameManager::GetInstance().GetCurrentFloor() > GameManager::MAX_FLOORS) {
+                if (levelManager->IsBossExitGateActive() ||
+                    GameManager::GetInstance().GetCurrentFloor() >= GameManager::MAX_FLOORS) {
                     GameManager::GetInstance().SetState(GameState::VICTORY);
                 } else {
-                    GameManager::GetInstance().ClearProjectiles();
-                    GameManager::GetInstance().GenerateDungeon();
-                    waveManager->Reset(0, 0, 0);
+                    GameManager::GetInstance().AdvanceFloorCount();
+                    if (GameManager::GetInstance().GetCurrentFloor() > GameManager::MAX_FLOORS) {
+                        GameManager::GetInstance().SetState(GameState::VICTORY);
+                    } else {
+                        GameManager::GetInstance().ClearProjectiles();
+                        GameManager::GetInstance().GenerateDungeon();
+                        waveManager->Reset(0, 0, 0);
+                    }
                 }
             }
         }
@@ -302,7 +307,12 @@ void GameplayState::Draw() {
     }
 
     if (levelManager->IsPlayerInExitRoom(teamManager->GetActivePaladin()->GetPosition())) {
-        float textWidth = UIUtils::MeasureText("PixeloidSans", "Press F to go to the next floor", UIUtils::FontSize::SMALL).x;
+        bool isFinalExit = levelManager->IsBossExitGateActive() ||
+            GameManager::GetInstance().GetCurrentFloor() >= GameManager::MAX_FLOORS;
+        const char* gatePrompt = isFinalExit
+            ? "Press F to finish mission"
+            : "Press F to go to the next floor";
+        float textWidth = UIUtils::MeasureText("PixeloidSans", gatePrompt, UIUtils::FontSize::SMALL).x;
         Rectangle background = {
             (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
             Constants::GAME_HEIGHT - 44.0f,
@@ -310,7 +320,7 @@ void GameplayState::Draw() {
             28.0f
         };
         UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
-        UIUtils::DrawCenteredText("PixeloidSans", "Press F to go to the next floor", { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
+        UIUtils::DrawCenteredText("PixeloidSans", gatePrompt, { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
     }
     else {
         Paladin* active = teamManager->GetActivePaladin();
@@ -330,7 +340,9 @@ void GameplayState::Draw() {
                     nearestMachine = machine;
                 }
             } else if (auto* chest = dynamic_cast<Chest*>(obj)) {
-                if (!chest->IsOpened()) {
+                bool canInteract = !chest->IsOpened() ||
+                    (chest->GetRewardType() == ChestRewardType::Cypher && !chest->IsCypherCollected());
+                if (canInteract) {
                     float d = Vector2Distance(active->GetPosition(), chest->GetPosition());
                     if (d < chestDist) {
                         chestDist = d;
@@ -379,9 +391,17 @@ void GameplayState::Draw() {
                 Rectangle dest = { uiPos.x, uiPos.y, (float)selectTex.width, (float)selectTex.height };
                 DrawTexturePro(selectTex, {0, 0, (float)selectTex.width, (float)selectTex.height}, dest, origin, 0.0f, WHITE);
             }
-            UIUtils::DrawCenteredText("PixeloidSans", "Chest", { uiPos.x, uiPos.y - 12.0f }, UIUtils::FontSize::SMALL, RAYWHITE);
 
-            float textWidth = UIUtils::MeasureText("PixeloidSans", "Press F to open", UIUtils::FontSize::SMALL).x;
+            const char* chestTitle = "Chest";
+            const char* promptText = "Press F to open";
+            if (nearestChest->GetRewardType() == ChestRewardType::Cypher && nearestChest->IsOpened()) {
+                chestTitle = "Galra Cypher";
+                promptText = "Press F to retrieve Cypher Code";
+            }
+
+            UIUtils::DrawCenteredText("PixeloidSans", chestTitle, { uiPos.x, uiPos.y - 12.0f }, UIUtils::FontSize::SMALL, RAYWHITE);
+
+            float textWidth = UIUtils::MeasureText("PixeloidSans", promptText, UIUtils::FontSize::SMALL).x;
             Rectangle background = {
                 (Constants::GAME_WIDTH - textWidth) * 0.5f - 10.0f,
                 Constants::GAME_HEIGHT - 44.0f,
@@ -389,7 +409,7 @@ void GameplayState::Draw() {
                 28.0f
             };
             UIUtils::DrawPanel(background, Color{15, 20, 29, 220});
-            UIUtils::DrawCenteredText("PixeloidSans", "Press F to open", { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
+            UIUtils::DrawCenteredText("PixeloidSans", promptText, { background.x + background.width * 0.5f, background.y + background.height * 0.5f }, UIUtils::FontSize::SMALL, RAYWHITE);
         }
         else if (nearestPot) {
             std::string name = "Potion";
