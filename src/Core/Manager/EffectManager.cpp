@@ -156,9 +156,6 @@ void EffectManager::Update(float deltaTime) {
 
 /// Renders this component using its current state and visual resources.
 void EffectManager::Draw(bool background) const {
-    if (background) {
-        DecalManager::GetInstance().Draw();
-    }
     for (const ImpactEffect& effect : activeEffects) {
         if (effect.drawBehind != background || effect.texture.id == 0) {
             continue;

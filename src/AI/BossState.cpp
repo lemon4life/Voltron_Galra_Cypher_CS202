@@ -166,8 +166,18 @@ void BossIdlingState::Update(Boss* enemy, float deltaTime) {
     enemy->SetCurrentVelocity({ 0.0f, 0.0f });
     if (stageTimeRemaining > 0.0f) return;
 
+    BossOffense offense = RollBossOffense();
+    if (offense == BossOffense::Spell &&
+        !enemy->CanSelectRandomSpell()) {
+        // Spell's probability is divided evenly between the two remaining
+        // normal offenses while the living-enemy population is above its cap.
+        offense = GetRandomValue(0, 1) == 0
+            ? BossOffense::Punch
+            : BossOffense::Stomp;
+    }
+
     IEnemyState* nextState = enemy->GetSpellingState();
-    switch (RollBossOffense()) {
+    switch (offense) {
         case BossOffense::Punch:
             nextState = enemy->GetPunchState();
             break;

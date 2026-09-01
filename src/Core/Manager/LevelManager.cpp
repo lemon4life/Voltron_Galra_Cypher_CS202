@@ -374,17 +374,26 @@ bool LevelManager::FindGateEscapePosition(
     return false;
 }
 
-/// Renders level base.
+/// Renders terrain beneath every world object.
 void LevelManager::DrawLevelBase() {
     if (currentLevelProvider) {
         currentLevelProvider->DrawBase();
     }
+}
 
-    
+/// Renders base-layer portions of map objects above terrain and decals.
+void LevelManager::DrawMapObjectBaseLayers() {
     for (const std::unique_ptr<MapObject>& object : mapObjects) {
         if (object && IsWorldRectangleVisible(object->GetCollisionBox())) {
             object->DrawBaseLayer();
         }
+    }
+}
+
+/// Renders portals above decals but below all actors.
+void LevelManager::DrawPortals() {
+    if (currentLevelProvider) {
+        currentLevelProvider->DrawPortalLayer();
     }
 }
 

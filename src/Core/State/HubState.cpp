@@ -2,6 +2,7 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/DialogueManager.h"
 #include "Core/Manager/CameraManager.h"
+#include "Core/Manager/DecalManager.h"
 #include "Core/Manager/InputManager.h"
 #include "Core/Manager/AudioManager.h"
 #include "Core/Constants.h"
@@ -167,6 +168,9 @@ void HubState::Draw() {
     BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
 
     levelManager->DrawLevelBase();
+    DecalManager::GetInstance().Draw();
+    levelManager->DrawMapObjectBaseLayers();
+    levelManager->DrawPortals();
     GameManager::GetInstance().DrawEffects(true);
 
     std::vector<DepthRenderItem> renderItems;

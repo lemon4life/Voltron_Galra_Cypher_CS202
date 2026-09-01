@@ -180,8 +180,12 @@ public:
     /// creates special-room entities, and exposes all resulting dynamic spawns.
     DynamicSpawnList GenerateDungeon(int floorNumber = 1);
 
-    /// Renders level base.
+    /// Renders terrain beneath every world object.
     void DrawLevelBase();
+    /// Renders base-layer portions of map objects above terrain and decals.
+    void DrawMapObjectBaseLayers();
+    /// Renders portals above decals but below all actors.
+    void DrawPortals();
     /// Returns the current depth render items.
     void GetDepthRenderItems(std::vector<DepthRenderItem>& items);
     /// Advances room discovery, room locking, doors, map objects, and collision state.

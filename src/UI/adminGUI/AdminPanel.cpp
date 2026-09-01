@@ -465,6 +465,24 @@ void AdminPanel::Update(
                 EnemyTypeName(spawnType) + " spawn";
         }
     }
+    Rectangle addCoinsButton = {
+        contentX + (SPAWN_TYPES.size() % SPAWN_COLUMN_COUNT) *
+            (buttonWidth + 8.0f),
+        panel.y + SPAWN_BUTTON_START_Y +
+            (SPAWN_TYPES.size() / SPAWN_COLUMN_COUNT) *
+                (BUTTON_HEIGHT + SPAWN_BUTTON_GAP_Y),
+        buttonWidth,
+        BUTTON_HEIGHT
+    };
+    if (WasButtonPressed(addCoinsButton, mousePosition)) {
+        if (teamManager) {
+            teamManager->AddCoins(9999);
+            statusMessage = std::string("Added 9999 coins; total: ") +
+                std::to_string(teamManager->GetCoins());
+        } else {
+            statusMessage = "No active team to receive coins";
+        }
+    }
 
     float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
     Rectangle cancelButton = {
@@ -768,6 +786,16 @@ void AdminPanel::Draw() const {
             spawnType == SPAWN_TYPES[index]
         );
     }
+    Rectangle addCoinsButton = {
+        contentX + (SPAWN_TYPES.size() % SPAWN_COLUMN_COUNT) *
+            (buttonWidth + 8.0f),
+        panel.y + SPAWN_BUTTON_START_Y +
+            (SPAWN_TYPES.size() / SPAWN_COLUMN_COUNT) *
+                (BUTTON_HEIGHT + SPAWN_BUTTON_GAP_Y),
+        buttonWidth,
+        BUTTON_HEIGHT
+    };
+    DrawButton(addCoinsButton, "+9999 Coins", mousePosition);
 
     float actionButtonWidth = (contentWidth - 8.0f) * 0.5f;
     Rectangle cancelButton = {

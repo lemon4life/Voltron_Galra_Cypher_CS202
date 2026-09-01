@@ -42,6 +42,7 @@ namespace {
     constexpr int BOSS_PHASE_ONE_SUMMON_CHANCE_PERCENT = 50;
     constexpr int BOSS_HARDER_PHASE_SUMMON_CHANCE_PERCENT = 70;
     constexpr int BOSS_PHASE_THREE_MAX_DEMON_SUMMONS = 2;
+    constexpr std::size_t BOSS_RANDOM_SPELL_MAX_LIVING_ENEMIES = 70;
     constexpr float BOSS_PHASE_THREE_STOMP_BULLET_SPEED_SCALE = 1.5f;
     constexpr float BOSS_SPEED = 75.0f;
     constexpr int BOSS_DAMAGE = 25;
@@ -500,6 +501,17 @@ BossPhase Boss::GetPhase() const {
     if (health > BOSS_PHASE_TWO_MAX_HEALTH) return BossPhase::Phase1;
     if (health > BOSS_PHASE_THREE_MAX_HEALTH) return BossPhase::Phase2;
     return BossPhase::Phase3;
+}
+
+/// Restricts only normal offense selection; forced cinematic spells bypass it.
+bool Boss::CanSelectRandomSpell() const {
+    std::size_t livingEnemyCount = 0;
+    for (const Enemy* enemy : GameManager::GetInstance()
+             .GetObjectManager()
+             .GetEnemies()) {
+        if (enemy && !enemy->IsDead()) ++livingEnemyCount;
+    }
+    return livingEnemyCount <= BOSS_RANDOM_SPELL_MAX_LIVING_ENEMIES;
 }
 
 /// Applies incoming damage after this object handles defenses and state-specific rules.

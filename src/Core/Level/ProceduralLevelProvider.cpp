@@ -34,45 +34,52 @@ void ProceduralLevelProvider::DrawBase() {
             floorTileset,
             wallTileset
         );
-        
-        // Draw EXIT gate if this room is an EXIT room
-        for (const auto& node : levelMap.generatedNodes) {
-            if (node->type == RoomType::EXIT) {
-                Rectangle bounds = node->GetWorldBounds();
-                float roomCenterX = bounds.x + bounds.width / 2.0f;
-                float roomCenterY = bounds.y + bounds.height / 2.0f;
-                float tileW = Constants::RENDER_TILE_SIZE;
-                
-                Rectangle destRec = {
-                    roomCenterX - tileW * 2.0f,
-                    roomCenterY - tileW * 2.0f,
-                    tileW * 4.0f,
-                    tileW * 4.0f
-                };
-                
-                float frameWidth = gateTexture.width / 8.0f;
-                int currentFrame = (int)(GetTime() * 10) % 8;
-                Rectangle gateFrameSrc = {currentFrame * frameWidth, 0, frameWidth, (float)gateTexture.height};
-                DrawTexturePro(gateTexture, gateFrameSrc, destRec, {0,0}, 0.0f, WHITE);
-            }
-        }
+    }
+}
 
-        // Draw BOSS exit gate if spawned dynamically in boss room
-        LevelManager* lm = GameManager::GetInstance().GetLevelManager();
-        if (lm && lm->IsBossExitGateActive()) {
-            Vector2 gatePos = lm->GetBossExitGatePosition();
-            float tileW = Constants::RENDER_TILE_SIZE;
-            Rectangle destRec = {
-                gatePos.x - tileW * 2.0f,
-                gatePos.y - tileW * 2.0f,
-                tileW * 4.0f,
-                tileW * 4.0f
-            };
-            float frameWidth = gateTexture.width / 8.0f;
-            int currentFrame = (int)(GetTime() * 10) % 8;
-            Rectangle gateFrameSrc = {currentFrame * frameWidth, 0, frameWidth, (float)gateTexture.height};
-            DrawTexturePro(gateTexture, gateFrameSrc, destRec, {0,0}, 0.0f, WHITE);
-        }
+/// Renders portals on a deterministic layer above corpses and below actors.
+void ProceduralLevelProvider::DrawPortalLayer() {
+    if (!activeRoom || gateTexture.id == 0) return;
+
+    auto drawGate = [this](Vector2 center) {
+        float tileW = Constants::RENDER_TILE_SIZE;
+        Rectangle destination = {
+            center.x - tileW * 2.0f,
+            center.y - tileW * 2.0f,
+            tileW * 4.0f,
+            tileW * 4.0f
+        };
+        float frameWidth = gateTexture.width / 8.0f;
+        int currentFrame = (int)(GetTime() * 10) % 8;
+        Rectangle source = {
+            currentFrame * frameWidth,
+            0.0f,
+            frameWidth,
+            (float)gateTexture.height
+        };
+        DrawTexturePro(
+            gateTexture,
+            source,
+            destination,
+            { 0.0f, 0.0f },
+            0.0f,
+            WHITE
+        );
+    };
+
+    for (const std::shared_ptr<RoomNode>& node : levelMap.generatedNodes) {
+        if (!node || node->type != RoomType::EXIT) continue;
+        Rectangle bounds = node->GetWorldBounds();
+        drawGate({
+            bounds.x + bounds.width * 0.5f,
+            bounds.y + bounds.height * 0.5f
+        });
+    }
+
+    LevelManager* levelManager =
+        GameManager::GetInstance().GetLevelManager();
+    if (levelManager && levelManager->IsBossExitGateActive()) {
+        drawGate(levelManager->GetBossExitGatePosition());
     }
 }
 

@@ -138,6 +138,8 @@ void GameplayState::Draw() {
     BeginMode2D(CameraManager::GetInstance().GetRenderCamera());
     levelManager->DrawLevelBase();
     DecalManager::GetInstance().Draw();
+    levelManager->DrawMapObjectBaseLayers();
+    levelManager->DrawPortals();
 
     if (Constants::isAutoAimEnabled && teamManager && teamManager->GetActivePaladin()) {
         Paladin* activePaladin = teamManager->GetActivePaladin();

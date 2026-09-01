@@ -15,6 +15,8 @@ public:
 
     /// Renders base.
     virtual void DrawBase() = 0;
+    /// Renders portals on their fixed layer below actors.
+    virtual void DrawPortalLayer() {}
     /// Returns the current depth render items.
     virtual void GetDepthRenderItems(std::vector<DepthRenderItem>& items) = 0;
     /// Reports whether the solid collision condition is satisfied.

@@ -22,6 +22,8 @@ public:
 
     /// Renders base.
     void DrawBase() override;
+    /// Renders portals on their fixed layer below actors.
+    void DrawPortalLayer() override;
     /// Returns the current depth render items.
     void GetDepthRenderItems(std::vector<DepthRenderItem>& items) override;
     /// Reports whether the solid collision condition is satisfied.

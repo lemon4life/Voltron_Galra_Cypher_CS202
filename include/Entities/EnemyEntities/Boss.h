@@ -82,6 +82,8 @@ public:
     BossStompingState* GetStompingState() { return stompingState.get(); }
     /// Reports whether the spelling condition is satisfied.
     bool IsSpelling() const { return currentState == spellingState.get(); }
+    /// Reports whether a normal offense roll may select the spell state.
+    bool CanSelectRandomSpell() const;
     /// Reports whether the punching condition is satisfied.
     bool IsPunching() const { return currentState == punchState.get(); }
     /// Reports whether the stomping condition is satisfied.
