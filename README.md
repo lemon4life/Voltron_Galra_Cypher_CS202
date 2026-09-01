@@ -8,7 +8,8 @@ The project demonstrates object-oriented game architecture, real-time combat sys
 
 | Developer | Student ID |
 | --- | --- |
-| `<Your full name>` | `<Your student ID>` |
+| `Trần Phúc Khánh` | `25125020` |
+| `Hoàng Nguyên Anh`| `25125002` |
 
 ## Enter the Galra Cypher
 
