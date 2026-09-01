@@ -24,7 +24,6 @@ struct UltimateIntroData {
     std::string ultimateName;
     Color themeColor;
     std::string portraitTextureID;
-    std::string voicelineAudioID;
 };
 
 struct CharacterSprites {

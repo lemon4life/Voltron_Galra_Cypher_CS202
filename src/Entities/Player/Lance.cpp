@@ -15,7 +15,7 @@ Lance::Lance(Vector2 pos, CharacterSprites sprites)
       isUltimateFlash(false),
       ultimateFlashTimer(0.0f)
 {
-    introData = {"LANCE", "GLACIER PIERCE", BLUE, "Card_Lance", "lance_ult"};
+    introData = {"LANCE", "GLACIER PIERCE", BLUE, "Card_Lance"};
     const WeaponDefinition& weapon =
         PaladinCatalog::Get(PaladinId::Lance).weapon;
     currentWeapon = std::make_unique<RangedAttackStrategy>(
@@ -138,7 +138,6 @@ void Lance::UseSkill() {
     
     ActivateSkill(5.0f);
     AudioManager::GetInstance().PlaySoundEffect("fx_lance_skill");
-    AudioManager::GetInstance().PlaySoundEffect("vl_lance_skill");
     AddPersonalBuff(std::make_unique<DualWieldBuff>(5.0f));
 }
 
@@ -149,7 +148,6 @@ void Lance::UseUltimate() {
     if (!teamManager || !teamManager->ConsumeQuintessence(TeamManager::ULTIMATE_COST)) return;
     
     ultimateCooldownTimer = ULTIMATE_COOLDOWN_MAX;
-    AudioManager::GetInstance().PlaySoundEffect("vl_lance_ult");
     UltimateIntroManager::GetInstance().PlayIntro(this);
 }
 

@@ -14,7 +14,7 @@
 Keith::Keith(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Keith))
 {
-    introData = {"KEITH", "EXCALIBUR", RED, "Card_Keith", "keith_ult_voice"};
+    introData = {"KEITH", "EXCALIBUR", RED, "Card_Keith"};
 
     const WeaponDefinition& weapon =
         PaladinCatalog::Get(PaladinId::Keith).weapon;
@@ -59,7 +59,6 @@ void Keith::UseUltimate() {
 /// Executes the gameplay effect after the Ultimate introduction finishes.
 void Keith::ExecuteUltimateAction() {
     AudioManager::GetInstance().PlaySoundEffect("fx_keith_ult");
-    AudioManager::GetInstance().PlaySoundEffect("vl_keith_ult");
     
     Texture2D ultiFireTex = AssetManager::GetInstance().GetTexture("ulti_fire");
     Texture2D fireAnimTex = AssetManager::GetInstance().GetTexture("fire_anim");

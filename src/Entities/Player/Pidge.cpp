@@ -19,7 +19,7 @@ constexpr std::size_t MAX_TOXIC_PARTICLES = 128;
 Pidge::Pidge(Vector2 startPos, CharacterSprites sprites)
     : Paladin(startPos, sprites, PaladinCatalog::Get(PaladinId::Pidge)) {
     toxicParticles.reserve(MAX_TOXIC_PARTICLES);
-    introData = {"PIDGE", "ROVER OVERRIDE", GREEN, "Card_Pidge", "pidge_ult_voice"};
+    introData = {"PIDGE", "ROVER OVERRIDE", GREEN, "Card_Pidge"};
     weaponRotation = 0.0f;
     isWeaponThrown = false;
     thrownWeaponId = INVALID_OBJECT_ID;
@@ -218,7 +218,6 @@ void Pidge::UseUltimate() {
     if (!teamManager || !teamManager->ConsumeQuintessence(TeamManager::ULTIMATE_COST)) return;
     ultimateCooldownTimer = ULTIMATE_COOLDOWN_MAX;
     AudioManager::GetInstance().PlaySoundEffect("fx_pidge_ult");
-    AudioManager::GetInstance().PlaySoundEffect("vl_pidge_ult");
     UltimateIntroManager::GetInstance().PlayIntro(this);
 }
 

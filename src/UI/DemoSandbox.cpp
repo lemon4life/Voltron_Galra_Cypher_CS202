@@ -263,7 +263,6 @@ public:
             if (t >= 0.35f && sequenceStep == 0) {
                 sequenceStep = 1;
                 AudioManager::GetInstance().PlaySoundEffect("fx_keith_ult");
-                AudioManager::GetInstance().PlaySoundEffect("vl_keith_ult");
                 ctx.sandbox.SpawnEffectPopup(ctx.paladinPos, "EXCALIBUR!", Color{ 255, 80, 40, 255 }, 1.0f);
             }
             if (t >= 0.70f && sequenceStep == 1) {
@@ -460,7 +459,6 @@ public:
                 if (sequenceStep == 0) {
                     sequenceStep = 1;
                     AudioManager::GetInstance().PlaySoundEffect("fx_lance_skill");
-                    AudioManager::GetInstance().PlaySoundEffect("vl_lance_skill");
                     ctx.sandbox.SpawnEffectPopup(ctx.paladinPos, "DUAL WIELD", Color{ 80, 200, 255, 255 }, 0.9f);
                 }
 
@@ -497,7 +495,6 @@ public:
         } else if (mode == DemoPreviewMode::Ultimate) {
             if (t >= 0.40f && sequenceStep == 0) {
                 sequenceStep = 1;
-                AudioManager::GetInstance().PlaySoundEffect("vl_lance_ult");
                 AudioManager::GetInstance().PlaySoundEffect("fx_lance_ult");
                 AudioManager::GetInstance().PlaySoundEffect("fx_ice_explode");
                 ctx.sandbox.SpawnEffectPopup(ctx.paladinPos, "GLACIER PIERCE!", Color{ 100, 210, 255, 255 }, 1.0f);
@@ -659,7 +656,6 @@ public:
         } else if (mode == DemoPreviewMode::Ultimate) {
             if (t >= 0.35f && sequenceStep == 0) {
                 sequenceStep = 1;
-                AudioManager::GetInstance().PlaySoundEffect("vl_hunk_ult");
                 AudioManager::GetInstance().PlaySoundEffect("fx_get_buff");
                 ctx.sandbox.SpawnEffectPopup(ctx.paladinPos, "AEGIS SHIELD!", Color{ 255, 215, 0, 255 }, 1.0f);
             }
@@ -926,7 +922,6 @@ public:
                 sequenceStep = 1;
                 roverActive = true;
                 roverPos = { ctx.paladinPos.x + 36.0f, ctx.paladinPos.y - 36.0f };
-                AudioManager::GetInstance().PlaySoundEffect("vl_pidge_ult");
                 AudioManager::GetInstance().PlaySoundEffect("fx_pidge_ult");
                 ctx.sandbox.SpawnEffectPopup(ctx.paladinPos, "ROVER OVERRIDE!", Color{ 100, 255, 140, 255 }, 1.0f);
             }

@@ -9,7 +9,7 @@
 Hunk::Hunk(Vector2 pos, CharacterSprites sprites)
     : Paladin(pos, sprites, PaladinCatalog::Get(PaladinId::Hunk))
 {
-    introData = {"HUNK", "EARTHSHAKER", YELLOW, "Card_Hunk", "hunk_ult_voice"};
+    introData = {"HUNK", "EARTHSHAKER", YELLOW, "Card_Hunk"};
     const WeaponDefinition& weapon =
         PaladinCatalog::Get(PaladinId::Hunk).weapon;
     currentWeapon = std::make_unique<LaserAttackStrategy>(
@@ -109,7 +109,6 @@ void Hunk::UseUltimate() {
 
 /// Executes the gameplay effect after the Ultimate introduction finishes.
 void Hunk::ExecuteUltimateAction() {
-    AudioManager::GetInstance().PlaySoundEffect("vl_hunk_ult");
     AudioManager::GetInstance().PlaySoundEffect("fx_get_buff");
     if (teamManager) {
         teamManager->AddSharedBuff(std::make_unique<AegisShieldBuff>(5.0f));

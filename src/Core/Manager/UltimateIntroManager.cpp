@@ -27,9 +27,8 @@ void UltimateIntroManager::PlayIntro(Paladin* paladin) {
     isPlaying = true;
     timer = 0.0f;
     
-    // Play placeholder sound
+    // Play sound effect
     AudioManager::GetInstance().PlaySoundEffect("sfx_button_click"); 
-    AudioManager::GetInstance().PlaySoundEffect(activePaladin->GetIntroData().voicelineAudioID);
 }
 
 /// Advances this component's state for the current frame.
