@@ -440,6 +440,8 @@ void LevelManager::ClearLevel() {
     roomOffset = {0.0f, 0.0f};
     nudgePosition = {0.0f, 0.0f};
     needsNudge = false;
+    bossExitGateActive = false;
+    bossExitGatePosition = {0.0f, 0.0f};
     levelMode = LevelMode::Layered;
     MarkNavigationChanged();
 }
@@ -1058,6 +1060,12 @@ bool LevelManager::IsPlayerInExitRoom(Vector2 playerPos) const {
     if (!IsProceduralDungeon()) return false;
     
     Rectangle playerBox = { playerPos.x - 8, playerPos.y - 8, 16, 16 };
+    if (bossExitGateActive) {
+        Rectangle exitGate = { bossExitGatePosition.x - 32, bossExitGatePosition.y - 32, 64, 64 };
+        if (CheckCollisionRecs(playerBox, exitGate)) {
+            return true;
+        }
+    }
     for (const auto& node : levelMap.generatedNodes) {
         if (node->type == RoomType::EXIT) {
             Rectangle bounds = node->GetWorldBounds();
@@ -1130,6 +1138,7 @@ DynamicSpawnList LevelManager::GenerateDungeon(int floorNumber) {
     constexpr int COMBAT_ROOMS_BY_FLOOR[] = { 3, 5, 6, 8, 10 };
     int clampedFloor = std::clamp(floorNumber, 1, 5);
     bool finalFloor = clampedFloor == 5;
+
     constexpr int CHEST_ROOM_CHANCE_PERCENT = 45;
     constexpr int ENHANCE_ROOM_CHANCE_PERCENT = 30;
     int chestRoomCount = 0;

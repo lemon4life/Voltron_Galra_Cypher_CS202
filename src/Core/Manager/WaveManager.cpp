@@ -175,7 +175,7 @@ void WaveManager::Update(float deltaTime, TeamManager* teamManager, LevelManager
                 );
                 if (currentWave == 5) {
                     enemiesToSpawn = 1;
-                    AudioManager::GetInstance().PlayMusicTrack("bgm_boss_theme", 1.5f);
+                    AudioManager::GetInstance().PlayMusicTrack("bg_boss", 1.5f);
                 } else {
                     enemiesToSpawn = currentWave;
                 }
@@ -230,7 +230,7 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
             diverEnemiesToSpawn = 0;
             droneEnemiesToSpawn = 0;
             demonTHAEnemiesToSpawn = 0;
-            AudioManager::GetInstance().PlayMusicTrack("bgm_boss_theme", 1.5f);
+            AudioManager::GetInstance().PlayMusicTrack("bg_boss", 1.5f);
         } else {
             // Normal battle room: 3 waves of progressive composition
             dungeonTotalWaves = 3;
@@ -285,21 +285,49 @@ void WaveManager::UpdateDungeonRoom(float deltaTime, TeamManager* teamManager, L
 
                 if (isBossRoom) {
                     // Boss defeated — room cleared, player can continue
-                    AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
+                    AudioManager::GetInstance().PlayMusicTrack("bg_combat", 1.0f);
                 }
 
-                // Spawn reward chest at active Paladin's position with teleport VFX
+                // Spawn reward chest
                 if (teamManager && teamManager->GetActivePaladin()) {
-                    Vector2 spawnPos = teamManager->GetActivePaladin()->GetPosition();
-                    Texture2D smoke = AssetManager::GetInstance().GetTexture("AppearSmoke");
-                    Texture2D light = AssetManager::GetInstance().GetTexture("AppearLight");
-                    GameManager::GetInstance().AddEffect(spawnPos, smoke, 5, 0.5f);
-                    GameManager::GetInstance().AddEffect(spawnPos, light, 5, 0.5f);
-                    AudioManager::GetInstance().PlaySoundEffect("fx_show_up");
+                    if (isBossRoom) {
+                        // Fixed location for Boss Cypher Chest: North of boss room center
+                        Vector2 chestPos = teamManager->GetActivePaladin()->GetPosition();
+                        std::shared_ptr<RoomNode> bossNode = levelManager ? levelManager->GetCurrentlyLockedRoom() : nullptr;
+                        if (!bossNode && levelManager) {
+                            for (const auto& node : levelManager->GetLevelMap().generatedNodes) {
+                                if (node && node->type == RoomType::BOSS) {
+                                    bossNode = node;
+                                    break;
+                                }
+                            }
+                        }
+                        if (bossNode) {
+                            Rectangle bounds = bossNode->GetWorldBounds();
+                            chestPos = { bounds.x + bounds.width * 0.5f, bounds.y + bounds.height * 0.5f - 60.0f };
+                        }
 
-                    GameManager::GetInstance().GetObjectManager().AddObject(
-                        std::make_unique<Chest>(spawnPos, ChestRewardType::Coins)
-                    );
+                        Texture2D smoke = AssetManager::GetInstance().GetTexture("AppearSmoke");
+                        Texture2D light = AssetManager::GetInstance().GetTexture("AppearLight");
+                        GameManager::GetInstance().AddEffect(chestPos, smoke, 5, 0.5f);
+                        GameManager::GetInstance().AddEffect(chestPos, light, 5, 0.5f);
+                        AudioManager::GetInstance().PlaySoundEffect("fx_show_up");
+
+                        GameManager::GetInstance().GetObjectManager().AddObject(
+                            std::make_unique<Chest>(chestPos, ChestRewardType::Cypher)
+                        );
+                    } else {
+                        Vector2 spawnPos = teamManager->GetActivePaladin()->GetPosition();
+                        Texture2D smoke = AssetManager::GetInstance().GetTexture("AppearSmoke");
+                        Texture2D light = AssetManager::GetInstance().GetTexture("AppearLight");
+                        GameManager::GetInstance().AddEffect(spawnPos, smoke, 5, 0.5f);
+                        GameManager::GetInstance().AddEffect(spawnPos, light, 5, 0.5f);
+                        AudioManager::GetInstance().PlaySoundEffect("fx_show_up");
+
+                        GameManager::GetInstance().GetObjectManager().AddObject(
+                            std::make_unique<Chest>(spawnPos, ChestRewardType::Coins)
+                        );
+                    }
                 }
 
                 // Reset for next room
@@ -509,7 +537,7 @@ bool WaveManager::SkipCurrentRoom(
     levelManager->SetActiveRoomState(RoomState::CLEARED);
 
     if (isBossRoom) {
-        AudioManager::GetInstance().PlayMusicTrack("bgm_battle", 1.0f);
+        AudioManager::GetInstance().PlayMusicTrack("bg_combat", 1.0f);
     }
 
     enemiesToSpawn = 0;

@@ -5,7 +5,8 @@
 
 enum class ChestRewardType {
     Pot,
-    Coins
+    Coins,
+    Cypher
 };
 
 class Chest : public GameObject {
@@ -13,8 +14,10 @@ private:
     ChestRewardType rewardType = ChestRewardType::Pot;
     bool isOpened = false;
     bool isOpening = false;
+    bool cypherCollected = false;
     float openProgress = 0.0f;     // 0.0f to 1.0f (sliding lid)
     float potScaleProgress = 0.0f; // 0.0f to 1.0f (pot scaling/emergence)
+    float cypherHoverTimer = 0.0f;
     int selectedPotType = 0;       // 0: HP, 1: EX, 2: Quintessence
     bool potSpawned = false;
 
@@ -38,6 +41,8 @@ public:
     bool IsOpened() const { return isOpened; }
     /// Reports whether the opening condition is satisfied.
     bool IsOpening() const { return isOpening; }
+    /// Reports whether the cypher has been collected.
+    bool IsCypherCollected() const { return cypherCollected; }
     /// Returns the current open progress.
     float GetOpenProgress() const { return openProgress; }
     /// Returns the current pot scale progress.

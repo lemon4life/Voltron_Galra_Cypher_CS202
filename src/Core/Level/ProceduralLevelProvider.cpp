@@ -1,6 +1,8 @@
 #include "Core/Level/ProceduralLevelProvider.h"
 #include "Core/Level/Tilemap.h"
 #include "Core/Level/RoomNode.h"
+#include "Core/Manager/GameManager.h"
+#include "Core/Manager/LevelManager.h"
 #include <cmath>
 
 namespace {
@@ -53,6 +55,23 @@ void ProceduralLevelProvider::DrawBase() {
                 Rectangle gateFrameSrc = {currentFrame * frameWidth, 0, frameWidth, (float)gateTexture.height};
                 DrawTexturePro(gateTexture, gateFrameSrc, destRec, {0,0}, 0.0f, WHITE);
             }
+        }
+
+        // Draw BOSS exit gate if spawned dynamically in boss room
+        LevelManager* lm = GameManager::GetInstance().GetLevelManager();
+        if (lm && lm->IsBossExitGateActive()) {
+            Vector2 gatePos = lm->GetBossExitGatePosition();
+            float tileW = Constants::RENDER_TILE_SIZE;
+            Rectangle destRec = {
+                gatePos.x - tileW * 2.0f,
+                gatePos.y - tileW * 2.0f,
+                tileW * 4.0f,
+                tileW * 4.0f
+            };
+            float frameWidth = gateTexture.width / 8.0f;
+            int currentFrame = (int)(GetTime() * 10) % 8;
+            Rectangle gateFrameSrc = {currentFrame * frameWidth, 0, frameWidth, (float)gateTexture.height};
+            DrawTexturePro(gateTexture, gateFrameSrc, destRec, {0,0}, 0.0f, WHITE);
         }
     }
 }

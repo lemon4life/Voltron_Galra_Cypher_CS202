@@ -92,6 +92,9 @@ private:
     std::unique_ptr<ILevelProvider> currentLevelProvider;
     std::vector<Vector2> staticSpawnNodes;
 
+    bool bossExitGateActive = false;
+    Vector2 bossExitGatePosition = {0.0f, 0.0f};
+
     /// Loads object grid.
     bool LoadObjectGrid(const std::string& filepath);
     /// Spawns map content.
@@ -162,6 +165,15 @@ public:
     bool NeedsPlayerNudge() const { return needsNudge; }
     /// Consumes and returns nudge.
     Vector2 ConsumeNudge() { needsNudge = false; return nudgePosition; }
+    /// Spawns the boss chamber exit gate.
+    void SpawnBossExitGate(Vector2 position) {
+        bossExitGateActive = true;
+        bossExitGatePosition = position;
+    }
+    /// Reports whether the boss exit gate is active.
+    bool IsBossExitGateActive() const { return bossExitGateActive; }
+    /// Returns the boss exit gate position.
+    Vector2 GetBossExitGatePosition() const { return bossExitGatePosition; }
     /// Reports whether the player in exit room condition is satisfied.
     bool IsPlayerInExitRoom(Vector2 playerPos) const;
     /// Builds the current procedural floor, bakes its rooms into level layers,

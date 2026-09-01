@@ -5,9 +5,12 @@
 #include "Core/Manager/GameManager.h"
 #include "Core/Manager/TeamManager.h"
 #include "Core/Manager/ObjectManager.h"
+#include "Core/Manager/LevelManager.h"
+#include "Core/Manager/InputManager.h"
 #include "Entities/Player/Paladin.h"
 #include "raymath.h"
 #include <algorithm>
+#include <cmath>
 
 /// Creates a Chest instance from the supplied configuration.
 Chest::Chest(Vector2 pos, ChestRewardType reward)
@@ -67,11 +70,54 @@ void Chest::Update(float deltaTime) {
                         std::make_unique<Coin>(Vector2{ position.x, position.y - 6.0f }, coinVel)
                     );
                 }
+            } else if (rewardType == ChestRewardType::Cypher) {
+                // Cypher stays floating above the chest awaiting player retrieval
             }
 
             potSpawned = true;
             isOpening = false;
             isOpened = true;
+        }
+    }
+
+    // 4. Cypher Interaction: While opened and not yet collected, player can press F to retrieve code
+    if (rewardType == ChestRewardType::Cypher && isOpened && !cypherCollected) {
+        cypherHoverTimer += deltaTime;
+        Paladin* paladin = GameManager::GetInstance().GetTeamManager() 
+            ? GameManager::GetInstance().GetTeamManager()->GetActivePaladin() 
+            : nullptr;
+        if (paladin) {
+            float dist = Vector2Distance(position, paladin->GetPosition());
+            if (dist < 50.0f && InputManager::IsInteractPressed()) {
+                cypherCollected = true;
+                AudioManager::GetInstance().PlaySoundEffect("fx_get_buff");
+
+                // Spawn the mission exit gate in the fixed position in the boss room (South/Center of room)
+                LevelManager* lm = GameManager::GetInstance().GetLevelManager();
+                if (lm) {
+                    Vector2 gatePos = { position.x, position.y + 100.0f };
+                    auto bossNode = lm->GetCurrentlyLockedRoom();
+                    if (!bossNode) {
+                        for (const auto& node : lm->GetLevelMap().generatedNodes) {
+                            if (node && node->type == RoomType::BOSS) {
+                                bossNode = node;
+                                break;
+                            }
+                        }
+                    }
+                    if (bossNode) {
+                        Rectangle bounds = bossNode->GetWorldBounds();
+                        gatePos = { bounds.x + bounds.width * 0.5f, bounds.y + bounds.height * 0.5f + 40.0f };
+                    }
+                    lm->SpawnBossExitGate(gatePos);
+
+                    Texture2D smoke = AssetManager::GetInstance().GetTexture("AppearSmoke");
+                    Texture2D light = AssetManager::GetInstance().GetTexture("AppearLight");
+                    GameManager::GetInstance().AddEffect(gatePos, smoke, 5, 0.5f);
+                    GameManager::GetInstance().AddEffect(gatePos, light, 5, 0.5f);
+                    AudioManager::GetInstance().PlaySoundEffect("fx_show_up");
+                }
+            }
         }
     }
 }
@@ -116,6 +162,25 @@ void Chest::Draw() {
             Rectangle src = { 0.0f, 0.0f, (float)potTex.width, (float)potTex.height };
             Rectangle dest = { position.x, potCenterY, pw, ph };
             DrawTexturePro(potTex, src, dest, { pw * 0.5f, ph * 0.5f }, 0.0f, WHITE);
+        }
+    } else if (rewardType == ChestRewardType::Cypher && !cypherCollected && (isOpening || isOpened)) {
+        Texture2D cypherTex = AssetManager::GetInstance().GetTexture("cypher");
+        if (cypherTex.id != 0) {
+            float totalProgress = std::clamp((openProgress * 0.3f) + (potScaleProgress * 0.7f), 0.1f, 1.0f);
+            float cw = (float)cypherTex.width * totalProgress;
+            float ch = (float)cypherTex.height * totalProgress;
+            float hover = isOpened ? std::sin(cypherHoverTimer * 3.5f) * 3.0f : 0.0f;
+            float cypherCenterY = position.y - 14.0f - (potScaleProgress * 6.0f) + hover;
+
+            Rectangle src = { 0.0f, 0.0f, (float)cypherTex.width, (float)cypherTex.height };
+            Rectangle dest = { position.x, cypherCenterY, cw, ch };
+            
+            // Subtle glowing halo behind floating cypher
+            if (isOpened) {
+                float pulse = 0.5f + 0.5f * std::sin(cypherHoverTimer * 4.0f);
+                DrawCircleGradient((int)position.x, (int)cypherCenterY, 14.0f, ColorAlpha(SKYBLUE, 0.35f * pulse), ColorAlpha(DARKBLUE, 0.0f));
+            }
+            DrawTexturePro(cypherTex, src, dest, { cw * 0.5f, ch * 0.5f }, 0.0f, WHITE);
         }
     }
 }

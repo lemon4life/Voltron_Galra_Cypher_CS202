@@ -112,7 +112,7 @@ void LevelMap::Generate(
         };
 
         int roomsBeforePortal = enemyRoomCount + chestRoomCount +
-            enhanceRoomCount + (bossFloor ? 0 : 1);
+            enhanceRoomCount + 1;
         bool failed = false;
         for (int index = 0; index < roomsBeforePortal; ++index) {
             std::vector<OpenSlot> slots = collectOpenSlots();
@@ -131,12 +131,12 @@ void LevelMap::Generate(
         std::unordered_map<RoomNode*, RoomNode*> parents;
         std::queue<RoomNode*> frontier;
         distances[spawnRoom.get()] = 0;
-        parents[spawnRoom.get()] = nullptr;
         frontier.push(spawnRoom.get());
 
         while (!frontier.empty()) {
             RoomNode* current = frontier.front();
             frontier.pop();
+
             RoomNode* neighbors[] = {
                 current->north,
                 current->south,
@@ -170,46 +170,13 @@ void LevelMap::Generate(
             }
         }
 
-        if (bossFloor) {
-            farthestLeaves.erase(
-                std::remove_if(
-                    farthestLeaves.begin(),
-                    farthestLeaves.end(),
-                    [&](const std::shared_ptr<RoomNode>& node) {
-                        RoomNode* parent = parents[node.get()];
-                        int deltaX = node->gridX - parent->gridX;
-                        int deltaY = node->gridY - parent->gridY;
-                        int portalX = node->gridX + deltaX;
-                        int portalY = node->gridY + deltaY;
-                        return portalX < 0 || portalX >= width ||
-                            portalY < 0 || portalY >= height ||
-                            grid[portalY][portalX] != nullptr;
-                    }
-                ),
-                farthestLeaves.end()
-            );
-        }
         if (farthestLeaves.empty()) continue;
 
         auto progressionRoom = farthestLeaves[
             GetRandomValue(0, (int)farthestLeaves.size() - 1)
         ];
-        RoomNode* bossParent = nullptr;
         if (bossFloor) {
             setRoomType(progressionRoom, RoomType::BOSS);
-            bossParent = parents[progressionRoom.get()];
-            int deltaX = progressionRoom->gridX - bossParent->gridX;
-            int deltaY = progressionRoom->gridY - bossParent->gridY;
-            connectRoom(
-                {
-                    progressionRoom->gridX + deltaX,
-                    progressionRoom->gridY + deltaY,
-                    progressionRoom,
-                    deltaX,
-                    deltaY
-                },
-                RoomType::EXIT
-            );
         } else {
             setRoomType(progressionRoom, RoomType::EXIT);
         }
@@ -217,8 +184,7 @@ void LevelMap::Generate(
         std::vector<std::shared_ptr<RoomNode>> utilityCandidates;
         for (const auto& node : generatedNodes) {
             if (node == spawnRoom || node->type == RoomType::EXIT ||
-                node->type == RoomType::BOSS ||
-                node.get() == bossParent) {
+                node->type == RoomType::BOSS) {
                 continue;
             }
             utilityCandidates.push_back(node);

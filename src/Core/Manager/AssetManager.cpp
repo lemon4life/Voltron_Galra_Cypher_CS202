@@ -117,6 +117,7 @@ void AssetManager::QueueCommonAssets() {
     add("chest_top", "assets/Objects/chest_top.png", true);
     add("machine", "assets/Objects/Machine.png", true);
     add("coin_world", "assets/Objects/coin.png", true);
+    add("cypher", "assets/Objects/cypher.png", true);
     add("coin_icon", "assets/UI/coin.png", true);
     add("minimap_current", "assets/UI/minimap/current_room.png", true);
     add("minimap_event", "assets/UI/minimap/event.png", true);
@@ -264,6 +265,7 @@ void AssetManager::QueueCharacterAssets() {
     add("chest_bottom", "assets/Objects/chest_bottom.png", true);
     add("chest_top", "assets/Objects/chest_top.png", true);
     add("machine", "assets/Objects/Machine.png", true);
+    add("cypher", "assets/Objects/cypher.png", true);
     add("Galra_Floors", "assets/tileset/Galra_Floors.png", true);
     add("Galra_Walls", "assets/tileset/Galra_Walls.png", true);
     
